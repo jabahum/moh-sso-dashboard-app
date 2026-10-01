@@ -42,7 +42,7 @@
 }
 
 .user-layout--sidenav-hidden {
-  --moh-sidenav-width: 0rem;
+  --moh-sidenav-width: 3rem;
 }
 
 .user-layout__content {
@@ -229,6 +229,10 @@
 
   .user-layout {
     --moh-footer-left-offset: 0rem;
+  }
+
+  .user-layout--sidenav-hidden .moh-breadcrumb-bar {
+    padding-left: 3rem;
   }
 
   .user-layout .cds--side-nav {

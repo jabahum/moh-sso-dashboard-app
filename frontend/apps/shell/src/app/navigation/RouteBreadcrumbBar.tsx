@@ -17,8 +17,7 @@ export function RouteBreadcrumbBar() {
     <BreadcrumbBar
       items={items}
       onNavigate={(href) => navigate(href)}
-      onBack={() => navigate(-1)}
-      showBackButton
+      showBackButton={false}
     />
   );
 }

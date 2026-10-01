@@ -106,7 +106,7 @@
 }
 
 .admin-layout--sidenav-hidden {
-  --moh-admin-sidenav-width: 0rem;
+  --moh-admin-sidenav-width: 3rem;
 }
 
 .admin-layout__sidenav--hidden {
@@ -415,6 +415,14 @@ body {
 
   .admin-layout__content-shell {
     margin-left: 0;
+  }
+
+  .admin-layout {
+    --moh-footer-left-offset: 0rem;
+  }
+
+  .admin-layout--sidenav-hidden .moh-breadcrumb-bar {
+    padding-left: 3rem;
   }
 
   .admin-layout__sidenav,

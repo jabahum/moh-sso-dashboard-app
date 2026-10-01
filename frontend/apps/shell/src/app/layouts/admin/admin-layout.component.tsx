@@ -18,7 +18,8 @@ import {
   Dashboard,
   Email,
   Logout,
-  Menu,
+  ChevronLeft,
+  ChevronRight,
   Notification,
   UserAvatarFilled,
   UserMultiple,
@@ -320,12 +321,13 @@ function AdminSideNav({ visible, onToggleVisibility, onNavigate }: AdminSideNavP
         <button
           type="button"
           className="admin-layout__sidenav-toggle admin-layout__sidenav-toggle--rail"
-          aria-label="Show navigation"
+          aria-label="Expand navigation"
+          title="Expand navigation"
           aria-controls="admin-sidenav"
           aria-expanded={false}
           onClick={onToggleVisibility}
         >
-          <Menu size={22} />
+          <ChevronRight size={20} aria-hidden="true" />
         </button>
       ) : null}
 
@@ -349,12 +351,13 @@ function AdminSideNav({ visible, onToggleVisibility, onNavigate }: AdminSideNavP
               ref={closeButtonRef}
               type="button"
               className="admin-layout__sidenav-toggle"
-              aria-label="Hide navigation"
+              aria-label="Collapse navigation"
+              title="Collapse navigation"
               aria-controls="admin-sidenav"
               aria-expanded={visible}
               onClick={onToggleVisibility}
             >
-              <Menu size={22} />
+              <ChevronLeft size={20} aria-hidden="true" />
             </button>
           </div>
 

@@ -52,6 +52,21 @@ export default defineConfig(({ mode }) => {
     publicDir: pathFromRoot("./public"),
 
   plugins: [
+    {
+      name: "portal-base-redirect",
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          const match = request.url?.match(/^\/portal(\?.*)?$/);
+          if (!match) {
+            next();
+            return;
+          }
+
+          response.writeHead(302, { Location: `/portal/${match[1] ?? ""}` });
+          response.end();
+        });
+      },
+    },
     react(),
     VitePWA({
       base: "/portal/",
