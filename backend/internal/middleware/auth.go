@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/moh-sso-dashboard/internal/authz"
+	"github.com/moh-sso-dashboard/internal/config"
 	"github.com/moh-sso-dashboard/internal/features/authsession"
 	"github.com/moh-sso-dashboard/internal/http/response"
 	"github.com/moh-sso-dashboard/internal/keycloak"
@@ -17,10 +18,11 @@ func ExtractAuthContext(
 	kc *keycloak.Client,
 	sessions *authsession.Store,
 	resolver authz.PermissionResolver,
+	cfg *config.Config,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// LOCAL DEV ONLY: DEV_AUTH_BYPASS=true skips Keycloak entirely.
-		if DevAuthBypassEnabled() {
+		if DevAuthBypassEnabled(cfg) {
 			applyDevBypass(c, resolver)
 			return
 		}

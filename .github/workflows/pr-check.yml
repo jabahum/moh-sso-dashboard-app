@@ -20,9 +20,9 @@ jobs:
       # ========================
       # FRONTEND
       # ========================
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -37,6 +37,18 @@ jobs:
       - name: Frontend typecheck
         working-directory: frontend
         run: npm run typecheck
+
+      - name: Frontend architecture and configuration
+        working-directory: frontend
+        run: |
+          npm run config:validate
+          npm run architecture:check
+          npm run mf:doctor
+          npm run rbac:doctor
+          npm run audit:packages
+
+      - name: Deployment verifier tests
+        run: node --test scripts/verify-frontend-deployment.test.mjs
 
       # ========================
       # BACKEND
@@ -56,3 +68,32 @@ jobs:
       - name: Backend version consistency
         working-directory: backend
         run: ./scripts/check-version-consistency.sh
+
+  frontend-runtime:
+    name: Production Frontend Runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      FRONTEND_ASSET_BASE_URL: /portal
+      FRONTEND_BASE_PATH: /portal
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Build production runtime
+        run: |
+          npm run config:prod
+          npm run build:docker
+      - name: Verify staged modules and bundle budgets
+        run: |
+          npm run audit:import-map
+          npm run runtime:verify
+          npm run bundle:budget

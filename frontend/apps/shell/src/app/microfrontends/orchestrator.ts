@@ -82,27 +82,13 @@ function getRuntimeConfig() {
     }
   ).__APP_CONFIG__;
 
-  const isLocalDevelopmentHost =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1" ||
-    window.location.hostname === "::1";
-
-  if (!isLocalDevelopmentHost) {
-    return runtimeConfig;
-  }
-
-  return {
-    ...runtimeConfig,
-    singleSpaOrchestration: false,
-    microfrontendMode: "local",
-    microfrontendMountMode: "hybrid",
-  };
+  return runtimeConfig;
 }
 
 export function shouldUseSingleSpaOrchestration() {
   const runtimeConfig = getRuntimeConfig();
   const orchestrationEnabled =
-    import.meta.env.VITE_SINGLE_SPA_ORCHESTRATION === "true" || runtimeConfig?.singleSpaOrchestration === true;
+    runtimeConfig?.singleSpaOrchestration ?? import.meta.env.VITE_SINGLE_SPA_ORCHESTRATION === "true";
 
   return (
     orchestrationEnabled &&

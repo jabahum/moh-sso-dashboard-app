@@ -26,13 +26,8 @@ check(existsSync(htmlPath), "dist/index.html is missing", failures);
 
 if (existsSync(htmlPath)) {
   const html = readFileSync(htmlPath, "utf8");
-  check(html.includes('configFile = isLocal ? "config.development.js" : "config.js"') ||
-    html.includes("configFile = isLocal ? 'config.development.js' : 'config.js'"),
-    "dist/index.html should select config.development.js locally and config.js otherwise",
-    failures,
-  );
-  check(html.includes('/portal/\' + configFile') || html.includes('/portal/" + configFile'),
-    "dist/index.html should load runtime config from /portal",
+  check(html.includes('src="/portal/config.js"'),
+    "dist/index.html should load the selected runtime config from /portal/config.js",
     failures,
   );
   check(html.includes('type="importmap"'), "dist/index.html should inline an import map", failures);
@@ -60,7 +55,8 @@ check(existsSync(portalConfigPath), "dist/portal/config.js is missing", failures
 
 if (existsSync(portalConfigPath)) {
   const config = readFileSync(portalConfigPath, "utf8");
-  check(config.includes('API_BASE_URL: "/api"'), "production config should use API_BASE_URL /api", failures);
+  const expectedConfig = readFileSync(join(root, "public", "config.production.js"), "utf8");
+  check(config === expectedConfig, "staged runtime config must match config.production.js", failures);
   check(config.includes('microfrontendMode: "remote"'), "production config should use remote microfrontend mode", failures);
   check(config.includes("singleSpaOrchestration: true"), "production config should enable single-spa orchestration", failures);
   check(config.includes('microfrontendMountMode: "orchestrated"'), "production config should use orchestrated mount mode", failures);

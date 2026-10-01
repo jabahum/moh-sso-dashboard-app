@@ -17,6 +17,8 @@ type Config struct {
 	Environment string `mapstructure:"ENVIRONMENT"`
 	GinMode     string `mapstructure:"GIN_MODE"`
 
+	DevAuthBypass bool `mapstructure:"DEV_AUTH_BYPASS"`
+
 	// ==================================================
 	// Frontend
 	// ==================================================
@@ -269,6 +271,7 @@ func setDefaults() {
 	// ==================================================
 	viper.SetDefault("ENVIRONMENT", "development")
 	viper.SetDefault("GIN_MODE", "debug")
+	viper.SetDefault("DEV_AUTH_BYPASS", false)
 
 	// ==================================================
 	// Frontend defaults
@@ -353,6 +356,7 @@ func envBindings() map[string]string {
 	return map[string]string{
 		"ENVIRONMENT":                           "ENVIRONMENT",
 		"GIN_MODE":                              "GIN_MODE",
+		"DEV_AUTH_BYPASS":                       "DEV_AUTH_BYPASS",
 		"FRONTEND_BASE_URL":                     "FRONTEND_BASE_URL",
 		"FRONTEND_REDIRECT_URI":                 "FRONTEND_REDIRECT_URI",
 		"COOKIE_DOMAIN":                         "COOKIE_DOMAIN",
@@ -805,6 +809,9 @@ func validateConfig(c *Config) error {
 	if err := validateEnvironment(c); err != nil {
 		return err
 	}
+	if c.DevAuthBypass && !c.DevAuthBypassEnabled() {
+		return errors.New("DEV_AUTH_BYPASS is only allowed in development, dev, or local environments")
+	}
 
 	if err := validateFrontendConfig(c); err != nil {
 		return err
@@ -843,6 +850,19 @@ func validateConfig(c *Config) error {
 	}
 
 	return nil
+}
+
+// DevAuthBypassEnabled fails closed for missing, test, and deployed environments.
+func (c *Config) DevAuthBypassEnabled() bool {
+	if c == nil || !c.DevAuthBypass {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(c.Environment)) {
+	case "development", "dev", "local":
+		return true
+	default:
+		return false
+	}
 }
 
 func validateEnvironment(c *Config) error {

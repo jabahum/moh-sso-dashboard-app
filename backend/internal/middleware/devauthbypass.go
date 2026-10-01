@@ -1,32 +1,23 @@
 package middleware
 
-// LOCAL DEVELOPMENT ONLY -- DO NOT COMMIT.
-//
-// Enables running the portal with no Keycloak login at all. Turned on with
-// DEV_AUTH_BYPASS=true in backend/app.env (which is gitignored), and is OFF
-// unless that variable is explicitly set, so it cannot take effect anywhere
-// it has not been deliberately enabled.
+// Local development authentication uses the validated application configuration.
+// Startup rejects the bypass in staging, production, and test environments.
 
 import (
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/moh-sso-dashboard/internal/authz"
+	"github.com/moh-sso-dashboard/internal/config"
 	"github.com/moh-sso-dashboard/internal/http/response"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 )
 
 // DevAuthBypassEnabled reports whether the local no-auth mode is switched on.
-func DevAuthBypassEnabled() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("DEV_AUTH_BYPASS"))) {
-	case "true", "1", "yes":
-		return true
-	default:
-		return false
-	}
+func DevAuthBypassEnabled(cfg *config.Config) bool {
+	return cfg.DevAuthBypassEnabled()
 }
 
 // DevAuthBypassRoutes short-circuits the public session endpoints the frontend

@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
@@ -116,7 +117,7 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 
 	// LOCAL DEV ONLY: DEV_AUTH_BYPASS=true serves a synthetic admin session
 	// and skips the Keycloak redirect entirely.
-	if middleware.DevAuthBypassEnabled() {
+	if middleware.DevAuthBypassEnabled(deps.Config) {
 		r.Use(middleware.DevAuthBypassRoutes())
 	}
 
@@ -129,6 +130,7 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 		deps.KeycloakClient,
 		deps.AuthSessions,
 		deps.AuthzResolver,
+		deps.Config,
 	))
 	protected.Use(middleware.RequireAuth())
 	protected.Use(middleware.AuditMiddleware(deps.AuditService))
@@ -208,10 +210,13 @@ func buildAllowedOrigins(cfg *config.Config) []string {
 	origins := make([]string, 0)
 
 	add := func(origin string) {
-		origin = strings.TrimRight(strings.TrimSpace(origin), "/")
-		if origin == "" {
+		parsed, err := url.Parse(strings.TrimSpace(origin))
+		if err != nil || parsed.Hostname() == "" || parsed.User != nil ||
+			(parsed.Scheme != "http" && parsed.Scheme != "https") ||
+			strings.Contains(parsed.Host, "*") {
 			return
 		}
+		origin = strings.ToLower(parsed.Scheme + "://" + parsed.Host)
 
 		if seen[origin] {
 			return
@@ -221,11 +226,13 @@ func buildAllowedOrigins(cfg *config.Config) []string {
 		origins = append(origins, origin)
 	}
 
-	// Safe local development origins.
-	add("http://localhost:3000")
-	add("http://localhost:5173")
-	add("http://127.0.0.1:3000")
-	add("http://127.0.0.1:5173")
+	// Local origins are defaults only in development, never deployed environments.
+	if cfg == nil || cfg.IsDevelopment() {
+		add("http://localhost:3000")
+		add("http://localhost:5173")
+		add("http://127.0.0.1:3000")
+		add("http://127.0.0.1:5173")
+	}
 
 	if cfg != nil {
 		add(cfg.FrontendBaseURL)

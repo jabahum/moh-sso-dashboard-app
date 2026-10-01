@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -37,11 +39,18 @@ const (
 	defaultSessionTTL = 30 * time.Minute
 )
 
+type sessionStore interface {
+	Create(context.Context, authsession.Data, time.Duration) (string, error)
+	Get(context.Context, string) (*authsession.Data, error)
+	Update(context.Context, string, authsession.Data, time.Duration) error
+	Delete(context.Context, string) error
+}
+
 type Handler struct {
 	authService         service.AuthService
 	auditService        *service.AuditService
 	notificationService service.NotificationsService
-	sessions            *authsession.Store
+	sessions            sessionStore
 	config              *config.Config
 	authzResolver       authz.PermissionResolver
 }
@@ -406,8 +415,11 @@ func (h *Handler) HandleAuthRefreshToken(c *gin.Context) {
 	if sessionID != "" {
 		if sess, err := h.sessions.Get(c.Request.Context(), sessionID); err == nil {
 			refreshToken = sess.RefreshToken
-		} else {
+		} else if errors.Is(err, authsession.ErrNotFound) {
 			sessionID = ""
+		} else {
+			response.Fail(c, http.StatusServiceUnavailable, "SESSION_UNAVAILABLE", "Session service is temporarily unavailable")
+			return
 		}
 	}
 	if refreshToken == "" {
@@ -481,16 +493,6 @@ func (h *Handler) HandleAuthRefreshToken(c *gin.Context) {
 		return
 	}
 
-	userID := utils.ExtractUserIDFromTokens(tokens.AccessToken, tokens.IDToken)
-
-	_ = h.auditService.TokenRefresh(
-		c.Request.Context(),
-		utils.ToNullUUID(userID),
-		true,
-		c.ClientIP(),
-		c.Request.UserAgent(),
-	)
-
 	// With refresh token rotation, Keycloak may return a new refresh token.
 	// Keep the previous one when it doesn't.
 	newData := authsession.Data{
@@ -507,6 +509,11 @@ func (h *Handler) HandleAuthRefreshToken(c *gin.Context) {
 	if sessionID != "" {
 		if err := h.sessions.Update(c.Request.Context(), sessionID, newData, ttl); err != nil {
 			log.Printf("[AUTH REFRESH] failed to update session: %v", err)
+			// A rotated token may already have invalidated the stored token.
+			// Clear only session cookies; preserve any in-flight OAuth login.
+			h.destroySession(c)
+			response.Fail(c, http.StatusServiceUnavailable, "SESSION_UNAVAILABLE", "Unable to save refreshed session; please sign in again")
+			return
 		}
 		// Re-issue the cookie so its lifetime follows the refreshed session.
 		h.setCookie(c, cookieSession, sessionID, int(ttl.Seconds()), true)
@@ -520,9 +527,9 @@ func (h *Handler) HandleAuthRefreshToken(c *gin.Context) {
 
 			response.Fail(
 				c,
-				http.StatusUnauthorized,
-				apierror.ErrTokenInvalid.Code,
-				"Session expired",
+				http.StatusServiceUnavailable,
+				"SESSION_UNAVAILABLE",
+				"Unable to save refreshed session; please sign in again",
 			)
 			return
 		}
@@ -532,6 +539,15 @@ func (h *Handler) HandleAuthRefreshToken(c *gin.Context) {
 		h.clearLegacyTokenCookies(c)
 		h.setCookie(c, cookieSession, newSessionID, int(ttl.Seconds()), true)
 	}
+
+	userID := utils.ExtractUserIDFromTokens(tokens.AccessToken, tokens.IDToken)
+	_ = h.auditService.TokenRefresh(
+		c.Request.Context(),
+		utils.ToNullUUID(userID),
+		true,
+		c.ClientIP(),
+		c.Request.UserAgent(),
+	)
 
 	response.OK(c, http.StatusOK, AuthRefreshResponse{
 		ExpiresIn: tokens.ExpiresIn,

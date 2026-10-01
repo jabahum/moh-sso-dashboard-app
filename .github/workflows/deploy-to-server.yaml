@@ -40,6 +40,8 @@ jobs:
     environment: production
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download release metadata
         if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
@@ -88,6 +90,14 @@ jobs:
             echo "Backend deployment must use an immutable image tag"
             exit 1
           fi
+          if [[ ! "$FRONTEND_TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?|sha-[0-9a-f]{7,40})$ ]]; then
+            echo "Frontend deployment must use an immutable image tag"
+            exit 1
+          fi
+          if [[ ! "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ || ! "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Expected version and full commit must be valid release metadata"
+            exit 1
+          fi
           echo "backend_tag=$BACKEND_TAG" >> "$GITHUB_OUTPUT"
           echo "backend_release_tag=${BACKEND_RELEASE_TAG:-backend/v${EXPECTED_VERSION}}" >> "$GITHUB_OUTPUT"
           echo "frontend_tag=$FRONTEND_TAG" >> "$GITHUB_OUTPUT"
@@ -112,6 +122,7 @@ jobs:
           EXPECTED_COMMIT: ${{ steps.metadata.outputs.expected_commit }}
           ACTOR: ${{ github.actor }}
         run: |
+          scp scripts/verify-frontend-deployment.mjs "$SSH_TARGET:$DEPLOY_FOLDER/.frontend-deployment-check.mjs"
           ssh "$SSH_TARGET" \
             "DEPLOY_FOLDER='$DEPLOY_FOLDER' BACKEND_TAG='$BACKEND_TAG' BACKEND_RELEASE_TAG='$BACKEND_RELEASE_TAG' FRONTEND_TAG='$FRONTEND_TAG' EXPECTED_VERSION='$EXPECTED_VERSION' EXPECTED_COMMIT='$EXPECTED_COMMIT' DEPLOY_ACTOR='$ACTOR' sh -s" <<'REMOTE'
           set -eu
@@ -126,33 +137,43 @@ jobs:
               BACKEND_TAG="$previous_backend_tag" FRONTEND_TAG="$previous_frontend_tag" ./restart
             fi
           }
-          trap rollback INT TERM HUP
+          finish() {
+            status=$?
+            trap - EXIT INT TERM HUP
+            if [ "$status" -ne 0 ]; then
+              rollback || echo "Rollback failed; operator intervention required" >&2
+            fi
+            rm -f .frontend-deployment-check.mjs
+            exit "$status"
+          }
+          trap finish EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          trap 'exit 129' HUP
 
           export BACKEND_TAG FRONTEND_TAG
           ./restart
 
           backend_get() {
             path=$1
-            wget -qO- "http://localhost:9000$path" 2>/dev/null || \
-              docker compose exec -T backend wget -qO- "http://localhost:9000$path"
+            wget -T 5 -t 1 -qO- "http://localhost:9000$path" 2>/dev/null || \
+              docker compose exec -T backend wget -T 5 -qO- "http://localhost:9000$path"
           }
 
-          response="$(backend_get /version)" || {
-            rollback
-            exit 1
-          }
-          echo "$response" | grep -F "\"version\":\"$EXPECTED_VERSION\"" >/dev/null || {
-            rollback
-            exit 1
-          }
-          echo "$response" | grep -F "\"commit\":\"$EXPECTED_COMMIT\"" >/dev/null || {
-            rollback
-            exit 1
-          }
-          backend_get /health/live >/dev/null || {
-            rollback
-            exit 1
-          }
+          attempt=0
+          until backend_get /health/ready >/dev/null; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 12 ]; then
+              echo "Backend did not become ready" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          response="$(backend_get /version)"
+          echo "$response" | grep -F "\"version\":\"$EXPECTED_VERSION\"" >/dev/null
+          echo "$response" | grep -F "\"commit\":\"$EXPECTED_COMMIT\"" >/dev/null
+          backend_get /health/live >/dev/null
+          docker compose exec -T frontend node --input-type=module - < .frontend-deployment-check.mjs
 
           backend_image="ghcr.io/mohuganda/moh-sso-dashboard-backend:$BACKEND_TAG"
           digest="$(docker image inspect --format '{{index .RepoDigests 0}}' "$backend_image" 2>/dev/null || true)"
@@ -161,6 +182,5 @@ jobs:
           printf '%s release=%s version=%s commit=%s digest=%s actor=%s\n' \
             "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$BACKEND_RELEASE_TAG" "$EXPECTED_VERSION" "$EXPECTED_COMMIT" "$digest" "$DEPLOY_ACTOR" \
             >> deployment-history.log
-          trap - INT TERM HUP
           echo "Deployment verified: release=$BACKEND_RELEASE_TAG version=$EXPECTED_VERSION commit=$EXPECTED_COMMIT digest=$digest"
           REMOTE
