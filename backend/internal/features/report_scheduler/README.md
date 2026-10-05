@@ -34,6 +34,7 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 - `POST /schedules/{scheduleId}/duplicate` - create a paused copy
 - `POST /schedules/{scheduleId}/run` - run immediately through the normal execution pipeline
 - `GET /overview` - scheduler health and owner/scoped-manager operational metrics
+- `GET /metrics` - admin observability view; requires `metrics:read` and `report_scheduler:manage`
 - `GET /executions` - list execution history
 - `GET /executions/{executionId}` - inspect one execution, artifacts, resolved period, and recipient deliveries
 - `POST /executions/{executionId}/retry` - retry a failed execution; delivery failures reuse the existing artifact
@@ -44,9 +45,11 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 
 Schedule configuration now validates Health BI required parameters and output formats, constrains health scope using the authenticated Keycloak district/facility claims, and persists email/portal recipient configuration. The delivery service can queue report-link emails through the existing email service and register portal artifacts using the configured storage provider.
 
+List APIs are bounded to a maximum of 200 rows. `GET /schedules` supports `limit`, `search`, and `enabled`; `GET /executions` supports `limit`, `search`, and `status`; `GET /portal-reports` supports `limit`. Owner and health-context constraints are applied in SQL before the limit.
+
 ## Execution engine
 
-The scheduler worker runs every 30 seconds. Due schedules are claimed with PostgreSQL `FOR UPDATE SKIP LOCKED`, an execution snapshot is created, and `next_run_at` advances atomically. This prevents duplicate scheduled execution when multiple SSO backend replicas are running.
+The scheduler worker interval is configured with `REPORT_SCHEDULER_WORKER_INTERVAL` (default `30s`). Due schedules are claimed with PostgreSQL `FOR UPDATE SKIP LOCKED`, an execution snapshot is created, and `next_run_at` advances atomically. This prevents duplicate scheduled execution when multiple SSO backend replicas are running.
 
 Health BI jobs that remain asynchronous are stored as `generating`. Polling uses a separate `polling` claim state with `SKIP LOCKED` so only one backend instance can observe completion and perform delivery.
 
@@ -72,12 +75,18 @@ A manager with an authenticated facility or district health-context claim is res
 
 Artifact object keys and Health BI artifact URLs are not serialized to the frontend. Authenticated users download through `/artifacts/{artifactId}/download`, where ownership, portal-delivery access, manager permission, and manager health scope are checked before the backend redirects to the underlying storage URL.
 
-Email recipients receive a unique 256-bit opaque delivery token. Only its SHA-256 hash is stored in the database, the token expires after 24 hours, and the public resolver is rate-limited per IP. Raw Health BI generation/job proxy routes are intentionally not exposed: report generation must flow through Run Now or scheduled executions so health scope, history, audit, retry, and delivery controls always apply.
+Email recipients receive a unique 256-bit opaque delivery token. Only its SHA-256 hash is stored in the database, the token lifetime is configured with `REPORT_SCHEDULER_DELIVERY_LINK_TTL` (default `24h`), and the public resolver is rate-limited per IP. Raw Health BI generation/job proxy routes are intentionally not exposed: report generation must flow through Run Now or scheduled executions so health scope, history, audit, retry, and delivery controls always apply.
 
 `APP_BASE_URL` must be configured when email delivery is used because it is the origin for secure report-delivery links.
 
 ## Monitoring
 
 `GET /overview` exposes enabled schedule totals, 24-hour execution/completion/failure counts, success rate, active retries, failed deliveries, execution and delivery status totals, recent failures, and worker heartbeat health. The overview follows the same owner/manager/health-scope rules as schedule management.
+
+The `/metrics` route exposes the same scheduler telemetry for operations tooling but additionally requires `metrics:read` and `report_scheduler:manage`. Worker heartbeat health is derived from the configured worker interval rather than a fixed timeout.
+
+## Database migrations
+
+Migrations `000045_report_scheduler_operational_indexes` and `000046_report_scheduler_runtime_interval` add production indexes for due schedules, polling, retries, portal inbox/history queries, health-scope administration, and configurable worker-heartbeat monitoring.
 
 See the [frontend module README](../../../../frontend/apps/report-scheduler/README.md) for development and access setup.

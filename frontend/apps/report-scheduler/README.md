@@ -33,8 +33,12 @@ The current module supports:
 - SSO-controlled artifact download endpoints instead of exposing object keys or Health BI artifact URLs in API responses.
 - Expiring opaque email delivery links with SHA-256 server-side token storage and public endpoint rate limiting.
 - Missed-run protection that performs one catch-up execution instead of replaying an unlimited backlog after downtime.
+- Server-backed schedule filtering by search and enabled/paused state.
+- Server-backed execution filtering by report search and execution status.
+- Bounded history/inbox queries to avoid unbounded scheduler UI loads.
+- Admin scheduler metrics endpoint for operations tooling.
 
-The next production-readiness work is expanded integration/concurrency testing, configurable alert thresholds, and deployment-level metrics/telemetry export.
+The report scheduler feature set is now production-oriented across API, persistence, UI, testing, monitoring, and deployment configuration. Further work is optional platform evolution such as Prometheus/OpenTelemetry exporters or configurable alert thresholds.
 
 ## Development
 

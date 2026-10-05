@@ -3,6 +3,7 @@ package report_scheduler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +50,9 @@ func (h *Handler) CreateSchedule(c *gin.Context) {
 	response.OK(c, http.StatusCreated, item)
 }
 func (h *Handler) ListSchedules(c *gin.Context) {
-	items, err := h.service.ListSchedules(c.Request.Context(), c.GetString("user_id"), canManage(c), healthContextFromGin(c)); if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_LIST_FAILED", err.Error()); return }
+	options, ok := parseListOptions(c, true)
+	if !ok { return }
+	items, err := h.service.ListSchedules(c.Request.Context(), c.GetString("user_id"), canManage(c), healthContextFromGin(c), options); if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_LIST_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, items)
 }
 func (h *Handler) GetSchedule(c *gin.Context) {
@@ -91,7 +94,9 @@ func (h *Handler) RunNow(c *gin.Context) {
 	response.OK(c, http.StatusAccepted, execution)
 }
 func (h *Handler) ListExecutions(c *gin.Context) {
-	items, err := h.service.ListExecutions(c.Request.Context(), c.GetString("user_id"), canManage(c), healthContextFromGin(c)); if err != nil { response.Fail(c, http.StatusInternalServerError, "EXECUTION_LIST_FAILED", err.Error()); return }
+	options, ok := parseListOptions(c, false)
+	if !ok { return }
+	items, err := h.service.ListExecutions(c.Request.Context(), c.GetString("user_id"), canManage(c), healthContextFromGin(c), options); if err != nil { response.Fail(c, http.StatusInternalServerError, "EXECUTION_LIST_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, items)
 }
 
@@ -126,9 +131,38 @@ func (h *Handler) PreviewRecipients(c *gin.Context) {
 }
 
 func (h *Handler) ListPortalReports(c *gin.Context) {
-	items, err := h.service.ListPortalReports(c.Request.Context(), c.GetString("user_id"))
+	limit, ok := parseLimit(c, 100)
+	if !ok { return }
+	items, err := h.service.ListPortalReports(c.Request.Context(), c.GetString("user_id"), limit)
 	if err != nil { response.Fail(c, http.StatusInternalServerError, "PORTAL_REPORTS_LIST_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, items)
+}
+
+func parseListOptions(c *gin.Context, allowEnabled bool) (ListOptions, bool) {
+	limit, ok := parseLimit(c, 100)
+	if !ok { return ListOptions{}, false }
+	options := ListOptions{Limit: limit, Status: strings.TrimSpace(c.Query("status")), Search: strings.TrimSpace(c.Query("search"))}
+	if len(options.Search) > 200 { response.Fail(c, http.StatusBadRequest, "VALIDATION_FAILED", "search must be 200 characters or fewer"); return ListOptions{}, false }
+	if allowEnabled && strings.TrimSpace(c.Query("enabled")) != "" {
+		value, err := strconv.ParseBool(c.Query("enabled"))
+		if err != nil { response.Fail(c, http.StatusBadRequest, "VALIDATION_FAILED", "enabled must be true or false"); return ListOptions{}, false }
+		options.Enabled = &value
+	}
+	if !allowEnabled && options.Status != "" {
+		valid := map[string]bool{"queued":true,"generating":true,"polling":true,"generated":true,"delivering":true,"completed":true,"failed":true,"cancelled":true,"retrying":true}
+		if !valid[options.Status] { response.Fail(c, http.StatusBadRequest, "VALIDATION_FAILED", "invalid execution status filter"); return ListOptions{}, false }
+	}
+	return options, true
+}
+
+func parseLimit(c *gin.Context, defaultLimit int) (int, bool) {
+	limit := defaultLimit
+	if value := strings.TrimSpace(c.Query("limit")); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 || parsed > 200 { response.Fail(c, http.StatusBadRequest, "VALIDATION_FAILED", "limit must be between 1 and 200"); return 0, false }
+		limit = parsed
+	}
+	return limit, true
 }
 
 func (h *Handler) DownloadArtifact(c *gin.Context) {

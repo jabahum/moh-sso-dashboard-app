@@ -33,6 +33,7 @@ type Service struct {
 	notifications sharedservice.NotificationsService
 	audit         *sharedservice.AuditService
 	publicBaseURL string
+	deliveryLinkTTL time.Duration
 }
 
 func NewService(
@@ -43,12 +44,13 @@ func NewService(
 	fileStorage storage.Storage,
 	dwh *sql.DB,
 ) *Service {
-	return &Service{repo: repo, healthBI: healthBI, email: email, users: users, fileStorage: fileStorage, dwh: dwh}
+	return &Service{repo: repo, healthBI: healthBI, email: email, users: users, fileStorage: fileStorage, dwh: dwh, deliveryLinkTTL: 24 * time.Hour}
 }
 
 func (s *Service) SetNotifications(notifications sharedservice.NotificationsService) { s.notifications = notifications }
 func (s *Service) SetAudit(audit *sharedservice.AuditService) { s.audit = audit }
 func (s *Service) SetPublicBaseURL(value string) { s.publicBaseURL = strings.TrimRight(strings.TrimSpace(value), "/") }
+func (s *Service) SetDeliveryLinkTTL(value time.Duration) { if value > 0 { s.deliveryLinkTTL = value } }
 
 func (s *Service) Module() ModuleResponse {
 	healthBIEnabled := s != nil && s.healthBI != nil && s.healthBI.Enabled()
@@ -95,12 +97,8 @@ func (s *Service) CreateSchedule(
 	return item, err
 }
 
-func (s *Service) ListSchedules(ctx context.Context, userID string, all bool, userHealth HealthContext) ([]Schedule, error) {
-	items, err := s.repo.ListSchedules(ctx, userID, all)
-	if err != nil || !all || healthContextEmpty(userHealth) { return items, err }
-	filtered := make([]Schedule, 0, len(items))
-	for _, item := range items { if scheduleWithinHealthScope(item, userHealth) { filtered = append(filtered, item) } }
-	return filtered, nil
+func (s *Service) ListSchedules(ctx context.Context, userID string, all bool, userHealth HealthContext, options ListOptions) ([]Schedule, error) {
+	return s.repo.ListSchedules(ctx, userID, all, userHealth, options)
 }
 
 func (s *Service) GetSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
@@ -193,25 +191,17 @@ func (s *Service) RunNow(ctx context.Context, id, userID string, all bool, userH
 	return s.repo.GetExecution(ctx, execution.ID)
 }
 
-func (s *Service) ListExecutions(ctx context.Context, userID string, all bool, userHealth HealthContext) ([]Execution, error) {
-	items, err := s.repo.ListExecutions(ctx, userID, all)
-	if err != nil || !all || healthContextEmpty(userHealth) { return items, err }
-	filtered := make([]Execution, 0, len(items))
-	for _, item := range items {
-		if item.ScheduleID == nil { if item.TriggeredBy == userID { filtered=append(filtered,item) }; continue }
-		schedule, scheduleErr := s.repo.GetSchedule(ctx, *item.ScheduleID, "", true)
-		if scheduleErr == nil && scheduleWithinHealthScope(schedule, userHealth) { filtered=append(filtered,item) }
-	}
-	return filtered,nil
+func (s *Service) ListExecutions(ctx context.Context, userID string, all bool, userHealth HealthContext, options ListOptions) ([]Execution, error) {
+	return s.repo.ListExecutions(ctx, userID, all, userHealth, options)
 }
 
 func (s *Service) Overview(ctx context.Context, userID string, all bool, userHealth HealthContext) (SchedulerOverview, error) {
 	return s.repo.SchedulerOverview(ctx, userID, all, userHealth)
 }
 
-func (s *Service) UpdateWorkerHeartbeat(ctx context.Context, workerID string, heartbeat time.Time, cycleStarted, cycleFinished *time.Time, cycleErr string) error {
+func (s *Service) UpdateWorkerHeartbeat(ctx context.Context, workerID string, interval time.Duration, heartbeat time.Time, cycleStarted, cycleFinished *time.Time, cycleErr string) error {
 	if s == nil || s.repo == nil { return nil }
-	return s.repo.UpdateWorkerHeartbeat(ctx, workerID, heartbeat, cycleStarted, cycleFinished, cycleErr)
+	return s.repo.UpdateWorkerHeartbeat(ctx, workerID, interval, heartbeat, cycleStarted, cycleFinished, cycleErr)
 }
 
 func (s *Service) GetExecutionDetail(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (ExecutionDetail, error) {
@@ -630,8 +620,8 @@ func (s *Service) DeliverArtifact(
 	return stored, nil
 }
 
-func (s *Service) ListPortalReports(ctx context.Context, userID string) ([]PortalReport, error) {
-	items, err := s.repo.ListPortalReports(ctx, userID)
+func (s *Service) ListPortalReports(ctx context.Context, userID string, limit int) ([]PortalReport, error) {
+	items, err := s.repo.ListPortalReports(ctx, userID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -733,7 +723,7 @@ func (s *Service) ProcessOneDelivery(ctx context.Context) (bool, error) {
 				if tokenErr != nil {
 					err = tokenErr
 				} else {
-					expiresAt := time.Now().Add(24 * time.Hour)
+					expiresAt := time.Now().Add(s.deliveryLinkTTL)
 					if tokenErr = s.repo.SetDeliveryAccessToken(ctx, delivery.ID, hashDeliveryToken(token), expiresAt); tokenErr != nil {
 						err = tokenErr
 					} else {

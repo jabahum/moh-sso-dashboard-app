@@ -14,6 +14,8 @@ import type {
 } from "../types";
 
 type Envelope<T> = { data: T };
+type ScheduleListArgs = { limit?: number; search?: string; enabled?: boolean };
+type ExecutionListArgs = { limit?: number; search?: string; status?: string };
 
 export const reportSchedulerApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -33,12 +35,12 @@ export const reportSchedulerApi = baseApi.injectEndpoints({
       query: (reportId) => `/report-scheduler/reports/${encodeURIComponent(reportId)}/parameters`,
       transformResponse: (response: Envelope<HealthBIParameter[]>) => response.data,
     }),
-    getReportSchedules: builder.query<ReportSchedule[], void>({
-      query: () => "/report-scheduler/schedules",
+    getReportSchedules: builder.query<ReportSchedule[], ScheduleListArgs | void>({
+      query: (args) => ({ url: "/report-scheduler/schedules", params: args ?? undefined }),
       transformResponse: (response: Envelope<ReportSchedule[]>) => response.data,
     }),
-    getReportExecutions: builder.query<ReportExecution[], void>({
-      query: () => "/report-scheduler/executions",
+    getReportExecutions: builder.query<ReportExecution[], ExecutionListArgs | void>({
+      query: (args) => ({ url: "/report-scheduler/executions", params: args ?? undefined }),
       transformResponse: (response: Envelope<ReportExecution[]>) => response.data,
     }),
     getReportExecution: builder.query<ExecutionDetail, string>({
@@ -85,8 +87,8 @@ export const reportSchedulerApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: Envelope<RecipientPreview>) => response.data,
     }),
-    getPortalReports: builder.query<PortalReport[], void>({
-      query: () => "/report-scheduler/portal-reports",
+    getPortalReports: builder.query<PortalReport[], number | void>({
+      query: (limit) => ({ url: "/report-scheduler/portal-reports", params: limit ? { limit } : undefined }),
       transformResponse: (response: Envelope<PortalReport[]>) => response.data,
     }),
   }),

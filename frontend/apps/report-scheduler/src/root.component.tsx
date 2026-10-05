@@ -56,12 +56,25 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
       ? String((props.auth.user as { id?: unknown }).id ?? "")
       : "";
 
+  const [scheduleSearch, setScheduleSearch] = useState("");
+  const [scheduleEnabled, setScheduleEnabled] = useState("all");
+  const [executionSearch, setExecutionSearch] = useState("");
+  const [executionStatus, setExecutionStatus] = useState("all");
+
   const moduleQuery = useGetReportSchedulerModuleQuery();
   const overviewQuery = useGetReportSchedulerOverviewQuery(undefined, { pollingInterval: 30_000 });
   const reportsQuery = useGetHealthBIReportsQuery();
-  const schedulesQuery = useGetReportSchedulesQuery();
-  const executionsQuery = useGetReportExecutionsQuery(undefined, { pollingInterval: 30_000 });
-  const portalReportsQuery = useGetPortalReportsQuery();
+  const schedulesQuery = useGetReportSchedulesQuery({
+    limit: 100,
+    search: scheduleSearch.trim() || undefined,
+    enabled: scheduleEnabled === "all" ? undefined : scheduleEnabled === "enabled",
+  });
+  const executionsQuery = useGetReportExecutionsQuery({
+    limit: 100,
+    search: executionSearch.trim() || undefined,
+    status: executionStatus === "all" ? undefined : executionStatus,
+  }, { pollingInterval: 30_000 });
+  const portalReportsQuery = useGetPortalReportsQuery(100);
   const [createSchedule, createState] = useCreateReportScheduleMutation();
   const [updateSchedule, updateState] = useUpdateReportScheduleMutation();
   const [deleteSchedule] = useDeleteReportScheduleMutation();
@@ -365,6 +378,14 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
 
       <Tile>
         <h2>Scheduled reports</h2>
+        <div className="report-scheduler__filters">
+          <TextInput id="report-schedule-search" labelText="Search schedules" placeholder="Report or Health BI ID" value={scheduleSearch} onChange={(event) => setScheduleSearch(event.target.value)} />
+          <Select id="report-schedule-enabled" labelText="Schedule state" value={scheduleEnabled} onChange={(event) => setScheduleEnabled(event.target.value)}>
+            <SelectItem value="all" text="All schedules" />
+            <SelectItem value="enabled" text="Enabled" />
+            <SelectItem value="paused" text="Paused" />
+          </Select>
+        </div>
         <div className="report-scheduler__list">
           {(schedulesQuery.data ?? []).map((schedule) => (
             <article key={schedule.id}>
@@ -388,6 +409,20 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
 
       <Tile>
         <h2>Execution history</h2>
+        <div className="report-scheduler__filters">
+          <TextInput id="report-execution-search" labelText="Search executions" placeholder="Report name or report ID" value={executionSearch} onChange={(event) => setExecutionSearch(event.target.value)} />
+          <Select id="report-execution-status" labelText="Execution status" value={executionStatus} onChange={(event) => setExecutionStatus(event.target.value)}>
+            <SelectItem value="all" text="All statuses" />
+            <SelectItem value="queued" text="Queued" />
+            <SelectItem value="generating" text="Generating" />
+            <SelectItem value="polling" text="Polling" />
+            <SelectItem value="delivering" text="Delivering" />
+            <SelectItem value="retrying" text="Retrying" />
+            <SelectItem value="completed" text="Completed" />
+            <SelectItem value="failed" text="Failed" />
+            <SelectItem value="cancelled" text="Cancelled" />
+          </Select>
+        </div>
         <div className="report-scheduler__list">
           {(executionsQuery.data ?? []).map((execution) => (
             <article key={execution.id}>

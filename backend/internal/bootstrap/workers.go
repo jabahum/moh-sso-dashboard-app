@@ -38,7 +38,9 @@ type workerDependencies struct {
 
 func startBackgroundWorkers(ctx context.Context, deps workerDependencies) {
 	if deps.ReportScheduler != nil {
-		reportWorker := reportschedulerfeature.NewWorker(deps.ReportScheduler, 30*time.Second, deps.Logger.Error)
+		interval := 30 * time.Second
+		if deps.Config != nil && deps.Config.ReportSchedulerWorkerInterval > 0 { interval = deps.Config.ReportSchedulerWorkerInterval }
+		reportWorker := reportschedulerfeature.NewWorker(deps.ReportScheduler, interval, deps.Logger.Error)
 		go func() {
 			deps.Logger.Info("Report scheduler worker started")
 			if err := reportWorker.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {

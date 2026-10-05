@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS idx_report_deliveries_portal_inbox;
+DROP INDEX IF EXISTS idx_report_deliveries_work_queue;
+DROP INDEX IF EXISTS idx_report_executions_polling_due;
+DROP INDEX IF EXISTS idx_report_executions_status_retry_due;
+DROP INDEX IF EXISTS idx_report_executions_triggered_created;
+DROP INDEX IF EXISTS idx_report_schedules_health_facility;
+DROP INDEX IF EXISTS idx_report_schedules_health_district;
+DROP INDEX IF EXISTS idx_report_schedules_due_enabled;
+DROP INDEX IF EXISTS idx_report_schedules_owner_enabled_created;

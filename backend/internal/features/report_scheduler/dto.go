@@ -123,6 +123,13 @@ type CreateScheduleRequest struct {
 
 type UpdateScheduleRequest = CreateScheduleRequest
 
+type ListOptions struct {
+	Limit   int
+	Status  string
+	Search  string
+	Enabled *bool
+}
+
 type Execution struct {
 	ID            string         `json:"id"`
 	ScheduleID    *string        `json:"scheduleId,omitempty"`

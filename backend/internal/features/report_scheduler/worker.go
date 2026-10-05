@@ -38,11 +38,11 @@ func (w *Worker) Start(ctx context.Context) error {
 func (w *Worker) process(ctx context.Context) {
 	if ctx.Err() != nil { return }
 	started := time.Now().UTC()
-	_ = w.service.UpdateWorkerHeartbeat(ctx, w.workerID, started, &started, nil, "")
+	_ = w.service.UpdateWorkerHeartbeat(ctx, w.workerID, w.interval, started, &started, nil, "")
 	cycleErr := ""
 	defer func() {
 		finished := time.Now().UTC()
-		_ = w.service.UpdateWorkerHeartbeat(ctx, w.workerID, finished, nil, &finished, cycleErr)
+		_ = w.service.UpdateWorkerHeartbeat(ctx, w.workerID, w.interval, finished, nil, &finished, cycleErr)
 	}()
 	if err := w.service.PollGenerating(ctx, 50); err != nil { cycleErr = err.Error(); w.logf("report scheduler: poll Health BI jobs failed: ", err) }
 	for processed := 0; processed < 100; processed++ {

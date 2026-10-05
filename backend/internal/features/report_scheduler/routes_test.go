@@ -56,3 +56,31 @@ func TestModuleAccess(t *testing.T) {
 }
 
 func contextPtr(ctx authz.Context) *authz.Context { return &ctx }
+
+func TestParseListOptionsValidation(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name         string
+		target       string
+		allowEnabled bool
+		wantOK       bool
+	}{
+		{name: "default", target: "/items", allowEnabled: true, wantOK: true},
+		{name: "max limit", target: "/items?limit=200", allowEnabled: true, wantOK: true},
+		{name: "limit too high", target: "/items?limit=201", allowEnabled: true, wantOK: false},
+		{name: "invalid enabled", target: "/items?enabled=maybe", allowEnabled: true, wantOK: false},
+		{name: "valid execution status", target: "/items?status=failed", allowEnabled: false, wantOK: true},
+		{name: "invalid execution status", target: "/items?status=unknown", allowEnabled: false, wantOK: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(res)
+			ctx.Request = httptest.NewRequest(http.MethodGet, tt.target, nil)
+			_, ok := parseListOptions(ctx, tt.allowEnabled)
+			if ok != tt.wantOK {
+				t.Fatalf("expected ok=%v, got %v; body=%s", tt.wantOK, ok, res.Body.String())
+			}
+		})
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -13,13 +14,13 @@ var ErrScheduleNotFound = errors.New("report schedule not found")
 
 type Repository interface {
 	CreateSchedule(context.Context, CreateScheduleRequest, string) (Schedule, error)
-	ListSchedules(context.Context, string, bool) ([]Schedule, error)
+	ListSchedules(context.Context, string, bool, HealthContext, ListOptions) ([]Schedule, error)
 	GetSchedule(context.Context, string, string, bool) (Schedule, error)
 	UpdateSchedule(context.Context, string, UpdateScheduleRequest, string, bool) (Schedule, error)
 	DeleteSchedule(context.Context, string, string, bool) error
-	ListExecutions(context.Context, string, bool) ([]Execution, error)
+	ListExecutions(context.Context, string, bool, HealthContext, ListOptions) ([]Execution, error)
 	CreateArtifact(context.Context, Artifact) (Artifact, error)
-	ListPortalReports(context.Context, string) ([]PortalReport, error)
+	ListPortalReports(context.Context, string, int) ([]PortalReport, error)
 	SetScheduleEnabled(context.Context, string, string, bool, bool) (Schedule, error)
 	CreateExecution(context.Context, Schedule, string, string, time.Time, ResolvedPeriod, map[string]any) (Execution, error)
 	ClaimDueExecution(context.Context, time.Time) (Schedule, Execution, bool, error)
@@ -45,7 +46,7 @@ type Repository interface {
 	SetDeliveryAccessToken(context.Context, string, string, time.Time) error
 	GetDeliveryByAccessToken(context.Context, string) (Delivery, Artifact, Execution, error)
 	MarkDeliveryAccessTokenUsed(context.Context, string) error
-	UpdateWorkerHeartbeat(context.Context, string, time.Time, *time.Time, *time.Time, string) error
+	UpdateWorkerHeartbeat(context.Context, string, time.Duration, time.Time, *time.Time, *time.Time, string) error
 }
 
 type postgresRepository struct{ db *sql.DB }
@@ -108,14 +109,27 @@ func (r *postgresRepository) CreateSchedule(ctx context.Context, input CreateSch
 	return value, nil
 }
 
-func (r *postgresRepository) ListSchedules(ctx context.Context, userID string, includeAll bool) ([]Schedule, error) {
+func (r *postgresRepository) ListSchedules(ctx context.Context, userID string, includeAll bool, health HealthContext, options ListOptions) ([]Schedule, error) {
+	if options.Limit <= 0 { options.Limit = 100 }
+	if options.Limit > 200 { options.Limit = 200 }
 	query := `SELECT ` + scheduleColumns + ` FROM report_schedules`
+	conditions := []string{}
 	args := []any{}
+	addArg := func(value any) string { args = append(args, value); return fmt.Sprintf("$%d", len(args)) }
 	if !includeAll {
-		query += ` WHERE created_by = $1`
-		args = append(args, userID)
+		conditions = append(conditions, `created_by = `+addArg(userID))
+	} else if strings.TrimSpace(health.Facility) != "" {
+		conditions = append(conditions, `lower(COALESCE(health_context->>'facility','')) = lower(`+addArg(strings.TrimSpace(health.Facility))+`)`)
+	} else if strings.TrimSpace(health.District) != "" {
+		conditions = append(conditions, `lower(COALESCE(health_context->>'district','')) = lower(`+addArg(strings.TrimSpace(health.District))+`)`)
 	}
-	query += ` ORDER BY created_at DESC`
+	if options.Enabled != nil { conditions = append(conditions, `enabled = `+addArg(*options.Enabled)) }
+	if search := strings.TrimSpace(options.Search); search != "" {
+		placeholder := addArg("%"+search+"%")
+		conditions = append(conditions, `(report_name ILIKE `+placeholder+` OR health_bi_report_id ILIKE `+placeholder+`)`)
+	}
+	if len(conditions) > 0 { query += ` WHERE ` + strings.Join(conditions, ` AND `) }
+	query += ` ORDER BY created_at DESC LIMIT ` + addArg(options.Limit)
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -247,15 +261,31 @@ func (r *postgresRepository) listRecipients(ctx context.Context, scheduleID stri
 	return out, rows.Err()
 }
 
-func (r *postgresRepository) ListExecutions(ctx context.Context, userID string, includeAll bool) ([]Execution, error) {
+func (r *postgresRepository) ListExecutions(ctx context.Context, userID string, includeAll bool, health HealthContext, options ListOptions) ([]Execution, error) {
+	if options.Limit <= 0 { options.Limit = 100 }
+	if options.Limit > 200 { options.Limit = 200 }
 	query := `SELECT ` + executionColumns + ` FROM report_executions e`
+	conditions := []string{}
 	args := []any{}
+	addArg := func(value any) string { args = append(args, value); return fmt.Sprintf("$%d", len(args)) }
 	if !includeAll {
-		query += ` WHERE e.triggered_by=$1 OR EXISTS
-			(SELECT 1 FROM report_schedules s WHERE s.id=e.schedule_id AND s.created_by=$1)`
-		args = append(args, userID)
+		placeholder := addArg(userID)
+		conditions = append(conditions, `(e.triggered_by=`+placeholder+` OR EXISTS
+			(SELECT 1 FROM report_schedules s WHERE s.id=e.schedule_id AND s.created_by=`+placeholder+`))`)
+	} else if strings.TrimSpace(health.Facility) != "" {
+		placeholder := addArg(strings.TrimSpace(health.Facility))
+		conditions = append(conditions, `EXISTS (SELECT 1 FROM report_schedules s WHERE s.id=e.schedule_id AND lower(COALESCE(s.health_context->>'facility',''))=lower(`+placeholder+`))`)
+	} else if strings.TrimSpace(health.District) != "" {
+		placeholder := addArg(strings.TrimSpace(health.District))
+		conditions = append(conditions, `EXISTS (SELECT 1 FROM report_schedules s WHERE s.id=e.schedule_id AND lower(COALESCE(s.health_context->>'district',''))=lower(`+placeholder+`))`)
 	}
-	query += ` ORDER BY e.created_at DESC LIMIT 200`
+	if status := strings.TrimSpace(options.Status); status != "" { conditions = append(conditions, `e.status=`+addArg(status)) }
+	if search := strings.TrimSpace(options.Search); search != "" {
+		placeholder := addArg("%"+search+"%")
+		conditions = append(conditions, `(e.report_id ILIKE `+placeholder+` OR EXISTS (SELECT 1 FROM report_schedules s WHERE s.id=e.schedule_id AND s.report_name ILIKE `+placeholder+`))`)
+	}
+	if len(conditions) > 0 { query += ` WHERE ` + strings.Join(conditions, ` AND `) }
+	query += ` ORDER BY e.created_at DESC LIMIT ` + addArg(options.Limit)
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -286,7 +316,9 @@ func (r *postgresRepository) CreateArtifact(ctx context.Context, artifact Artifa
 	return out, err
 }
 
-func (r *postgresRepository) ListPortalReports(ctx context.Context, userID string) ([]PortalReport, error) {
+func (r *postgresRepository) ListPortalReports(ctx context.Context, userID string, limit int) ([]PortalReport, error) {
+	if limit <= 0 { limit = 100 }
+	if limit > 200 { limit = 200 }
 	rows, err := r.db.QueryContext(ctx, `SELECT d.id::text, e.id::text, e.report_id,
 		COALESCE(s.report_name,e.report_id), a.id::text, a.execution_id::text, a.file_name,
 		COALESCE(a.content_type,''), COALESCE(a.object_key,''), COALESCE(a.external_url,''),
@@ -296,8 +328,8 @@ func (r *postgresRepository) ListPortalReports(ctx context.Context, userID strin
 		LEFT JOIN report_schedules s ON s.id=e.schedule_id
 		JOIN report_artifacts a ON a.id=d.artifact_id
 		WHERE d.delivery_channel='portal' AND d.recipient_type='user'
-		  AND d.recipient_value=$1 AND d.status='sent'
-		ORDER BY d.created_at DESC`, userID)
+			  AND d.recipient_value=$1 AND d.status='sent'
+			ORDER BY d.created_at DESC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -650,8 +682,8 @@ func (r *postgresRepository) SchedulerOverview(ctx context.Context, userID strin
 	failureWhere:="WHERE e.status='failed'"; if executionAccess!="" { failureWhere += " AND "+executionAccess }
 	rows,err=r.db.QueryContext(ctx, `SELECT `+executionColumns+` FROM report_executions e `+failureWhere+` ORDER BY e.created_at DESC LIMIT 5`, executionArgs...);if err!=nil{return SchedulerOverview{},err}
 	for rows.Next(){v,scanErr:=scanExecution(rows);if scanErr!=nil{rows.Close();return SchedulerOverview{},scanErr};out.RecentFailures=append(out.RecentFailures,v)};rows.Close()
-	var heartbeat sql.NullTime; var cycleErr sql.NullString
-	if err:=r.db.QueryRowContext(ctx, `SELECT last_heartbeat_at,last_cycle_error FROM report_scheduler_runtime WHERE singleton=true`).Scan(&heartbeat,&cycleErr);err==nil{if heartbeat.Valid{value:=heartbeat.Time;out.WorkerLastHeartbeatAt=&value;out.WorkerHealthy=time.Since(value)<=2*time.Minute};if cycleErr.Valid{out.WorkerLastCycleError=cycleErr.String}}
+	var heartbeat sql.NullTime; var cycleErr sql.NullString; var intervalSeconds int
+	if err:=r.db.QueryRowContext(ctx, `SELECT last_heartbeat_at,last_cycle_error,worker_interval_seconds FROM report_scheduler_runtime WHERE singleton=true`).Scan(&heartbeat,&cycleErr,&intervalSeconds);err==nil{if heartbeat.Valid{value:=heartbeat.Time;out.WorkerLastHeartbeatAt=&value;threshold:=2*time.Minute;if intervalSeconds>0 && time.Duration(intervalSeconds)*time.Second*4>threshold{threshold=time.Duration(intervalSeconds)*time.Second*4};out.WorkerHealthy=time.Since(value)<=threshold};if cycleErr.Valid{out.WorkerLastCycleError=cycleErr.String}}
 	out.GeneratedAt=time.Now().UTC();return out,nil
 }
 
@@ -701,14 +733,15 @@ func (r *postgresRepository) MarkDeliveryAccessTokenUsed(ctx context.Context, de
 	return err
 }
 
-func (r *postgresRepository) UpdateWorkerHeartbeat(ctx context.Context, workerID string, heartbeat time.Time, cycleStarted, cycleFinished *time.Time, cycleErr string) error {
+func (r *postgresRepository) UpdateWorkerHeartbeat(ctx context.Context, workerID string, interval time.Duration, heartbeat time.Time, cycleStarted, cycleFinished *time.Time, cycleErr string) error {
+	intervalSeconds := int(interval.Seconds()); if intervalSeconds <= 0 { intervalSeconds = 30 }
 	_, err := r.db.ExecContext(ctx, `INSERT INTO report_scheduler_runtime
-		(singleton,worker_id,last_heartbeat_at,last_cycle_started_at,last_cycle_finished_at,last_cycle_error,updated_at)
-		VALUES (true,NULLIF($1,''),$2,$3,$4,NULLIF($5,''),now())
+		(singleton,worker_id,worker_interval_seconds,last_heartbeat_at,last_cycle_started_at,last_cycle_finished_at,last_cycle_error,updated_at)
+		VALUES (true,NULLIF($1,''),$2,$3,$4,$5,NULLIF($6,''),now())
 		ON CONFLICT(singleton) DO UPDATE SET
-		worker_id=EXCLUDED.worker_id,last_heartbeat_at=EXCLUDED.last_heartbeat_at,
+		worker_id=EXCLUDED.worker_id,worker_interval_seconds=EXCLUDED.worker_interval_seconds,last_heartbeat_at=EXCLUDED.last_heartbeat_at,
 		last_cycle_started_at=COALESCE(EXCLUDED.last_cycle_started_at,report_scheduler_runtime.last_cycle_started_at),
 		last_cycle_finished_at=COALESCE(EXCLUDED.last_cycle_finished_at,report_scheduler_runtime.last_cycle_finished_at),
-		last_cycle_error=EXCLUDED.last_cycle_error,updated_at=now()`, workerID, heartbeat.UTC(), cycleStarted, cycleFinished, cycleErr)
+		last_cycle_error=EXCLUDED.last_cycle_error,updated_at=now()`, workerID, intervalSeconds, heartbeat.UTC(), cycleStarted, cycleFinished, cycleErr)
 	return err
 }
