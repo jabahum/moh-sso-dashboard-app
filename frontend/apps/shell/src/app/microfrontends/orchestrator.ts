@@ -15,7 +15,7 @@ import {
   emailLifecycles,
   issueTrackerLifecycles,
   reportBrowserLifecycles,
- reportSchedulerLifecycles,
+  reportSchedulerLifecycles,
   rbacLifecycles,
   surveillanceLifecycles,
   usersLifecycles,
@@ -59,7 +59,7 @@ const lifecycleLoaders: Record<string, () => Promise<MicrofrontendLifecycle>> = 
   "@moh-sso/email": emailLifecycles,
   "@moh-sso/issue-tracker": issueTrackerLifecycles,
   "@moh-sso/report-browser": reportBrowserLifecycles,
- "@moh-sso/report-scheduler": reportSchedulerLifecycles,
+  "@moh-sso/report-scheduler": reportSchedulerLifecycles,
   "@moh-sso/rbac": rbacLifecycles,
   "@moh-sso/surveillance": surveillanceLifecycles,
   "@moh-sso/users": usersLifecycles,
@@ -90,7 +90,8 @@ function getRuntimeConfig() {
 export function shouldUseSingleSpaOrchestration() {
   const runtimeConfig = getRuntimeConfig();
   const orchestrationEnabled =
-    runtimeConfig?.singleSpaOrchestration ?? import.meta.env.VITE_SINGLE_SPA_ORCHESTRATION === "true";
+    runtimeConfig?.singleSpaOrchestration ??
+    import.meta.env.VITE_SINGLE_SPA_ORCHESTRATION === "true";
 
   return (
     orchestrationEnabled &&
@@ -114,7 +115,11 @@ function getMicrofrontendMode() {
 
 function getMicrofrontendMountMode(): MicrofrontendMountMode {
   const runtimeConfig = getRuntimeConfig();
-  return runtimeConfig?.microfrontendMountMode ?? import.meta.env.VITE_MICROFRONTEND_MOUNT_MODE ?? "hybrid";
+  return (
+    runtimeConfig?.microfrontendMountMode ??
+    import.meta.env.VITE_MICROFRONTEND_MOUNT_MODE ??
+    "hybrid"
+  );
 }
 
 function pathMatches(pathname: string, basePath: string) {

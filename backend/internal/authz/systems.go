@@ -6,8 +6,8 @@ const (
 	SystemDataStatistics     = "data-statistics"
 	SystemUtilities          = "utilities"
 
-	SystemSettings = "settings"
- SystemReportScheduler = "report-scheduler"
+	SystemSettings        = "settings"
+	SystemReportScheduler = "report-scheduler"
 )
 
 const (
@@ -51,7 +51,7 @@ const (
 	DocumentTemplateEditor    = "document_template_editor"
 	DocumentTemplatePublisher = "document_template_publisher"
 
-	UtilitiesAccess = "utilities_access"
-	SettingsAccess  = "settings_access"
- ReportSchedulerAccess = "report-scheduler_access"
+	UtilitiesAccess       = "utilities_access"
+	SettingsAccess        = "settings_access"
+	ReportSchedulerAccess = "report-scheduler_access"
 )

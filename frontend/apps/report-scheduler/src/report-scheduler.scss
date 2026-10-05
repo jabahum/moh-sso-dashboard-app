@@ -1,9 +1,16 @@
 .report-scheduler {
- display: grid;
- gap: 1rem;
- padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
 
- h1 { font-size: 2rem; }
- h2 { font-size: 1.25rem; margin-bottom: 1rem; }
- button { justify-self: start; }
+  h1 {
+    font-size: 2rem;
+  }
+  h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  button {
+    justify-self: start;
+  }
 }

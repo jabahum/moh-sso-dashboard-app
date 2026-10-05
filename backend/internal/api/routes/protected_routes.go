@@ -10,7 +10,7 @@ import (
 	geojsonfeature "github.com/moh-sso-dashboard/internal/features/geojson"
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
- reportschedulerfeature "github.com/moh-sso-dashboard/internal/features/report_scheduler"
+	reportschedulerfeature "github.com/moh-sso-dashboard/internal/features/report_scheduler"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
 	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
@@ -30,7 +30,7 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {
 	registerVisualiserRoutes(protected, deps)
 	registerSurveillanceRoutes(protected, deps)
 	registerRBACProtectedRoutes(protected, deps)
- reportschedulerfeature.RegisterProtectedRoutes(protected, deps.ReportScheduler)
+	reportschedulerfeature.RegisterProtectedRoutes(protected, deps.ReportScheduler)
 }
 
 func registerAnnouncementRoutes(protected *gin.RouterGroup, deps Dependencies) {

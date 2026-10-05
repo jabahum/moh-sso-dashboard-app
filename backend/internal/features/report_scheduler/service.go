@@ -6,5 +6,5 @@ type Service struct{}
 func NewService() *Service { return &Service{} }
 
 func (s *Service) Module() ModuleResponse {
- return ModuleResponse{Name: "Report Scheduler", Status: "setup", SchedulingEnabled: false}
+	return ModuleResponse{Name: "Report Scheduler", Status: "setup", SchedulingEnabled: false}
 }

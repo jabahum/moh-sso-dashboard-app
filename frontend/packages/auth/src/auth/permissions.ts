@@ -32,7 +32,7 @@ export const PERMISSIONS = {
   dataQualityWrite: "data_quality:write",
   dataQualityResolve: "data_quality:resolve",
   reportBrowserRead: "report_browser:read",
- reportSchedulerRead: "report_scheduler:read",
+  reportSchedulerRead: "report_scheduler:read",
   outbreakAccess: "outbreak:access",
   outbreakManage: "outbreak:manage",
   metricsRead: "metrics:read",
