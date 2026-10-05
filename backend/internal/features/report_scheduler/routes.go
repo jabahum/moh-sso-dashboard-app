@@ -19,7 +19,13 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, handler *Handler) {
 	scheduler.GET("/schedules/:scheduleId", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.GetSchedule)
 	scheduler.PUT("/schedules/:scheduleId", middleware.RequirePermission(authz.PermissionReportSchedulerUpdate), handler.UpdateSchedule)
 	scheduler.DELETE("/schedules/:scheduleId", middleware.RequirePermission(authz.PermissionReportSchedulerDelete), handler.DeleteSchedule)
+	scheduler.POST("/schedules/:scheduleId/pause", middleware.RequirePermission(authz.PermissionReportSchedulerUpdate), handler.PauseSchedule)
+	scheduler.POST("/schedules/:scheduleId/resume", middleware.RequirePermission(authz.PermissionReportSchedulerUpdate), handler.ResumeSchedule)
+	scheduler.POST("/schedules/:scheduleId/duplicate", middleware.RequirePermission(authz.PermissionReportSchedulerCreate), handler.DuplicateSchedule)
+	scheduler.POST("/schedules/:scheduleId/run", middleware.RequirePermission(authz.PermissionReportSchedulerExecute), handler.RunNow)
 	scheduler.GET("/executions", middleware.RequirePermission(authz.PermissionReportSchedulerHistory), handler.ListExecutions)
+	scheduler.GET("/executions/:executionId", middleware.RequirePermission(authz.PermissionReportSchedulerHistory), handler.GetExecution)
+	scheduler.POST("/executions/:executionId/retry", middleware.RequirePermission(authz.PermissionReportSchedulerExecute), handler.RetryExecution)
 	scheduler.POST("/recipients/preview", middleware.RequirePermission(authz.PermissionReportSchedulerCreate), handler.PreviewRecipients)
 	scheduler.GET("/portal-reports", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.ListPortalReports)
 }

@@ -180,8 +180,9 @@ func Run() {
 		AuditService:                   services.Audit,
 		Logger:                         appLogger,
 		DQADB:                          dbs.DQA,
-		DWHDB:                          dbs.DWH,
-	})
+			DWHDB:                          dbs.DWH,
+			ReportScheduler:                 services.ReportScheduler,
+		})
 
 	services.Notifications.NotifySystemStartup(ctx, cfg.Environment)
 

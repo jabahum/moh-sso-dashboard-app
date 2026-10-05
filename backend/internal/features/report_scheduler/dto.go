@@ -55,6 +55,18 @@ type OutputConfig struct {
 	FileNamePrefix string `json:"fileNamePrefix,omitempty"`
 }
 
+type ScheduleTiming struct {
+	TimeOfDay  string `json:"timeOfDay"`
+	Weekday    int    `json:"weekday,omitempty"`
+	DayOfMonth int    `json:"dayOfMonth,omitempty"`
+}
+
+type ResolvedPeriod struct {
+	Strategy string    `json:"strategy"`
+	Start    time.Time `json:"start"`
+	End      time.Time `json:"end"`
+}
+
 type GenerateReportRequest struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 	Format     string         `json:"format" binding:"required"`
@@ -81,6 +93,7 @@ type Schedule struct {
 	Parameters       map[string]any `json:"parameters"`
 	OutputFormat     string         `json:"outputFormat"`
 	OutputConfig     OutputConfig   `json:"outputConfig"`
+	Timing           ScheduleTiming `json:"timing"`
 	HealthContext    HealthContext  `json:"healthContext"`
 	Recipients       []ScheduleRecipient `json:"recipients"`
 	Enabled          bool           `json:"enabled"`
@@ -102,6 +115,7 @@ type CreateScheduleRequest struct {
 	Parameters       map[string]any `json:"parameters"`
 	OutputFormat     string         `json:"outputFormat" binding:"required"`
 	OutputConfig     OutputConfig   `json:"outputConfig"`
+	Timing           ScheduleTiming `json:"timing"`
 	HealthContext    HealthContext  `json:"healthContext"`
 	Recipients       []ScheduleRecipient `json:"recipients"`
 	Enabled          *bool          `json:"enabled"`
@@ -122,7 +136,38 @@ type Execution struct {
 	ErrorMessage  string         `json:"errorMessage,omitempty"`
 	StartedAt     *time.Time     `json:"startedAt,omitempty"`
 	FinishedAt    *time.Time     `json:"finishedAt,omitempty"`
+	ScheduledFor  *time.Time     `json:"scheduledFor,omitempty"`
+	ResolvedPeriod *ResolvedPeriod `json:"resolvedPeriod,omitempty"`
+	GenerationAttempts int         `json:"generationAttempts"`
+	MaxGenerationAttempts int      `json:"maxGenerationAttempts"`
+	NextRetryAt    *time.Time      `json:"nextRetryAt,omitempty"`
+	LastAttemptAt  *time.Time      `json:"lastAttemptAt,omitempty"`
 	CreatedAt     time.Time      `json:"createdAt"`
+}
+
+type Delivery struct {
+	ID              string     `json:"id"`
+	ExecutionID     string     `json:"executionId"`
+	ArtifactID      string     `json:"artifactId,omitempty"`
+	RecipientType   string     `json:"recipientType"`
+	RecipientValue  string     `json:"recipientValue"`
+	DeliveryChannel string     `json:"deliveryChannel"`
+	Status          string     `json:"status"`
+	Attempts        int        `json:"attempts"`
+	MaxAttempts     int        `json:"maxAttempts"`
+	LastError       string     `json:"lastError,omitempty"`
+	NextRetryAt     *time.Time `json:"nextRetryAt,omitempty"`
+	LastAttemptAt   *time.Time `json:"lastAttemptAt,omitempty"`
+	SentAt          *time.Time `json:"sentAt,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
+type ExecutionDetail struct {
+	Execution  Execution  `json:"execution"`
+	Schedule   *Schedule  `json:"schedule,omitempty"`
+	Artifacts  []Artifact `json:"artifacts"`
+	Deliveries []Delivery `json:"deliveries"`
 }
 
 type Artifact struct {

@@ -31,12 +31,32 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 - `GET /schedules/{scheduleId}` - get a schedule
 - `PUT /schedules/{scheduleId}` - update a schedule
 - `DELETE /schedules/{scheduleId}` - delete a schedule
+- `POST /schedules/{scheduleId}/pause` - pause recurrence
+- `POST /schedules/{scheduleId}/resume` - resume and calculate the next run
+- `POST /schedules/{scheduleId}/duplicate` - create a paused copy
+- `POST /schedules/{scheduleId}/run` - run immediately through the normal execution pipeline
 - `GET /executions` - list execution history
+- `GET /executions/{executionId}` - inspect one execution, artifacts, resolved period, and recipient deliveries
+- `POST /executions/{executionId}/retry` - retry a failed execution; delivery failures reuse the existing artifact
 - `POST /recipients/preview` - validate and resolve configured report recipients
 - `GET /portal-reports` - list reports delivered to the authenticated portal user
 
 Schedule configuration now validates Health BI required parameters and output formats, constrains health scope using the authenticated Keycloak district/facility claims, and persists email/portal recipient configuration. The delivery service can queue report-link emails through the existing email service and register portal artifacts using the configured storage provider.
 
-The execution worker, dynamic-period resolver, and automatic `next_run_at` calculation remain subsequent phases.
+## Execution engine
+
+The scheduler worker runs every 30 seconds. Due schedules are claimed with PostgreSQL `FOR UPDATE SKIP LOCKED`, an execution snapshot is created, and `next_run_at` advances atomically. This prevents duplicate scheduled execution when multiple SSO backend replicas are running.
+
+Health BI jobs that remain asynchronous are stored as `generating`. Polling uses a separate `polling` claim state with `SKIP LOCKED` so only one backend instance can observe completion and perform delivery.
+
+Supported recurrences are daily, weekly, monthly, quarterly, and annual. Timing is evaluated in the schedule timezone (the UI defaults to `Africa/Kampala`). Supported relative reporting periods include current/previous day, week, epidemiological week, month, quarter, and year. The resolved period is stored on the execution record and passed to Health BI as `reporting_period`; the schedule health scope is passed as `health_context`.
+
+## Retry and failure handling
+
+Generation and delivery retries are intentionally separate. Health BI generation uses a bounded three-attempt budget with 30-second, 2-minute, and 5-minute backoff. Each recipient delivery has its own attempt count and retry timestamp. Once an artifact exists, delivery retry never regenerates the report.
+
+A terminal failure creates an audit event, emits a critical admin notification, and queues an email to the schedule owner when the owner has a valid email address. Failure notification is idempotent per execution; an explicit manual retry resets the notification marker and retry budget.
+
+Email delivery is considered handed off once the scheduler successfully queues the message into the portal email outbox. SMTP-level retries remain the responsibility of the existing email worker.
 
 See the [frontend module README](../../../../frontend/apps/report-scheduler/README.md) for development and access setup.

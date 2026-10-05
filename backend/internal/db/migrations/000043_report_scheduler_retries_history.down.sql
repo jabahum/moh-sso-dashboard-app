@@ -1,0 +1,12 @@
+DROP INDEX IF EXISTS uq_report_delivery_target;
+DROP INDEX IF EXISTS uq_report_artifacts_execution;
+DROP INDEX IF EXISTS idx_report_deliveries_retry_due;
+DROP INDEX IF EXISTS idx_report_executions_retry_due;
+ALTER TABLE report_deliveries DROP COLUMN IF EXISTS last_attempt_at;
+ALTER TABLE report_deliveries DROP COLUMN IF EXISTS next_retry_at;
+ALTER TABLE report_deliveries DROP COLUMN IF EXISTS max_attempts;
+ALTER TABLE report_executions DROP COLUMN IF EXISTS failure_notified_at;
+ALTER TABLE report_executions DROP COLUMN IF EXISTS last_attempt_at;
+ALTER TABLE report_executions DROP COLUMN IF EXISTS next_retry_at;
+ALTER TABLE report_executions DROP COLUMN IF EXISTS max_generation_attempts;
+ALTER TABLE report_executions DROP COLUMN IF EXISTS generation_attempts;

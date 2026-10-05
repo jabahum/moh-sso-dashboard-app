@@ -149,19 +149,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			GeoJSON:                 geoJSONHandler,
 			Email:                   emailHandler,
 			RBAC:                    rbacHandler,
-				ReportScheduler: reportschedulerfeature.NewHandler(reportschedulerfeature.NewService(
-					reportschedulerfeature.NewRepository(deps.Databases.Primary),
-					reportschedulerfeature.NewHealthBIClient(
-						deps.Config.HealthBIBaseURL,
-						deps.Config.HealthBIAPIToken,
-						deps.Config.HealthBIAuthHeader,
-						deps.Config.HealthBITimeout,
-					),
-					deps.Services.EmailFeature,
-					deps.Repositories.Users,
-					deps.FileStorage,
-					deps.Databases.DWH,
-				)),
+				ReportScheduler:         reportschedulerfeature.NewHandler(deps.Services.ReportScheduler),
 		},
 		Health: healthHandler,
 	}

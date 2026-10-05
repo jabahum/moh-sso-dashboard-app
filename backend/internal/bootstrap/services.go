@@ -9,6 +9,7 @@ import (
 	documenttemplatefeature "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
+	reportschedulerfeature "github.com/moh-sso-dashboard/internal/features/report_scheduler"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
 	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
@@ -51,6 +52,7 @@ type services struct {
 	DocumentTemplateColumns documenttemplatefeature.ColumnService
 	Import                  *importsvc.Service
 	RBAC                    *rbacfeature.Service
+	ReportScheduler         *reportschedulerfeature.Service
 }
 
 type serviceDependencies struct {
@@ -109,6 +111,20 @@ func buildServices(deps serviceDependencies) services {
 	emailFeatureService.SetRBACRepository(deps.Repositories.RBAC)
 	emailFeatureService.SetUserRepository(deps.Repositories.Users)
 
+	reportSchedulerService := reportschedulerfeature.NewService(
+		reportschedulerfeature.NewRepository(deps.Databases.Primary),
+		reportschedulerfeature.NewHealthBIClient(
+			deps.Config.HealthBIBaseURL,
+			deps.Config.HealthBIAPIToken,
+			deps.Config.HealthBIAuthHeader,
+			deps.Config.HealthBITimeout,
+		),
+		emailFeatureService,
+		deps.Repositories.Users,
+		deps.FileStorage,
+		deps.Databases.DWH,
+	)
+
 	publisher := cache.NewNotificationPublisher(deps.CacheClient)
 	notificationsService := service.NewNotificationsService(
 		deps.Config,
@@ -126,6 +142,8 @@ func buildServices(deps serviceDependencies) services {
 		notificationsService,
 		deps.Config,
 	)
+	reportSchedulerService.SetNotifications(notificationsService)
+	reportSchedulerService.SetAudit(auditService)
 
 	storageLocationService := storagelocationfeature.NewService(
 		deps.Repositories.StorageLocations,
@@ -279,5 +297,6 @@ func buildServices(deps serviceDependencies) services {
 		DocumentTemplateColumns: documentTemplateColumnService,
 		Import:                  importService,
 		RBAC:                    rbacService,
+		ReportScheduler:         reportSchedulerService,
 	}
 }

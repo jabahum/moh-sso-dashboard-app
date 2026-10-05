@@ -66,9 +66,47 @@ func (h *Handler) DeleteSchedule(c *gin.Context) {
 	err := h.service.DeleteSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c)); if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }; if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_DELETE_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, gin.H{"deleted": true})
 }
+func (h *Handler) PauseSchedule(c *gin.Context) {
+	item, err := h.service.PauseSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
+	if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_PAUSE_FAILED", err.Error()); return }
+	response.OK(c, http.StatusOK, item)
+}
+func (h *Handler) ResumeSchedule(c *gin.Context) {
+	item, err := h.service.ResumeSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
+	if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_RESUME_FAILED", err.Error()); return }
+	response.OK(c, http.StatusOK, item)
+}
+func (h *Handler) DuplicateSchedule(c *gin.Context) {
+	item, err := h.service.DuplicateSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
+	if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_DUPLICATE_FAILED", err.Error()); return }
+	response.OK(c, http.StatusCreated, item)
+}
+func (h *Handler) RunNow(c *gin.Context) {
+	execution, err := h.service.RunNow(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
+	if err != nil { response.Fail(c, http.StatusBadGateway, "SCHEDULE_RUN_FAILED", err.Error()); return }
+	response.OK(c, http.StatusAccepted, execution)
+}
 func (h *Handler) ListExecutions(c *gin.Context) {
 	items, err := h.service.ListExecutions(c.Request.Context(), c.GetString("user_id"), canManage(c)); if err != nil { response.Fail(c, http.StatusInternalServerError, "EXECUTION_LIST_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, items)
+}
+
+func (h *Handler) GetExecution(c *gin.Context) {
+	item, err := h.service.GetExecutionDetail(c.Request.Context(), c.Param("executionId"), c.GetString("user_id"), canManage(c))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "EXECUTION_NOT_FOUND", "report execution not found"); return }
+	if err != nil { response.Fail(c, http.StatusInternalServerError, "EXECUTION_GET_FAILED", err.Error()); return }
+	response.OK(c, http.StatusOK, item)
+}
+
+func (h *Handler) RetryExecution(c *gin.Context) {
+	item, err := h.service.RetryExecution(c.Request.Context(), c.Param("executionId"), c.GetString("user_id"), canManage(c))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "EXECUTION_NOT_FOUND", "report execution not found"); return }
+	if err != nil { response.Fail(c, http.StatusBadGateway, "EXECUTION_RETRY_FAILED", err.Error()); return }
+	response.OK(c, http.StatusAccepted, item)
 }
 
 func (h *Handler) PreviewRecipients(c *gin.Context) {

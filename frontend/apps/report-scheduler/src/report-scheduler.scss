@@ -44,6 +44,13 @@
   gap: 1rem;
 }
 
+.report-scheduler__heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .report-scheduler__parameters {
   margin-top: 1rem;
 }
@@ -86,9 +93,68 @@
   }
 }
 
+.report-scheduler__schedule-copy {
+  min-width: 0;
+
+  small {
+    display: block;
+    margin-top: 0.35rem;
+  }
+}
+
+.report-scheduler__schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.report-scheduler__execution-detail {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--cds-border-subtle-01);
+}
+
+.report-scheduler__detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.report-scheduler__detail-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.report-scheduler__detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.report-scheduler__error {
+  color: var(--cds-text-error);
+}
+
 @media (max-width: 768px) {
   .report-scheduler__summary,
-  .report-scheduler__grid {
+  .report-scheduler__grid,
+  .report-scheduler__detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .report-scheduler__list article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .report-scheduler__schedule-actions {
+    justify-content: flex-start;
   }
 }

@@ -21,8 +21,15 @@ The current module supports:
 - Portal delivery to authenticated users.
 - Secure artifact download links through the configured storage provider.
 - Persistent schedules, recipients, executions, artifacts, and deliveries.
+- Daily, weekly, monthly, quarterly, and annual recurrence timing.
+- Dynamic current/previous day, week, epidemiological week, month, quarter, and year periods.
+- Schedule edit, pause, resume, duplicate, delete, and Run Now controls.
+- Automatic background execution and Health BI job polling with multi-replica database locking.
+- Execution history with resolved periods, generation attempt counts, errors, artifacts, and recipient-level delivery state.
+- Independent generation and delivery retry/backoff with manual retry controls.
+- Terminal failure audit events, administrator alerts, and owner email notifications.
 
-The schedule execution worker, recurrence calculation, dynamic-period resolution at execution time, and automatic Health BI polling are separate scheduler-engine phases.
+The next production-readiness work is broader operational monitoring, configurable alert policies, metrics/dashboarding, and expanded automated tests.
 
 ## Development
 

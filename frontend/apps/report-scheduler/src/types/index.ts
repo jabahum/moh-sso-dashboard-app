@@ -42,6 +42,12 @@ export type OutputConfig = {
   fileNamePrefix?: string;
 };
 
+export type ScheduleTiming = {
+  timeOfDay: string;
+  weekday?: number;
+  dayOfMonth?: number;
+};
+
 export type ReportSchedule = {
   id: string;
   healthBiReportId: string;
@@ -54,6 +60,7 @@ export type ReportSchedule = {
   parameters: Record<string, unknown>;
   outputFormat: string;
   outputConfig: OutputConfig;
+  timing: ScheduleTiming;
   healthContext: HealthContext;
   recipients: ScheduleRecipient[];
   enabled: boolean;
@@ -75,6 +82,7 @@ export type CreateScheduleRequest = {
   parameters: Record<string, unknown>;
   outputFormat: string;
   outputConfig: OutputConfig;
+  timing: ScheduleTiming;
   healthContext: HealthContext;
   recipients: ScheduleRecipient[];
   enabled: boolean;
@@ -99,4 +107,59 @@ export type PortalReport = {
     contentType?: string;
     externalUrl?: string;
   };
+};
+
+export type ReportExecution = {
+  id: string;
+  scheduleId?: string;
+  healthBiJobId?: string;
+  reportId: string;
+  status: string;
+  outputFormat: string;
+  triggerType: "scheduled" | "manual" | string;
+  scheduledFor?: string;
+  generationAttempts: number;
+  maxGenerationAttempts: number;
+  nextRetryAt?: string;
+  lastAttemptAt?: string;
+  errorMessage?: string;
+  resolvedPeriod?: {
+    strategy: string;
+    start: string;
+    end: string;
+  };
+  createdAt: string;
+};
+
+export type ReportDelivery = {
+  id: string;
+  executionId: string;
+  artifactId?: string;
+  recipientType: string;
+  recipientValue: string;
+  deliveryChannel: string;
+  status: string;
+  attempts: number;
+  maxAttempts: number;
+  lastError?: string;
+  nextRetryAt?: string;
+  lastAttemptAt?: string;
+  sentAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExecutionDetail = {
+  execution: ReportExecution;
+  schedule?: ReportSchedule;
+  artifacts: Array<{
+    id: string;
+    executionId: string;
+    fileName: string;
+    contentType?: string;
+    externalUrl?: string;
+    sizeBytes?: number;
+    createdAt: string;
+  }>;
+  deliveries: ReportDelivery[];
 };
