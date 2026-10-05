@@ -2,16 +2,17 @@ package report_scheduler
 
 import (
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/moh-sso-dashboard/internal/authz"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/moh-sso-dashboard/internal/authz"
 )
 
 func TestModuleAccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	allowed := authz.NewContext("user-1", nil, map[string][]string{authz.SystemReportScheduler: {authz.ReportSchedulerAccess}})
+	allowed := authz.NewContext("user-1", nil, map[string][]string{authz.SystemDataStatistics: {authz.ReportSchedulerAccess}})
 	tests := []struct {
 		name   string
 		auth   *authz.Context
@@ -19,8 +20,10 @@ func TestModuleAccess(t *testing.T) {
 	}{
 		{"unauthenticated", nil, http.StatusUnauthorized},
 		{"permission without system", &authz.Context{Permissions: []authz.Permission{authz.PermissionReportSchedulerRead}}, http.StatusForbidden},
-		{"system without permission", &authz.Context{AccessibleSystems: []string{authz.SystemReportScheduler}}, http.StatusForbidden},
-		{"assigned access role", &allowed, http.StatusOK},
+		{"system without permission", &authz.Context{AccessibleSystems: []string{authz.SystemDataStatistics}}, http.StatusForbidden},
+		{"assigned parent client role", &allowed, http.StatusOK},
+		{"parent access without module permission", contextPtr(authz.NewContext("user-2", nil, map[string][]string{authz.SystemDataStatistics: {authz.DataStatisticsAccess}})), http.StatusForbidden},
+		{"retired standalone client", contextPtr(authz.NewContext("user-3", nil, map[string][]string{"report-scheduler": {authz.ReportSchedulerAccess}})), http.StatusForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -51,3 +54,5 @@ func TestModuleAccess(t *testing.T) {
 		})
 	}
 }
+
+func contextPtr(ctx authz.Context) *authz.Context { return &ctx }

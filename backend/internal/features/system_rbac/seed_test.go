@@ -62,13 +62,23 @@ func TestDefaultSeedIncludesDataStatisticsModuleLauncherMetadata(t *testing.T) {
 			t.Fatalf("parse data statistics navigation: %v", err)
 		}
 		launcherCount := 0
+		schedulerFound := false
 		for _, item := range items {
+			if item.ID == "report-scheduler" {
+				schedulerFound = true
+				if item.Path != "/apps/dwh/report-scheduler" || item.Permission != string(authz.PermissionReportSchedulerRead) || item.DisplayInLauncher == nil || !*item.DisplayInLauncher || item.DisplayInSideNav == nil || !*item.DisplayInSideNav {
+					t.Fatalf("invalid report scheduler navigation: %+v", item)
+				}
+			}
 			if item.DisplayInLauncher != nil && *item.DisplayInLauncher {
 				launcherCount++
 			}
 		}
-		if launcherCount != 5 {
-			t.Fatalf("expected five module launcher entries, got %d", launcherCount)
+		if launcherCount != 6 {
+			t.Fatalf("expected six module launcher entries, got %d", launcherCount)
+		}
+		if !schedulerFound {
+			t.Fatal("missing report scheduler module entry")
 		}
 		return
 	}

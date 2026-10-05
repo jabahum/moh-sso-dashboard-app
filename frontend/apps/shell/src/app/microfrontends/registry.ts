@@ -93,9 +93,9 @@ export const utilitiesRoute: MicrofrontendRoute = {
 
 export const reportSchedulerRoute: MicrofrontendRoute = {
   appName: "@moh-sso/report-scheduler",
-  path: "/apps/report-scheduler",
+  path: "/apps/dwh/report-scheduler",
   requiredPermissions: ["report_scheduler:read"],
-  requiredSystems: ["report-scheduler"],
+  requiredSystems: ["data-statistics"],
 };
 
 export const registeredMicrofrontends: MicrofrontendRoute[] = [

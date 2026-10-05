@@ -563,6 +563,18 @@
               "surveillance:manage_alerts"
             ]
           }
+        },
+        {
+          "name": "report-scheduler_access",
+          "description": "Access Report Scheduler",
+          "attributes": {
+            "portal.permissions": [
+              "portal:access",
+              "systems:read",
+              "systems:launch",
+              "report_scheduler:read"
+            ]
+          }
         }
       ],
       "utilities": [
@@ -747,20 +759,6 @@
             ]
           }
         }
-      ],
-      "report-scheduler": [
-        {
-          "name": "report-scheduler_access",
-          "description": "Access Report Scheduler",
-          "attributes": {
-            "portal.permissions": [
-              "portal:access",
-              "systems:read",
-              "systems:launch",
-              "report_scheduler:read"
-            ]
-          }
-        }
       ]
     }
   },
@@ -861,14 +859,14 @@
         "ui.home": "/portal/apps/dwh",
         "ui.category": "platform",
         "portal.system": "true",
-        "portal.accessRoles": "data-statistics_access,report_admin,report_manager,report_analyst,report_viewer,issue_tracker_viewer,issue_tracker_contributor,issue_tracker_editor,issue_tracker_manager,document_viewer,document_editor,document_processor,document_manager,document_template_viewer,document_template_editor,document_template_publisher,surveillance_viewer,surveillance_officer,surveillance_data_entry,surveillance_manager",
+        "portal.accessRoles": "data-statistics_access,report_admin,report_manager,report_analyst,report_viewer,issue_tracker_viewer,issue_tracker_contributor,issue_tracker_editor,issue_tracker_manager,document_viewer,document_editor,document_processor,document_manager,document_template_viewer,document_template_editor,document_template_publisher,surveillance_viewer,surveillance_officer,surveillance_data_entry,surveillance_manager,report-scheduler_access",
         "ui.systemType": "platform",
         "ui.displayInLauncher": "false",
         "ui.displayInSideNav": "true",
         "ui.launchMode": "internal",
         "ui.order": "20",
         "ui.launchUrl": "/portal/apps/dwh",
-        "ui.navigation": "[{\"id\":\"dashboards\",\"label\":\"Dashboards\",\"path\":\"/apps/dwh/dashboards\",\"permission\":\"report_browser:read\",\"icon\":\"dashboard\",\"description\":\"Browse approved data and reporting dashboards.\",\"order\":10,\"displayInLauncher\":true},{\"id\":\"data-validation\",\"label\":\"Data Validation\",\"path\":\"/apps/dwh/data-validation\",\"permission\":\"data_quality:read\",\"icon\":\"action\",\"description\":\"Define and run data quality validation rules.\",\"order\":20,\"displayInLauncher\":true},{\"id\":\"data-visualizer\",\"label\":\"Data Visualizer\",\"path\":\"/apps/dwh/data-visualizer\",\"permission\":\"data_quality:read\",\"icon\":\"chart\",\"description\":\"Data visualization/Export from the NDWH for all programs.\",\"order\":30,\"displayInLauncher\":true},{\"id\":\"documents\",\"label\":\"Document Management\",\"path\":\"/apps/dwh/documents\",\"permission\":\"documents:read\",\"icon\":\"documents\",\"description\":\"Upload and manage health data documents.\",\"order\":40,\"displayInLauncher\":true},{\"id\":\"surveillance\",\"label\":\"Surveillance\",\"path\":\"/apps/dwh/surveillance\",\"permission\":\"surveillance:read\",\"icon\":\"warning-alt\",\"description\":\"Review surveillance indicators, alerts, and reports.\",\"order\":50,\"displayInLauncher\":true},{\"id\":\"issue-tracker\",\"label\":\"Issue Tracking\",\"path\":\"/apps/dwh/issue-tracker\",\"permission\":\"issue_tracker:read\",\"icon\":\"tracker\",\"description\":\"Track and resolve data quality issues.\",\"order\":60,\"displayInLauncher\":true}]"
+        "ui.navigation": "[{\"id\":\"dashboards\",\"label\":\"Dashboards\",\"path\":\"/apps/dwh/dashboards\",\"permission\":\"report_browser:read\",\"icon\":\"dashboard\",\"description\":\"Browse approved data and reporting dashboards.\",\"order\":10,\"displayInLauncher\":true},{\"id\":\"data-validation\",\"label\":\"Data Validation\",\"path\":\"/apps/dwh/data-validation\",\"permission\":\"data_quality:read\",\"icon\":\"action\",\"description\":\"Define and run data quality validation rules.\",\"order\":20,\"displayInLauncher\":true},{\"id\":\"data-visualizer\",\"label\":\"Data Visualizer\",\"path\":\"/apps/dwh/data-visualizer\",\"permission\":\"data_quality:read\",\"icon\":\"chart\",\"description\":\"Data visualization/Export from the NDWH for all programs.\",\"order\":30,\"displayInLauncher\":true},{\"id\":\"documents\",\"label\":\"Document Management\",\"path\":\"/apps/dwh/documents\",\"permission\":\"documents:read\",\"icon\":\"documents\",\"description\":\"Upload and manage health data documents.\",\"order\":40,\"displayInLauncher\":true},{\"id\":\"surveillance\",\"label\":\"Surveillance\",\"path\":\"/apps/dwh/surveillance\",\"permission\":\"surveillance:read\",\"icon\":\"warning-alt\",\"description\":\"Review surveillance indicators, alerts, and reports.\",\"order\":50,\"displayInLauncher\":true},{\"id\":\"issue-tracker\",\"label\":\"Issue Tracking\",\"path\":\"/apps/dwh/issue-tracker\",\"permission\":\"issue_tracker:read\",\"icon\":\"tracker\",\"description\":\"Track and resolve data quality issues.\",\"order\":60,\"displayInLauncher\":true},{\"id\":\"report-scheduler\",\"label\":\"Report Scheduler\",\"path\":\"/apps/dwh/report-scheduler\",\"permission\":\"report_scheduler:read\",\"icon\":\"reporting\",\"description\":\"Schedule report generation and delivery.\",\"order\":70,\"displayInLauncher\":true,\"displayInSideNav\":true}]"
       }
     },
     {
@@ -1042,34 +1040,6 @@
         "ui.icon": "help",
         "ui.category": "support",
         "portal.accessRoles": "demo-external-same-tab_access"
-      }
-    },
-    {
-      "clientId": "report-scheduler",
-      "name": "Report Scheduler",
-      "description": "Schedule report generation and delivery.",
-      "enabled": true,
-      "publicClient": true,
-      "protocol": "openid-connect",
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "rootUrl": "/portal/apps/report-scheduler",
-      "baseUrl": "/portal/apps/report-scheduler",
-      "attributes": {
-        "portal.system": "true",
-        "portal.accessRoles": "report-scheduler_access",
-        "ui.systemType": "platform",
-        "ui.displayInLauncher": "true",
-        "ui.displayInSideNav": "true",
-        "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/report-scheduler",
-        "ui.home": "/portal/apps/report-scheduler",
-        "ui.icon": "reporting",
-        "ui.category": "reporting",
-        "ui.order": "30",
-        "ui.navigation": "[{\"id\":\"schedules\",\"label\":\"Report Scheduler\",\"path\":\"/apps/report-scheduler\",\"permission\":\"report_scheduler:read\"}]"
       }
     }
   ],

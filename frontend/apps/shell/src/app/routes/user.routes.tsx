@@ -116,25 +116,30 @@ export const userRoutes = (
   >
     <Route index element={<Navigate to="news" replace />} />
 
+    <Route path="news" element={userPage(<NewsFeedPage />)} />
+
     <Route
       path="report-scheduler/*"
-      element={userPage(
-        <SingleSpaApp
-          appName="@moh-sso/report-scheduler"
-          lifecycles={reportSchedulerLifecycles}
-          basename="/apps/report-scheduler"
-        />,
-        withSystemAccess("report-scheduler", accessFromRoute(reportSchedulerRoute)),
-      )}
+      element={<Navigate to="/apps/dwh/report-scheduler" replace />}
     />
-
-    <Route path="news" element={userPage(<NewsFeedPage />)} />
 
     {/* =========================
         DWH
        ========================= */}
     <Route path="dwh">
       <Route index element={<Navigate to="dashboards" replace />} />
+
+      <Route
+        path="report-scheduler/*"
+        element={userPage(
+          <SingleSpaApp
+            appName="@moh-sso/report-scheduler"
+            lifecycles={reportSchedulerLifecycles}
+            basename="/apps/dwh/report-scheduler"
+          />,
+          withSystemAccess(SYSTEMS.dataStatistics, accessFromRoute(reportSchedulerRoute)),
+        )}
+      />
 
       <Route
         path="data-visualizer/*"

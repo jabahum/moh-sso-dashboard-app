@@ -102,7 +102,8 @@ const dataStatisticsNavigation = `[
   {"id":"data-visualizer","label":"Data Visualizer","path":"/apps/dwh/data-visualizer","permission":"data_quality:read","icon":"chart","order":30,"displayInLauncher":false},
   {"id":"documents","label":"Document Management","path":"/apps/dwh/documents","permission":"documents:read","icon":"documents","description":"Upload and manage health data documents.","order":40,"displayInLauncher":true},
   {"id":"surveillance","label":"Surveillance","path":"/apps/dwh/surveillance","permission":"surveillance:read","icon":"warning-alt","description":"Review surveillance indicators, alerts, and reports.","order":50,"displayInLauncher":true},
-  {"id":"issue-tracker","label":"Issue Tracking","path":"/apps/dwh/issue-tracker","permission":"issue_tracker:read","icon":"tracker","description":"Track and resolve data quality issues.","order":60,"displayInLauncher":true}
+  {"id":"issue-tracker","label":"Issue Tracking","path":"/apps/dwh/issue-tracker","permission":"issue_tracker:read","icon":"tracker","description":"Track and resolve data quality issues.","order":60,"displayInLauncher":true},
+  {"id":"report-scheduler","label":"Report Scheduler","path":"/apps/dwh/report-scheduler","permission":"report_scheduler:read","icon":"reporting","description":"Schedule report generation and delivery.","order":70,"displayInLauncher":true,"displayInSideNav":true}
 ]`
 
 const utilitiesNavigation = `[
@@ -727,7 +728,6 @@ func DefaultSeed() SeedFile {
 				},
 			},
 			defaultDataStatisticsSystem(enabled),
-			defaultReportSchedulerSystem(enabled),
 			defaultPortalSystem("eservices", "eServices", "Digital service requests and operational tools.", "application", "/portal/apps/eservices", "services", eServicesNavigation, nil, enabled),
 			defaultPortalSystem("research-studies", "Research & Studies", "Research studies, datasets, ethics approvals, and publications.", "microscope", "/portal/apps/research-studies", "research", researchStudiesNavigation, nil, enabled),
 			defaultPortalSystem("case-registers", "Case Registers", "Case registers and referral tracking.", "document", "/portal/apps/case-registers", "clinical", caseRegistersNavigation, []string{
@@ -912,6 +912,7 @@ func defaultDataStatisticsSystem(enabled bool) SeedSystem {
 		enabled,
 	)
 	system.AccessRoles = append(system.AccessRoles,
+		authz.ReportSchedulerAccess,
 		authz.ReportBrowserViewer,
 		authz.ReportBrowserAnalyst,
 		authz.ReportBrowserManager,
@@ -933,6 +934,11 @@ func defaultDataStatisticsSystem(enabled bool) SeedSystem {
 		authz.DocumentTemplatePublisher,
 	)
 	system.Roles = append(system.Roles,
+		SeedRole{
+			Name:        authz.ReportSchedulerAccess,
+			DisplayName: "Report Scheduler Access",
+			Permissions: []string{string(authz.PermissionPortalAccess), string(authz.PermissionSystemsRead), string(authz.PermissionSystemsLaunch), string(authz.PermissionReportSchedulerRead)},
+		},
 		SeedRole{
 			Name:        authz.ReportBrowserAdmin,
 			DisplayName: "Report Admin",

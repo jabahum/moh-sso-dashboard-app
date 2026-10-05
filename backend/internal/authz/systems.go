@@ -6,8 +6,7 @@ const (
 	SystemDataStatistics     = "data-statistics"
 	SystemUtilities          = "utilities"
 
-	SystemSettings        = "settings"
-	SystemReportScheduler = "report-scheduler"
+	SystemSettings = "settings"
 )
 
 const (

@@ -176,10 +176,12 @@ systems:
         {"id":"data-visualizer","label":"Data Visualizer","path":"/apps/dwh/data-visualizer","permission":"data_quality:read","icon":"chart","description":"Data visualization/Export from the NDWH for all programs.","order":30,"displayInLauncher":true},
         {"id":"documents","label":"Document Management","path":"/apps/dwh/documents","permission":"documents:read","icon":"documents","description":"Upload and manage health data documents.","order":40,"displayInLauncher":true},
         {"id":"surveillance","label":"Surveillance","path":"/apps/dwh/surveillance","permission":"surveillance:read","icon":"warning-alt","description":"Review surveillance indicators, alerts, and reports.","order":50,"displayInLauncher":true},
-        {"id":"issue-tracker","label":"Issue Tracking","path":"/apps/dwh/issue-tracker","permission":"issue_tracker:read","icon":"tracker","description":"Track and resolve data quality issues.","order":60,"displayInLauncher":true}
+        {"id":"issue-tracker","label":"Issue Tracking","path":"/apps/dwh/issue-tracker","permission":"issue_tracker:read","icon":"tracker","description":"Track and resolve data quality issues.","order":60,"displayInLauncher":true},
+        {"id":"report-scheduler","label":"Report Scheduler","path":"/apps/dwh/report-scheduler","permission":"report_scheduler:read","icon":"reporting","description":"Schedule report generation and delivery.","order":70,"displayInLauncher":true,"displayInSideNav":true}
       ]
     enabled: true
     accessRoles:
+      - report-scheduler_access
       - data-statistics_access
       - report_admin
       - report_manager
@@ -201,6 +203,13 @@ systems:
       - document_template_editor
       - document_template_publisher
     roles:
+      - name: report-scheduler_access
+        displayName: Report Scheduler Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+          - report_scheduler:read
       - name: data-statistics_access
         displayName: Data-Statistics Access
         description: Default access to Data & Statistics
@@ -574,29 +583,7 @@ systems:
           - portal:access
           - systems:read
           - systems:launch
-  - clientId: report-scheduler
-    displayName: Report Scheduler
-    description: Schedule report generation and delivery.
-    icon: reporting
-    launchUrl: /portal/apps/report-scheduler
-    category: reporting
-    systemType: platform
-    displayInLauncher: true
-    displayInSideNav: true
-    launchMode: internal
-    sortOrder: 30
-    enabled: true
-    navigation: '[{"id":"schedules","label":"Report Scheduler","path":"/apps/report-scheduler","permission":"report_scheduler:read"}]'
-    accessRoles:
-      - report-scheduler_access
-    roles:
-      - name: report-scheduler_access
-        displayName: Report Scheduler Access
-        permissions:
-          - portal:access
-          - systems:read
-          - systems:launch
-          - report_scheduler:read
+
 realmRoles:
   - name: admin
     description: Administrator role with full access

@@ -292,9 +292,7 @@
         {
           "name": "report_viewer",
           "description": "Report Browser read-only access"
-        }
-      ],
-      "report-scheduler": [
+        },
         {
           "name": "report-scheduler_access",
           "description": "Access Report Scheduler",
@@ -451,41 +449,13 @@
         "ui.home": "/portal/apps/dwh",
         "ui.category": "platform",
         "portal.system": "true",
-        "portal.accessRoles": "data-statistics_access,report_viewer,report_analyst,report_manager,report_admin",
+        "portal.accessRoles": "data-statistics_access,report_viewer,report_analyst,report_manager,report_admin,report-scheduler_access",
         "ui.systemType": "platform",
         "ui.displayInLauncher": "true",
         "ui.displayInSideNav": "false",
         "ui.launchMode": "internal",
         "ui.launchUrl": "/portal/apps/dwh",
-        "ui.navigation": "[{\"id\":\"dashboards\",\"label\":\"Dashboards\",\"path\":\"/apps/dwh/dashboards\",\"permission\":\"report_browser:read\"},{\"id\":\"data-validation\",\"label\":\"Data Validation\",\"path\":\"/apps/dwh/data-validation\",\"permission\":\"data_quality:read\"},{\"id\":\"documents\",\"label\":\"Documents\",\"path\":\"/apps/dwh/documents\",\"permission\":\"documents:read\"},{\"id\":\"surveillance\",\"label\":\"Surveillance\",\"path\":\"/apps/dwh/surveillance\",\"permission\":\"surveillance:read\"},{\"id\":\"issue-tracker\",\"label\":\"Issue Tracker\",\"path\":\"/apps/dwh/issue-tracker\",\"permission\":\"issue_tracker:read\"}]"
-      }
-    },
-    {
-      "clientId": "report-scheduler",
-      "name": "Report Scheduler",
-      "description": "Schedule report generation and delivery.",
-      "enabled": true,
-      "publicClient": true,
-      "protocol": "openid-connect",
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "rootUrl": "/portal/apps/report-scheduler",
-      "baseUrl": "/portal/apps/report-scheduler",
-      "attributes": {
-        "portal.system": "true",
-        "portal.accessRoles": "report-scheduler_access",
-        "ui.systemType": "platform",
-        "ui.displayInLauncher": "true",
-        "ui.displayInSideNav": "true",
-        "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/report-scheduler",
-        "ui.home": "/portal/apps/report-scheduler",
-        "ui.icon": "reporting",
-        "ui.category": "reporting",
-        "ui.order": "30",
-        "ui.navigation": "[{\"id\":\"schedules\",\"label\":\"Report Scheduler\",\"path\":\"/apps/report-scheduler\",\"permission\":\"report_scheduler:read\"}]"
+        "ui.navigation": "[{\"id\":\"dashboards\",\"label\":\"Dashboards\",\"path\":\"/apps/dwh/dashboards\",\"permission\":\"report_browser:read\"},{\"id\":\"data-validation\",\"label\":\"Data Validation\",\"path\":\"/apps/dwh/data-validation\",\"permission\":\"data_quality:read\"},{\"id\":\"documents\",\"label\":\"Documents\",\"path\":\"/apps/dwh/documents\",\"permission\":\"documents:read\"},{\"id\":\"surveillance\",\"label\":\"Surveillance\",\"path\":\"/apps/dwh/surveillance\",\"permission\":\"surveillance:read\"},{\"id\":\"issue-tracker\",\"label\":\"Issue Tracker\",\"path\":\"/apps/dwh/issue-tracker\",\"permission\":\"issue_tracker:read\"},{\"id\":\"report-scheduler\",\"label\":\"Report Scheduler\",\"path\":\"/apps/dwh/report-scheduler\",\"permission\":\"report_scheduler:read\",\"icon\":\"reporting\",\"description\":\"Schedule report generation and delivery.\",\"order\":70,\"displayInLauncher\":true,\"displayInSideNav\":true}]"
       }
     }
   ],

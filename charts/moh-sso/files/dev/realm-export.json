@@ -276,6 +276,18 @@
               "report_browser:read"
             ]
           }
+        },
+        {
+          "name": "report-scheduler_access",
+          "description": "Access Report Scheduler",
+          "attributes": {
+            "portal.permissions": [
+              "portal:access",
+              "systems:read",
+              "systems:launch",
+              "report_scheduler:read"
+            ]
+          }
         }
       ],
       "demo-platform-system": [
@@ -313,20 +325,6 @@
               "portal:access",
               "systems:read",
               "systems:launch"
-            ]
-          }
-        }
-      ],
-      "report-scheduler": [
-        {
-          "name": "report-scheduler_access",
-          "description": "Access Report Scheduler",
-          "attributes": {
-            "portal.permissions": [
-              "portal:access",
-              "systems:read",
-              "systems:launch",
-              "report_scheduler:read"
             ]
           }
         }
@@ -465,12 +463,13 @@
         "ui.home": "/portal/apps/dwh",
         "ui.category": "platform",
         "portal.system": "true",
-        "portal.accessRoles": "data-statistics_access,report_viewer,report_analyst,report_manager,report_admin",
+        "portal.accessRoles": "data-statistics_access,report_viewer,report_analyst,report_manager,report_admin,report-scheduler_access",
         "ui.systemType": "platform",
         "ui.displayInLauncher": "true",
         "ui.displayInSideNav": "false",
         "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/dwh"
+        "ui.launchUrl": "/portal/apps/dwh",
+        "ui.navigation": "[{\"id\":\"report-scheduler\",\"label\":\"Report Scheduler\",\"path\":\"/apps/dwh/report-scheduler\",\"permission\":\"report_scheduler:read\",\"icon\":\"reporting\",\"description\":\"Schedule report generation and delivery.\",\"order\":70,\"displayInLauncher\":true,\"displayInSideNav\":true}]"
       }
     },
     {
@@ -547,34 +546,6 @@
         "ui.icon": "help",
         "ui.category": "support",
         "portal.accessRoles": "demo-external-same-tab_access"
-      }
-    },
-    {
-      "clientId": "report-scheduler",
-      "name": "Report Scheduler",
-      "description": "Schedule report generation and delivery.",
-      "enabled": true,
-      "publicClient": true,
-      "protocol": "openid-connect",
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "rootUrl": "/portal/apps/report-scheduler",
-      "baseUrl": "/portal/apps/report-scheduler",
-      "attributes": {
-        "portal.system": "true",
-        "portal.accessRoles": "report-scheduler_access",
-        "ui.systemType": "platform",
-        "ui.displayInLauncher": "true",
-        "ui.displayInSideNav": "true",
-        "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/report-scheduler",
-        "ui.home": "/portal/apps/report-scheduler",
-        "ui.icon": "reporting",
-        "ui.category": "reporting",
-        "ui.order": "30",
-        "ui.navigation": "[{\"id\":\"schedules\",\"label\":\"Report Scheduler\",\"path\":\"/apps/report-scheduler\",\"permission\":\"report_scheduler:read\"}]"
       }
     }
   ],

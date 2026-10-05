@@ -7,6 +7,6 @@ import (
 )
 
 func RegisterProtectedRoutes(protected *gin.RouterGroup, handler *Handler) {
-	scheduler := protected.Group("/report-scheduler", middleware.RequireSystem(authz.SystemReportScheduler))
+	scheduler := protected.Group("/report-scheduler", middleware.RequireSystem(authz.SystemDataStatistics))
 	scheduler.GET("", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.GetModule)
 }

@@ -71,9 +71,6 @@ var rolePermissions = map[string][]Permission{
 }
 
 var systemRolePermissions = map[string]map[string][]Permission{
-	SystemReportScheduler: {
-		ReportSchedulerAccess: {PermissionPortalAccess, PermissionSystemsRead, PermissionSystemsLaunch, PermissionReportSchedulerRead},
-	},
 	SystemDashboardWeb: {
 		DashboardWebAccess: {
 			PermissionPortalAccess,
@@ -164,6 +161,7 @@ var systemRolePermissions = map[string]map[string][]Permission{
 		},
 	},
 	SystemDataStatistics: {
+		ReportSchedulerAccess: {PermissionPortalAccess, PermissionSystemsRead, PermissionSystemsLaunch, PermissionReportSchedulerRead},
 		DataStatisticsAccess: {
 			PermissionPortalAccess,
 			PermissionSystemsRead,
@@ -375,7 +373,7 @@ func AccessibleSystemDetailsForContext(clientRoles map[string][]string) []System
 		switch system {
 		case SystemDashboardWeb:
 			add(systemAccess(system, roles))
-		case SystemOutbreakManagement, SystemDataStatistics, SystemUtilities, SystemSettings, SystemReportScheduler:
+		case SystemOutbreakManagement, SystemDataStatistics, SystemUtilities, SystemSettings:
 			add(systemAccess(system, roles))
 		}
 	}
@@ -392,7 +390,6 @@ type systemMetadata struct {
 }
 
 var staticSystemMetadata = map[string]systemMetadata{
-	SystemReportScheduler: {DisplayName: "Report Scheduler", LaunchURL: "/portal/apps/report-scheduler", Icon: "reporting", Category: "reporting"},
 	SystemDashboardWeb: {
 		DisplayName:            "Integrated Health Portal",
 		LaunchURL:              "/portal",

@@ -9,7 +9,7 @@ export const microfrontendRoutes = {
   email: "/admin/emails",
   issueTracker: "/apps/dwh/issue-tracker",
   reportBrowser: "/apps/dwh/dashboards",
-  reportScheduler: "/apps/report-scheduler",
+  reportScheduler: "/apps/dwh/report-scheduler",
   surveillance: "/apps/dwh/surveillance",
   users: "/admin/users",
   utilities: "/apps/utilities/self-service",

@@ -14,6 +14,7 @@ const LABEL_MAP: Record<string, string> = {
   filesvr: "Documents",
   surveillance: "Surveillance",
   "issue-tracker": "Issue Tracker",
+  "report-scheduler": "Report Scheduler",
 
   eservices: "E-Services",
   ihris: "iHRIS",
