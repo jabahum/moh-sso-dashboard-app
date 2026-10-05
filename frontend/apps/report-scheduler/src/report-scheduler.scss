@@ -38,6 +38,17 @@
   }
 }
 
+.report-scheduler__status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+
+  > div {
+    padding: 1rem;
+    background: var(--cds-layer-01);
+  }
+}
+
 .report-scheduler__form,
 .report-scheduler__parameters {
   display: grid;
@@ -145,7 +156,8 @@
 @media (max-width: 768px) {
   .report-scheduler__summary,
   .report-scheduler__grid,
-  .report-scheduler__detail-grid {
+  .report-scheduler__detail-grid,
+  .report-scheduler__status-grid {
     grid-template-columns: 1fr;
   }
 

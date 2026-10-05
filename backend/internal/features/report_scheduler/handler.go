@@ -49,11 +49,11 @@ func (h *Handler) CreateSchedule(c *gin.Context) {
 	response.OK(c, http.StatusCreated, item)
 }
 func (h *Handler) ListSchedules(c *gin.Context) {
-	items, err := h.service.ListSchedules(c.Request.Context(), c.GetString("user_id"), canManage(c)); if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_LIST_FAILED", err.Error()); return }
+	items, err := h.service.ListSchedules(c.Request.Context(), c.GetString("user_id"), canManage(c), healthContextFromGin(c)); if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_LIST_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, items)
 }
 func (h *Handler) GetSchedule(c *gin.Context) {
-	item, err := h.service.GetSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c)); if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }; if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_GET_FAILED", err.Error()); return }
+	item, err := h.service.GetSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c)); if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }; if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_GET_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, item)
 }
 func (h *Handler) UpdateSchedule(c *gin.Context) {
@@ -63,47 +63,53 @@ func (h *Handler) UpdateSchedule(c *gin.Context) {
 	response.OK(c, http.StatusOK, item)
 }
 func (h *Handler) DeleteSchedule(c *gin.Context) {
-	err := h.service.DeleteSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c)); if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }; if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_DELETE_FAILED", err.Error()); return }
+	err := h.service.DeleteSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c)); if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }; if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_DELETE_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, gin.H{"deleted": true})
 }
 func (h *Handler) PauseSchedule(c *gin.Context) {
-	item, err := h.service.PauseSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	item, err := h.service.PauseSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
 	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
 	if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_PAUSE_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, item)
 }
 func (h *Handler) ResumeSchedule(c *gin.Context) {
-	item, err := h.service.ResumeSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	item, err := h.service.ResumeSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
 	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
 	if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_RESUME_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, item)
 }
 func (h *Handler) DuplicateSchedule(c *gin.Context) {
-	item, err := h.service.DuplicateSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	item, err := h.service.DuplicateSchedule(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
 	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
 	if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULE_DUPLICATE_FAILED", err.Error()); return }
 	response.OK(c, http.StatusCreated, item)
 }
 func (h *Handler) RunNow(c *gin.Context) {
-	execution, err := h.service.RunNow(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c))
+	execution, err := h.service.RunNow(c.Request.Context(), c.Param("scheduleId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
 	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "SCHEDULE_NOT_FOUND", "report schedule not found"); return }
 	if err != nil { response.Fail(c, http.StatusBadGateway, "SCHEDULE_RUN_FAILED", err.Error()); return }
 	response.OK(c, http.StatusAccepted, execution)
 }
 func (h *Handler) ListExecutions(c *gin.Context) {
-	items, err := h.service.ListExecutions(c.Request.Context(), c.GetString("user_id"), canManage(c)); if err != nil { response.Fail(c, http.StatusInternalServerError, "EXECUTION_LIST_FAILED", err.Error()); return }
+	items, err := h.service.ListExecutions(c.Request.Context(), c.GetString("user_id"), canManage(c), healthContextFromGin(c)); if err != nil { response.Fail(c, http.StatusInternalServerError, "EXECUTION_LIST_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, items)
 }
 
+func (h *Handler) Overview(c *gin.Context) {
+	item, err := h.service.Overview(c.Request.Context(), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
+	if err != nil { response.Fail(c, http.StatusInternalServerError, "SCHEDULER_OVERVIEW_FAILED", err.Error()); return }
+	response.OK(c, http.StatusOK, item)
+}
+
 func (h *Handler) GetExecution(c *gin.Context) {
-	item, err := h.service.GetExecutionDetail(c.Request.Context(), c.Param("executionId"), c.GetString("user_id"), canManage(c))
+	item, err := h.service.GetExecutionDetail(c.Request.Context(), c.Param("executionId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
 	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "EXECUTION_NOT_FOUND", "report execution not found"); return }
 	if err != nil { response.Fail(c, http.StatusInternalServerError, "EXECUTION_GET_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, item)
 }
 
 func (h *Handler) RetryExecution(c *gin.Context) {
-	item, err := h.service.RetryExecution(c.Request.Context(), c.Param("executionId"), c.GetString("user_id"), canManage(c))
+	item, err := h.service.RetryExecution(c.Request.Context(), c.Param("executionId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
 	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "EXECUTION_NOT_FOUND", "report execution not found"); return }
 	if err != nil { response.Fail(c, http.StatusBadGateway, "EXECUTION_RETRY_FAILED", err.Error()); return }
 	response.OK(c, http.StatusAccepted, item)
@@ -123,6 +129,25 @@ func (h *Handler) ListPortalReports(c *gin.Context) {
 	items, err := h.service.ListPortalReports(c.Request.Context(), c.GetString("user_id"))
 	if err != nil { response.Fail(c, http.StatusInternalServerError, "PORTAL_REPORTS_LIST_FAILED", err.Error()); return }
 	response.OK(c, http.StatusOK, items)
+}
+
+func (h *Handler) DownloadArtifact(c *gin.Context) {
+	_, target, err := h.service.ArtifactDownloadURL(c.Request.Context(), c.Param("artifactId"), c.GetString("user_id"), canManage(c), healthContextFromGin(c))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "ARTIFACT_NOT_FOUND", "report artifact not found"); return }
+	if err != nil { response.Fail(c, http.StatusBadGateway, "ARTIFACT_DOWNLOAD_FAILED", err.Error()); return }
+	c.Header("Cache-Control", "no-store")
+	c.Header("Referrer-Policy", "no-referrer")
+	c.Redirect(http.StatusFound, target)
+}
+
+func (h *Handler) DownloadDeliveryLink(c *gin.Context) {
+	_, target, err := h.service.PublicDeliveryDownloadURL(c.Request.Context(), c.Param("token"))
+	if errors.Is(err, ErrScheduleNotFound) { response.Fail(c, http.StatusNotFound, "DELIVERY_LINK_INVALID", "report delivery link is invalid or expired"); return }
+	if err != nil { response.Fail(c, http.StatusBadGateway, "DELIVERY_DOWNLOAD_FAILED", "report download is currently unavailable"); return }
+	c.Header("Cache-Control", "no-store")
+	c.Header("Referrer-Policy", "no-referrer")
+	c.Header("X-Robots-Tag", "noindex, nofollow")
+	c.Redirect(http.StatusFound, target)
 }
 
 func canManage(c *gin.Context) bool { ctx, ok := authz.FromGin(c); return ok && ctx.HasPermission(authz.PermissionReportSchedulerManage) }

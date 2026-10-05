@@ -9,6 +9,7 @@ import type {
   ReportExecution,
   ReportSchedule,
   ReportSchedulerModule,
+  SchedulerOverview,
   ScheduleRecipient,
 } from "../types";
 
@@ -19,6 +20,10 @@ export const reportSchedulerApi = baseApi.injectEndpoints({
     getReportSchedulerModule: builder.query<ReportSchedulerModule, void>({
       query: () => "/report-scheduler",
       transformResponse: (response: Envelope<ReportSchedulerModule>) => response.data,
+    }),
+    getReportSchedulerOverview: builder.query<SchedulerOverview, void>({
+      query: () => "/report-scheduler/overview",
+      transformResponse: (response: Envelope<SchedulerOverview>) => response.data,
     }),
     getHealthBIReports: builder.query<HealthBIReport[], void>({
       query: () => "/report-scheduler/reports",
@@ -89,6 +94,7 @@ export const reportSchedulerApi = baseApi.injectEndpoints({
 
 export const {
   useGetReportSchedulerModuleQuery,
+  useGetReportSchedulerOverviewQuery,
   useGetHealthBIReportsQuery,
   useGetHealthBIReportParametersQuery,
   useGetReportSchedulesQuery,

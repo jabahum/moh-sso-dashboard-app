@@ -19,6 +19,7 @@ import {
   useGetReportExecutionQuery,
   useGetReportExecutionsQuery,
   useGetReportSchedulerModuleQuery,
+  useGetReportSchedulerOverviewQuery,
   useGetReportSchedulesQuery,
   usePauseReportScheduleMutation,
   usePreviewReportRecipientsMutation,
@@ -56,6 +57,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
       : "";
 
   const moduleQuery = useGetReportSchedulerModuleQuery();
+  const overviewQuery = useGetReportSchedulerOverviewQuery(undefined, { pollingInterval: 30_000 });
   const reportsQuery = useGetHealthBIReportsQuery();
   const schedulesQuery = useGetReportSchedulesQuery();
   const executionsQuery = useGetReportExecutionsQuery(undefined, { pollingInterval: 30_000 });
@@ -195,6 +197,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
       await schedulesQuery.refetch();
       await portalReportsQuery.refetch();
       await executionsQuery.refetch();
+      await overviewQuery.refetch();
     } catch {
       setMessage(`Unable to ${action} this schedule.`);
     }
@@ -223,13 +226,45 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
       {moduleQuery.data && !moduleQuery.data.healthBiEnabled && (
         <InlineNotification kind="warning" title="Health BI is not configured" subtitle="Set HEALTH_BI_BASE_URL before creating schedules." hideCloseButton />
       )}
+      {overviewQuery.data && !overviewQuery.data.workerHealthy && (
+        <InlineNotification
+          kind="warning"
+          title="Scheduler worker heartbeat is stale"
+          subtitle={overviewQuery.data.workerLastCycleError || "The background scheduler has not reported a healthy cycle recently."}
+          hideCloseButton
+        />
+      )}
       {message && <InlineNotification kind="info" title={message} hideCloseButton />}
 
       <div className="report-scheduler__summary">
-        <Tile><strong>{schedulesQuery.data?.length ?? 0}</strong><span>Schedules</span></Tile>
-        <Tile><strong>{reportsQuery.data?.length ?? 0}</strong><span>Health BI reports</span></Tile>
-        <Tile><strong>{portalReportsQuery.data?.length ?? 0}</strong><span>Delivered reports</span></Tile>
+        <Tile><strong>{overviewQuery.data?.enabledSchedules ?? 0}</strong><span>Enabled schedules</span></Tile>
+        <Tile><strong>{overviewQuery.data?.executions24h ?? 0}</strong><span>Executions · 24h</span></Tile>
+        <Tile><strong>{Math.round(overviewQuery.data?.successRate24h ?? 0)}%</strong><span>Success rate · 24h</span></Tile>
+        <Tile><strong>{overviewQuery.data?.failed24h ?? 0}</strong><span>Failed · 24h</span></Tile>
+        <Tile><strong>{overviewQuery.data?.retryingNow ?? 0}</strong><span>Retrying now</span></Tile>
+        <Tile><strong>{overviewQuery.data?.deliveryFailures24h ?? 0}</strong><span>Delivery failures · 24h</span></Tile>
       </div>
+
+      <Tile>
+        <div className="report-scheduler__heading-row">
+          <h2>Scheduler health</h2>
+          <span>{overviewQuery.data?.workerHealthy ? "Healthy" : "Attention required"}</span>
+        </div>
+        <div className="report-scheduler__status-grid">
+          <div>
+            <strong>Worker heartbeat</strong>
+            <p>{overviewQuery.data?.workerLastHeartbeatAt ? new Date(overviewQuery.data.workerLastHeartbeatAt).toLocaleString() : "No heartbeat recorded"}</p>
+          </div>
+          <div>
+            <strong>Execution states</strong>
+            <p>{(overviewQuery.data?.executionStatuses ?? []).map((item) => `${item.status}: ${item.count}`).join(" · ") || "No executions"}</p>
+          </div>
+          <div>
+            <strong>Delivery states</strong>
+            <p>{(overviewQuery.data?.deliveryStatuses ?? []).map((item) => `${item.status}: ${item.count}`).join(" · ") || "No deliveries"}</p>
+          </div>
+        </div>
+      </Tile>
 
       <Tile className="report-scheduler__form">
         <div className="report-scheduler__heading-row">
@@ -380,6 +415,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                         setSelectedExecutionId(execution.id);
                         setMessage("Execution retry started.");
                         await executionsQuery.refetch();
+                        await overviewQuery.refetch();
                         if (wasSelected) await executionDetailQuery.refetch();
                       } catch {
                         setMessage("Unable to retry this execution.");
@@ -422,7 +458,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                     {executionDetailQuery.data.artifacts.map((artifact) => (
                       <div key={artifact.id} className="report-scheduler__detail-row">
                         <span>{artifact.fileName}</span>
-                        {artifact.externalUrl && <Button kind="ghost" size="sm" href={artifact.externalUrl}>Download</Button>}
+                        {artifact.downloadUrl && <Button kind="ghost" size="sm" href={artifact.downloadUrl}>Download</Button>}
                       </div>
                     ))}
                   </div>
@@ -454,7 +490,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
           {(portalReportsQuery.data ?? []).map((report) => (
             <article key={report.deliveryId}>
               <div><strong>{report.reportName}</strong><p>{report.artifact.fileName}</p></div>
-              {report.artifact.externalUrl && <Button kind="ghost" size="sm" href={report.artifact.externalUrl}>Download</Button>}
+              {report.artifact.downloadUrl && <Button kind="ghost" size="sm" href={report.artifact.downloadUrl}>Download</Button>}
             </article>
           ))}
           {!portalReportsQuery.isLoading && !(portalReportsQuery.data?.length) && <p>No reports have been delivered to your portal yet.</p>}

@@ -28,8 +28,13 @@ The current module supports:
 - Execution history with resolved periods, generation attempt counts, errors, artifacts, and recipient-level delivery state.
 - Independent generation and delivery retry/backoff with manual retry controls.
 - Terminal failure audit events, administrator alerts, and owner email notifications.
+- Operational overview with 24-hour execution, success, failure, retry, delivery, and scheduler-worker heartbeat metrics.
+- Health-context-constrained administration for district/facility managers; only unscoped administrators receive global scheduler management visibility.
+- SSO-controlled artifact download endpoints instead of exposing object keys or Health BI artifact URLs in API responses.
+- Expiring opaque email delivery links with SHA-256 server-side token storage and public endpoint rate limiting.
+- Missed-run protection that performs one catch-up execution instead of replaying an unlimited backlog after downtime.
 
-The next production-readiness work is broader operational monitoring, configurable alert policies, metrics/dashboarding, and expanded automated tests.
+The next production-readiness work is expanded integration/concurrency testing, configurable alert thresholds, and deployment-level metrics/telemetry export.
 
 ## Development
 
@@ -53,3 +58,4 @@ go run ./cmd/cli system-rbac seed --file config/system-rbac.seed.yaml
 ```
 
 Existing installations should assign `data-statistics:report-scheduler_access` to authorized users/groups and refresh their sessions.
+The `report_admin` role adds `report_scheduler:manage` for cross-owner administration, subject to the authenticated district/facility health context when one is present.

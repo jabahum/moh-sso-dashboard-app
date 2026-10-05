@@ -105,8 +105,31 @@ export type PortalReport = {
     id: string;
     fileName: string;
     contentType?: string;
-    externalUrl?: string;
+    downloadUrl?: string;
   };
+};
+
+export type SchedulerStatusCount = {
+  status: string;
+  count: number;
+};
+
+export type SchedulerOverview = {
+  totalSchedules: number;
+  enabledSchedules: number;
+  executions24h: number;
+  completed24h: number;
+  failed24h: number;
+  retryingNow: number;
+  deliveryFailures24h: number;
+  successRate24h: number;
+  executionStatuses: SchedulerStatusCount[];
+  deliveryStatuses: SchedulerStatusCount[];
+  recentFailures: ReportExecution[];
+  workerLastHeartbeatAt?: string;
+  workerLastCycleError?: string;
+  workerHealthy: boolean;
+  generatedAt: string;
 };
 
 export type ReportExecution = {
@@ -157,7 +180,7 @@ export type ExecutionDetail = {
     executionId: string;
     fileName: string;
     contentType?: string;
-    externalUrl?: string;
+    downloadUrl?: string;
     sizeBytes?: number;
     createdAt: string;
   }>;

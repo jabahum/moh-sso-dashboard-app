@@ -24,8 +24,6 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 - `GET /reports` - Health BI report catalogue
 - `GET /reports/{reportId}` - report metadata
 - `GET /reports/{reportId}/parameters` - report parameter schema
-- `POST /reports/{reportId}/generate` - submit a Health BI generation job
-- `GET /jobs/{jobId}` - inspect a Health BI job
 - `GET /schedules` - list schedules
 - `POST /schedules` - create a schedule
 - `GET /schedules/{scheduleId}` - get a schedule
@@ -35,11 +33,14 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 - `POST /schedules/{scheduleId}/resume` - resume and calculate the next run
 - `POST /schedules/{scheduleId}/duplicate` - create a paused copy
 - `POST /schedules/{scheduleId}/run` - run immediately through the normal execution pipeline
+- `GET /overview` - scheduler health and owner/scoped-manager operational metrics
 - `GET /executions` - list execution history
 - `GET /executions/{executionId}` - inspect one execution, artifacts, resolved period, and recipient deliveries
 - `POST /executions/{executionId}/retry` - retry a failed execution; delivery failures reuse the existing artifact
 - `POST /recipients/preview` - validate and resolve configured report recipients
 - `GET /portal-reports` - list reports delivered to the authenticated portal user
+- `GET /artifacts/{artifactId}/download` - authorize and redirect to the report artifact
+- `GET /public/deliveries/{token}/download` - rate-limited expiring email delivery link
 
 Schedule configuration now validates Health BI required parameters and output formats, constrains health scope using the authenticated Keycloak district/facility claims, and persists email/portal recipient configuration. The delivery service can queue report-link emails through the existing email service and register portal artifacts using the configured storage provider.
 
@@ -51,6 +52,8 @@ Health BI jobs that remain asynchronous are stored as `generating`. Polling uses
 
 Supported recurrences are daily, weekly, monthly, quarterly, and annual. Timing is evaluated in the schedule timezone (the UI defaults to `Africa/Kampala`). Supported relative reporting periods include current/previous day, week, epidemiological week, month, quarter, and year. The resolved period is stored on the execution record and passed to Health BI as `reporting_period`; the schedule health scope is passed as `health_context`.
 
+After downtime, the worker performs at most one overdue execution for a schedule and calculates the next run from the current time instead of replaying an unlimited backlog. Worker cycles are capped and write heartbeat, cycle timestamps, and the most recent cycle error to `report_scheduler_runtime`.
+
 ## Retry and failure handling
 
 Generation and delivery retries are intentionally separate. Health BI generation uses a bounded three-attempt budget with 30-second, 2-minute, and 5-minute backoff. Each recipient delivery has its own attempt count and retry timestamp. Once an artifact exists, delivery retry never regenerates the report.
@@ -58,5 +61,23 @@ Generation and delivery retries are intentionally separate. Health BI generation
 A terminal failure creates an audit event, emits a critical admin notification, and queues an email to the schedule owner when the owner has a valid email address. Failure notification is idempotent per execution; an explicit manual retry resets the notification marker and retry budget.
 
 Email delivery is considered handed off once the scheduler successfully queues the message into the portal email outbox. SMTP-level retries remain the responsibility of the existing email worker.
+
+## Ownership, RBAC, and health scope
+
+Users with `report-scheduler_access` receive scheduler read/create/update/delete/execute/history permissions and can manage their own schedules and execution history. Cross-owner administration requires `report_scheduler:manage`, which is assigned to `report_admin`.
+
+A manager with an authenticated facility or district health-context claim is restricted to schedules in that same scope, including schedule CRUD, execution history, retries, overview metrics, and artifact downloads. Only an unscoped platform administrator receives global scheduler visibility.
+
+## Artifact and delivery security
+
+Artifact object keys and Health BI artifact URLs are not serialized to the frontend. Authenticated users download through `/artifacts/{artifactId}/download`, where ownership, portal-delivery access, manager permission, and manager health scope are checked before the backend redirects to the underlying storage URL.
+
+Email recipients receive a unique 256-bit opaque delivery token. Only its SHA-256 hash is stored in the database, the token expires after 24 hours, and the public resolver is rate-limited per IP. Raw Health BI generation/job proxy routes are intentionally not exposed: report generation must flow through Run Now or scheduled executions so health scope, history, audit, retry, and delivery controls always apply.
+
+`APP_BASE_URL` must be configured when email delivery is used because it is the origin for secure report-delivery links.
+
+## Monitoring
+
+`GET /overview` exposes enabled schedule totals, 24-hour execution/completion/failure counts, success rate, active retries, failed deliveries, execution and delivery status totals, recent failures, and worker heartbeat health. The overview follows the same owner/manager/health-scope rules as schedule management.
 
 See the [frontend module README](../../../../frontend/apps/report-scheduler/README.md) for development and access setup.

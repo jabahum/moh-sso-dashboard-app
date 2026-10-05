@@ -144,6 +144,7 @@ func buildServices(deps serviceDependencies) services {
 	)
 	reportSchedulerService.SetNotifications(notificationsService)
 	reportSchedulerService.SetAudit(auditService)
+	reportSchedulerService.SetPublicBaseURL(deps.Config.AppBaseURL)
 
 	storageLocationService := storagelocationfeature.NewService(
 		deps.Repositories.StorageLocations,

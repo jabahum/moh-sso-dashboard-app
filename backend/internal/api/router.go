@@ -127,6 +127,7 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 	api := r.Group("/api/v1")
 	routes.RegisterAuthRoutes(api, routeDeps)
 	routes.RegisterPublicAnnouncementRoutes(api, routeDeps)
+	routes.RegisterPublicReportSchedulerRoutes(api, routeDeps)
 
 	protected := api.Group("")
 	protected.Use(middleware.ExtractAuthContext(

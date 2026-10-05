@@ -279,7 +279,21 @@
         },
         {
           "name": "report_admin",
-          "description": "Report Browser administrator access"
+          "description": "Report Browser administrator access",
+          "attributes": {
+            "portal.permissions": [
+              "report_browser:read",
+              "metrics:read",
+              "audit:read",
+              "report_scheduler:read",
+              "report_scheduler:create",
+              "report_scheduler:update",
+              "report_scheduler:delete",
+              "report_scheduler:execute",
+              "report_scheduler:history",
+              "report_scheduler:manage"
+            ]
+          }
         },
         {
           "name": "report_manager",
@@ -301,7 +315,12 @@
               "portal:access",
               "systems:read",
               "systems:launch",
-              "report_scheduler:read"
+              "report_scheduler:read",
+              "report_scheduler:create",
+              "report_scheduler:update",
+              "report_scheduler:delete",
+              "report_scheduler:execute",
+              "report_scheduler:history"
             ]
           }
         }

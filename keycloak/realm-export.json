@@ -358,7 +358,14 @@
             "portal.permissions": [
               "report_browser:read",
               "metrics:read",
-              "audit:read"
+              "audit:read",
+              "report_scheduler:read",
+              "report_scheduler:create",
+              "report_scheduler:update",
+              "report_scheduler:delete",
+              "report_scheduler:execute",
+              "report_scheduler:history",
+              "report_scheduler:manage"
             ]
           }
         },
@@ -572,7 +579,12 @@
               "portal:access",
               "systems:read",
               "systems:launch",
-              "report_scheduler:read"
+              "report_scheduler:read",
+              "report_scheduler:create",
+              "report_scheduler:update",
+              "report_scheduler:delete",
+              "report_scheduler:execute",
+              "report_scheduler:history"
             ]
           }
         }

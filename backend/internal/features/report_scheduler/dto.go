@@ -175,10 +175,34 @@ type Artifact struct {
 	ExecutionID string    `json:"executionId"`
 	FileName    string    `json:"fileName"`
 	ContentType string    `json:"contentType,omitempty"`
-	ObjectKey   string    `json:"objectKey,omitempty"`
-	ExternalURL string    `json:"externalUrl,omitempty"`
+	ObjectKey   string    `json:"-"`
+	ExternalURL string    `json:"-"`
+	DownloadURL string    `json:"downloadUrl,omitempty"`
 	SizeBytes   int64     `json:"sizeBytes,omitempty"`
 	CreatedAt   time.Time `json:"createdAt"`
+}
+
+type SchedulerStatusCount struct {
+	Status string `json:"status"`
+	Count  int64  `json:"count"`
+}
+
+type SchedulerOverview struct {
+	TotalSchedules       int64                  `json:"totalSchedules"`
+	EnabledSchedules     int64                  `json:"enabledSchedules"`
+	Executions24h        int64                  `json:"executions24h"`
+	Completed24h         int64                  `json:"completed24h"`
+	Failed24h            int64                  `json:"failed24h"`
+	RetryingNow          int64                  `json:"retryingNow"`
+	DeliveryFailures24h  int64                  `json:"deliveryFailures24h"`
+	SuccessRate24h       float64                `json:"successRate24h"`
+	ExecutionStatuses    []SchedulerStatusCount `json:"executionStatuses"`
+	DeliveryStatuses     []SchedulerStatusCount `json:"deliveryStatuses"`
+	RecentFailures       []Execution            `json:"recentFailures"`
+	WorkerLastHeartbeatAt *time.Time             `json:"workerLastHeartbeatAt,omitempty"`
+	WorkerLastCycleError  string                 `json:"workerLastCycleError,omitempty"`
+	WorkerHealthy         bool                   `json:"workerHealthy"`
+	GeneratedAt          time.Time              `json:"generatedAt"`
 }
 
 type PortalReport struct {

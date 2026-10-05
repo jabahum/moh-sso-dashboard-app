@@ -2,7 +2,10 @@ package report_scheduler
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +32,7 @@ type Service struct {
 	dwh         *sql.DB
 	notifications sharedservice.NotificationsService
 	audit         *sharedservice.AuditService
+	publicBaseURL string
 }
 
 func NewService(
@@ -44,6 +48,7 @@ func NewService(
 
 func (s *Service) SetNotifications(notifications sharedservice.NotificationsService) { s.notifications = notifications }
 func (s *Service) SetAudit(audit *sharedservice.AuditService) { s.audit = audit }
+func (s *Service) SetPublicBaseURL(value string) { s.publicBaseURL = strings.TrimRight(strings.TrimSpace(value), "/") }
 
 func (s *Service) Module() ModuleResponse {
 	healthBIEnabled := s != nil && s.healthBI != nil && s.healthBI.Enabled()
@@ -85,15 +90,24 @@ func (s *Service) CreateSchedule(
 	if err != nil {
 		return Schedule{}, err
 	}
-	return s.repo.CreateSchedule(ctx, normalized, userID)
+	item, err := s.repo.CreateSchedule(ctx, normalized, userID)
+	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_created", map[string]any{"schedule_id": item.ID, "report_id": item.HealthBIReportID, "health_context": item.HealthContext}) }
+	return item, err
 }
 
-func (s *Service) ListSchedules(ctx context.Context, userID string, all bool) ([]Schedule, error) {
-	return s.repo.ListSchedules(ctx, userID, all)
+func (s *Service) ListSchedules(ctx context.Context, userID string, all bool, userHealth HealthContext) ([]Schedule, error) {
+	items, err := s.repo.ListSchedules(ctx, userID, all)
+	if err != nil || !all || healthContextEmpty(userHealth) { return items, err }
+	filtered := make([]Schedule, 0, len(items))
+	for _, item := range items { if scheduleWithinHealthScope(item, userHealth) { filtered = append(filtered, item) } }
+	return filtered, nil
 }
 
-func (s *Service) GetSchedule(ctx context.Context, id, userID string, all bool) (Schedule, error) {
-	return s.repo.GetSchedule(ctx, id, userID, all)
+func (s *Service) GetSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
+	item, err := s.repo.GetSchedule(ctx, id, userID, all)
+	if err != nil { return Schedule{}, err }
+	if all && !scheduleWithinHealthScope(item, userHealth) { return Schedule{}, ErrScheduleNotFound }
+	return item, nil
 }
 
 func (s *Service) UpdateSchedule(
@@ -104,33 +118,39 @@ func (s *Service) UpdateSchedule(
 	all bool,
 	userHealth HealthContext,
 ) (Schedule, error) {
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return Schedule{}, err }
 	normalized, err := s.validateSchedule(ctx, input, userHealth)
 	if err != nil {
 		return Schedule{}, err
 	}
-	return s.repo.UpdateSchedule(ctx, id, normalized, userID, all)
+	item, err := s.repo.UpdateSchedule(ctx, id, normalized, userID, all)
+	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_updated", map[string]any{"schedule_id": item.ID, "report_id": item.HealthBIReportID, "health_context": item.HealthContext}) }
+	return item, err
 }
 
-func (s *Service) DeleteSchedule(ctx context.Context, id, userID string, all bool) error {
+func (s *Service) DeleteSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) error {
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return err }
 	err := s.repo.DeleteSchedule(ctx, id, userID, all)
 	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_deleted", map[string]any{"schedule_id": id}) }
 	return err
 }
 
-func (s *Service) PauseSchedule(ctx context.Context, id, userID string, all bool) (Schedule, error) {
+func (s *Service) PauseSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return Schedule{}, err }
 	item, err := s.repo.SetScheduleEnabled(ctx, id, userID, all, false)
 	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_paused", map[string]any{"schedule_id": id}) }
 	return item, err
 }
 
-func (s *Service) ResumeSchedule(ctx context.Context, id, userID string, all bool) (Schedule, error) {
+func (s *Service) ResumeSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return Schedule{}, err }
 	item, err := s.repo.SetScheduleEnabled(ctx, id, userID, all, true)
 	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_resumed", map[string]any{"schedule_id": id, "next_run_at": item.NextRunAt}) }
 	return item, err
 }
 
-func (s *Service) DuplicateSchedule(ctx context.Context, id, userID string, all bool) (Schedule, error) {
-	source, err := s.repo.GetSchedule(ctx, id, userID, all)
+func (s *Service) DuplicateSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
+	source, err := s.GetSchedule(ctx, id, userID, all, userHealth)
 	if err != nil { return Schedule{}, err }
 	disabled := false
 	input := CreateScheduleRequest{
@@ -154,8 +174,8 @@ func (s *Service) DuplicateSchedule(ctx context.Context, id, userID string, all 
 	return item, err
 }
 
-func (s *Service) RunNow(ctx context.Context, id, userID string, all bool) (Execution, error) {
-	schedule, err := s.repo.GetSchedule(ctx, id, userID, all)
+func (s *Service) RunNow(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Execution, error) {
+	schedule, err := s.GetSchedule(ctx, id, userID, all, userHealth)
 	if err != nil { return Execution{}, err }
 	reference := time.Now()
 	period, err := ResolveReportingPeriod(schedule.PeriodStrategy, schedule.Timezone, reference)
@@ -173,25 +193,88 @@ func (s *Service) RunNow(ctx context.Context, id, userID string, all bool) (Exec
 	return s.repo.GetExecution(ctx, execution.ID)
 }
 
-func (s *Service) ListExecutions(ctx context.Context, userID string, all bool) ([]Execution, error) {
-	return s.repo.ListExecutions(ctx, userID, all)
+func (s *Service) ListExecutions(ctx context.Context, userID string, all bool, userHealth HealthContext) ([]Execution, error) {
+	items, err := s.repo.ListExecutions(ctx, userID, all)
+	if err != nil || !all || healthContextEmpty(userHealth) { return items, err }
+	filtered := make([]Execution, 0, len(items))
+	for _, item := range items {
+		if item.ScheduleID == nil { if item.TriggeredBy == userID { filtered=append(filtered,item) }; continue }
+		schedule, scheduleErr := s.repo.GetSchedule(ctx, *item.ScheduleID, "", true)
+		if scheduleErr == nil && scheduleWithinHealthScope(schedule, userHealth) { filtered=append(filtered,item) }
+	}
+	return filtered,nil
 }
 
-func (s *Service) GetExecutionDetail(ctx context.Context, id, userID string, all bool) (ExecutionDetail, error) {
+func (s *Service) Overview(ctx context.Context, userID string, all bool, userHealth HealthContext) (SchedulerOverview, error) {
+	return s.repo.SchedulerOverview(ctx, userID, all, userHealth)
+}
+
+func (s *Service) UpdateWorkerHeartbeat(ctx context.Context, workerID string, heartbeat time.Time, cycleStarted, cycleFinished *time.Time, cycleErr string) error {
+	if s == nil || s.repo == nil { return nil }
+	return s.repo.UpdateWorkerHeartbeat(ctx, workerID, heartbeat, cycleStarted, cycleFinished, cycleErr)
+}
+
+func (s *Service) GetExecutionDetail(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (ExecutionDetail, error) {
 	detail, err := s.repo.GetExecutionDetail(ctx, id, userID, all)
 	if err != nil { return ExecutionDetail{}, err }
-	if s.fileStorage != nil {
-		for i := range detail.Artifacts {
-			if detail.Artifacts[i].ObjectKey == "" { continue }
-			url, urlErr := s.fileStorage.GetDownloadURL(ctx, detail.Artifacts[i].ObjectKey, detail.Artifacts[i].FileName)
-			if urlErr == nil { detail.Artifacts[i].ExternalURL = url }
-		}
+	if all && !healthContextEmpty(userHealth) {
+		if detail.Schedule == nil || !scheduleWithinHealthScope(*detail.Schedule, userHealth) { return ExecutionDetail{}, ErrScheduleNotFound }
+	}
+	for i := range detail.Artifacts {
+		detail.Artifacts[i].DownloadURL = "/api/v1/report-scheduler/artifacts/" + detail.Artifacts[i].ID + "/download"
 	}
 	return detail, nil
 }
 
-func (s *Service) RetryExecution(ctx context.Context, id, userID string, all bool) (Execution, error) {
-	detail, err := s.repo.GetExecutionDetail(ctx, id, userID, all)
+func (s *Service) ArtifactDownloadURL(ctx context.Context, artifactID, userID string, all bool, userHealth HealthContext) (Artifact, string, error) {
+	artifact, execution, err := s.repo.GetArtifactForUser(ctx, artifactID, userID, all)
+	if err != nil { return Artifact{}, "", err }
+	if all && !healthContextEmpty(userHealth) {
+		if execution.ScheduleID == nil { return Artifact{}, "", ErrScheduleNotFound }
+		schedule, scheduleErr := s.repo.GetSchedule(ctx, *execution.ScheduleID, "", true)
+		if scheduleErr != nil || !scheduleWithinHealthScope(schedule, userHealth) { return Artifact{}, "", ErrScheduleNotFound }
+	}
+	var downloadURL string
+	if strings.TrimSpace(artifact.ObjectKey) != "" {
+		if s.fileStorage == nil { return Artifact{}, "", errors.New("file storage is not configured") }
+		downloadURL, err = s.fileStorage.GetDownloadURL(ctx, artifact.ObjectKey, artifact.FileName)
+	} else if strings.TrimSpace(artifact.ExternalURL) != "" {
+		downloadURL = artifact.ExternalURL
+	} else {
+		err = errors.New("artifact has no downloadable source")
+	}
+	if err != nil { return Artifact{}, "", err }
+	s.auditEvent(ctx, userID, "report_scheduler.artifact_download", map[string]any{"artifact_id": artifact.ID, "execution_id": execution.ID, "report_id": execution.ReportID})
+	return artifact, downloadURL, nil
+}
+
+func (s *Service) PublicDeliveryDownloadURL(ctx context.Context, token string) (Artifact, string, error) {
+	token = strings.TrimSpace(token)
+	if token == "" { return Artifact{}, "", ErrScheduleNotFound }
+	delivery, artifact, execution, err := s.repo.GetDeliveryByAccessToken(ctx, hashDeliveryToken(token))
+	if err != nil { return Artifact{}, "", err }
+	var downloadURL string
+	if strings.TrimSpace(artifact.ObjectKey) != "" {
+		if s.fileStorage == nil { return Artifact{}, "", errors.New("file storage is not configured") }
+		downloadURL, err = s.fileStorage.GetDownloadURL(ctx, artifact.ObjectKey, artifact.FileName)
+	} else if strings.TrimSpace(artifact.ExternalURL) != "" {
+		downloadURL = artifact.ExternalURL
+	} else {
+		err = errors.New("artifact has no downloadable source")
+	}
+	if err != nil { return Artifact{}, "", err }
+	_ = s.repo.MarkDeliveryAccessTokenUsed(ctx, delivery.ID)
+	s.auditEvent(ctx, "", "report_scheduler.delivery_link_download", map[string]any{
+		"delivery_id": delivery.ID,
+		"artifact_id": artifact.ID,
+		"execution_id": execution.ID,
+		"report_id": execution.ReportID,
+	})
+	return artifact, downloadURL, nil
+}
+
+func (s *Service) RetryExecution(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Execution, error) {
+	detail, err := s.GetExecutionDetail(ctx, id, userID, all, userHealth)
 	if err != nil { return Execution{}, err }
 	execution := detail.Execution
 	if execution.Status != "failed" {
@@ -552,17 +635,8 @@ func (s *Service) ListPortalReports(ctx context.Context, userID string) ([]Porta
 	if err != nil {
 		return nil, err
 	}
-	if s.fileStorage == nil {
-		return items, nil
-	}
 	for index := range items {
-		if items[index].Artifact.ObjectKey == "" {
-			continue
-		}
-		url, err := s.fileStorage.GetDownloadURL(ctx, items[index].Artifact.ObjectKey, items[index].Artifact.FileName)
-		if err == nil {
-			items[index].Artifact.ExternalURL = url
-		}
+		items[index].Artifact.DownloadURL = "/api/v1/report-scheduler/artifacts/" + items[index].Artifact.ID + "/download"
 	}
 	return items, nil
 }
@@ -652,19 +726,28 @@ func (s *Service) ProcessOneDelivery(ctx context.Context) (bool, error) {
 		if s.email == nil {
 			err = errors.New("email service is not configured")
 		} else {
-			downloadURL := artifact.ExternalURL
-			if artifact.ObjectKey != "" && s.fileStorage != nil {
-				if generated, urlErr := s.fileStorage.GetDownloadURL(ctx, artifact.ObjectKey, artifact.FileName); urlErr == nil {
-					downloadURL = generated
+			if s.publicBaseURL == "" {
+				err = errors.New("APP_BASE_URL is required for secure report delivery links")
+			} else {
+				token, tokenErr := newDeliveryToken()
+				if tokenErr != nil {
+					err = tokenErr
+				} else {
+					expiresAt := time.Now().Add(24 * time.Hour)
+					if tokenErr = s.repo.SetDeliveryAccessToken(ctx, delivery.ID, hashDeliveryToken(token), expiresAt); tokenErr != nil {
+						err = tokenErr
+					} else {
+						downloadURL := s.publicBaseURL + "/api/v1/report-scheduler/public/deliveries/" + token + "/download"
+						err = s.email.Queue(ctx, model.Message{
+							To:       []model.Address{{Email: delivery.RecipientValue}},
+							Subject:  fmt.Sprintf("%s report is ready", schedule.ReportName),
+							TextBody: fmt.Sprintf("Your scheduled report %q is ready. Download it here: %s", schedule.ReportName, downloadURL),
+							HTMLBody: fmt.Sprintf("<p>Your scheduled report <strong>%s</strong> is ready.</p><p><a href=%q>Download report</a></p>", html.EscapeString(schedule.ReportName), downloadURL),
+							Metadata: map[string]string{"report_execution_id": execution.ID, "report_artifact_id": artifact.ID},
+						})
+					}
 				}
 			}
-			err = s.email.Queue(ctx, model.Message{
-				To:       []model.Address{{Email: delivery.RecipientValue}},
-				Subject:  fmt.Sprintf("%s report is ready", schedule.ReportName),
-				TextBody: fmt.Sprintf("Your scheduled report %q is ready. Download it here: %s", schedule.ReportName, downloadURL),
-				HTMLBody: fmt.Sprintf("<p>Your scheduled report <strong>%s</strong> is ready.</p><p><a href=%q>Download report</a></p>", html.EscapeString(schedule.ReportName), downloadURL),
-				Metadata: map[string]string{"report_execution_id": execution.ID, "report_artifact_id": artifact.ID},
-			})
 		}
 	}
 	// Portal delivery is represented by the delivery record itself. Once it is
@@ -812,6 +895,28 @@ func reportRetryDelay(attempts int) time.Duration {
 	default:
 		return 5 * time.Minute
 	}
+}
+
+func newDeliveryToken() (string, error) {
+	value := make([]byte, 32)
+	if _, err := rand.Read(value); err != nil { return "", fmt.Errorf("generate delivery token: %w", err) }
+	return hex.EncodeToString(value), nil
+}
+
+func hashDeliveryToken(token string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return hex.EncodeToString(sum[:])
+}
+
+func healthContextEmpty(value HealthContext) bool {
+	return strings.TrimSpace(value.District)=="" && strings.TrimSpace(value.Facility)==""
+}
+
+func scheduleWithinHealthScope(schedule Schedule, scope HealthContext) bool {
+	if healthContextEmpty(scope) { return true }
+	if facility:=strings.TrimSpace(scope.Facility); facility!="" { return strings.EqualFold(strings.TrimSpace(schedule.HealthContext.Facility),facility) }
+	if district:=strings.TrimSpace(scope.District); district!="" { return strings.EqualFold(strings.TrimSpace(schedule.HealthContext.District),district) }
+	return true
 }
 
 func (s *Service) notifyExecutionFailure(ctx context.Context, schedule Schedule, execution Execution, message string) {

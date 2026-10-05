@@ -55,3 +55,21 @@ func TestReportRetryDelay(t *testing.T) {
 		}
 	}
 }
+
+func TestScheduleWithinHealthScope(t *testing.T) {
+	schedule := Schedule{HealthContext: HealthContext{District: "Kampala", Facility: "Kisenyi HC IV"}}
+	if !scheduleWithinHealthScope(schedule, HealthContext{District: "Kampala"}) { t.Fatal("expected district scope to match") }
+	if scheduleWithinHealthScope(schedule, HealthContext{District: "Wakiso"}) { t.Fatal("expected different district to be denied") }
+	if !scheduleWithinHealthScope(schedule, HealthContext{District: "Kampala", Facility: "Kisenyi HC IV"}) { t.Fatal("expected facility scope to match") }
+	if scheduleWithinHealthScope(schedule, HealthContext{District: "Kampala", Facility: "Kiruddu NRH"}) { t.Fatal("expected different facility to be denied") }
+	if !scheduleWithinHealthScope(schedule, HealthContext{}) { t.Fatal("expected unscoped administrator to match") }
+}
+
+func TestDeliveryTokenHashIsStableAndDoesNotExposeToken(t *testing.T) {
+	token := "sample-delivery-token"
+	first := hashDeliveryToken(token)
+	second := hashDeliveryToken(token)
+	if first != second { t.Fatal("expected delivery token hash to be deterministic") }
+	if first == token { t.Fatal("delivery token must not be stored in plaintext") }
+	if len(first) != 64 { t.Fatalf("expected SHA-256 hex hash length 64, got %d", len(first)) }
+}

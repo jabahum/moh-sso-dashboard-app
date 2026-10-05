@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -39,6 +40,12 @@ type Repository interface {
 	ClaimFailureNotification(context.Context, string) (bool, error)
 	FinalizeExecutionDeliveryState(context.Context, string) (string, bool, error)
 	ResetFailedDeliveries(context.Context, string) (int64, error)
+	SchedulerOverview(context.Context, string, bool, HealthContext) (SchedulerOverview, error)
+	GetArtifactForUser(context.Context, string, string, bool) (Artifact, Execution, error)
+	SetDeliveryAccessToken(context.Context, string, string, time.Time) error
+	GetDeliveryByAccessToken(context.Context, string) (Delivery, Artifact, Execution, error)
+	MarkDeliveryAccessTokenUsed(context.Context, string) error
+	UpdateWorkerHeartbeat(context.Context, string, time.Time, *time.Time, *time.Time, string) error
 }
 
 type postgresRepository struct{ db *sql.DB }
@@ -374,7 +381,9 @@ func (r *postgresRepository) ClaimDueExecution(ctx context.Context, now time.Tim
 		VALUES ($1::uuid,$2,'queued',$3::jsonb,$4,'scheduled',$5,$6,$7::jsonb,now()) RETURNING `+executionColumns,
 		schedule.ID, schedule.HealthBIReportID, string(paramsJSON), schedule.OutputFormat, schedule.CreatedBy, scheduledFor, string(periodJSON))
 	execution, err := scanExecution(execRow); if err != nil { return Schedule{}, Execution{}, false, err }
-	nextRun, err := CalculateNextRun(schedule.Frequency, schedule.Timezone, schedule.Timing, scheduledFor); if err != nil { return Schedule{}, Execution{}, false, err }
+	nextBase := scheduledFor
+	if now.After(nextBase) { nextBase = now }
+	nextRun, err := CalculateNextRun(schedule.Frequency, schedule.Timezone, schedule.Timing, nextBase); if err != nil { return Schedule{}, Execution{}, false, err }
 	if _, err := tx.ExecContext(ctx, `UPDATE report_schedules SET last_run_at=$2, next_run_at=$3, updated_at=now() WHERE id=$1::uuid`, schedule.ID, scheduledFor, nextRun); err != nil { return Schedule{}, Execution{}, false, err }
 	if err := tx.Commit(); err != nil { return Schedule{}, Execution{}, false, err }
 	schedule.LastRunAt = &scheduledFor; schedule.NextRunAt = &nextRun; schedule.Recipients, _ = r.listRecipients(ctx, schedule.ID)
@@ -569,4 +578,137 @@ func (r *postgresRepository) ResetFailedDeliveries(ctx context.Context, executio
 	_, err = r.db.ExecContext(ctx, `UPDATE report_executions SET status='delivering', error_message=NULL,
 		finished_at=NULL, failure_notified_at=NULL WHERE id=$1::uuid`, executionID)
 	return count, err
+}
+
+func (r *postgresRepository) GetArtifactForUser(ctx context.Context, artifactID, userID string, includeAll bool) (Artifact, Execution, error) {
+	query := `SELECT a.id::text, a.execution_id::text, a.file_name, COALESCE(a.content_type,''),
+		COALESCE(a.object_key,''), COALESCE(a.external_url,''), a.size_bytes, a.created_at,
+		e.id::text, e.schedule_id::text, COALESCE(e.health_bi_job_id,''), e.report_id, e.status,
+		e.parameters, e.output_format, e.trigger_type, COALESCE(e.triggered_by,''), COALESCE(e.error_message,''),
+		e.started_at, e.finished_at, e.scheduled_for, COALESCE(e.resolved_period,'{}'::jsonb),
+		e.generation_attempts, e.max_generation_attempts, e.next_retry_at, e.last_attempt_at, e.created_at
+		FROM report_artifacts a
+		JOIN report_executions e ON e.id=a.execution_id
+		LEFT JOIN report_schedules s ON s.id=e.schedule_id
+		WHERE a.id=$1::uuid`
+	args := []any{artifactID}
+	if !includeAll {
+		query += ` AND (e.triggered_by=$2 OR s.created_by=$2 OR EXISTS (
+			SELECT 1 FROM report_deliveries d WHERE d.execution_id=e.id AND d.artifact_id=a.id
+			AND d.recipient_type='user' AND d.recipient_value=$2 AND d.status='sent'))`
+		args = append(args, userID)
+	}
+	row := r.db.QueryRowContext(ctx, query, args...)
+	var artifact Artifact
+	var execution Execution
+	var scheduleID sql.NullString
+	var parameters, resolvedPeriod []byte
+	err := row.Scan(&artifact.ID,&artifact.ExecutionID,&artifact.FileName,&artifact.ContentType,&artifact.ObjectKey,&artifact.ExternalURL,&artifact.SizeBytes,&artifact.CreatedAt,
+		&execution.ID,&scheduleID,&execution.HealthBIJobID,&execution.ReportID,&execution.Status,&parameters,&execution.OutputFormat,&execution.TriggerType,&execution.TriggeredBy,&execution.ErrorMessage,
+		&execution.StartedAt,&execution.FinishedAt,&execution.ScheduledFor,&resolvedPeriod,&execution.GenerationAttempts,&execution.MaxGenerationAttempts,&execution.NextRetryAt,&execution.LastAttemptAt,&execution.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) { return Artifact{}, Execution{}, ErrScheduleNotFound }
+	if err != nil { return Artifact{}, Execution{}, err }
+	if scheduleID.Valid { execution.ScheduleID=&scheduleID.String }
+	execution.Parameters=map[string]any{}; _=json.Unmarshal(parameters,&execution.Parameters)
+	if len(resolvedPeriod)>0 { var period ResolvedPeriod; if json.Unmarshal(resolvedPeriod,&period)==nil { execution.ResolvedPeriod=&period } }
+	return artifact, execution, nil
+}
+
+func (r *postgresRepository) SchedulerOverview(ctx context.Context, userID string, includeAll bool, health HealthContext) (SchedulerOverview, error) {
+	var out SchedulerOverview
+	scopeColumn := ""
+	scopeValue := ""
+	if includeAll {
+		if strings.TrimSpace(health.Facility) != "" { scopeColumn="facility"; scopeValue=strings.TrimSpace(health.Facility) } else if strings.TrimSpace(health.District) != "" { scopeColumn="district"; scopeValue=strings.TrimSpace(health.District) }
+	}
+	scheduleWhere := ""
+	scheduleArgs := []any{}
+	if !includeAll { scheduleWhere=" WHERE created_by=$1"; scheduleArgs=append(scheduleArgs,userID) } else if scopeColumn!="" { scheduleWhere=" WHERE lower(COALESCE(health_context->>'"+scopeColumn+"',''))=lower($1)"; scheduleArgs=append(scheduleArgs,scopeValue) }
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*),COUNT(*) FILTER (WHERE enabled=true) FROM report_schedules`+scheduleWhere, scheduleArgs...).Scan(&out.TotalSchedules,&out.EnabledSchedules); err != nil { return SchedulerOverview{},err }
+	executionAccess := ""
+	executionArgs := []any{}
+	if !includeAll { executionAccess="(e.triggered_by=$1 OR EXISTS (SELECT 1 FROM report_schedules s WHERE s.id=e.schedule_id AND s.created_by=$1))"; executionArgs=append(executionArgs,userID) } else if scopeColumn!="" { executionAccess="EXISTS (SELECT 1 FROM report_schedules s WHERE s.id=e.schedule_id AND lower(COALESCE(s.health_context->>'"+scopeColumn+"',''))=lower($1))"; executionArgs=append(executionArgs,scopeValue) }
+	execWhere := "WHERE e.created_at >= now() - interval '24 hours'"
+	if executionAccess!="" { execWhere += " AND "+executionAccess }
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*),COUNT(*) FILTER (WHERE e.status='completed'),COUNT(*) FILTER (WHERE e.status='failed') FROM report_executions e `+execWhere, executionArgs...).Scan(&out.Executions24h,&out.Completed24h,&out.Failed24h); err != nil { return SchedulerOverview{},err }
+	retryWhere := "WHERE e.status='retrying'"
+	if executionAccess!="" { retryWhere += " AND "+executionAccess }
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM report_executions e `+retryWhere, executionArgs...).Scan(&out.RetryingNow); err != nil { return SchedulerOverview{},err }
+	deliveryAccess := ""
+	deliveryArgs := []any{}
+	if !includeAll { deliveryAccess="EXISTS (SELECT 1 FROM report_executions e LEFT JOIN report_schedules s ON s.id=e.schedule_id WHERE e.id=d.execution_id AND (e.triggered_by=$1 OR s.created_by=$1))"; deliveryArgs=append(deliveryArgs,userID) } else if scopeColumn!="" { deliveryAccess="EXISTS (SELECT 1 FROM report_executions e JOIN report_schedules s ON s.id=e.schedule_id WHERE e.id=d.execution_id AND lower(COALESCE(s.health_context->>'"+scopeColumn+"',''))=lower($1))"; deliveryArgs=append(deliveryArgs,scopeValue) }
+	deliveryWhere := "WHERE d.status='failed' AND d.updated_at >= now() - interval '24 hours'"
+	if deliveryAccess!="" { deliveryWhere += " AND "+deliveryAccess }
+	if err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM report_deliveries d `+deliveryWhere, deliveryArgs...).Scan(&out.DeliveryFailures24h); err != nil { return SchedulerOverview{},err }
+	terminal:=out.Completed24h+out.Failed24h; if terminal>0 { out.SuccessRate24h=float64(out.Completed24h)*100/float64(terminal) }
+	statusWhere := ""; if executionAccess!="" { statusWhere=" WHERE "+executionAccess }
+	rows,err:=r.db.QueryContext(ctx, `SELECT e.status,COUNT(*) FROM report_executions e`+statusWhere+` GROUP BY e.status ORDER BY e.status`, executionArgs...); if err!=nil{return SchedulerOverview{},err}
+	for rows.Next(){var v SchedulerStatusCount;if err:=rows.Scan(&v.Status,&v.Count);err!=nil{rows.Close();return SchedulerOverview{},err};out.ExecutionStatuses=append(out.ExecutionStatuses,v)};rows.Close()
+	delStatusWhere:=""; if deliveryAccess!="" { delStatusWhere=" WHERE "+deliveryAccess }
+	rows,err=r.db.QueryContext(ctx, `SELECT d.status,COUNT(*) FROM report_deliveries d`+delStatusWhere+` GROUP BY d.status ORDER BY d.status`, deliveryArgs...);if err!=nil{return SchedulerOverview{},err}
+	for rows.Next(){var v SchedulerStatusCount;if err:=rows.Scan(&v.Status,&v.Count);err!=nil{rows.Close();return SchedulerOverview{},err};out.DeliveryStatuses=append(out.DeliveryStatuses,v)};rows.Close()
+	failureWhere:="WHERE e.status='failed'"; if executionAccess!="" { failureWhere += " AND "+executionAccess }
+	rows,err=r.db.QueryContext(ctx, `SELECT `+executionColumns+` FROM report_executions e `+failureWhere+` ORDER BY e.created_at DESC LIMIT 5`, executionArgs...);if err!=nil{return SchedulerOverview{},err}
+	for rows.Next(){v,scanErr:=scanExecution(rows);if scanErr!=nil{rows.Close();return SchedulerOverview{},scanErr};out.RecentFailures=append(out.RecentFailures,v)};rows.Close()
+	var heartbeat sql.NullTime; var cycleErr sql.NullString
+	if err:=r.db.QueryRowContext(ctx, `SELECT last_heartbeat_at,last_cycle_error FROM report_scheduler_runtime WHERE singleton=true`).Scan(&heartbeat,&cycleErr);err==nil{if heartbeat.Valid{value:=heartbeat.Time;out.WorkerLastHeartbeatAt=&value;out.WorkerHealthy=time.Since(value)<=2*time.Minute};if cycleErr.Valid{out.WorkerLastCycleError=cycleErr.String}}
+	out.GeneratedAt=time.Now().UTC();return out,nil
+}
+
+func (r *postgresRepository) SetDeliveryAccessToken(ctx context.Context, deliveryID, tokenHash string, expiresAt time.Time) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE report_deliveries
+		SET access_token_hash=$2, access_token_expires_at=$3, access_token_used_at=NULL, updated_at=now()
+		WHERE id=$1::uuid`, deliveryID, tokenHash, expiresAt.UTC())
+	return err
+}
+
+func (r *postgresRepository) GetDeliveryByAccessToken(ctx context.Context, tokenHash string) (Delivery, Artifact, Execution, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT
+		d.id::text,d.execution_id::text,d.artifact_id::text,d.recipient_type,d.recipient_value,d.delivery_channel,d.status,
+		d.attempts,d.max_attempts,COALESCE(d.last_error,''),d.next_retry_at,d.last_attempt_at,d.sent_at,d.created_at,d.updated_at,
+		a.id::text,a.execution_id::text,a.file_name,COALESCE(a.content_type,''),COALESCE(a.object_key,''),COALESCE(a.external_url,''),a.size_bytes,a.created_at,
+		e.id::text,e.schedule_id::text,COALESCE(e.health_bi_job_id,''),e.report_id,e.status,e.parameters,e.output_format,e.trigger_type,
+		COALESCE(e.triggered_by,''),COALESCE(e.error_message,''),e.started_at,e.finished_at,e.scheduled_for,COALESCE(e.resolved_period,'{}'::jsonb),
+		e.generation_attempts,e.max_generation_attempts,e.next_retry_at,e.last_attempt_at,e.created_at
+		FROM report_deliveries d
+		JOIN report_artifacts a ON a.id=d.artifact_id
+		JOIN report_executions e ON e.id=d.execution_id
+		WHERE d.access_token_hash=$1 AND d.access_token_expires_at > now() AND d.status='sent'`, tokenHash)
+	var delivery Delivery
+	var artifact Artifact
+	var execution Execution
+	var artifactID, scheduleID sql.NullString
+	var parameters,resolvedPeriod []byte
+	err := row.Scan(
+		&delivery.ID,&delivery.ExecutionID,&artifactID,&delivery.RecipientType,&delivery.RecipientValue,&delivery.DeliveryChannel,&delivery.Status,
+		&delivery.Attempts,&delivery.MaxAttempts,&delivery.LastError,&delivery.NextRetryAt,&delivery.LastAttemptAt,&delivery.SentAt,&delivery.CreatedAt,&delivery.UpdatedAt,
+		&artifact.ID,&artifact.ExecutionID,&artifact.FileName,&artifact.ContentType,&artifact.ObjectKey,&artifact.ExternalURL,&artifact.SizeBytes,&artifact.CreatedAt,
+		&execution.ID,&scheduleID,&execution.HealthBIJobID,&execution.ReportID,&execution.Status,&parameters,&execution.OutputFormat,&execution.TriggerType,
+		&execution.TriggeredBy,&execution.ErrorMessage,&execution.StartedAt,&execution.FinishedAt,&execution.ScheduledFor,&resolvedPeriod,
+		&execution.GenerationAttempts,&execution.MaxGenerationAttempts,&execution.NextRetryAt,&execution.LastAttemptAt,&execution.CreatedAt,
+	)
+	if errors.Is(err,sql.ErrNoRows) { return Delivery{},Artifact{},Execution{},ErrScheduleNotFound }
+	if err != nil { return Delivery{},Artifact{},Execution{},err }
+	if artifactID.Valid { delivery.ArtifactID=artifactID.String }
+	if scheduleID.Valid { execution.ScheduleID=&scheduleID.String }
+	execution.Parameters=map[string]any{}; _=json.Unmarshal(parameters,&execution.Parameters)
+	if len(resolvedPeriod)>0 { var period ResolvedPeriod; if json.Unmarshal(resolvedPeriod,&period)==nil { execution.ResolvedPeriod=&period } }
+	return delivery,artifact,execution,nil
+}
+
+func (r *postgresRepository) MarkDeliveryAccessTokenUsed(ctx context.Context, deliveryID string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE report_deliveries SET access_token_used_at=now(),updated_at=now() WHERE id=$1::uuid`, deliveryID)
+	return err
+}
+
+func (r *postgresRepository) UpdateWorkerHeartbeat(ctx context.Context, workerID string, heartbeat time.Time, cycleStarted, cycleFinished *time.Time, cycleErr string) error {
+	_, err := r.db.ExecContext(ctx, `INSERT INTO report_scheduler_runtime
+		(singleton,worker_id,last_heartbeat_at,last_cycle_started_at,last_cycle_finished_at,last_cycle_error,updated_at)
+		VALUES (true,NULLIF($1,''),$2,$3,$4,NULLIF($5,''),now())
+		ON CONFLICT(singleton) DO UPDATE SET
+		worker_id=EXCLUDED.worker_id,last_heartbeat_at=EXCLUDED.last_heartbeat_at,
+		last_cycle_started_at=COALESCE(EXCLUDED.last_cycle_started_at,report_scheduler_runtime.last_cycle_started_at),
+		last_cycle_finished_at=COALESCE(EXCLUDED.last_cycle_finished_at,report_scheduler_runtime.last_cycle_finished_at),
+		last_cycle_error=EXCLUDED.last_cycle_error,updated_at=now()`, workerID, heartbeat.UTC(), cycleStarted, cycleFinished, cycleErr)
+	return err
 }
