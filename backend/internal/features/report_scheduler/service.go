@@ -16,8 +16,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
-	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	"github.com/moh-sso-dashboard/internal/model"
 	sharedservice "github.com/moh-sso-dashboard/internal/service"
 	"github.com/moh-sso-dashboard/internal/storage"
@@ -26,8 +24,8 @@ import (
 type Service struct {
 	repo        Repository
 	healthBI    HealthBIClient
-	email       *emailfeature.Service
-	users       userfeature.UserRepository
+	email       EmailDelivery
+	users       UserLookup
 	fileStorage storage.Storage
 	dwh         *sql.DB
 	notifications sharedservice.NotificationsService
@@ -39,8 +37,8 @@ type Service struct {
 func NewService(
 	repo Repository,
 	healthBI HealthBIClient,
-	email *emailfeature.Service,
-	users userfeature.UserRepository,
+	email EmailDelivery,
+	users UserLookup,
 	fileStorage storage.Storage,
 	dwh *sql.DB,
 ) *Service {
@@ -322,8 +320,11 @@ func (s *Service) validateSchedule(
 	if input.Timezone == "" {
 		input.Timezone = "Africa/Kampala"
 	}
-	input.Timing, err = normalizeTiming(input.Timing)
-	if err != nil { return input, err }
+	timing, err := normalizeTiming(input.Timing)
+	if err != nil {
+		return input, err
+	}
+	input.Timing = timing
 	if _, err := CalculateNextRun(input.Frequency, input.Timezone, input.Timing, time.Now()); err != nil {
 		return input, err
 	}

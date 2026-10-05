@@ -1,3 +1,8 @@
+-- Some development databases applied an earlier execution-engine migration
+-- before poll_claimed_at was added. Ensure it exists before indexing it.
+ALTER TABLE report_executions
+    ADD COLUMN IF NOT EXISTS poll_claimed_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_report_schedules_owner_enabled_created
     ON report_schedules(created_by, enabled, created_at DESC);
 
