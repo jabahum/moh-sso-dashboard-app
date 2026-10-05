@@ -33,7 +33,7 @@ func TestModuleAccess(t *testing.T) {
 					c.Set(authz.ContextKey, *tt.auth)
 				}
 			})
-				RegisterProtectedRoutes(group, NewHandler(NewService(nil, nil)))
+					RegisterProtectedRoutes(group, NewHandler(NewService(nil, nil, nil, nil, nil, nil)))
 			res := httptest.NewRecorder()
 			router.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/api/v1/report-scheduler", nil))
 			if res.Code != tt.status {

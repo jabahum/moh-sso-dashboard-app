@@ -49,8 +49,9 @@ func ExtractAuthContext(
 
 		c.Set("access_token", accessToken)
 		c.Set(authz.ContextKey, authContext)
-		c.Set("user", user)
-		c.Set("user_id", user.ID)
+			c.Set("user", user)
+			c.Set("user_id", user.ID)
+			c.Set("health_context", map[string]string{"district": user.District, "facility": user.Facility})
 		c.Set("client_roles", authContext.ClientRoles)
 		c.Set("realm_roles", authContext.RealmRoles)
 		c.Set("permissions", authContext.Permissions)

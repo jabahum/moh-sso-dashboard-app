@@ -26,6 +26,8 @@ type KCUserInfo struct {
 	GivenName         string `json:"given_name"`
 	FamilyName        string `json:"family_name"`
 	Name              string `json:"name"`
+	District          string `json:"district"`
+	Facility          string `json:"facility"`
 }
 
 type TokenResponse struct {
@@ -62,6 +64,8 @@ type AuthUser struct {
 	Enabled           bool                 `json:"enabled"`
 	EmailVerified     bool                 `json:"emailVerified"`
 	LastLoginAt       *time.Time           `json:"lastLoginAt"`
+	District          string               `json:"district,omitempty"`
+	Facility          string               `json:"facility,omitempty"`
 }
 
 func (u *AuthUser) GetAuthorizationFields() (string, []string, map[string][]string) {
@@ -333,6 +337,8 @@ func (c *Client) Me(accessToken string) (*AuthUser, error) {
 		AccessibleSystems: authContext.SystemAccess(),
 		Enabled:           true,
 		EmailVerified:     ui.EmailVerified,
+		District:          strings.TrimSpace(ui.District),
+		Facility:          strings.TrimSpace(ui.Facility),
 	}
 
 	return user, nil

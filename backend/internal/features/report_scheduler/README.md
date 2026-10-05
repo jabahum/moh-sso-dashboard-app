@@ -32,7 +32,11 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 - `PUT /schedules/{scheduleId}` - update a schedule
 - `DELETE /schedules/{scheduleId}` - delete a schedule
 - `GET /executions` - list execution history
+- `POST /recipients/preview` - validate and resolve configured report recipients
+- `GET /portal-reports` - list reports delivered to the authenticated portal user
 
-The execution worker, dynamic-period resolver, recipient delivery, and automatic `next_run_at` calculation are subsequent phases.
+Schedule configuration now validates Health BI required parameters and output formats, constrains health scope using the authenticated Keycloak district/facility claims, and persists email/portal recipient configuration. The delivery service can queue report-link emails through the existing email service and register portal artifacts using the configured storage provider.
+
+The execution worker, dynamic-period resolver, and automatic `next_run_at` calculation remain subsequent phases.
 
 See the [frontend module README](../../../../frontend/apps/report-scheduler/README.md) for development and access setup.

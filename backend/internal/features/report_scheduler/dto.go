@@ -7,6 +7,7 @@ type ModuleResponse struct {
 	Status            string `json:"status"`
 	SchedulingEnabled bool   `json:"schedulingEnabled"`
 	HealthBIEnabled   bool   `json:"healthBiEnabled"`
+	HealthContext     HealthContext `json:"healthContext"`
 }
 
 type HealthBIReport struct {
@@ -26,6 +27,32 @@ type HealthBIParameter struct {
 	Description string         `json:"description,omitempty"`
 	Options     []any          `json:"options,omitempty"`
 	Metadata    map[string]any `json:"metadata,omitempty"`
+}
+
+type HealthContext struct {
+	Level    string `json:"level"`
+	District string `json:"district,omitempty"`
+	Facility string `json:"facility,omitempty"`
+}
+
+type ScheduleRecipient struct {
+	ID              string `json:"id,omitempty"`
+	Type            string `json:"type" binding:"required"`
+	Value           string `json:"value" binding:"required"`
+	DeliveryChannel string `json:"deliveryChannel" binding:"required"`
+}
+
+type RecipientPreview struct {
+	EmailRecipients  []string `json:"emailRecipients"`
+	PortalRecipients []string `json:"portalRecipients"`
+	EmailCount       int      `json:"emailCount"`
+	PortalCount      int      `json:"portalCount"`
+}
+
+type OutputConfig struct {
+	Format         string `json:"format"`
+	DeliveryMode   string `json:"deliveryMode,omitempty"`
+	FileNamePrefix string `json:"fileNamePrefix,omitempty"`
 }
 
 type GenerateReportRequest struct {
@@ -53,6 +80,9 @@ type Schedule struct {
 	PeriodStrategy   string         `json:"periodStrategy"`
 	Parameters       map[string]any `json:"parameters"`
 	OutputFormat     string         `json:"outputFormat"`
+	OutputConfig     OutputConfig   `json:"outputConfig"`
+	HealthContext    HealthContext  `json:"healthContext"`
+	Recipients       []ScheduleRecipient `json:"recipients"`
 	Enabled          bool           `json:"enabled"`
 	CreatedBy        string         `json:"createdBy"`
 	CreatedAt        time.Time      `json:"createdAt"`
@@ -71,6 +101,9 @@ type CreateScheduleRequest struct {
 	PeriodStrategy   string         `json:"periodStrategy" binding:"required"`
 	Parameters       map[string]any `json:"parameters"`
 	OutputFormat     string         `json:"outputFormat" binding:"required"`
+	OutputConfig     OutputConfig   `json:"outputConfig"`
+	HealthContext    HealthContext  `json:"healthContext"`
+	Recipients       []ScheduleRecipient `json:"recipients"`
 	Enabled          *bool          `json:"enabled"`
 }
 
@@ -90,4 +123,24 @@ type Execution struct {
 	StartedAt     *time.Time     `json:"startedAt,omitempty"`
 	FinishedAt    *time.Time     `json:"finishedAt,omitempty"`
 	CreatedAt     time.Time      `json:"createdAt"`
+}
+
+type Artifact struct {
+	ID          string    `json:"id"`
+	ExecutionID string    `json:"executionId"`
+	FileName    string    `json:"fileName"`
+	ContentType string    `json:"contentType,omitempty"`
+	ObjectKey   string    `json:"objectKey,omitempty"`
+	ExternalURL string    `json:"externalUrl,omitempty"`
+	SizeBytes   int64     `json:"sizeBytes,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
+type PortalReport struct {
+	DeliveryID string    `json:"deliveryId"`
+	ExecutionID string   `json:"executionId"`
+	ReportID    string   `json:"reportId"`
+	ReportName  string   `json:"reportName"`
+	Artifact    Artifact  `json:"artifact"`
+	DeliveredAt time.Time `json:"deliveredAt"`
 }

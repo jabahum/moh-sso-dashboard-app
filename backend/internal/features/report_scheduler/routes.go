@@ -20,4 +20,6 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, handler *Handler) {
 	scheduler.PUT("/schedules/:scheduleId", middleware.RequirePermission(authz.PermissionReportSchedulerUpdate), handler.UpdateSchedule)
 	scheduler.DELETE("/schedules/:scheduleId", middleware.RequirePermission(authz.PermissionReportSchedulerDelete), handler.DeleteSchedule)
 	scheduler.GET("/executions", middleware.RequirePermission(authz.PermissionReportSchedulerHistory), handler.ListExecutions)
+	scheduler.POST("/recipients/preview", middleware.RequirePermission(authz.PermissionReportSchedulerCreate), handler.PreviewRecipients)
+	scheduler.GET("/portal-reports", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.ListPortalReports)
 }
