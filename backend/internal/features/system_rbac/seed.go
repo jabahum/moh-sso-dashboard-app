@@ -934,19 +934,31 @@ func defaultDataStatisticsSystem(enabled bool) SeedSystem {
 		authz.DocumentTemplatePublisher,
 	)
 	system.Roles = append(system.Roles,
-		SeedRole{
-			Name:        authz.ReportSchedulerAccess,
-			DisplayName: "Report Scheduler Access",
-			Permissions: []string{string(authz.PermissionPortalAccess), string(authz.PermissionSystemsRead), string(authz.PermissionSystemsLaunch), string(authz.PermissionReportSchedulerRead)},
+			SeedRole{
+				Name:        authz.ReportSchedulerAccess,
+				DisplayName: "Report Scheduler Access",
+				Permissions: []string{
+					string(authz.PermissionPortalAccess), string(authz.PermissionSystemsRead), string(authz.PermissionSystemsLaunch),
+					string(authz.PermissionReportSchedulerRead), string(authz.PermissionReportSchedulerCreate),
+					string(authz.PermissionReportSchedulerUpdate), string(authz.PermissionReportSchedulerDelete),
+					string(authz.PermissionReportSchedulerExecute), string(authz.PermissionReportSchedulerHistory),
+				},
 		},
 		SeedRole{
 			Name:        authz.ReportBrowserAdmin,
 			DisplayName: "Report Admin",
-			Permissions: []string{
-				string(authz.PermissionReportBrowserRead),
-				string(authz.PermissionMetricsRead),
-				string(authz.PermissionAuditRead),
-			},
+				Permissions: []string{
+					string(authz.PermissionReportBrowserRead),
+					string(authz.PermissionMetricsRead),
+					string(authz.PermissionAuditRead),
+					string(authz.PermissionReportSchedulerRead),
+					string(authz.PermissionReportSchedulerCreate),
+					string(authz.PermissionReportSchedulerUpdate),
+					string(authz.PermissionReportSchedulerDelete),
+					string(authz.PermissionReportSchedulerExecute),
+					string(authz.PermissionReportSchedulerHistory),
+					string(authz.PermissionReportSchedulerManage),
+				},
 		},
 		SeedRole{
 			Name:        authz.ReportBrowserManager,

@@ -52,7 +52,13 @@ const (
 	PermissionIssueTrackerComment Permission = "issue_tracker:comment"
 
 	PermissionReportBrowserRead   Permission = "report_browser:read"
-	PermissionReportSchedulerRead Permission = "report_scheduler:read"
+	PermissionReportSchedulerRead    Permission = "report_scheduler:read"
+	PermissionReportSchedulerCreate  Permission = "report_scheduler:create"
+	PermissionReportSchedulerUpdate  Permission = "report_scheduler:update"
+	PermissionReportSchedulerDelete  Permission = "report_scheduler:delete"
+	PermissionReportSchedulerExecute Permission = "report_scheduler:execute"
+	PermissionReportSchedulerHistory Permission = "report_scheduler:history"
+	PermissionReportSchedulerManage  Permission = "report_scheduler:manage"
 
 	PermissionOutbreakAccess Permission = "outbreak:access"
 	PermissionOutbreakManage Permission = "outbreak:manage"
@@ -118,8 +124,14 @@ var AllPermissions = []Permission{
 	PermissionIssueTrackerReopen,
 	PermissionIssueTrackerComment,
 
-	PermissionReportBrowserRead,
-	PermissionReportSchedulerRead,
+		PermissionReportBrowserRead,
+		PermissionReportSchedulerRead,
+		PermissionReportSchedulerCreate,
+		PermissionReportSchedulerUpdate,
+		PermissionReportSchedulerDelete,
+		PermissionReportSchedulerExecute,
+		PermissionReportSchedulerHistory,
+		PermissionReportSchedulerManage,
 
 	PermissionOutbreakAccess,
 	PermissionOutbreakManage,

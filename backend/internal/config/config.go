@@ -62,6 +62,14 @@ type Config struct {
 	AppBaseURL string `mapstructure:"APP_BASE_URL"`
 
 	// ==================================================
+	// Health BI report integration
+	// ==================================================
+	HealthBIBaseURL    string        `mapstructure:"HEALTH_BI_BASE_URL"`
+	HealthBIAPIToken   string        `mapstructure:"HEALTH_BI_API_TOKEN"`
+	HealthBIAuthHeader string        `mapstructure:"HEALTH_BI_AUTH_HEADER"`
+	HealthBITimeout    time.Duration `mapstructure:"HEALTH_BI_TIMEOUT"`
+
+	// ==================================================
 	// RBAC / Keycloak startup sync
 	// ==================================================
 	RBACStartupSyncEnabled         bool   `mapstructure:"RBAC_STARTUP_SYNC_ENABLED"`
@@ -296,6 +304,10 @@ func setDefaults() {
 	// ==================================================
 	viper.SetDefault("SERVER_PORT", "9000")
 	viper.SetDefault("APP_BASE_URL", "http://localhost:9000")
+	viper.SetDefault("HEALTH_BI_BASE_URL", "")
+	viper.SetDefault("HEALTH_BI_API_TOKEN", "")
+	viper.SetDefault("HEALTH_BI_AUTH_HEADER", "Authorization")
+	viper.SetDefault("HEALTH_BI_TIMEOUT", "30s")
 	viper.SetDefault("RBAC_STARTUP_SYNC_ENABLED", true)
 	viper.SetDefault("RBAC_STARTUP_SEED_ENABLED", true)
 	viper.SetDefault("RBAC_STARTUP_SEED_PATH", "config/system-rbac.seed.yaml")
@@ -361,7 +373,11 @@ func envBindings() map[string]string {
 		"FRONTEND_REDIRECT_URI":                 "FRONTEND_REDIRECT_URI",
 		"COOKIE_DOMAIN":                         "COOKIE_DOMAIN",
 		"LOGIN_URL":                             "LOGIN_URL",
-		"AUTH_RETURN_URL_ALLOWED_ORIGINS":       "AUTH_RETURN_URL_ALLOWED_ORIGINS",
+			"AUTH_RETURN_URL_ALLOWED_ORIGINS":       "AUTH_RETURN_URL_ALLOWED_ORIGINS",
+			"HEALTH_BI_BASE_URL":                    "HEALTH_BI_BASE_URL",
+			"HEALTH_BI_API_TOKEN":                   "HEALTH_BI_API_TOKEN",
+			"HEALTH_BI_AUTH_HEADER":                 "HEALTH_BI_AUTH_HEADER",
+			"HEALTH_BI_TIMEOUT":                     "HEALTH_BI_TIMEOUT",
 		"KEYCLOAK_VERSION":                      "KEYCLOAK_VERSION",
 		"KEYCLOAK_DB":                           "KEYCLOAK_DB",
 		"KEYCLOAK_DB_NAME":                      "KEYCLOAK_DB_NAME",

@@ -33,7 +33,7 @@ func TestModuleAccess(t *testing.T) {
 					c.Set(authz.ContextKey, *tt.auth)
 				}
 			})
-			RegisterProtectedRoutes(group, NewHandler(NewService()))
+				RegisterProtectedRoutes(group, NewHandler(NewService(nil, nil)))
 			res := httptest.NewRecorder()
 			router.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/api/v1/report-scheduler", nil))
 			if res.Code != tt.status {
@@ -47,7 +47,7 @@ func TestModuleAccess(t *testing.T) {
 				if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
 					t.Fatal(err)
 				}
-				if !body.Success || body.Data.SchedulingEnabled || body.Data.Status != "setup" {
+					if !body.Success || body.Data.SchedulingEnabled || body.Data.HealthBIEnabled || body.Data.Status != "ready" {
 					t.Fatalf("unexpected module response: %+v", body)
 				}
 			}
