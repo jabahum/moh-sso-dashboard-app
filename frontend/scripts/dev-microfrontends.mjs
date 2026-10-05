@@ -12,6 +12,7 @@ const appScripts = {
   email: "dev:mf:email",
   "issue-tracker": "dev:mf:issue-tracker",
   "report-browser": "dev:mf:report-browser",
+ "report-scheduler": "dev:mf:report-scheduler",
   rbac: "dev:mf:rbac",
   surveillance: "dev:mf:surveillance",
   users: "dev:mf:users",

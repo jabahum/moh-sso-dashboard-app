@@ -33,6 +33,7 @@
     "@moh-sso/state": "/portal/packages/state/index.js",
     "@moh-sso/types": "/portal/packages/types/index.js",
     "@moh-sso/ui": "/portal/packages/ui/index.js",
-    "@moh-sso/utils": "/portal/packages/utils/index.js"
+    "@moh-sso/utils": "/portal/packages/utils/index.js",
+    "@moh-sso/report-scheduler": "/portal/mf/report-scheduler/single-spa.js"
   }
 }

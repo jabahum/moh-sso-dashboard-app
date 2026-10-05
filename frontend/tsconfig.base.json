@@ -38,6 +38,7 @@
       "@moh-sso/email/single-spa": ["apps/email/src/single-spa.tsx"],
       "@moh-sso/issue-tracker/single-spa": ["apps/issue-tracker/src/single-spa.tsx"],
       "@moh-sso/report-browser/single-spa": ["apps/report-browser/src/single-spa.tsx"],
+ "@moh-sso/report-scheduler/single-spa": ["apps/report-scheduler/src/single-spa.tsx"],
       "@moh-sso/rbac/single-spa": ["apps/rbac/src/single-spa.tsx"],
       "@moh-sso/surveillance/single-spa": ["apps/surveillance/src/single-spa.tsx"],
       "@moh-sso/users/single-spa": ["apps/users/src/single-spa.tsx"],

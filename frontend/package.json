@@ -48,7 +48,7 @@
     "dev:remote:documents": "npm run config:local-remote && node scripts/dev-microfrontends.mjs documents",
     "dev:remote:all": "npm run config:local-remote && node scripts/dev-microfrontends.mjs all",
     "build:shell": "vite build --config vite.config.ts",
-    "build:apps": "npm run build -w @moh-sso/announcements && npm run build -w @moh-sso/audit && npm run build -w @moh-sso/clients && npm run build -w @moh-sso/data-validation && npm run build -w @moh-sso/data-visualizer && npm run build -w @moh-sso/documents && npm run build -w @moh-sso/e-services && npm run build -w @moh-sso/email && npm run build -w @moh-sso/issue-tracker && npm run build -w @moh-sso/report-browser && npm run build -w @moh-sso/rbac && npm run build -w @moh-sso/surveillance && npm run build -w @moh-sso/users && npm run build -w @moh-sso/utilities",
+    "build:apps": "npm run build -w @moh-sso/announcements && npm run build -w @moh-sso/audit && npm run build -w @moh-sso/clients && npm run build -w @moh-sso/data-validation && npm run build -w @moh-sso/data-visualizer && npm run build -w @moh-sso/documents && npm run build -w @moh-sso/e-services && npm run build -w @moh-sso/email && npm run build -w @moh-sso/issue-tracker && npm run build -w @moh-sso/report-browser && npm run build -w @moh-sso/report-scheduler && npm run build -w @moh-sso/rbac && npm run build -w @moh-sso/surveillance && npm run build -w @moh-sso/users && npm run build -w @moh-sso/utilities",
     "build:mf:users": "npm run build -w @moh-sso/users",
     "build:mf:clients": "npm run build -w @moh-sso/clients",
     "build:mf:documents": "npm run build -w @moh-sso/documents",
@@ -95,7 +95,9 @@
     "stage:mf": "node scripts/stage-microfrontends.mjs && node scripts/inline-import-map.mjs",
     "stage:mf:npm": "node scripts/stage-from-npm-packages.mjs && node scripts/inline-import-map.mjs",
     "build:docker": "npm run build:all && npm run generate:versions && npm run stage:mf && MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css",
-    "build:docker:npm-modules": "npm run build:shell && npm run generate:import-map && npm run generate:versions && npm run stage:mf:npm && MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css && npm run audit:import-map"
+    "build:docker:npm-modules": "npm run build:shell && npm run generate:import-map && npm run generate:versions && npm run stage:mf:npm && MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css && npm run audit:import-map",
+    "dev:mf:report-scheduler": "npm run dev -w @moh-sso/report-scheduler -- --port 4115",
+    "preview:mf:report-scheduler": "npm run preview -w @moh-sso/report-scheduler -- --port 4115"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

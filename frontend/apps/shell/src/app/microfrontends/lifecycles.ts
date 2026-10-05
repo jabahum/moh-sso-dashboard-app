@@ -30,6 +30,9 @@ export const issueTrackerLifecycles = () =>
 export const reportBrowserLifecycles = () =>
   import("@moh-sso/report-browser/single-spa") as Promise<MicrofrontendLifecycle>;
 
+export const reportSchedulerLifecycles = () =>
+ import("@moh-sso/report-scheduler/single-spa") as Promise<MicrofrontendLifecycle>;
+
 export const rbacLifecycles = () =>
   import("@moh-sso/rbac/single-spa") as Promise<MicrofrontendLifecycle>;
 

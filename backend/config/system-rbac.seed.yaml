@@ -574,6 +574,29 @@ systems:
           - portal:access
           - systems:read
           - systems:launch
+  - clientId: report-scheduler
+    displayName: Report Scheduler
+    description: Schedule report generation and delivery.
+    icon: reporting
+    launchUrl: /portal/apps/report-scheduler
+    category: reporting
+    systemType: platform
+    displayInLauncher: true
+    displayInSideNav: true
+    launchMode: internal
+    sortOrder: 30
+    enabled: true
+    navigation: '[{"id":"schedules","label":"Report Scheduler","path":"/apps/report-scheduler","permission":"report_scheduler:read"}]'
+    accessRoles:
+      - report-scheduler_access
+    roles:
+      - name: report-scheduler_access
+        displayName: Report Scheduler Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+          - report_scheduler:read
 realmRoles:
   - name: admin
     description: Administrator role with full access
@@ -647,7 +670,30 @@ groups:
         description: Full administrative access to the Integrated Health Portal
         type: access
         protected: true
-        realmRoles:
+          - clientId: report-scheduler
+    displayName: Report Scheduler
+    description: Schedule report generation and delivery.
+    icon: reporting
+    launchUrl: /portal/apps/report-scheduler
+    category: reporting
+    systemType: platform
+    displayInLauncher: true
+    displayInSideNav: true
+    launchMode: internal
+    sortOrder: 30
+    enabled: true
+    navigation: '[{"id":"schedules","label":"Report Scheduler","path":"/apps/report-scheduler","permission":"report_scheduler:read"}]'
+    accessRoles:
+      - report-scheduler_access
+    roles:
+      - name: report-scheduler_access
+        displayName: Report Scheduler Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+          - report_scheduler:read
+realmRoles:
           - admin
         systemRoles:
           dashboard-web:
@@ -678,7 +724,30 @@ groups:
         displayName: Platform Managers
         description: Operational managers across portal applications
         type: access
-        realmRoles:
+          - clientId: report-scheduler
+    displayName: Report Scheduler
+    description: Schedule report generation and delivery.
+    icon: reporting
+    launchUrl: /portal/apps/report-scheduler
+    category: reporting
+    systemType: platform
+    displayInLauncher: true
+    displayInSideNav: true
+    launchMode: internal
+    sortOrder: 30
+    enabled: true
+    navigation: '[{"id":"schedules","label":"Report Scheduler","path":"/apps/report-scheduler","permission":"report_scheduler:read"}]'
+    accessRoles:
+      - report-scheduler_access
+    roles:
+      - name: report-scheduler_access
+        displayName: Report Scheduler Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+          - report_scheduler:read
+realmRoles:
           - manager
         systemRoles:
           dashboard-web:
@@ -702,7 +771,30 @@ groups:
         displayName: Portal Users
         description: Standard users of the Integrated Health Portal
         type: access
-        realmRoles:
+          - clientId: report-scheduler
+    displayName: Report Scheduler
+    description: Schedule report generation and delivery.
+    icon: reporting
+    launchUrl: /portal/apps/report-scheduler
+    category: reporting
+    systemType: platform
+    displayInLauncher: true
+    displayInSideNav: true
+    launchMode: internal
+    sortOrder: 30
+    enabled: true
+    navigation: '[{"id":"schedules","label":"Report Scheduler","path":"/apps/report-scheduler","permission":"report_scheduler:read"}]'
+    accessRoles:
+      - report-scheduler_access
+    roles:
+      - name: report-scheduler_access
+        displayName: Report Scheduler Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+          - report_scheduler:read
+realmRoles:
           - user
         systemRoles:
           dashboard-web:
@@ -1074,7 +1166,30 @@ groups:
             displayName: Demo Registry Users
             description: Users allowed to access development demonstration systems
             type: access
-            realmRoles:
+              - clientId: report-scheduler
+    displayName: Report Scheduler
+    description: Schedule report generation and delivery.
+    icon: reporting
+    launchUrl: /portal/apps/report-scheduler
+    category: reporting
+    systemType: platform
+    displayInLauncher: true
+    displayInSideNav: true
+    launchMode: internal
+    sortOrder: 30
+    enabled: true
+    navigation: '[{"id":"schedules","label":"Report Scheduler","path":"/apps/report-scheduler","permission":"report_scheduler:read"}]'
+    accessRoles:
+      - report-scheduler_access
+    roles:
+      - name: report-scheduler_access
+        displayName: Report Scheduler Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+          - report_scheduler:read
+realmRoles:
               - user
             systemRoles:
               demo-platform-system:

@@ -5,7 +5,7 @@ import { finish, listApps, listPackages, rel, root, sourceFiles } from "./worksp
 const failures = [];
 const oldAliasPattern = /@\/(features|store|shared|lib|ui|utils)\b/;
 const shellImportPattern = /@\/app\b|apps\/shell\b|\.\.\/\.\.\/shell\b/;
-const crossAppInternalPattern = /apps\/(announcements|audit|clients|data-validation|data-visualizer|documents|e-services|email|issue-tracker|report-browser|surveillance|users|utilities)\/src\b/;
+const crossAppInternalPattern = /apps\/(announcements|audit|clients|data-validation|data-visualizer|documents|e-services|email|issue-tracker|report-browser|report-scheduler|surveillance|users|utilities)\/src\b/;
 const roots = [
   ...listApps().map((app) => join(root, "apps", app, "src")),
   ...listPackages().map((pkg) => join(root, "packages", pkg, "src")),

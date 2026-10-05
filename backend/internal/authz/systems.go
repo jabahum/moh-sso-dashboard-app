@@ -7,6 +7,7 @@ const (
 	SystemUtilities          = "utilities"
 
 	SystemSettings = "settings"
+ SystemReportScheduler = "report-scheduler"
 )
 
 const (
@@ -52,4 +53,5 @@ const (
 
 	UtilitiesAccess = "utilities_access"
 	SettingsAccess  = "settings_access"
+ ReportSchedulerAccess = "report-scheduler_access"
 )

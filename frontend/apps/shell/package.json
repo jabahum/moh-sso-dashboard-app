@@ -31,7 +31,8 @@
     "@moh-sso/types": "0.1.0",
     "@moh-sso/ui": "0.1.0",
     "@moh-sso/users": "0.1.0",
-    "@moh-sso/utilities": "0.1.0"
+    "@moh-sso/utilities": "0.1.0",
+    "@moh-sso/report-scheduler": "0.1.0"
   },
   "peerDependencies": {
     "@carbon/react": "^1.95.0",

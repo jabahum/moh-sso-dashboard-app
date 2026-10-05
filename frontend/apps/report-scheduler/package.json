@@ -1,0 +1,56 @@
+{
+  "name": "@moh-sso/report-scheduler",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./single-spa": {
+      "types": "./dist/single-spa.d.ts",
+      "import": "./dist/single-spa.js"
+    },
+    "./routes": {
+      "types": "./dist/routes.d.ts",
+      "import": "./dist/routes.js"
+    },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "import": "./dist/api.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    }
+  },
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "module": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "vite build --config vite.config.ts && node ../../scripts/write-package-declarations.mjs app report-scheduler",
+    "dev": "vite --config vite.config.ts --host 0.0.0.0",
+    "preview": "vite preview --config vite.config.ts"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "dependencies": {
+    "@moh-sso/microfrontend": "0.1.0",
+    "@moh-sso/api": "0.1.0"
+  },
+  "private": false,
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-redux": "^9.2.0",
+    "single-spa": "^6.0.3",
+    "@carbon/react": "^1.95.0"
+  }
+}

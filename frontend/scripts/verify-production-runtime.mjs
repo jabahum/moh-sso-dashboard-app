@@ -13,7 +13,7 @@ const requiredApps = [
   "e-services",
   "email",
   "issue-tracker",
-  "report-browser",
+  "report-browser", "report-scheduler",
   "rbac",
   "surveillance",
   "users",
