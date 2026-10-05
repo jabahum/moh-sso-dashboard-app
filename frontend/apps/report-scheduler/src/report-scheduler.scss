@@ -49,6 +49,13 @@
   }
 }
 
+.report-scheduler__form {
+  h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+}
+
 .report-scheduler__form,
 .report-scheduler__parameters {
   display: grid;
@@ -76,6 +83,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .report-scheduler__filters {

@@ -43,7 +43,8 @@
   },
   "dependencies": {
     "@moh-sso/microfrontend": "0.1.0",
-    "@moh-sso/api": "0.1.0"
+    "@moh-sso/api": "0.1.0",
+    "@moh-sso/ui": "0.1.0"
   },
   "private": false,
   "peerDependencies": {
