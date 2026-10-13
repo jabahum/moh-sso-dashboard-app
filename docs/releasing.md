@@ -22,7 +22,7 @@ This performs the following steps:
 1. Check that the worktree is clean and fetch remote release tags.
 2. Calculate the next backend version from the highest prepared `backend/VERSION` or published backend tag.
 3. Generate a Changeset for every frontend app and shared package, including the private shell, and apply all pending Changesets. Update dependency ranges, changelogs, lockfile, and version manifest.
-4. Write the selected versions to `.release/plan.json` and automatically commit the version updates locally.
+4. Generate scoped release notes and changelogs for every frontend module and the backend, record selected versions in `.release/plan.json`, and automatically commit all release metadata locally.
 5. Verify both components sequentially, including production frontend artifacts and a backend release binary.
 6. Create annotated `backend/v<backend-version>` and `frontend/v<shell-version>` tags, then push both atomically.
 
@@ -99,3 +99,33 @@ If version preparation itself fails, inspect the modified files before retrying;
 If a push fails after creating local tags, inspect local and remote tags. The automatic command refuses to bump the same prepared release again. After confirming that neither component tag exists remotely, retry the atomic push with those exact refs. Never move or overwrite a published tag. If CI fails after the push, rerun the failed workflow for the existing tag.
 
 Run `make release-help` for the command summary. See [backend release details](releasing-backend.md), [versioning](versioning.md), and [frontend versioning](../frontend/docs/versioning.md).
+
+## Release notes and changelogs
+
+`make release-prepare` and `make release` generate release notes automatically, before the preparation commit. Every frontend app/package gets its own `CHANGELOG.md` and versioned Markdown note. The backend gets `backend/CHANGELOG.md` and a versioned note. Outputs are:
+
+```text
+frontend/apps/<app>/CHANGELOG.md
+frontend/packages/<package>/CHANGELOG.md
+backend/CHANGELOG.md
+.release/notes/frontend/apps/<app>/<version>.md
+.release/notes/frontend/packages/<package>/<version>.md
+.release/notes/backend/<version>.md
+.release/notes/frontend.md
+.release/notes/backend.md
+.release/notes/manifest.json
+```
+
+Each component uses the previous reachable component release tag as its history baseline. Frontend commit lists are filtered to each module's directory; backend commit lists are filtered to `backend/`. The current release tag is excluded when regenerating in CI. Initial releases use available source history. Automatically generated preparation commits are omitted. Modules with no direct source changes explicitly describe version/dependency updates rather than inventing changes.
+
+Frontend notes preserve the current version's Changesets changelog text, including authored summaries and dependency updates, and add scoped source commit subjects. For polished frontend notes, record clear descriptions with `cd frontend && npm run changeset` before releasing. Backend notes use scoped commit subjects by default and preserve authored text in the corresponding version's backend changelog entry. Commit subjects are the source of automatic summaries; the generator does not infer undocumented functionality.
+
+To regenerate notes for current versions without bumping or publishing:
+
+```bash
+make release-notes
+```
+
+This writes notes/changelogs into the worktree for review. Repeated generation replaces the same version entry and keeps older changelog entries. Commit the resulting files before running commands that require a clean checkout.
+
+The **Frontend Release Notes** tag workflow publishes the combined frontend notes as the GitHub Release body and attaches a compressed archive of individual module notes. The backend release workflows publish scoped backend notes as the GitHub Release body instead of repository-wide automatic notes. Both regenerate notes from tagged source, so manual component tags also receive notes. These release-note jobs are separate from frontend image builds; inspect the image workflow before deployment.

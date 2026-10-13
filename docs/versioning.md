@@ -76,3 +76,7 @@ ghcr.io/mohuganda/moh-sso-dashboard-backend:sha-d3062e2
 Minor and patch releases should preserve API and configuration compatibility. Breaking response shapes, removed endpoints, mandatory configuration changes, destructive migrations, or authorization semantic changes require a major release or a documented compatibility window.
 
 Database migrations must remain forward-safe for rolling deployment whenever possible. A release with an irreversible migration must document backup and rollback constraints before it is tagged.
+
+## Release notes
+
+Automatic preparation creates per-module frontend changelogs and scoped backend notes, committed with the release versions. Component tag workflows publish those notes to GitHub Releases. See [release-note outputs and authoring](releasing.md#release-notes-and-changelogs).

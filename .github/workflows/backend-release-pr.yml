@@ -146,13 +146,24 @@ jobs:
           git tag -a "$TAG" -m "Backend release ${{ steps.version.outputs.version }}"
           git push origin "$TAG"
 
+      - name: Set up Node for release notes
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate backend release notes
+        working-directory: .
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: node scripts/release-notes.mjs backend "$RELEASE_VERSION"
+
       - name: Create GitHub release
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: softprops/action-gh-release@v2
         with:
           tag_name: backend/v${{ steps.version.outputs.version }}
           name: Backend ${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          body_path: .release/notes/backend.md
           files: backend/dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

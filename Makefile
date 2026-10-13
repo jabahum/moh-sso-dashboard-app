@@ -19,10 +19,15 @@ RELEASE_MAKE ?= make
 .PHONY: release-help release-preflight release-check release-backend-check release-frontend-check \
         release release-backend release-frontend release-prepare release-manual \
         release-backend-manual release-frontend-manual frontend-version frontend-publish
+.PHONY: release-notes
+
+release-notes:
+	@$(NODE) scripts/release-notes.mjs both "$(BACKEND_VERSION)"
 
 release-help:
 	@echo 'make release                                  Automatically version, commit, verify, and release both'
 	@echo 'make release-prepare                          Calculate and commit versions without publishing'
+	@echo 'make release-notes                            Generate per-module and backend notes for current versions'
 	@echo 'make release BUMP=minor                       Choose minor bumps (default: patch)'
 	@echo 'make frontend-version                         Apply pending Changesets and refresh metadata'
 	@echo 'make release-check BACKEND_VERSION=0.0.2       Verify both components locally'

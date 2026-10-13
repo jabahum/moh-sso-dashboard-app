@@ -11,6 +11,7 @@ import { createRequire } from "node:module";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { releaseTags } from "./release.mjs";
+import { generateReleaseNotes } from "./release-notes.mjs";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const require = createRequire(
@@ -174,6 +175,14 @@ export function prepareRelease({
       "Calculated release tag already exists; inspect version preparation",
     );
   mkdirSync(join(root, ".release"), { recursive: true });
+  const notes = generateReleaseNotes({
+    root,
+    component,
+    backendVersion: plan.backendVersion,
+    sourceCommit,
+    run,
+  });
+  paths.push(...notes.files.map((path) => path.slice(root.length + 1)));
   writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
   git("add", "--", ...paths);
   git("commit", "-m", `Prepare release: ${selectedTags.join(", ")}`);

@@ -35,7 +35,7 @@ jobs:
         run: npm run version:audit && npm run audit:packages && node --test scripts/test-versioning.mjs
 
       - name: Release tooling tests
-        run: node --test scripts/release.test.mjs scripts/auto-release.test.mjs
+        run: node --test scripts/release.test.mjs scripts/auto-release.test.mjs scripts/release-notes.test.mjs
 
       - name: Frontend lint
         working-directory: frontend

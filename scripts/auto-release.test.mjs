@@ -191,6 +191,13 @@ test("automatic preparation commits versions and reuses a prepared release on re
     const plan = prepareRelease(config);
     assert.equal(plan.backendVersion, "0.0.2");
     assert.equal(plan.frontendVersion, "0.1.1");
+    assert.ok(
+      existsSync(join(root, ".release/notes/frontend/apps/shell/0.1.1.md")),
+    );
+    assert.ok(
+      existsSync(join(root, ".release/notes/frontend/packages/api/0.1.1.md")),
+    );
+    assert.ok(existsSync(join(root, "backend/CHANGELOG.md")));
     assert.equal(git("status", "--porcelain"), "");
     assert.match(
       git("log", "-1", "--format=%s"),
