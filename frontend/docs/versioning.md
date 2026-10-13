@@ -166,6 +166,12 @@ frontend/dist/version-manifest.json
 
 The manifest records current app/package names and versions.
 
+It also records frontend service version, commit, and build time. The service version defaults to the private shell's package version. CI overrides it through `VITE_APP_VERSION`, `FRONTEND_COMMIT`, and `VITE_BUILD_TIME`; the same version and time are embedded in the shell and shared config bundle.
+
+`npm run version:audit` checks every app including the shell, shared release-group alignment, internal dependency compatibility, and lockfile/manifest consistency. `npm run version:packages` refreshes the lockfile and manifest after Changesets applies bumps.
+
+Frontend Docker releases use `frontend/v<shell-version>` tags. The build rejects tags that disagree with the shell's package version and labels images with version, commit, and build time. Branch builds use `<shell-base-version>-dev.<commit>`.
+
 ## Versioned Import Maps
 
 Default import map output uses static local paths:

@@ -19,7 +19,9 @@ export function listDirs(path) {
 }
 
 export function listApps() {
-  return listDirs(join(root, "apps"));
+  return listDirs(join(root, "apps")).filter((name) =>
+    fileExists(join(root, "apps", name, "package.json")),
+  );
 }
 
 export function listStandaloneApps() {
@@ -27,7 +29,9 @@ export function listStandaloneApps() {
 }
 
 export function listPackages() {
-  return listDirs(join(root, "packages"));
+  return listDirs(join(root, "packages")).filter((name) =>
+    fileExists(join(root, "packages", name, "package.json")),
+  );
 }
 
 export function walkFiles(path, predicate = () => true, files = []) {

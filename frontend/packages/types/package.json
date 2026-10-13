@@ -24,7 +24,7 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/ui": "0.1.0"
+    "@moh-sso/ui": "^0.1.0"
   },
   "devDependencies": {
     "@types/geojson": "^7946.0.16"

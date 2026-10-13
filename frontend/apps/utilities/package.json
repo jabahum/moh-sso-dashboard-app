@@ -34,8 +34,8 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/microfrontend": "0.1.0",
-    "@moh-sso/ui": "0.1.0"
+    "@moh-sso/microfrontend": "^0.1.0",
+    "@moh-sso/ui": "^0.1.0"
   },
   "peerDependencies": {
     "react-router-dom": "^7.9.6",

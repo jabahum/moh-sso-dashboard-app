@@ -1,5 +1,11 @@
 {
-  "generatedAt": "2026-06-29T11:30:29.017Z",
+  "generatedAt": "2026-10-13T12:35:00.048Z",
+  "service": {
+    "name": "moh-sso-dashboard-frontend",
+    "version": "0.1.0",
+    "commit": "none",
+    "buildTime": "unknown"
+  },
   "apps": {
     "announcements": {
       "name": "@moh-sso/announcements",

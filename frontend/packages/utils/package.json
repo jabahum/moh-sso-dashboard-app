@@ -24,7 +24,7 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/types": "0.1.0"
+    "@moh-sso/types": "^0.1.0"
   },
   "private": false
 }

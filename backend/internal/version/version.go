@@ -65,7 +65,8 @@ func (info BuildInfo) String() string {
 }
 
 func (info BuildInfo) IsDevelopment() bool {
-	return normalizeVersion(info.Version) == "dev"
+	value := normalizeVersion(info.Version)
+	return value == "dev" || strings.HasPrefix(value, "0.0.0-dev.")
 }
 
 func normalizeVersion(value string) string {

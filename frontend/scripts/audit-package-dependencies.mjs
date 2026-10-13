@@ -60,6 +60,7 @@ function collectImports(sourceDir) {
         !specifier ||
         specifier.startsWith(".") ||
         specifier.startsWith("@/") ||
+        specifier.startsWith("virtual:") ||
         ignoredSpecifiers.has(specifier)
       ) {
         continue;

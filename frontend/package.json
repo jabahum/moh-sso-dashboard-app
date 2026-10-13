@@ -37,7 +37,7 @@
     "bundle:budget": "node scripts/bundle-budget.mjs",
     "runtime:verify": "node scripts/verify-production-runtime.mjs",
     "changeset": "changeset",
-    "version:packages": "changeset version",
+    "version:packages": "changeset version && npm install --package-lock-only --ignore-scripts && npm run generate:versions",
     "release:packages": "changeset publish",
     "release:dry-run": "changeset publish --dry-run",
     "preversion:check": "npm run config:validate && npm run architecture:check && npm run mf:doctor && npm run rbac:doctor && npm run audit:packages && npm run version:audit && npm run typecheck && npm run lint && npm run build:all && npm run audit:publishability",
@@ -161,7 +161,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.55.0",
     "vite": "^7.2.2",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite-plugin-pwa": "^1.3.0",
+    "semver": "^7.8.5"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-musl": "^4.62.2"

@@ -5,6 +5,7 @@ on:
     branches: [main]
     tags:
       - "backend/v*.*.*"
+      - "frontend/v*.*.*"
 
 concurrency:
   group: build-${{ github.ref }}
@@ -57,6 +58,22 @@ jobs:
           echo "commit=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
 
+      - name: Calculate frontend build metadata
+        id: frontend-meta
+        shell: bash
+        run: |
+          SHELL_VERSION="$(node -p "require('./frontend/apps/shell/package.json').version")"
+          VERSION="${SHELL_VERSION%%[-+]*}-dev.${GITHUB_SHA::7}"
+          if [[ "$GITHUB_REF" == refs/tags/frontend/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/frontend/v}"
+            if [[ "$VERSION" != "$SHELL_VERSION" ]]; then
+              echo "Frontend tag $VERSION does not match shell version $SHELL_VERSION"
+              exit 1
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU (multi-arch on tag only)
         if: startsWith(github.ref, 'refs/tags/backend/v')
         uses: docker/setup-qemu-action@v3
@@ -81,9 +98,10 @@ jobs:
             type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.backend-meta.outputs.version }},enable=${{ matrix.service == 'backend' && startsWith(github.ref, 'refs/tags/backend/v') }}
+            type=raw,value=${{ steps.frontend-meta.outputs.version }},enable=${{ matrix.service == 'frontend' && startsWith(github.ref, 'refs/tags/frontend/v') }}
 
       - name: Build and push backend
-        if: matrix.service == 'backend'
+        if: matrix.service == 'backend' && !startsWith(github.ref, 'refs/tags/frontend/v')
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
@@ -93,7 +111,9 @@ jobs:
           provenance: mode=max
           sbom: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.version=${{ steps.backend-meta.outputs.version }}
           build-args: |
             VERSION=${{ steps.backend-meta.outputs.version }}
             COMMIT=${{ steps.backend-meta.outputs.commit }}
@@ -104,7 +124,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache,mode=max
 
       - name: Build and push frontend
-        if: matrix.service == 'frontend' && github.ref_type != 'tag'
+        if: matrix.service == 'frontend' && !startsWith(github.ref, 'refs/tags/backend/v')
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
@@ -114,12 +134,36 @@ jobs:
           provenance: mode=max
           sbom: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.version=${{ steps.frontend-meta.outputs.version }}
+          build-args: |
+            VERSION=${{ steps.frontend-meta.outputs.version }}
+            COMMIT=${{ github.sha }}
+            BUILD_TIME=${{ steps.frontend-meta.outputs.build_time }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache,mode=max
 
+      - name: Verify frontend runtime metadata
+        if: matrix.service == 'frontend' && !startsWith(github.ref, 'refs/tags/backend/v')
+        shell: bash
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-frontend:sha-${{ steps.sha.outputs.tag }}"
+          docker pull "$IMAGE"
+          docker run --rm --entrypoint node \
+            -e EXPECTED_VERSION="${{ steps.frontend-meta.outputs.version }}" \
+            -e EXPECTED_COMMIT="${{ github.sha }}" \
+            "$IMAGE" -e '
+              const assert = require("node:assert/strict");
+              const manifest = require("./dist/version-manifest.json");
+              assert.equal(manifest.service.version, process.env.EXPECTED_VERSION);
+              assert.equal(manifest.service.commit, process.env.EXPECTED_COMMIT);
+              console.log(manifest.service);
+            '
+
       - name: Verify backend runtime metadata
-        if: matrix.service == 'backend'
+        if: matrix.service == 'backend' && !startsWith(github.ref, 'refs/tags/frontend/v')
         shell: bash
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-backend:sha-${{ steps.sha.outputs.tag }}"

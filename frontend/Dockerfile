@@ -4,12 +4,19 @@
 FROM node:22-alpine AS build
 
 WORKDIR /app
+ARG VERSION
+ARG COMMIT=none
+ARG BUILD_TIME
+ENV VITE_APP_VERSION=$VERSION
+ENV VITE_BUILD_TIME=$BUILD_TIME
+ENV FRONTEND_COMMIT=$COMMIT
 ENV FRONTEND_ASSET_BASE_URL=/portal
 ENV FRONTEND_BASE_PATH=/portal
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 COPY . .
 RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000
+RUN npm run version:audit
 RUN node scripts/use-runtime-config.mjs production
 RUN npm run build:docker
 
@@ -17,6 +24,16 @@ RUN npm run build:docker
 # Stage 2: Production (Static server)
 # ======================
 FROM node:20-alpine
+
+ARG VERSION
+ARG COMMIT=none
+ARG BUILD_TIME
+ARG SOURCE_URL=https://github.com/mohuganda/moh-sso-dashboard
+LABEL org.opencontainers.image.title="MOH SSO Dashboard Frontend" \
+  org.opencontainers.image.version="$VERSION" \
+  org.opencontainers.image.revision="$COMMIT" \
+  org.opencontainers.image.created="$BUILD_TIME" \
+  org.opencontainers.image.source="$SOURCE_URL"
 
 WORKDIR /app
 

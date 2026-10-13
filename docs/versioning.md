@@ -35,7 +35,28 @@ Inspect it with:
 curl http://localhost:9000/version
 ```
 
-Development builds default to `dev` and use Go embedded VCS information when available. Release values are injected with linker flags and take precedence over VCS fallbacks.
+Direct `go build`/`go run` builds default to `dev` and use Go embedded VCS information when available. Make builds use the exact `backend/v*` tag only for a clean tagged checkout; other checkouts use `0.0.0-dev.<commit>`. Release values are injected with linker flags and take precedence over VCS fallbacks.
+
+The Go backend is one module: its API server, management CLI, and internal feature packages share a backend release version. Internal packages do not have separate release tags.
+
+## Frontend
+
+All 15 apps (including the private shell) and eight shared packages have semantic versions in their `package.json`. Shared packages use a fixed Changesets release group; apps release independently. Internal shared dependencies use compatible caret ranges, and app dependencies use tilde ranges. See [frontend versioning](../frontend/docs/versioning.md).
+
+The shell version identifies the frontend service. Its runtime metadata and module manifest use that version by default. CI supplies a development version and commit/build timestamp on branch builds. A `frontend/v<version>` tag must match `frontend/apps/shell/package.json` and builds a semantic frontend image tag. Backend and frontend release tags build only their own image.
+
+Run the consistency checks before release:
+
+```bash
+cd frontend
+npm run version:audit
+npm run audit:packages
+node --test scripts/test-versioning.mjs
+cd ../backend
+./scripts/check-version-consistency.sh
+```
+
+The frontend audit checks the shell, module versions, dependency compatibility, shared release group, lockfile, and generated manifest. Version bumps refresh the lockfile and manifest through `npm run version:packages`.
 
 ## Image Tags
 

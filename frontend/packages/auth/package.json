@@ -24,8 +24,9 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/api": "0.1.0",
-    "@moh-sso/state": "0.1.0"
+    "@moh-sso/api": "^0.1.0",
+    "@moh-sso/state": "^0.1.0",
+    "@moh-sso/config": "^0.1.0"
   },
   "peerDependencies": {
     "@reduxjs/toolkit": "^2.11.2",
