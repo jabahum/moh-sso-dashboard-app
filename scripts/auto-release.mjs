@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { delimiter, dirname, join } from "node:path";
+import { delimiter, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { releaseTags } from "./release.mjs";
 import { generateReleaseNotes } from "./release-notes.mjs";
@@ -182,7 +182,7 @@ export function prepareRelease({
     sourceCommit,
     run,
   });
-  paths.push(...notes.files.map((path) => path.slice(root.length + 1)));
+  paths.push(...notes.files.map((path) => relative(root, path)));
   writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
   git("add", "--", ...paths);
   git("commit", "-m", `Prepare release: ${selectedTags.join(", ")}`);
