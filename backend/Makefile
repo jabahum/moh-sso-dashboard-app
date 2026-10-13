@@ -148,7 +148,7 @@ release-status: ## Inspect GitHub release/workflows/image: make release-status V
 
 verify-image: ## Verify backend Docker image metadata: make verify-image IMAGE=repo/image:tag VERSION=1.2.3 [COMMIT=sha]
 	@test -n "$(IMAGE)" || { echo "IMAGE is required, for example make verify-image IMAGE=ghcr.io/mohuganda/moh-sso-dashboard-backend:1.2.3 VERSION=1.2.3"; exit 2; }
-	@test -n "$(VERSION)" || { echo "VERSION is required, for example make verify-image IMAGE=... VERSION=1.2.3"; exit 2 ;; esac
+	@test -n "$(VERSION)" || { echo "VERSION is required, for example make verify-image IMAGE=... VERSION=1.2.3"; exit 2; }
 	@./scripts/verify-backend-image.sh "$(IMAGE)" "$(VERSION)" "$(COMMIT)"
 
 # ============================================================

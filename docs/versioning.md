@@ -1,5 +1,7 @@
 # Versioning
 
+For root Make commands that verify and release either component or both together, see [Releasing frontend and backend](releasing.md).
+
 ## Backend
 
 The backend follows Semantic Versioning and uses component-scoped Git tags:
