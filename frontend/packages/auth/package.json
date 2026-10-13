@@ -3,7 +3,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "UNLICENSED",
   "module": "./dist/index.js",
   "files": [
@@ -24,9 +24,9 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/api": "^0.1.0",
-    "@moh-sso/state": "^0.1.0",
-    "@moh-sso/config": "^0.1.0"
+    "@moh-sso/api": "^1.0.0",
+    "@moh-sso/state": "^1.0.0",
+    "@moh-sso/config": "^1.0.0"
   },
   "peerDependencies": {
     "@reduxjs/toolkit": "^2.11.2",

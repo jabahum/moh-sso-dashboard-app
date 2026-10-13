@@ -187,7 +187,7 @@ test("automatic preparation commits versions and reuses a prepared release on re
       }
       return execFileSync(command, args, options);
     };
-    const config = { root, npm: "mock-npm", run };
+    const config = { root: `${root}/`, npm: "mock-npm", run };
     const plan = prepareRelease(config);
     assert.equal(plan.backendVersion, "0.0.2");
     assert.equal(plan.frontendVersion, "0.1.1");

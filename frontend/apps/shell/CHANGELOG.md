@@ -1,0 +1,99 @@
+# @moh-sso/shell
+
+## 1.0.0
+
+### Major Changes
+
+- Automatic major release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
+- Updated dependencies
+- Updated dependencies [936e717]
+  - @moh-sso/announcements@1.0.0
+  - @moh-sso/audit@1.0.0
+  - @moh-sso/clients@1.0.0
+  - @moh-sso/data-validation@1.0.0
+  - @moh-sso/data-visualizer@1.0.0
+  - @moh-sso/documents@1.0.0
+  - @moh-sso/e-services@1.0.0
+  - @moh-sso/email@1.0.0
+  - @moh-sso/issue-tracker@1.0.0
+  - @moh-sso/rbac@1.0.0
+  - @moh-sso/report-browser@1.0.0
+  - @moh-sso/surveillance@1.0.0
+  - @moh-sso/users@1.0.0
+  - @moh-sso/utilities@1.0.0
+  - @moh-sso/api@1.0.0
+  - @moh-sso/auth@1.0.0
+  - @moh-sso/config@1.0.0
+  - @moh-sso/microfrontend@1.0.0
+  - @moh-sso/state@1.0.0
+  - @moh-sso/types@1.0.0
+  - @moh-sso/ui@1.0.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Initial release; includes available source history.
+
+- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
+- remove breadcrumb icon and also change the sidenav icon from menu to forward and backward arrows (#237) (`7015d4a5`)
+- feat(dqa): implement DQA engine components and API integration (#233) (`f1f8d9ab`)
+- fix already loggedin rerouteto unauthorised page (`2e4cb4d4`)
+- add authenticated launch url (`d1a1423f`)
+- add modules to the app menu (`c85d0a8f`)
+- add pwa implementation (#205) (`b121c429`)
+- Feat rbac surveillance (#204) (`c94cd466`)
+- Clean inline styles (#202) (`1e501c12`)
+- add mobile responsivenes (#200) (`c6613ef0`)
+- load permissions gaurds (#199) (`8e038864`)
+- Template upload clean branch with main as a fresh clone and migrated the template upload  (#194) (`2ed0b645`)
+- Improve settings (#188) (`fa9d9387`)
+- Fix sidenav bug (#186) (`4779a85a`)
+- add sms foundation (#185) (`3aee2595`)
+- fix version 404 (#184) (`92b8f761`)
+- Fix self service routing (#182) (`e2bf3966`)
+- add version on footer (#181) (`f8c12018`)
+- update base url (#179) (`57e4c514`)
+- Sidenav improve (#177) (`693b6b77`)
+- Fix email screen (#168) (`853952c8`)
+- Extract apis to features (#166) (`50f1700d`)
+- fix portal rendering (#165) (`793d768f`)
+- fix config (#163) (`2d559ac4`)
+- fix build error (#162) (`8ae362ee`)
+- fix production css (#161) (`99607986`)
+- Revert "Revert permissions (#159)" (`2bff606e`)
+- Update user.routes.tsx (`41d9fd73`)
+- fix (#151) (`b5218789`)
+- add global (#145) (`85c33f6a`)
+- Fix spa (#143) (`96f2bc85`)
+- add a global fix (#142) (`0920a80c`)
+- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Fix announcement file template view (#133) (`c9883209`)
+- fix blank pages specially spa apps (#131) (`86f025db`)
+- Fix merge (#130) (`9b5192ad`)
+- Feat rbac (#128) (`a0420950`)
+- Fix forgot password (#122) (`df457dd0`)
+- change url fix (#119) (`697e8aee`)
+- change url fix (#118) (`ee2d023d`)
+- change url fix (#117) (`916d045a`)
+- change basename to / from /portal (#116) (`ab0518cc`)
+- fix login route (#114) (`4f1b69a9`)
+- UI improvement (#103) (`0fc21858`)
+- add theme styles (#102) (`f0868a60`)
+- improve ui (#101) (`c629dbe5`)
+- fix build error (#100) (`4b400f57`)
+- Improve newfeeds (#99) (`11c780ea`)
+- improve newsfeeds ui (#98) (`1172f880`)
+- Improve announcements (#96) (`882994d0`)
+- Improve announcements (#95) (`acbaeb5e`)
+- Frontend docker prod deployment (#93) (`757cb3de`)
+- Add versioning apps and packages (#92) (`ec370d4f`)
+- Add versioning apps and packages (#91) (`3e5e77e8`)
+- add documentation and dependencies (#90) (`2f6fc1cf`)
+- fix docker build error (#89) (`15472b87`)
+- Feat email notification dispatch (#87) (`79e072cd`)
+
