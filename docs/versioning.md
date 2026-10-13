@@ -58,7 +58,7 @@ cd ../backend
 ./scripts/check-version-consistency.sh
 ```
 
-The frontend audit checks the shell, module versions, dependency compatibility, shared release group, lockfile, and generated manifest. Version bumps refresh the lockfile and manifest through `npm run version:packages`.
+The frontend audit checks the shell, module versions, dependency compatibility, shared release group, lockfile, and generated manifest. `make release` automatically bumps every frontend module and the backend, commits the prepared versions, verifies both components, and pushes component tags. `BUMP=patch|minor|major` selects the default change level; stronger pending frontend Changesets are honored. `backend/VERSION` stores the prepared backend version and `.release/plan.json` records the generated versions. See [release commands](releasing.md).
 
 ## Image Tags
 

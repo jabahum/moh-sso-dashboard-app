@@ -87,6 +87,10 @@ App-to-app dependencies should use stricter ranges:
 
 Shared packages should avoid depending on apps.
 
+## Automatic full release
+
+From the repository root, `make release` generates a Changeset for every frontend app/package, applies all pending bumps, calculates the backend version, commits release metadata, verifies both components, and pushes their tags. PATCH is the default; select `BUMP=minor` or `BUMP=major` when needed. Existing stronger frontend Changesets take precedence. `make release-prepare` prepares and commits versions without publishing. See [releasing frontend and backend](../../docs/releasing.md).
+
 ## Changesets Workflow
 
 Install Changesets if it is not available:

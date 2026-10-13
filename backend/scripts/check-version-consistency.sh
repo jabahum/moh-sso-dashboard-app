@@ -7,6 +7,11 @@ backend_dir="$repo_root/backend"
 module=$(awk '$1 == "module" { print $2; exit }' "$backend_dir/go.mod")
 go_version=$(awk '$1 == "go" { print $2; exit }' "$backend_dir/go.mod")
 version_package="$module/internal/version"
+prepared_version=$(cat "$backend_dir/VERSION")
+if ! printf '%s' "$prepared_version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'; then
+  echo "backend/VERSION must contain a semantic version" >&2
+  exit 1
+fi
 
 require_text() {
   file=$1

@@ -31,7 +31,7 @@ test("Make verifies both components before publishing a combined release", () =>
     "make",
     [
       "-n",
-      "release",
+      "release-manual",
       "BACKEND_VERSION=0.0.2",
       "FRONTEND_VERSION=0.1.1",
       `NODE=${process.execPath}`,
