@@ -24,10 +24,18 @@ if (
         resolve(frontend, "public", name),
       ),
       () => {
-        execFileSync(node, ["--test", "scripts/test-versioning.mjs"], {
-          cwd: frontend,
-          stdio: "inherit",
-        });
+        execFileSync(
+          node,
+          [
+            "--test",
+            "scripts/test-versioning.mjs",
+            "scripts/test-runtime-config.mjs",
+          ],
+          {
+            cwd: frontend,
+            stdio: "inherit",
+          },
+        );
         execFileSync(npm, ["run", "release:check"], {
           cwd: frontend,
           stdio: "inherit",
