@@ -172,7 +172,7 @@ jobs:
         if: github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
-          cat > backend/dist/release-metadata.json <<EOF
+          cat > dist/release-metadata.json <<EOF
           {
             "release_tag": "backend/v${{ steps.version.outputs.version }}",
             "image_tag": "${{ steps.version.outputs.version }}",
