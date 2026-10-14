@@ -620,6 +620,7 @@ Initial release; includes available source history.
 
 Initial release; includes available source history.
 
+- Fix utilities RBAC metadata and production runtime release validation (`55f6cb0e`)
 - chore : fix frontend modules and packages  versioning gaps (`936e7178`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - load permissions gaurds (#199) (`8e038864`)
