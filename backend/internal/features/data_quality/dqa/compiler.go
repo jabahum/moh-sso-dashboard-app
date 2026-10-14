@@ -355,11 +355,19 @@ func compileRawSQL(r Rule) (*CompiledRule, error) {
 		}
 	}
 
+	// The rule's own SQL is opaque, so the filter is applied outside it. Without
+	// this a scoped run silently scans everything and reports violations from
+	// outside the scope.
+	where, err := whereClause(r)
+	if err != nil {
+		return nil, err
+	}
+
 	limit := r.defInt("sample_limit", defaultSampleLimit)
 	return &CompiledRule{
 		Rule: r, Kind: KindPredicate,
-		MeasureSQL: fmt.Sprintf("SELECT COUNT(*) AS violations FROM (%s) AS _dqa_sub", q),
-		SampleSQL:  fmt.Sprintf("SELECT * FROM (%s) AS _dqa_sub LIMIT %d", q, limit),
+		MeasureSQL: fmt.Sprintf("SELECT COUNT(*) AS violations FROM (%s) AS _dqa_sub%s", q, where),
+		SampleSQL:  fmt.Sprintf("SELECT * FROM (%s) AS _dqa_sub%s LIMIT %d", q, where, limit),
 		Meta:       map[string]any{"raw": true},
 	}, nil
 }

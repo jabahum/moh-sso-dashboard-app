@@ -1,8 +1,6 @@
 import {
   Button,
   ComposedModal,
-  DatePicker,
-  DatePickerInput,
   InlineNotification,
   ModalBody,
   ModalFooter,
@@ -10,7 +8,6 @@ import {
   MultiSelect,
   Stack,
   TextInput,
-  TimePicker,
 } from "@carbon/react";
 import { useMemo, useState } from "react";
 
@@ -47,8 +44,9 @@ export function DQAScheduleRunModal({
   const [years, setYears] = useState<number[]>([]);
   const [months, setMonths] = useState<string[]>([]);
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
-  const [date, setDate] = useState<Date | null>(null);
-  const [time, setTime] = useState("02:00");
+  // A native datetime input rather than Carbon's DatePicker: that pulls in
+  // flatpickr, which is the only such dependency in this app.
+  const [runAt, setRunAt] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const filterColumns = table.filter_columns ?? [];
@@ -91,17 +89,15 @@ export function DQAScheduleRunModal({
 
   const handleRunLater = async () => {
     if (!validate()) return;
-    if (!date) {
-      setError("Pick the date the run should execute.");
+    if (!runAt) {
+      setError("Pick the date and time the run should execute.");
       return;
     }
-    const [hours, minutes] = time.split(":").map(Number);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-      setError("Enter the execution time as HH:MM.");
+    const scheduledAt = new Date(runAt);
+    if (Number.isNaN(scheduledAt.getTime())) {
+      setError("That date and time could not be read.");
       return;
     }
-    const scheduledAt = new Date(date);
-    scheduledAt.setHours(hours, minutes, 0, 0);
     if (scheduledAt.getTime() <= Date.now()) {
       setError("The execution time is in the past.");
       return;
@@ -181,25 +177,14 @@ export function DQAScheduleRunModal({
             </p>
           )}
 
-          <Stack orientation="horizontal" gap={4}>
-            <DatePicker
-              datePickerType="single"
-              value={date ? [date] : []}
-              onChange={(dates: Date[]) => setDate(dates[0] ?? null)}
-            >
-              <DatePickerInput
-                id="dqa-schedule-date"
-                labelText="Run later: date"
-                placeholder="dd/mm/yyyy"
-              />
-            </DatePicker>
-            <TimePicker
-              id="dqa-schedule-time"
-              labelText="Time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </Stack>
+          <TextInput
+            id="dqa-schedule-at"
+            type="datetime-local"
+            labelText="Run later: date and time"
+            helperText="Leave empty and press Run now to scan immediately."
+            value={runAt}
+            onChange={(e) => setRunAt(e.target.value)}
+          />
 
           {error ? (
             <InlineNotification kind="error" title="Check the form" subtitle={error} lowContrast hideCloseButton />

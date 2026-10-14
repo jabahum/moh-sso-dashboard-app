@@ -96,6 +96,14 @@ export type GetIssuesParams = {
   limit: number;
   offset: number;
   program?: string;
+  dataset?: string;
+  dataElement?: string;
+  period?: string;
+  region?: string;
+  district?: string;
+  orgUnit?: string;
+  assignedTo?: string;
+  search?: string;
 };
 
 export type GetIssuesResponse = {

@@ -4,20 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/lib/pq"
 )
 
 type Repository interface {
 	CreateIssue(ctx context.Context, input createIssueInput) (issueResponse, error)
-	ListIssues(ctx context.Context, limit int, offset int, program string) ([]issueResponse, error)
+	ListIssues(ctx context.Context, filter listIssuesFilter) ([]issueResponse, error)
 	GetIssuesByCodes(ctx context.Context, issueCodes []string) ([]issueResponse, error)
 	ListIssueSummaryByProgram(ctx context.Context, limit int, offset int) ([]issueProgramSummaryResponse, error)
 	UpdateIssue(ctx context.Context, input updateIssueInput) (issueResponse, error)
 	ResolveIssue(ctx context.Context, input resolveIssueInput) (issueStageResponse, error)
 	AssignIssues(ctx context.Context, input assignIssuesInput) ([]issueStageResponse, error)
 	ListIssueResolutionTransactions(ctx context.Context, issueCode string, limit int, offset int) ([]issueStageResponse, error)
-	CountIssues(ctx context.Context, program string) (int64, error)
+	CountIssues(ctx context.Context, filter listIssuesFilter) (int64, error)
 }
 
 type postgresRepository struct {
@@ -80,18 +82,112 @@ func (r *postgresRepository) CreateIssue(ctx context.Context, input createIssueI
 	return scanIssue(row)
 }
 
-func (r *postgresRepository) ListIssues(ctx context.Context, limit int, offset int, program string) ([]issueResponse, error) {
-	rows, err := r.dwhDB.QueryContext(
-		ctx,
-		`SELECT issue_id, issue_code, dataset, data_element, org.region, org.district, org_unit, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, hiv.issue.assigned_to
-		FROM hiv.issue inner join hiv.organisation_unit org ON org.org_unit_name=org_unit
-		WHERE ($3 = '' OR LOWER(BTRIM(program)) = LOWER(BTRIM($3)))
+func buildIssuesWhereClause(filter listIssuesFilter) (string, []interface{}) {
+	var conditions []string
+	var args []interface{}
+	idx := 1
+
+	if filter.Program != "" {
+		if strings.EqualFold(filter.Program, "unspecified") {
+			conditions = append(conditions, "LOWER(BTRIM(COALESCE(hiv.issue.program, ''))) = ''")
+		} else {
+			conditions = append(conditions, fmt.Sprintf("LOWER(BTRIM(COALESCE(hiv.issue.program, ''))) = LOWER(BTRIM($%d))", idx))
+			args = append(args, filter.Program)
+			idx++
+		}
+	}
+
+	if filter.Dataset != "" {
+		conditions = append(conditions, fmt.Sprintf("LOWER(BTRIM(COALESCE(hiv.issue.dataset, ''))) = LOWER(BTRIM($%d))", idx))
+		args = append(args, filter.Dataset)
+		idx++
+	}
+
+	if filter.DataElement != "" {
+		conditions = append(conditions, fmt.Sprintf("LOWER(BTRIM(COALESCE(hiv.issue.data_element, ''))) = LOWER(BTRIM($%d))", idx))
+		args = append(args, filter.DataElement)
+		idx++
+	}
+
+	if filter.TimePeriod != "" {
+		conditions = append(conditions, fmt.Sprintf("(LOWER(BTRIM(COALESCE(hiv.issue.time_period, ''))) = LOWER(BTRIM($%d)) OR hiv.issue.time_period ILIKE '%%' || $%d || '%%')", idx, idx))
+		args = append(args, filter.TimePeriod)
+		idx++
+	}
+
+	if filter.Region != "" {
+		conditions = append(conditions, fmt.Sprintf("(LOWER(BTRIM(COALESCE(org.region, ''))) = LOWER(BTRIM($%d)) OR LOWER(BTRIM(COALESCE(org.district, ''))) = LOWER(BTRIM($%d)) OR LOWER(BTRIM(COALESCE(hiv.issue.org_unit, ''))) = LOWER(BTRIM($%d)))", idx, idx, idx))
+		args = append(args, filter.Region)
+		idx++
+	}
+
+	if filter.District != "" {
+		conditions = append(conditions, fmt.Sprintf("(LOWER(BTRIM(COALESCE(org.district, ''))) = LOWER(BTRIM($%d)) OR LOWER(BTRIM(COALESCE(hiv.issue.org_unit, ''))) = LOWER(BTRIM($%d)))", idx, idx))
+		args = append(args, filter.District)
+		idx++
+	}
+
+	if filter.OrgUnit != "" && filter.OrgUnit != filter.Region {
+		conditions = append(conditions, fmt.Sprintf("(LOWER(BTRIM(COALESCE(hiv.issue.org_unit, ''))) = LOWER(BTRIM($%d)) OR LOWER(BTRIM(COALESCE(org.region, ''))) = LOWER(BTRIM($%d)) OR LOWER(BTRIM(COALESCE(org.district, ''))) = LOWER(BTRIM($%d)))", idx, idx, idx))
+		args = append(args, filter.OrgUnit)
+		idx++
+	}
+
+	if filter.AssignedTo != "" {
+		conditions = append(conditions, fmt.Sprintf("LOWER(BTRIM(COALESCE(hiv.issue.assigned_to, ''))) = LOWER(BTRIM($%d))", idx))
+		args = append(args, filter.AssignedTo)
+		idx++
+	}
+
+	if filter.Search != "" {
+		conditions = append(conditions, fmt.Sprintf(`(
+			hiv.issue.issue_code ILIKE '%%' || $%d || '%%'
+			OR hiv.issue.dataset ILIKE '%%' || $%d || '%%'
+			OR hiv.issue.data_element ILIKE '%%' || $%d || '%%'
+			OR hiv.issue.issue ILIKE '%%' || $%d || '%%'
+			OR hiv.issue.org_unit ILIKE '%%' || $%d || '%%'
+			OR COALESCE(org.region, '') ILIKE '%%' || $%d || '%%'
+			OR COALESCE(org.district, '') ILIKE '%%' || $%d || '%%'
+			OR hiv.issue.status ILIKE '%%' || $%d || '%%'
+		)`, idx, idx, idx, idx, idx, idx, idx, idx))
+		args = append(args, filter.Search)
+		idx++
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	return whereClause, args
+}
+
+func (r *postgresRepository) ListIssues(ctx context.Context, filter listIssuesFilter) ([]issueResponse, error) {
+	whereClause, args := buildIssuesWhereClause(filter)
+
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	offset := filter.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	limitIdx := len(args) + 1
+	offsetIdx := len(args) + 2
+	query := fmt.Sprintf(`SELECT issue_id, issue_code, dataset, data_element, COALESCE(org.region, ''), COALESCE(org.district, ''), org_unit, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, hiv.issue.assigned_to
+		FROM hiv.issue
+		LEFT JOIN (
+			SELECT DISTINCT ON (org_unit_name) org_unit_name, region, district
+			FROM hiv.organisation_unit
+			ORDER BY org_unit_name, organisation_unit ASC
+		) org ON org.org_unit_name = hiv.issue.org_unit
+		%s
 		ORDER BY date_reported DESC, issue_id DESC
-		LIMIT $1 OFFSET $2`,
-		limit,
-		offset,
-		program,
-	)
+		LIMIT $%d OFFSET $%d`, whereClause, limitIdx, offsetIdx)
+
+	execArgs := append(args, limit, offset)
+	rows, err := r.dwhDB.QueryContext(ctx, query, execArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +211,12 @@ func (r *postgresRepository) GetIssuesByCodes(ctx context.Context, issueCodes []
 	rows, err := r.dwhDB.QueryContext(
 		ctx,
 		`SELECT issue_id, issue_code, dataset, data_element, COALESCE(org.region, ''), COALESCE(org.district, ''), org_unit, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, hiv.issue.assigned_to
-		FROM hiv.issue LEFT JOIN hiv.organisation_unit org ON org.org_unit_name = hiv.issue.org_unit
+		FROM hiv.issue
+		LEFT JOIN (
+			SELECT DISTINCT ON (org_unit_name) org_unit_name, region, district
+			FROM hiv.organisation_unit
+			ORDER BY org_unit_name, organisation_unit ASC
+		) org ON org.org_unit_name = hiv.issue.org_unit
 		WHERE issue_code = ANY($1)`,
 		pq.Array(issueCodes),
 	)
@@ -486,12 +587,18 @@ func isUniqueViolation(err error) bool {
 	return string(pqErr.Code) == "23505"
 }
 
-func (r *postgresRepository) CountIssues(ctx context.Context, program string) (int64, error) {
+func (r *postgresRepository) CountIssues(ctx context.Context, filter listIssuesFilter) (int64, error) {
+	whereClause, args := buildIssuesWhereClause(filter)
+	query := fmt.Sprintf(`SELECT COUNT(*)::bigint
+		FROM hiv.issue
+		LEFT JOIN (
+			SELECT DISTINCT ON (org_unit_name) org_unit_name, region, district
+			FROM hiv.organisation_unit
+			ORDER BY org_unit_name, organisation_unit ASC
+		) org ON org.org_unit_name = hiv.issue.org_unit
+		%s`, whereClause)
+
 	var count int64
-	err := r.dwhDB.QueryRowContext(
-		ctx,
-		`SELECT COUNT(*)::bigint FROM hiv.issue WHERE ($1 = '' OR LOWER(BTRIM(program)) = LOWER(BTRIM($1)))`,
-		program,
-	).Scan(&count)
+	err := r.dwhDB.QueryRowContext(ctx, query, args...).Scan(&count)
 	return count, err
 }

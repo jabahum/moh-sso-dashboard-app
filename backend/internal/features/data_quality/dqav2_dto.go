@@ -71,10 +71,13 @@ const rfc3339Milli = "2006-01-02T15:04:05.000Z07:00"
 
 // dqaTableRequest registers/updates a table_id -> physical table mapping.
 type dqaTableRequest struct {
-	TableID       string `json:"table_id" binding:"required"`
-	PhysicalTable string `json:"physical_table" binding:"required"`
-	Description   string `json:"description"`
-	IsActive      *bool  `json:"is_active"`
+	TableID       string   `json:"table_id" binding:"required"`
+	PhysicalTable string   `json:"physical_table" binding:"required"`
+	Description   string   `json:"description"`
+	IsActive      *bool    `json:"is_active"`
+	PeriodColumn  string   `json:"period_column"`
+	DimColumns    []string `json:"dim_columns"`
+	FilterColumns []string `json:"filter_columns"`
 }
 
 func (r dqaTableRequest) toMapping() TableMapping {
@@ -85,6 +88,8 @@ func (r dqaTableRequest) toMapping() TableMapping {
 	return TableMapping{
 		TableID: r.TableID, PhysicalTable: r.PhysicalTable,
 		Description: r.Description, IsActive: active,
+		PeriodColumn: r.PeriodColumn,
+		DimColumns:   r.DimColumns, FilterColumns: r.FilterColumns,
 	}
 }
 

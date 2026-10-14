@@ -198,6 +198,15 @@ func buildDataValuesQuery(req DataValuesRequest) (string, []interface{}) {
 			),`
 			attributesJoin = "LEFT JOIN org_unit_attrs oa ON oa.facility_uid = hs.org_unit_id"
 		}
+		outputID, outputName, outputLevel := "sf.selected_uid", "sf.selected_name", "sf.selected_level"
+		outputJoin := "JOIN selected_facilities sf ON hs.org_unit_id = sf.facility_uid"
+		facilityNameSelect := ""
+		if req.AggregationLevel == "6" {
+			// facility_values already contains each facility once, even for overlapping parents.
+			outputID, outputName, outputLevel = "hs.org_unit_id", "hs.facility_name", "'6'"
+			outputJoin = ""
+			facilityNameSelect = ", COALESCE(MIN(NULLIF(hs.facility, '')), hs.org_unit_id) AS facility_name"
+		}
 		query = `WITH ` + attributesCTE + `
 		   selected_input AS (
 		     SELECT DISTINCT unnest($1::text[]) AS selected_uid
@@ -286,7 +295,7 @@ func buildDataValuesQuery(req DataValuesRequest) (string, []interface{}) {
 		     ) memberships
 		   ),
 		   facility_values AS (
-		     SELECT hs.org_unit_id, hs.data_element_id, hs."period", hs.dataelement,
+		     SELECT hs.org_unit_id, hs.data_element_id, hs."period", hs.dataelement` + facilityNameSelect + `,
 		       SUM(CASE
 		         WHEN hs.value ~ '^\s*-?\d+(\.\d+)?\s*$' THEN TRIM(hs.value)::numeric
 		         ELSE 0
@@ -297,21 +306,27 @@ func buildDataValuesQuery(req DataValuesRequest) (string, []interface{}) {
 		     ` + whereClause + `
 		     GROUP BY 1, 2, 3, 4
 		   )
-		   SELECT sf.selected_uid AS org_unit_id, sf.selected_name AS org_unit_name,
+		   SELECT ` + outputID + ` AS org_unit_id, ` + outputName + ` AS org_unit_name,
 		     hs.data_element_id, hs."period", SUM(hs.value)::bigint AS value,
-		     sf.selected_level AS "level",
+		     ` + outputLevel + ` AS "level",
 		     ` + levelOfCareExpr + ` AS level_of_care,
 		     ` + ownershipExpr + ` AS ownership,
 		     hs.dataelement
-		   FROM selected_facilities sf
-		   JOIN facility_values hs ON hs.org_unit_id = sf.facility_uid
+		   FROM facility_values hs
+		   ` + outputJoin + `
 		   ` + attributesJoin + `
 		   GROUP BY 1, 2, 3, 4, 6, 7, 8, 9
 		   ORDER BY 4, 6, 2, 3
 		`
 	} else {
 		aggregationLevel := resolveRequestedAggregationLevel(requestedLevel)
+		if req.AggregationLevel == "6" {
+			aggregationLevel = "6"
+		}
 		orgUnitExpr, facilityExpr, levelExpr, _, _, _ := aggregationExpressions(aggregationLevel)
+		if req.AggregationLevel == "6" {
+			levelExpr = "'6'"
+		}
 		orgUnitFilterJoin := ""
 		if orgUnitFilterClause != "" {
 			orgUnitFilterJoin = `

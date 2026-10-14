@@ -178,8 +178,17 @@ func (s *DQAStore) UpsertTable(ctx context.Context, m TableMapping) error {
 		  filter_columns = EXCLUDED.filter_columns,
 		  updated_at     = now()`,
 		m.TableID, m.PhysicalTable, m.Description, m.IsActive,
-		nullIfEmpty(m.PeriodColumn), pq.Array(m.DimColumns), pq.Array(m.FilterColumns))
+		nullIfEmpty(m.PeriodColumn), textArray(m.DimColumns), textArray(m.FilterColumns))
 	return err
+}
+
+// textArray keeps a nil slice from reaching a NOT NULL column as SQL NULL, which
+// is what pq.Array does with one. A request may legitimately omit these fields.
+func textArray(values []string) any {
+	if values == nil {
+		return pq.Array([]string{})
+	}
+	return pq.Array(values)
 }
 
 // GetTable returns one registration, or false when it is not registered.

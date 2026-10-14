@@ -87,6 +87,10 @@ App-to-app dependencies should use stricter ranges:
 
 Shared packages should avoid depending on apps.
 
+## Automatic full release
+
+From the repository root, `make release` generates a Changeset for every frontend app/package, applies all pending bumps, calculates the backend version, commits release metadata, verifies both components, and pushes their tags. PATCH is the default; select `BUMP=minor` or `BUMP=major` when needed. Existing stronger frontend Changesets take precedence. `make release-prepare` prepares and commits versions without publishing. See [releasing frontend and backend](../../docs/releasing.md).
+
 ## Changesets Workflow
 
 Install Changesets if it is not available:
@@ -165,6 +169,12 @@ frontend/dist/version-manifest.json
 ```
 
 The manifest records current app/package names and versions.
+
+It also records frontend service version, commit, and build time. The service version defaults to the private shell's package version. CI overrides it through `VITE_APP_VERSION`, `FRONTEND_COMMIT`, and `VITE_BUILD_TIME`; the same version and time are embedded in the shell and shared config bundle.
+
+`npm run version:audit` checks every app including the shell, shared release-group alignment, internal dependency compatibility, and lockfile/manifest consistency. `npm run version:packages` refreshes the lockfile and manifest after Changesets applies bumps.
+
+Frontend Docker releases use `frontend/v<shell-version>` tags. The build rejects tags that disagree with the shell's package version and labels images with version, commit, and build time. Branch builds use `<shell-base-version>-dev.<commit>`.
 
 ## Versioned Import Maps
 

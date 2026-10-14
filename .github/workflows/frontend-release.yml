@@ -1,0 +1,45 @@
+name: Frontend Release Notes
+
+on:
+  push:
+    tags:
+      - "frontend/v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: frontend-notes-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate component version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node --input-type=module -e '
+            import assert from "node:assert/strict";
+            import { readFileSync } from "node:fs";
+            const shell = JSON.parse(readFileSync("frontend/apps/shell/package.json", "utf8"));
+            assert.equal(process.env.RELEASE_TAG, `frontend/v${shell.version}`);
+          '
+      - name: Generate notes for every frontend module
+        run: node scripts/release-notes.mjs frontend
+      - name: Archive per-module release notes
+        run: tar -czf frontend-release-notes.tar.gz -C .release/notes frontend manifest.json
+      - name: Publish frontend release notes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Frontend ${{ github.ref_name }}
+          body_path: .release/notes/frontend.md
+          files: frontend-release-notes.tar.gz

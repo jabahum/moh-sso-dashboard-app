@@ -29,14 +29,14 @@ func isNilInterface(i interface{}) bool {
 
 type Service interface {
 	CreateIssue(ctx context.Context, input createIssueInput) (issueResponse, error)
-	ListIssues(ctx context.Context, limit int, offset int, program string) ([]issueResponse, error)
+	ListIssues(ctx context.Context, filter listIssuesFilter) ([]issueResponse, error)
 	GetIssueByCode(ctx context.Context, issueCode string) (issueResponse, error)
 	ListIssueSummaryByProgram(ctx context.Context, limit int, offset int) ([]issueProgramSummaryResponse, error)
 	UpdateIssue(ctx context.Context, input updateIssueInput) (issueResponse, error)
 	ResolveIssue(ctx context.Context, input resolveIssueInput) (issueStageResponse, error)
 	AssignIssues(ctx context.Context, input assignIssuesInput) ([]issueStageResponse, error)
 	ListIssueResolutionTransactions(ctx context.Context, issueCode string, limit int, offset int) ([]issueStageResponse, error)
-	CountIssues(ctx context.Context, program string) (int64, error)
+	CountIssues(ctx context.Context, filter listIssuesFilter) (int64, error)
 }
 
 type service struct {
@@ -68,8 +68,8 @@ func (s *service) CreateIssue(ctx context.Context, input createIssueInput) (issu
 	return s.repository.CreateIssue(ctx, input)
 }
 
-func (s *service) ListIssues(ctx context.Context, limit int, offset int, program string) ([]issueResponse, error) {
-	return s.repository.ListIssues(ctx, limit, offset, program)
+func (s *service) ListIssues(ctx context.Context, filter listIssuesFilter) ([]issueResponse, error) {
+	return s.repository.ListIssues(ctx, filter)
 }
 
 func (s *service) GetIssueByCode(ctx context.Context, issueCode string) (issueResponse, error) {
@@ -210,6 +210,9 @@ func (s *service) sendApprovalEmailToGroupMembers(ctx context.Context, input res
 	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
 		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
 	}
+	if !strings.HasSuffix(portalURL, "/portal") {
+		portalURL = portalURL + "/portal"
+	}
 
 	subject := fmt.Sprintf("[MOH Issue Tracker] Issue %s Resolved by %s", issueCode, approverIdentifier)
 
@@ -237,7 +240,7 @@ func (s *service) sendApprovalEmailToGroupMembers(ctx context.Context, input res
 		bodyBuilder.WriteString(fmt.Sprintf("<div style='background-color: #defbe6; border: 1px solid #a7f0ba; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px;'><strong>Resolution Notes:</strong> %s</div>", resolutionAction))
 	}
 
-	issueLink := fmt.Sprintf("%s/apps/dwh/issue-tracker?issueCode=%s", portalURL, issueCode)
+	issueLink := fmt.Sprintf("%s/apps/dwh/issue-tracker/issues?issueCode=%s", portalURL, issueCode)
 
 	bodyBuilder.WriteString(fmt.Sprintf("<p style='margin-top: 20px;'><a href='%s' style='background-color: #198038; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;'>View Issue Details in MOH Portal &rarr;</a></p>", issueLink))
 	bodyBuilder.WriteString(fmt.Sprintf("<p style='font-size: 13px; color: #6f6f6f; margin-top: 12px;'>Or visit directly: <a href='%s' style='color: #198038;'>%s</a></p>", issueLink, issueLink))
@@ -312,6 +315,9 @@ func (s *service) sendAssignmentEmail(ctx context.Context, input assignIssuesInp
 	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
 		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
 	}
+	if !strings.HasSuffix(portalURL, "/portal") {
+		portalURL = portalURL + "/portal"
+	}
 
 	subject := fmt.Sprintf("[MOH Issue Tracker] %d Issue(s) Assigned to You", len(issueCodes))
 	if len(issueCodes) == 1 {
@@ -383,7 +389,7 @@ func (s *service) sendAssignmentEmail(ctx context.Context, input assignIssuesInp
 	}
 
 	firstCode := issueCodes[0]
-	issueLink := fmt.Sprintf("%s/apps/dwh/issue-tracker?issueCode=%s", portalURL, firstCode)
+	issueLink := fmt.Sprintf("%s/apps/dwh/issue-tracker/issues?issueCode=%s", portalURL, firstCode)
 
 	bodyBuilder.WriteString(fmt.Sprintf("<p style='margin-top: 20px;'><a href='%s' style='background-color: #0f62fe; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;'>View Assigned Issue(s) in MOH Portal &rarr;</a></p>", issueLink))
 	bodyBuilder.WriteString(fmt.Sprintf("<p style='font-size: 13px; color: #6f6f6f; margin-top: 12px;'>Or visit directly: <a href='%s' style='color: #0f62fe;'>%s</a></p>", issueLink, issueLink))
@@ -444,6 +450,6 @@ func (s *service) ListIssueResolutionTransactions(ctx context.Context, issueCode
 	return transactions, nil
 }
 
-func (s *service) CountIssues(ctx context.Context, program string) (int64, error) {
-	return s.repository.CountIssues(ctx, program)
+func (s *service) CountIssues(ctx context.Context, filter listIssuesFilter) (int64, error) {
+	return s.repository.CountIssues(ctx, filter)
 }

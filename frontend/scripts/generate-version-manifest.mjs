@@ -1,4 +1,4 @@
-/* global console */
+/* global console, process */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +39,13 @@ function collectPackages(group) {
 
 const manifest = {
   generatedAt: new Date().toISOString(),
+  service: {
+    name: "moh-sso-dashboard-frontend",
+    version:
+      process.env.VITE_APP_VERSION || readJson(join(root, "apps", "shell", "package.json")).version,
+    commit: process.env.FRONTEND_COMMIT || "none",
+    buildTime: process.env.VITE_BUILD_TIME || "unknown",
+  },
   apps: collectPackages("apps"),
   packages: collectPackages("packages"),
 };

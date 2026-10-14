@@ -13,7 +13,7 @@ function readJson(path) {
 
 function workspaceEntries(dir, ignored = new Set()) {
   return readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !ignored.has(entry.name))
+    .filter((entry) => entry.isDirectory() && !ignored.has(entry.name) && existsSync(join(dir, entry.name, "package.json")))
     .map((entry) => entry.name)
     .sort();
 }

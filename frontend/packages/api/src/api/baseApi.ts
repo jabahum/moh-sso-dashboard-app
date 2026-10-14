@@ -142,6 +142,13 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
    */
   result = await rawBaseQuery(args, api, extraOptions);
 
+  // A successful refresh does not guarantee the session is usable. Clear auth
+  // if the retry is still unauthorized so ProtectedRoute sends the user to login.
+  if (result.error?.status === 401) {
+    api.dispatch(logout());
+    return result;
+  }
+
   /**
    * If this was /auth/me and it succeeded, sync Redux auth state.
    */

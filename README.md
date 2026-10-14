@@ -1448,6 +1448,7 @@ Backend docs:
 | [`docs/api-reference.md`](docs/api-reference.md) | Human-readable API endpoint map and payload notes. |
 | [`backend/docs/openapi.yaml`](backend/docs/openapi.yaml) | Machine-readable OpenAPI starter contract. |
 | [`docs/versioning.md`](docs/versioning.md) | Backend SemVer, build metadata, and image tag policy. |
+| [`docs/releasing.md`](docs/releasing.md) | Automatic version preparation and verified frontend/backend releases. |
 | [`docs/releasing-backend.md`](docs/releasing-backend.md) | Verified backend release workflow and artifacts. |
 | [`docs/deployment.md`](docs/deployment.md) | Immutable backend deployment and runtime verification. |
 | [`docs/rollback.md`](docs/rollback.md) | Automated and manual backend rollback procedure. |

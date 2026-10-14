@@ -32,7 +32,18 @@ function isActivePath(currentPath: string, itemPath?: string): boolean {
     return false;
   }
 
-  return currentPath === normalizedItemPath || currentPath.startsWith(`${normalizedItemPath}/`);
+  if (currentPath === normalizedItemPath) {
+    return true;
+  }
+
+  const currentWithoutQuery = currentPath.split("?")[0];
+  const itemWithoutQuery = normalizedItemPath.split("?")[0];
+
+  if (normalizedItemPath.includes("?")) {
+    return currentPath === normalizedItemPath;
+  }
+
+  return currentWithoutQuery === itemWithoutQuery || currentWithoutQuery.startsWith(`${itemWithoutQuery}/`);
 }
 
 function sortItems(items: SideNavItem[]): SideNavItem[] {
@@ -100,6 +111,54 @@ function normalizeLegacySideNavItems(items: SideNavItem[]): SideNavItem[] {
           label: item.label === "File Upload" ? "Documents" : item.label,
           path: "/apps/dwh/documents",
           children,
+        };
+      }
+
+      if (
+        itemPath === "/apps/dwh/issue-tracker?view=dashboard" ||
+        item.id === "issue-dashboard" ||
+        item.id === "issue-summary"
+      ) {
+        return {
+          ...item,
+          id: "issue-summary",
+          label: "Issue Summary",
+          path: "/apps/dwh/issue-tracker/dashboard",
+        };
+      }
+
+      if (
+        itemPath === "/apps/dwh/issue-tracker?view=issues" ||
+        item.id === "registered-issues"
+      ) {
+        return {
+          ...item,
+          id: "registered-issues",
+          label: item.label || "Registered Issues",
+          path: "/apps/dwh/issue-tracker/issues",
+        };
+      }
+
+      if (itemPath === "/apps/dwh/issue-tracker" || item.id === "issue-tracker" || item.id === "issue-tracking") {
+        return {
+          ...item,
+          id: "issue-tracking",
+          label: "Issue Tracking",
+          path: undefined,
+          children: children && children.length > 0 ? children : [
+            {
+              id: "issue-summary",
+              label: "Issue Summary",
+              path: "/apps/dwh/issue-tracker/dashboard",
+              permission: item.permission ?? "issue_tracker:read",
+            },
+            {
+              id: "registered-issues",
+              label: "Registered Issues",
+              path: "/apps/dwh/issue-tracker/issues",
+              permission: item.permission ?? "issue_tracker:read",
+            },
+          ],
         };
       }
 

@@ -1,5 +1,7 @@
 # Releasing The Backend
 
+The root Makefile supports backend-only and combined frontend/backend releases. See [Releasing frontend and backend](releasing.md) for `make release`, `make release-backend`, and independent version arguments. The commands below run from `backend/` and retain the existing backend-specific workflow.
+
 ## Automated Release
 
 The `Backend Release` GitHub Actions workflow runs in two modes:

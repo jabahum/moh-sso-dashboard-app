@@ -1,5 +1,10 @@
 import type { ReactElement } from "react";
-import { Navigate, Route } from "react-router-dom";
+import { Navigate, Route, useLocation } from "react-router-dom";
+
+function IssueRedirect() {
+  const location = useLocation();
+  return <Navigate to={{ pathname: "/apps/dwh/issue-tracker/issues", search: location.search }} replace />;
+}
 
 import { ProtectedRoute } from "./guards/ProtectedRoute";
 import { PermissionRoute } from "./guards/PermissionRoute";
@@ -212,7 +217,13 @@ export const userRoutes = (
           withSystemAccess(SYSTEMS.dataStatistics, accessFromRoute(issueTrackerRoute)),
         )}
       />
+
+      <Route path="issue/*" element={<IssueRedirect />} />
+      <Route path="issues/*" element={<IssueRedirect />} />
     </Route>
+
+    <Route path="issue/*" element={<IssueRedirect />} />
+    <Route path="issues/*" element={<IssueRedirect />} />
 
     {/* =========================
         E-SERVICES MICROFRONTEND

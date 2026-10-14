@@ -7,6 +7,82 @@ GO_MAIN = ./cmd/server/main.go
 FRONTEND_DIR = ./frontend
 BINARY_NAME = sso-server
 DOCKER_IMAGE = $(PROJECT_NAME):latest
+NPM ?= npm
+NODE ?= node
+BACKEND_VERSION ?= $(shell cat backend/VERSION)
+FRONTEND_VERSION ?= $(shell $(NODE) -p "require('./frontend/apps/shell/package.json').version")
+RELEASE_REMOTE ?= upstream
+BUMP ?= patch
+RELEASE_MAKE ?= make
+.DEFAULT_GOAL := build
+
+.PHONY: release-help release-preflight release-check release-backend-check release-frontend-check \
+        release release-backend release-frontend release-prepare release-manual \
+        release-backend-manual release-frontend-manual frontend-version frontend-publish
+.PHONY: release-notes
+
+release-notes:
+	@$(NODE) scripts/release-notes.mjs both "$(BACKEND_VERSION)"
+
+release-help:
+	@echo 'make release                                  Automatically version, commit, verify, and release both'
+	@echo 'make release-prepare                          Calculate and commit versions without publishing'
+	@echo 'make release-notes                            Generate per-module and backend notes for current versions'
+	@echo 'make release BUMP=minor                       Choose minor bumps (default: patch)'
+	@echo 'make frontend-version                         Apply pending Changesets and refresh metadata'
+	@echo 'make release-check BACKEND_VERSION=0.0.2       Verify both components locally'
+	@echo 'make release-backend                          Automatically version and release the backend'
+	@echo 'make release-frontend                         Automatically version and release all frontend modules'
+	@echo 'make release-manual BACKEND_VERSION=0.0.2      Release previously prepared explicit versions'
+	@echo 'make frontend-publish                         Verify and publish frontend npm modules'
+	@echo 'FRONTEND_VERSION defaults to the shell version; RELEASE_REMOTE defaults to upstream.'
+
+frontend-version:
+	cd $(FRONTEND_DIR) && $(NPM) run version:packages
+
+release-preflight:
+	@$(NODE) scripts/release.mjs check both "$(BACKEND_VERSION)" "$(FRONTEND_VERSION)" "$(RELEASE_REMOTE)"
+
+release-check:
+	@$(MAKE) release-preflight
+	@$(MAKE) release-backend-check
+	@$(MAKE) release-frontend-check
+
+release-backend-check:
+	@$(NODE) scripts/release.mjs check backend "$(BACKEND_VERSION)" "$(FRONTEND_VERSION)" "$(RELEASE_REMOTE)"
+	@$(MAKE) -C backend release-check VERSION="$(BACKEND_VERSION)"
+
+release-frontend-check:
+	@$(NODE) scripts/release.mjs check frontend "$(BACKEND_VERSION)" "$(FRONTEND_VERSION)" "$(RELEASE_REMOTE)"
+	@$(NODE) scripts/check-frontend-release.mjs "$(NPM)" "$(NODE)"
+
+release-prepare:
+	@$(NODE) scripts/auto-release.mjs prepare both "$(BUMP)" "$(RELEASE_REMOTE)" "$(NPM)" "$(RELEASE_MAKE)"
+
+release:
+	@$(NODE) scripts/auto-release.mjs release both "$(BUMP)" "$(RELEASE_REMOTE)" "$(NPM)" "$(RELEASE_MAKE)"
+
+release-backend:
+	@$(NODE) scripts/auto-release.mjs release backend "$(BUMP)" "$(RELEASE_REMOTE)" "$(NPM)" "$(RELEASE_MAKE)"
+
+release-frontend:
+	@$(NODE) scripts/auto-release.mjs release frontend "$(BUMP)" "$(RELEASE_REMOTE)" "$(NPM)" "$(RELEASE_MAKE)"
+
+release-manual:
+	@$(MAKE) release-check
+	@$(NODE) scripts/release.mjs publish both "$(BACKEND_VERSION)" "$(FRONTEND_VERSION)" "$(RELEASE_REMOTE)"
+
+release-backend-manual:
+	@$(MAKE) release-backend-check
+	@$(NODE) scripts/release.mjs publish backend "$(BACKEND_VERSION)" "$(FRONTEND_VERSION)" "$(RELEASE_REMOTE)"
+
+release-frontend-manual:
+	@$(MAKE) release-frontend-check
+	@$(NODE) scripts/release.mjs publish frontend "$(BACKEND_VERSION)" "$(FRONTEND_VERSION)" "$(RELEASE_REMOTE)"
+
+frontend-publish:
+	@$(MAKE) release-frontend-check
+	cd $(FRONTEND_DIR) && $(NPM) run release:packages
 
 # -----------------------------
 # Go Backend Commands

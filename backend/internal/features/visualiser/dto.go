@@ -5,14 +5,16 @@ type DataElementsRequest struct {
 }
 
 type DataValuesRequest struct {
-	OU           []string `json:"ou"`
-	PE           []string `json:"pe"`
-	DX           []string `json:"dx"`
-	LevelOfCare  []string `json:"levelOfCare"`
-	Ownership    []string `json:"ownership"`
-	StartDate    string   `json:"startDate"`
-	EndDate      string   `json:"endDate"`
-	OrgunitLevel any      `json:"orgunitLevel"`
+	// AggregationLevel overrides output grouping; currently only facility level is supported.
+	AggregationLevel string   `json:"aggregationLevel" binding:"omitempty,oneof=6"`
+	OU               []string `json:"ou"`
+	PE               []string `json:"pe"`
+	DX               []string `json:"dx"`
+	LevelOfCare      []string `json:"levelOfCare"`
+	Ownership        []string `json:"ownership"`
+	StartDate        string   `json:"startDate"`
+	EndDate          string   `json:"endDate"`
+	OrgunitLevel     any      `json:"orgunitLevel"`
 }
 
 type DataElementsByThemeRequest struct {

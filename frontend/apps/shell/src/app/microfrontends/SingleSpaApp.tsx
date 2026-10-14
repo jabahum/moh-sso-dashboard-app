@@ -80,6 +80,11 @@ export function SingleSpaApp({ appName, lifecycles, ...runtimeProps }: SingleSpa
   }, [auth]);
 
   useEffect(() => {
+    // Notify embedded microfrontends that listen to popstate/URL changes
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
     if (orchestrationRequested && !orchestrationState.started && !orchestrationState.unavailable) {
       void startMicrofrontendOrchestration();
     }

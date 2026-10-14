@@ -1,4 +1,4 @@
-import { Modal, MultiSelect } from "@carbon/react";
+import { Checkbox, Modal, MultiSelect } from "@carbon/react";
 import { useEffect, useState } from "react";
 import { useGetHierarchyQuery } from "./org-unit.ts";
 import { levelOfCareOptions, ownershipOptions } from "../../Constants.tsx"
@@ -152,7 +152,8 @@ interface OrgUnitModalProps {
   selected: string[];
   selectedLevelOfCare?: string[];
   selectedOwnership?: string[];
-  onSave: (orgUnits: string[], levelOfCare: string[], ownership: string[]) => void;
+  aggregationLevel?: string;
+  onSave: (orgUnits: string[], levelOfCare: string[], ownership: string[], aggregationLevel?: string) => void;
   updateTrigger?: () => void;
 }
 
@@ -161,6 +162,7 @@ export default function OrgUnitModal({
   selected,
   selectedLevelOfCare = [],
   selectedOwnership = [],
+  aggregationLevel: initialAggregationLevel = "",
   onSave,
   updateTrigger,
 }: OrgUnitModalProps) {
@@ -178,6 +180,11 @@ export default function OrgUnitModal({
     const params = new URLSearchParams(window.location.search);
     const ownershipParam = params.get("ownership");
     return ownershipParam ? ownershipParam.split(",").filter(Boolean) : selectedOwnership;
+  });
+  const [disaggregateByFacility, setDisaggregateByFacility] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const aggParam = params.get("aggregationLevel");
+    return aggParam === "6" || initialAggregationLevel === "6";
   });
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [orgUnits, setOrgUnits] = useState<any>({});
@@ -234,6 +241,14 @@ export default function OrgUnitModal({
   }, [selectedOwnership]);
 
   useEffect(() => {
+    const isSame = (disaggregateByFacility ? "6" : "") === (initialAggregationLevel ?? "");
+    if (!isSame) {
+      setDisaggregateByFacility(initialAggregationLevel === "6");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAggregationLevel]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const selectedUnitsArray = Array.from(selectedUnits);
 
@@ -255,6 +270,12 @@ export default function OrgUnitModal({
       params.delete("ownership");
     }
 
+    if (disaggregateByFacility) {
+      params.set("aggregationLevel", "6");
+    } else {
+      params.delete("aggregationLevel");
+    }
+
     const newSearch = params.toString();
     const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
     window.history.replaceState(null, "", newUrl);
@@ -262,11 +283,13 @@ export default function OrgUnitModal({
     const ouChanged = [...selectedUnitsArray].sort().join(",") !== [...(selected ?? [])].sort().join(",");
     const careChanged = [...levelOfCare].sort().join(",") !== [...(selectedLevelOfCare ?? [])].sort().join(",");
     const ownershipChanged = [...ownership].sort().join(",") !== [...(selectedOwnership ?? [])].sort().join(",");
+    const aggLevel = disaggregateByFacility ? "6" : "";
+    const aggChanged = aggLevel !== (initialAggregationLevel ?? "");
 
-    if (ouChanged || careChanged || ownershipChanged) {
-      onSave(selectedUnitsArray, levelOfCare, ownership);
+    if (ouChanged || careChanged || ownershipChanged || aggChanged) {
+      onSave(selectedUnitsArray, levelOfCare, ownership, aggLevel);
     }
-  }, [selectedUnits, levelOfCare, ownership, selected, selectedLevelOfCare, selectedOwnership, onSave]);
+  }, [selectedUnits, levelOfCare, ownership, disaggregateByFacility, selected, selectedLevelOfCare, selectedOwnership, initialAggregationLevel, onSave]);
 
   const toggleUnit = (unitUid) => {
     const newSelected = new Set(selectedUnits);
@@ -411,6 +434,17 @@ export default function OrgUnitModal({
               }}
             />
           </div>
+        </div>
+
+        <div className="mb-3">
+          <Checkbox
+            id="disaggregate-by-facility"
+            labelText="Disaggregate by facility"
+            checked={disaggregateByFacility}
+            onChange={(_, { checked }) => {
+              setDisaggregateByFacility(Boolean(checked));
+            }}
+          />
         </div>
 
         <div className="mt-3 d-flex mb-5 justify-content-between align-items-center">

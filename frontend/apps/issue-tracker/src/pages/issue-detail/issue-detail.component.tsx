@@ -80,9 +80,9 @@ const IssueDetail = ({
 
     const status =
       modalMode === "resolve"
-        ? "RESOLVED"
+        ? "resolved"
         : modalMode === "close"
-          ? "CLOSED"
+          ? "closed"
           : selectedIssue.status;
 
     const payload = {
@@ -148,7 +148,7 @@ const IssueDetail = ({
     }
   };
 
-  const isFinalStatus = selectedIssue?.status === "CLOSED" || selectedIssue?.status === "RESOLVED";
+  const isFinalStatus = selectedIssue?.status?.toLowerCase() === "closed" || selectedIssue?.status?.toLowerCase() === "resolved";
 
   const renderActionModal = () => {
     if (!isViewModalResolution || !modalMode) {
@@ -328,7 +328,7 @@ const IssueDetail = ({
             <Tile className="issue-tile">
               <div style={{ padding: "0.5rem" }}>
                 <p className="issue-p-top">
-                  <strong>Issue Status:</strong> {selectedIssue?.status}
+                  <strong>Issue Status:</strong> <span className="issue-status">{selectedIssue?.status} </span>
                 </p>
 
                 <p>
@@ -397,7 +397,7 @@ const IssueDetail = ({
                 </PermissionGuard>
               )}
 
-              {selectedIssue?.status !== "CLOSED" && (
+              {selectedIssue?.status?.toLowerCase() !== "closed" && (
                 <PermissionGuard permission={PERMISSIONS.issueTrackerClose}>
                   <Button
                     className="btn-issue btn-full-width"

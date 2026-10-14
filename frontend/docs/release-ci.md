@@ -1,6 +1,6 @@
 # Release CI Outline
 
-This is a CI/CD outline for future automation. It is documentation only; no workflow file is required yet.
+The repository's **Build & Push Images** workflow publishes source-built frontend images on `frontend/v<shell-version>` tags and verifies their runtime version manifest. Use the root Makefile for verified frontend-only or combined releases; see [Releasing frontend and backend](../../docs/releasing.md). The **Frontend Release Notes** tag workflow publishes per-app/package notes and a combined GitHub Release body. Npm publication remains a separate operation through `make frontend-publish`.
 
 ## Validate Job
 

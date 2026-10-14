@@ -14,6 +14,7 @@ export default function GeneralModal({
   selectedOrgUnits,
   selectedLevelOfCare,
   selectedOwnership,
+  aggregationLevel,
   onSaveOrgUnits,
   updateTrigger,
 }) {
@@ -56,6 +57,7 @@ export default function GeneralModal({
               selected={selectedOrgUnits}
               selectedLevelOfCare={selectedLevelOfCare}
               selectedOwnership={selectedOwnership}
+              aggregationLevel={aggregationLevel}
               onSave={onSaveOrgUnits}
               updateTrigger={updateTrigger}
             />

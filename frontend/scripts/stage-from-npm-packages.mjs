@@ -60,6 +60,10 @@ function copyDirectory(from, to) {
 
 assertRequired(join(root, "apps", "shell", "dist", "index.html"));
 copyDirectory(join(root, "apps", "shell", "dist"), join(root, "dist"));
+copyFileSync(
+  join(root, "public", "version-manifest.json"),
+  join(root, "dist", "version-manifest.json"),
+);
 
 for (const app of apps) {
   const dist = packageDist(app);

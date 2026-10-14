@@ -1,0 +1,7 @@
+{
+  "component": "both",
+  "bump": "major",
+  "sourceCommit": "489d7bc6b355ca0e42e684fb6df08ac0294d0b30",
+  "backendVersion": "1.0.0",
+  "frontendVersion": "1.0.0"
+}

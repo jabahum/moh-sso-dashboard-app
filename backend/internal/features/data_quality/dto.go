@@ -117,6 +117,20 @@ type issueProgramSummaryResponse struct {
 	ResolvedCount int64  `json:"resolved_count"`
 }
 
+type listIssuesFilter struct {
+	Limit       int
+	Offset      int
+	Program     string
+	Dataset     string
+	DataElement string
+	OrgUnit     string
+	Region      string
+	District    string
+	TimePeriod  string
+	AssignedTo  string
+	Search      string
+}
+
 type createIssueInput struct {
 	Dataset     interface{}
 	DataElement interface{}

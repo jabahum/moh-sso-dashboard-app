@@ -17,7 +17,7 @@ services:
   # MailHog - Local SMTP Testing
   # --------------------------------------------------
   mailhog:
-    image: mailhog/mailhog:latest
+    image: mailhog/mailhog:v1.0.1
     container_name: mailhog
     restart: unless-stopped
     ports:

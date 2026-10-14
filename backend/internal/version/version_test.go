@@ -65,6 +65,19 @@ func TestParseBool(t *testing.T) {
 	}
 }
 
+func TestDevelopmentPrerelease(t *testing.T) {
+	for _, value := range []string{"dev", "0.0.0-dev.abc123", "backend/v0.0.0-dev.abc123"} {
+		if !(BuildInfo{Version: value}).IsDevelopment() {
+			t.Fatalf("%q must be detected as development", value)
+		}
+	}
+	for _, value := range []string{"0.0.1", "1.2.3", "1.2.3-rc.1"} {
+		if (BuildInfo{Version: value}).IsDevelopment() {
+			t.Fatalf("%q must not be detected as development", value)
+		}
+	}
+}
+
 func setBuildVariables(version, commit, buildTime, dirty string) func() {
 	oldService, oldVersion, oldCommit := Service, Version, Commit
 	oldBuildTime, oldDirty := BuildTime, Dirty

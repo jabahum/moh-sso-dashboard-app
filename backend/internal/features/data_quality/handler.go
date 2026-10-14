@@ -143,15 +143,40 @@ func (h *Handler) CreateIssue(c *gin.Context) {
 func (h *Handler) ListIssues(c *gin.Context) {
 	limit := parseListLimit(c, 20, 10000)
 	offset := parseListOffset(c)
-	program := strings.TrimSpace(c.Query("program"))
 
-	issues, err := h.service.ListIssues(c.Request.Context(), limit, offset, program)
+	filter := listIssuesFilter{
+		Limit:       limit,
+		Offset:      offset,
+		Program:     strings.TrimSpace(c.Query("program")),
+		Dataset:     strings.TrimSpace(c.Query("dataset")),
+		DataElement: strings.TrimSpace(c.Query("data_element")),
+		TimePeriod:  strings.TrimSpace(c.Query("time_period")),
+		OrgUnit:     strings.TrimSpace(c.Query("org_unit")),
+		Region:      strings.TrimSpace(c.Query("region")),
+		District:    strings.TrimSpace(c.Query("district")),
+		AssignedTo:  strings.TrimSpace(c.Query("assigned_to")),
+		Search:      strings.TrimSpace(c.Query("search")),
+	}
+	if filter.TimePeriod == "" {
+		filter.TimePeriod = strings.TrimSpace(c.Query("period"))
+	}
+	if filter.OrgUnit == "" {
+		filter.OrgUnit = strings.TrimSpace(c.Query("orgUnit"))
+	}
+	if filter.DataElement == "" {
+		filter.DataElement = strings.TrimSpace(c.Query("dataElement"))
+	}
+	if filter.AssignedTo == "" {
+		filter.AssignedTo = strings.TrimSpace(c.Query("assignedTo"))
+	}
+
+	issues, err := h.service.ListIssues(c.Request.Context(), filter)
 	if err != nil {
 		response.Fail(c, http.StatusInternalServerError, "LIST_ISSUES_FAILED", issueDBErrorMessage(err, "failed to list issues"))
 		return
 	}
 
-	total, err := h.service.CountIssues(c.Request.Context(), program)
+	total, err := h.service.CountIssues(c.Request.Context(), filter)
 	if err != nil {
 		response.Fail(c, http.StatusInternalServerError, "LIST_ISSUES_FAILED", issueDBErrorMessage(err, "failed to count issues"))
 		return

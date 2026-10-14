@@ -48,7 +48,7 @@ const ChartRenderer = ({
         const mappedPivotData =
           rows?.map((item) => ({
             "Data Element": item?.dataelement,
-            "Facility Name": item?.org_unit_name,
+            "Organisation Unit": item?.org_unit_name,
             Period: periods?.find((period) => period?.id === item?.period)?.label ?? "",
             Value: item?.value,
             "Level of Care": item?.level_of_care,
@@ -92,14 +92,14 @@ const ChartRenderer = ({
               <PivotTableUI
                 data={pivotTableData}
                 cols={["Data Element"]}
-                rows={["Facility Name"]}
+                rows={["Organisation Unit"]}
                 aggregators={customAggregators}
                 aggregatorName="Sum"
                 vals={["Value"]}
                 hiddenFromDragDrop={["Value"]}
                 hiddenFromAggregators={[
                   "Data Element",
-                  "Facility Name",
+                  "Organisation Unit",
                   "Age-Sex Disaggregation",
                   "District",
                   "Period",

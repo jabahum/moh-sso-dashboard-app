@@ -8,7 +8,7 @@ MAIN_PACKAGE = ./cmd/server
 CLI_PACKAGE = ./cmd/cli
 GO_FILES = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
-VERSION ?= $(shell tag=$$(git describe --tags --match 'backend/v[0-9]*' --abbrev=0 2>/dev/null); if [ -n "$$tag" ]; then printf '%s' "$$tag" | sed 's|^backend/v||'; else printf 'dev'; fi)
+VERSION ?= $(shell sh ./scripts/build-version.sh)
 COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null || printf 'none')
 BUILD_TIME ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 DIRTY ?= $(shell if [ -n "$$(git status --porcelain 2>/dev/null)" ]; then printf 'true'; else printf 'false'; fi)
@@ -117,7 +117,7 @@ clean: ## Remove binaries and temp files
 	@rm -rf $(BIN_DIR)
 
 
-version:
+version: ## Show resolved backend build metadata
 	@echo "Version: $(VERSION)"
 	@echo "Commit: $(COMMIT)"
 	@echo "Build Time: $(BUILD_TIME)"
@@ -131,19 +131,19 @@ next-version: ## Print the next backend version: make next-version BUMP=patch|mi
 	@./scripts/next-backend-version.sh "$(BUMP)"
 
 release-check: ## Run local backend release verification: make release-check VERSION=1.2.3
-	@test "$(VERSION)" != "dev" || { echo "VERSION is required, for example make release-check VERSION=1.2.3"; exit 2; }
+	@case "$(VERSION)" in dev|0.0.0-dev.*) echo "VERSION is required, for example make release-check VERSION=1.2.3"; exit 2 ;; esac
 	@./scripts/release-check.sh "$(VERSION)"
 
 release-pr: ## Create a backend release PR: make release-pr VERSION=1.2.3 [REPO=owner/repo] [BASE=main] [RELEASE_REMOTE=upstream]
-	@test "$(VERSION)" != "dev" || { echo "VERSION is required, for example make release-pr VERSION=1.2.3"; exit 2; }
+	@case "$(VERSION)" in dev|0.0.0-dev.*) echo "VERSION is required, for example make release-pr VERSION=1.2.3"; exit 2 ;; esac
 	@./scripts/create-release-pr.sh "$(VERSION)" "$(REPO)" "$(BASE)" "$(RELEASE_REMOTE)"
 
 release-dispatch: ## Dispatch backend release workflow: make release-dispatch VERSION=1.2.3 [REPO=owner/repo]
-	@test "$(VERSION)" != "dev" || { echo "VERSION is required, for example make release-dispatch VERSION=1.2.3"; exit 2; }
+	@case "$(VERSION)" in dev|0.0.0-dev.*) echo "VERSION is required, for example make release-dispatch VERSION=1.2.3"; exit 2 ;; esac
 	@./scripts/dispatch-release.sh "$(VERSION)" "$(REPO)"
 
 release-status: ## Inspect GitHub release/workflows/image: make release-status VERSION=1.2.3
-	@test "$(VERSION)" != "dev" || { echo "VERSION is required, for example make release-status VERSION=1.2.3"; exit 2; }
+	@case "$(VERSION)" in dev|0.0.0-dev.*) echo "VERSION is required, for example make release-status VERSION=1.2.3"; exit 2 ;; esac
 	@./scripts/release-status.sh "$(VERSION)" "$(REPO)" "$(BACKEND_IMAGE)"
 
 verify-image: ## Verify backend Docker image metadata: make verify-image IMAGE=repo/image:tag VERSION=1.2.3 [COMMIT=sha]

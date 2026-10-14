@@ -18,6 +18,7 @@ type VisualizerQuery = {
   ou: string[];
   levelOfCare: string[];
   ownership: string[];
+  aggregationLevel?: string;
 };
 
 const DataVisualizer = () => {
@@ -26,6 +27,7 @@ const DataVisualizer = () => {
   const [selectedOrgUnits, setSelectedOrgUnits] = useState([]);
   const [selectedLevelOfCare, setSelectedLevelOfCare] = useState<string[]>([]);
   const [selectedOwnership, setSelectedOwnership] = useState<string[]>([]);
+  const [aggregationLevel, setAggregationLevel] = useState<string>("");
   const [loadedChartData, setLoadedChartData] = useState([]);
   const [pivotChartData, setPivotChartData] = useState([]);
   const [showModal, setShowModal] = useState(null);
@@ -39,12 +41,14 @@ const DataVisualizer = () => {
     const ouParam = params.get("ou");
     const levelOfCareParam = params.get("levelOfCare");
     const ownershipParam = params.get("ownership");
+    const aggregationLevelParam = params.get("aggregationLevel");
 
     const savedData = localStorage.getItem("selectedData");
     const savedPeriods = localStorage.getItem("selectedPeriods");
     const savedOrgUnits = ouParam ? ouParam.split(",").filter(Boolean) : JSON.parse(localStorage.getItem("selectedOrgUnits") || "[]");
     const savedLevelOfCare = levelOfCareParam ? levelOfCareParam.split(",").filter(Boolean) : JSON.parse(localStorage.getItem("selectedLevelOfCare") || "[]");
     const savedOwnership = ownershipParam ? ownershipParam.split(",").filter(Boolean) : JSON.parse(localStorage.getItem("selectedOwnership") || "[]");
+    const savedAggregationLevel = aggregationLevelParam || localStorage.getItem("aggregationLevel") || "";
     const savedLoadedData = localStorage.getItem("loadedChartData");
     const savedPivotData = localStorage.getItem("pivotChartData");
 
@@ -53,6 +57,7 @@ const DataVisualizer = () => {
     setSelectedOrgUnits(savedOrgUnits);
     setSelectedLevelOfCare(savedLevelOfCare);
     setSelectedOwnership(savedOwnership);
+    setAggregationLevel(savedAggregationLevel);
     if (savedLoadedData) setLoadedChartData(JSON.parse(savedLoadedData));
     if (savedPivotData) setPivotChartData(JSON.parse(savedPivotData));
   }, []);
@@ -79,6 +84,10 @@ const DataVisualizer = () => {
   }, [selectedOwnership]);
 
   React.useEffect(() => {
+    localStorage.setItem("aggregationLevel", aggregationLevel);
+  }, [aggregationLevel]);
+
+  React.useEffect(() => {
     localStorage.setItem("loadedChartData", JSON.stringify(loadedChartData));
   }, [loadedChartData]);
 
@@ -100,16 +109,18 @@ const DataVisualizer = () => {
     setSelectedOrgUnits([]);
     setSelectedLevelOfCare([]);
     setSelectedOwnership([]);
+    setAggregationLevel("");
     setPivotChartData([]);
     setLoadedChartData([]);
     setAppliedQuery(null);
     setIsClearModalOpen(false);
   };
 
-  const saveOrgUnitFilters = (orgUnits, levelOfCare, ownership) => {
+  const saveOrgUnitFilters = (orgUnits, levelOfCare, ownership, aggLevel = "") => {
     setSelectedOrgUnits(orgUnits);
     setSelectedLevelOfCare(levelOfCare);
     setSelectedOwnership(ownership);
+    setAggregationLevel(aggLevel);
   };
 
   // Function to check if all required dimensions are selected
@@ -117,16 +128,19 @@ const DataVisualizer = () => {
     selectedData?.length > 0 && selectedPeriods?.length > 0 && selectedOrgUnits?.length > 0;
 
   const query = React.useMemo<VisualizerQuery | null>(() => {
-    return isDataReady
-      ? {
-          dx: selectedData.map((item: any) => item.data_element_id),
-          pe: selectedPeriods.map((item: any) => item.id),
-          ou: selectedOrgUnits,
-          levelOfCare: selectedLevelOfCare,
-          ownership: selectedOwnership,
-        }
-      : null;
-  }, [selectedData, selectedPeriods, selectedOrgUnits, selectedLevelOfCare, selectedOwnership, isDataReady]);
+    if (!isDataReady) return null;
+    const baseQuery: VisualizerQuery = {
+      dx: selectedData.map((item: any) => item.data_element_id),
+      pe: selectedPeriods.map((item: any) => item.id),
+      ou: selectedOrgUnits,
+      levelOfCare: selectedLevelOfCare,
+      ownership: selectedOwnership,
+    };
+    if (aggregationLevel) {
+      baseQuery.aggregationLevel = aggregationLevel;
+    }
+    return baseQuery;
+  }, [selectedData, selectedPeriods, selectedOrgUnits, selectedLevelOfCare, selectedOwnership, aggregationLevel, isDataReady]);
 
   React.useEffect(() => {
     setAppliedQuery(query);
@@ -386,6 +400,7 @@ const DataVisualizer = () => {
           selected={selectedOrgUnits}
           selectedLevelOfCare={selectedLevelOfCare}
           selectedOwnership={selectedOwnership}
+          aggregationLevel={aggregationLevel}
           onSave={saveOrgUnitFilters}
           updateTrigger={() => setUpdateTrigger((prev) => prev + 1)}
         />
@@ -400,6 +415,7 @@ const DataVisualizer = () => {
           selectedOrgUnits={selectedOrgUnits}
           selectedLevelOfCare={selectedLevelOfCare}
           selectedOwnership={selectedOwnership}
+          aggregationLevel={aggregationLevel}
           onSaveOrgUnits={saveOrgUnitFilters}
           updateTrigger={() => setUpdateTrigger((prev) => prev + 1)}
         />
