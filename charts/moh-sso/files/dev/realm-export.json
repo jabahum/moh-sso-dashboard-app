@@ -617,6 +617,9 @@
         "outbreak-management": [
           "outbreak-management_access",
           "viewer"
+        ],
+        "data-statistics": [
+          "report-scheduler_access"
         ]
       },
       "attributes": {

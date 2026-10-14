@@ -544,7 +544,8 @@
           "viewer"
         ],
         "data-statistics": [
-          "report_viewer"
+          "report_viewer",
+          "report-scheduler_access"
         ]
       },
       "attributes": {

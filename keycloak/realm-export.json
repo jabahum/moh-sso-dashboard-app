@@ -1755,7 +1755,8 @@
           "data-statistics_access",
           "report_viewer",
           "issue_tracker_viewer",
-          "document_viewer"
+          "document_viewer",
+          "report-scheduler_access"
         ],
         "settings": [
           "settings_access"

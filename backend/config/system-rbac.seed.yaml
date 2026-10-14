@@ -898,6 +898,18 @@ groups:
                 - access
               access_profile:
                 - report-viewer
+          - name: Report Schedulers
+            displayName: Report Schedulers
+            description: Users who schedule reports and manage their own executions
+            type: access
+            systemRoles:
+              data-statistics:
+                - report-scheduler_access
+            attributes:
+              group_type:
+                - access
+              access_profile:
+                - report-scheduler
           - name: Surveillance Managers
             displayName: Surveillance Managers
             description: Users who manage surveillance locations, imports, and alerts
@@ -1118,6 +1130,7 @@ groupMemberships:
     groups:
       - /MOH/Portal Users
       - /MOH/Data and Statistics/Report Viewers
+      - /MOH/Data and Statistics/Report Schedulers
       - /MOH/Data and Statistics/Issue Tracker Viewers
       - /MOH/Data and Statistics/Document Viewers
   - username: pwaiswa

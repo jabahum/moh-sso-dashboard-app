@@ -976,7 +976,12 @@ func (c *KeyAdminClient) EnsureGroupPath(
 			continue
 		}
 
-		payload := GroupRep{
+		// Creation payloads must omit server-owned fields. Sending id=""
+		// makes Keycloak interpret a child creation as an update of that ID.
+		payload := struct {
+			Name       string              `json:"name"`
+			Attributes map[string][]string `json:"attributes,omitempty"`
+		}{
 			Name: segment,
 		}
 		if currentPath == groupPath {
