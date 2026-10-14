@@ -18,6 +18,7 @@ export type HealthBIReport = {
   description?: string;
   category?: string;
   supportedFormats?: string[];
+  metadata?: { periodStrategies?: string[]; [key: string]: unknown };
 };
 
 export type HealthBIParameter = {
@@ -27,6 +28,7 @@ export type HealthBIParameter = {
   required: boolean;
   description?: string;
   options?: unknown[];
+  metadata?: Record<string, unknown>;
 };
 
 export type ScheduleRecipient = {

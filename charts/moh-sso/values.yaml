@@ -56,6 +56,16 @@ backend:
   secrets:
     KEYCLOAK_ADMIN_CLIENT_SECRET: ""
     KEYCLOAK_WEB_CLIENT_SECRET: ""
+    HEALTH_BI_KEYCLOAK_CLIENT_SECRET: "" # dedicated Keycloak scheduler service account
+
+  healthBI:
+    baseUrl: "" # https://dashboards.health.go.ug/report-browser; enable after configuring the Keycloak service account
+    keycloakClientId: report-scheduler-worker
+    timeout: 30s
+
+  reportScheduler:
+    workerInterval: 30s
+    deliveryLinkTTL: 24h
 
   env:
     PORT: "9000"
@@ -81,7 +91,7 @@ backend:
     workerInterval: 3s
     batchSize: 20
 
-  baseUrl: "" # optional override (used for redirect URI)
+  baseUrl: "" # public backend base including any proxy prefix; used for auth and report delivery links
 
   probes:
     readinessPath: /health/ready

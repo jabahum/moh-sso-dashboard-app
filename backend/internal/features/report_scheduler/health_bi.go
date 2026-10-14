@@ -23,27 +23,25 @@ type HealthBIClient interface {
 
 type healthBIClient struct {
 	baseURL    string
-	token      string
-	authHeader string
+	tokens     *keycloakTokenProvider
 	httpClient *http.Client
 }
 
-func NewHealthBIClient(baseURL, token, authHeader string, timeout time.Duration) HealthBIClient {
+func NewKeycloakHealthBIClient(baseURL, tokenURL, clientID, clientSecret string, timeout time.Duration) HealthBIClient {
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
-	if strings.TrimSpace(authHeader) == "" {
-		authHeader = "Authorization"
-	}
+	client := &http.Client{Timeout: timeout}
 	return &healthBIClient{
-		baseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"),
-		token: strings.TrimSpace(token),
-		authHeader: strings.TrimSpace(authHeader),
-		httpClient: &http.Client{Timeout: timeout},
+		baseURL:    strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		tokens:     &keycloakTokenProvider{endpoint: strings.TrimSpace(tokenURL), clientID: strings.TrimSpace(clientID), clientSecret: clientSecret, client: client},
+		httpClient: client,
 	}
 }
 
-func (c *healthBIClient) Enabled() bool { return c != nil && c.baseURL != "" }
+func (c *healthBIClient) Enabled() bool {
+	return c != nil && c.baseURL != "" && c.tokens != nil && c.tokens.configured()
+}
 
 func (c *healthBIClient) ListReports(ctx context.Context) ([]HealthBIReport, error) {
 	var out []HealthBIReport
@@ -79,39 +77,65 @@ func (c *healthBIClient) do(ctx context.Context, method, path string, body any, 
 	if !c.Enabled() {
 		return fmt.Errorf("Health BI is not configured")
 	}
-	var reader io.Reader
+	var payload []byte
 	if body != nil {
-		payload, err := json.Marshal(body)
-		if err != nil { return fmt.Errorf("encode Health BI request: %w", err) }
-		reader = bytes.NewReader(payload)
+		var err error
+		payload, err = json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("encode Health BI request: %w", err)
+		}
 	}
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
-	if err != nil { return fmt.Errorf("create Health BI request: %w", err) }
-	req.Header.Set("Accept", "application/json")
-	if body != nil { req.Header.Set("Content-Type", "application/json") }
-	if c.token != "" {
-		value := c.token
-		if strings.EqualFold(c.authHeader, "Authorization") && !strings.Contains(value, " ") { value = "Bearer " + value }
-		req.Header.Set(c.authHeader, value)
+	var resp *http.Response
+	for attempt := 0; attempt < 2; attempt++ {
+		token, err := c.tokens.get(ctx)
+		if err != nil {
+			return err
+		}
+		req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(payload))
+		if err != nil {
+			return fmt.Errorf("create Health BI request: %w", err)
+		}
+		req.Header.Set("Accept", "application/json")
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err = c.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("Health BI request failed: %w", err)
+		}
+		if resp.StatusCode != http.StatusUnauthorized || attempt == 1 {
+			break
+		}
+		resp.Body.Close()
+		c.tokens.invalidate(token)
 	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil { return fmt.Errorf("Health BI request failed: %w", err) }
 	defer resp.Body.Close()
 	payload, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
-	if err != nil { return fmt.Errorf("read Health BI response: %w", err) }
+	if err != nil {
+		return fmt.Errorf("read Health BI response: %w", err)
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		message := strings.TrimSpace(string(payload))
-		if len(message) > 500 { message = message[:500] }
+		if len(message) > 500 {
+			message = message[:500]
+		}
 		return fmt.Errorf("Health BI returned %s: %s", resp.Status, message)
 	}
-	if target == nil || len(payload) == 0 { return nil }
+	if target == nil || len(payload) == 0 {
+		return nil
+	}
 	var envelope struct {
 		Data json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(payload, &envelope); err == nil && len(envelope.Data) > 0 && string(envelope.Data) != "null" {
-		if err := json.Unmarshal(envelope.Data, target); err != nil { return fmt.Errorf("decode Health BI response data: %w", err) }
+		if err := json.Unmarshal(envelope.Data, target); err != nil {
+			return fmt.Errorf("decode Health BI response data: %w", err)
+		}
 		return nil
 	}
-	if err := json.Unmarshal(payload, target); err != nil { return fmt.Errorf("decode Health BI response: %w", err) }
+	if err := json.Unmarshal(payload, target); err != nil {
+		return fmt.Errorf("decode Health BI response: %w", err)
+	}
 	return nil
 }

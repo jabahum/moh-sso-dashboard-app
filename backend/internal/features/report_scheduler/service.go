@@ -342,6 +342,9 @@ func (s *Service) validateSchedule(
 	if len(report.SupportedFormats) > 0 && !containsFold(report.SupportedFormats, input.OutputFormat) {
 		return input, fmt.Errorf("output format %q is not supported by Health BI report %q", input.OutputFormat, report.Name)
 	}
+	if err := validateReportPeriod(report, input.PeriodStrategy, input.Timezone); err != nil {
+		return input, err
+	}
 
 	parameters, err := s.healthBI.GetReportParameters(ctx, input.HealthBIReportID)
 	if err != nil {

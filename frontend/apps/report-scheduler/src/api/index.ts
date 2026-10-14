@@ -32,8 +32,12 @@ export const reportSchedulerApi = baseApi.injectEndpoints({
       transformResponse: (response: Envelope<HealthBIReport[]>) => response.data,
     }),
     getHealthBIReportParameters: builder.query<HealthBIParameter[], string>({
-      query: (reportId) => `/report-scheduler/reports/${encodeURIComponent(reportId)}/parameters`,
+      query: (reportId) => ({ url: "/report-scheduler/report-parameters", params: { reportId } }),
       transformResponse: (response: Envelope<HealthBIParameter[]>) => response.data,
+    }),
+    getHealthBIReport: builder.query<HealthBIReport, string>({
+      query: (reportId) => ({ url: "/report-scheduler/report", params: { reportId } }),
+      transformResponse: (response: Envelope<HealthBIReport>) => response.data,
     }),
     getReportSchedules: builder.query<ReportSchedule[], ScheduleListArgs | void>({
       query: (args) => ({ url: "/report-scheduler/schedules", params: args ?? undefined }),
@@ -98,6 +102,7 @@ export const {
   useGetReportSchedulerModuleQuery,
   useGetReportSchedulerOverviewQuery,
   useGetHealthBIReportsQuery,
+  useGetHealthBIReportQuery,
   useGetHealthBIReportParametersQuery,
   useGetReportSchedulesQuery,
   useGetReportExecutionsQuery,

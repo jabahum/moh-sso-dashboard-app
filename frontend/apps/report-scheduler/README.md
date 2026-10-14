@@ -22,7 +22,7 @@ The current module supports:
 - Secure artifact download links through the configured storage provider.
 - Persistent schedules, recipients, executions, artifacts, and deliveries.
 - Daily, weekly, monthly, quarterly, and annual recurrence timing.
-- Dynamic current/previous day, week, epidemiological week, month, quarter, and year periods.
+- Reporting periods constrained by each report's advertised capabilities.
 - Schedule edit, pause, resume, duplicate, delete, and Run Now controls.
 - Automatic background execution and Health BI job polling with multi-replica database locking.
 - Execution history with resolved periods, generation attempt counts, errors, artifacts, and recipient-level delivery state.
@@ -38,7 +38,26 @@ The current module supports:
 - Bounded history/inbox queries to avoid unbounded scheduler UI loads.
 - Admin scheduler metrics endpoint for operations tooling.
 
-The report scheduler feature set is now production-oriented across API, persistence, UI, testing, monitoring, and deployment configuration. Further work is optional platform evolution such as Prometheus/OpenTelemetry exporters or configurable alert thresholds.
+## Health BI integration
+
+The `dwh_visualization` scheduler adapter uses the application base
+`https://dashboards.health.go.ug/report-browser`, within the shared Integrated
+Health Portal Keycloak realm. Users retain their
+portal session and module permissions. Background jobs use a dedicated backend
+Keycloak service account with automatically refreshed bearer tokens. See the
+[backend configuration and contract](../../../backend/internal/features/report_scheduler/README.md).
+
+The form loads report detail before saving and offers only supported periods and
+formats. The current adapter supports PDF/CSV and whole calendar periods in
+`Africa/Kampala`; daily reporting periods are unsupported. Recurrence frequency
+is independent of the period being exported. Nested report IDs use query
+parameters so category paths survive routing. Additional filters without inline
+options are entered as text; the browser API's `optionsEndpoint` is not called
+with the scheduler service token.
+
+Health BI artifacts expire after seven days, even if their portal inbox entry
+remains. End-to-end verification requires both services, the configured Keycloak service
+account, and configured database/email services.
 
 ## Development
 

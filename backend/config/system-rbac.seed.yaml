@@ -203,6 +203,10 @@ systems:
       - document_template_editor
       - document_template_publisher
     roles:
+      - name: report_scheduler_service
+        displayName: Report Scheduler Service
+        description: Service-account access to Health BI generation APIs; no portal user permissions
+        permissions: []
       - name: report-scheduler_access
         displayName: Report Scheduler Access
         permissions:

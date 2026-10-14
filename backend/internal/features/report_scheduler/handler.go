@@ -25,12 +25,23 @@ func (h *Handler) ListReports(c *gin.Context) {
 	response.OK(c, http.StatusOK, items)
 }
 func (h *Handler) GetReport(c *gin.Context) {
-	item, err := h.service.GetReport(c.Request.Context(), c.Param("reportId")); if err != nil { healthBIFailure(c, err); return }
+	id, ok := reportIDFromRequest(c); if !ok { return }
+	item, err := h.service.GetReport(c.Request.Context(), id); if err != nil { healthBIFailure(c, err); return }
 	response.OK(c, http.StatusOK, item)
 }
 func (h *Handler) GetReportParameters(c *gin.Context) {
-	items, err := h.service.GetParameters(c.Request.Context(), c.Param("reportId")); if err != nil { healthBIFailure(c, err); return }
+	id, ok := reportIDFromRequest(c); if !ok { return }
+	items, err := h.service.GetParameters(c.Request.Context(), id); if err != nil { healthBIFailure(c, err); return }
 	response.OK(c, http.StatusOK, items)
+}
+func reportIDFromRequest(c *gin.Context) (string, bool) {
+	id := c.Param("reportId")
+	if id == "" { id = c.Query("reportId") }
+	if strings.TrimSpace(id) == "" {
+		response.Fail(c, http.StatusBadRequest, "INVALID_REPORT_ID", "reportId is required")
+		return "", false
+	}
+	return id, true
 }
 func (h *Handler) GenerateReport(c *gin.Context) {
 	var req GenerateReportRequest

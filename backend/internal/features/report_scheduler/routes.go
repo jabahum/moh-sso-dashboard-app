@@ -13,6 +13,9 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, handler *Handler) {
 	scheduler.GET("/overview", middleware.RequirePermission(authz.PermissionReportSchedulerHistory), handler.Overview)
 	scheduler.GET("/metrics", middleware.RequirePermission(authz.PermissionMetricsRead), middleware.RequirePermission(authz.PermissionReportSchedulerManage), handler.Overview)
 	scheduler.GET("/reports", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.ListReports)
+	// Query parameters preserve category paths in report IDs through proxies and Gin.
+	scheduler.GET("/report", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.GetReport)
+	scheduler.GET("/report-parameters", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.GetReportParameters)
 	scheduler.GET("/reports/:reportId", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.GetReport)
 	scheduler.GET("/reports/:reportId/parameters", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.GetReportParameters)
 	scheduler.GET("/schedules", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.ListSchedules)

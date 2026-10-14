@@ -1,6 +1,9 @@
 package bootstrap
 
 import (
+	"net/url"
+	"strings"
+
 	"github.com/moh-sso-dashboard/internal/cache"
 	"github.com/moh-sso-dashboard/internal/config"
 	storepkg "github.com/moh-sso-dashboard/internal/db/sqlc"
@@ -113,10 +116,11 @@ func buildServices(deps serviceDependencies) services {
 
 	reportSchedulerService := reportschedulerfeature.NewService(
 		reportschedulerfeature.NewRepository(deps.Databases.Primary),
-		reportschedulerfeature.NewHealthBIClient(
+		reportschedulerfeature.NewKeycloakHealthBIClient(
 			deps.Config.HealthBIBaseURL,
-			deps.Config.HealthBIAPIToken,
-			deps.Config.HealthBIAuthHeader,
+			strings.TrimRight(deps.Config.KeycloakBaseURL, "/") + "/realms/" + url.PathEscape(deps.Config.KeycloakRealm) + "/protocol/openid-connect/token",
+			deps.Config.HealthBIKeycloakClientID,
+			deps.Config.HealthBIKeycloakClientSecret,
 			deps.Config.HealthBITimeout,
 		),
 		emailFeatureService,

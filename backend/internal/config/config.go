@@ -65,8 +65,8 @@ type Config struct {
 	// Health BI report integration
 	// ==================================================
 	HealthBIBaseURL    string        `mapstructure:"HEALTH_BI_BASE_URL"`
-	HealthBIAPIToken   string        `mapstructure:"HEALTH_BI_API_TOKEN"`
-	HealthBIAuthHeader string        `mapstructure:"HEALTH_BI_AUTH_HEADER"`
+	HealthBIKeycloakClientID string `mapstructure:"HEALTH_BI_KEYCLOAK_CLIENT_ID"`
+	HealthBIKeycloakClientSecret string `mapstructure:"HEALTH_BI_KEYCLOAK_CLIENT_SECRET"`
 	HealthBITimeout    time.Duration `mapstructure:"HEALTH_BI_TIMEOUT"`
 	ReportSchedulerWorkerInterval time.Duration `mapstructure:"REPORT_SCHEDULER_WORKER_INTERVAL"`
 	ReportSchedulerDeliveryLinkTTL time.Duration `mapstructure:"REPORT_SCHEDULER_DELIVERY_LINK_TTL"`
@@ -307,8 +307,8 @@ func setDefaults() {
 	viper.SetDefault("SERVER_PORT", "9000")
 	viper.SetDefault("APP_BASE_URL", "http://localhost:9000")
 	viper.SetDefault("HEALTH_BI_BASE_URL", "")
-	viper.SetDefault("HEALTH_BI_API_TOKEN", "")
-	viper.SetDefault("HEALTH_BI_AUTH_HEADER", "Authorization")
+	viper.SetDefault("HEALTH_BI_KEYCLOAK_CLIENT_ID", "report-scheduler-worker")
+	viper.SetDefault("HEALTH_BI_KEYCLOAK_CLIENT_SECRET", "")
 	viper.SetDefault("HEALTH_BI_TIMEOUT", "30s")
 	viper.SetDefault("REPORT_SCHEDULER_WORKER_INTERVAL", "30s")
 	viper.SetDefault("REPORT_SCHEDULER_DELIVERY_LINK_TTL", "24h")
@@ -379,8 +379,8 @@ func envBindings() map[string]string {
 		"LOGIN_URL":                             "LOGIN_URL",
 			"AUTH_RETURN_URL_ALLOWED_ORIGINS":       "AUTH_RETURN_URL_ALLOWED_ORIGINS",
 				"HEALTH_BI_BASE_URL":                    "HEALTH_BI_BASE_URL",
-				"HEALTH_BI_API_TOKEN":                   "HEALTH_BI_API_TOKEN",
-				"HEALTH_BI_AUTH_HEADER":                 "HEALTH_BI_AUTH_HEADER",
+				"HEALTH_BI_KEYCLOAK_CLIENT_ID": "HEALTH_BI_KEYCLOAK_CLIENT_ID",
+				"HEALTH_BI_KEYCLOAK_CLIENT_SECRET": "HEALTH_BI_KEYCLOAK_CLIENT_SECRET",
 				"HEALTH_BI_TIMEOUT":                     "HEALTH_BI_TIMEOUT",
 				"REPORT_SCHEDULER_WORKER_INTERVAL":      "REPORT_SCHEDULER_WORKER_INTERVAL",
 				"REPORT_SCHEDULER_DELIVERY_LINK_TTL":   "REPORT_SCHEDULER_DELIVERY_LINK_TTL",

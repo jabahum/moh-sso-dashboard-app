@@ -11,12 +11,22 @@ import {
   useCreateReportScheduleMutation,
   useUpdateReportScheduleMutation,
   useGetHealthBIReportsQuery,
+  useGetHealthBIReportQuery,
   useGetHealthBIReportParametersQuery,
   useGetReportSchedulerModuleQuery,
   usePreviewReportRecipientsMutation,
 } from "../api";
 import type { CreateScheduleRequest, ReportSchedule, ScheduleRecipient } from "../types";
 import "../report-scheduler.scss";
+
+const periodOptions = [
+  ["current_day", "Current day"], ["previous_day", "Previous day"],
+  ["current_week", "Current week"], ["previous_week", "Previous week"],
+  ["current_epi_week", "Current epi week"], ["previous_epi_week", "Previous epi week"],
+  ["current_month", "Current month"], ["previous_month", "Previous month"],
+  ["current_quarter", "Current quarter"], ["previous_quarter", "Previous quarter"],
+  ["current_year", "Current year"], ["previous_year", "Previous year"],
+];
 
 const splitValues = (value: string) =>
   value
@@ -107,10 +117,15 @@ export function ScheduleFormPanel({
   const [message, setMessage] = useState("");
 
   const parametersQuery = useGetHealthBIReportParametersQuery(reportId, { skip: !reportId });
-  const selectedReport = reportsQuery.data?.find((report) => report.id === reportId);
-  const formats = selectedReport?.supportedFormats?.length
-    ? selectedReport.supportedFormats
-    : ["pdf", "xlsx", "csv"];
+  const reportQuery = useGetHealthBIReportQuery(reportId, { skip: !reportId });
+  const selectedReport = reportQuery.currentData;
+  const formats = selectedReport?.supportedFormats ?? [];
+  const supportedPeriods = selectedReport?.metadata?.periodStrategies;
+  const availablePeriods = periodOptions.filter(([value]) =>
+    supportedPeriods === undefined || supportedPeriods.includes(value),
+  );
+  const periodSupported = availablePeriods.some(([value]) => value === periodStrategy);
+  const formatSupported = formats.includes(format);
 
   const recipients = useMemo<ScheduleRecipient[]>(
     () => [
@@ -135,7 +150,7 @@ export function ScheduleFormPanel({
 
   const requestBody = (): CreateScheduleRequest | undefined => {
     const report = reportsQuery.data?.find((item) => item.id === reportId);
-    if (!report) return undefined;
+    if (!report || !selectedReport || !periodSupported || !formatSupported) return undefined;
     return {
       healthBiReportId: report.id,
       reportName: name.trim() || report.name,
@@ -200,6 +215,7 @@ export function ScheduleFormPanel({
           onChange={(event) => {
             const next = event.target.value;
             setReportId(next);
+            setParameterValues({});
             const report = reportsQuery.data?.find((item) => item.id === next);
             if (report && !editingId) setName(report.name);
           }}
@@ -264,28 +280,21 @@ export function ScheduleFormPanel({
         <Select
           id="report-scheduler-period"
           labelText="Reporting period"
-          value={periodStrategy}
+          value={periodSupported ? periodStrategy : ""}
           onChange={(event) => setPeriodStrategy(event.target.value)}
         >
-          <SelectItem value="current_day" text="Current day" />
-          <SelectItem value="previous_day" text="Previous day" />
-          <SelectItem value="current_week" text="Current week" />
-          <SelectItem value="previous_week" text="Previous week" />
-          <SelectItem value="current_epi_week" text="Current epi week" />
-          <SelectItem value="previous_epi_week" text="Previous epi week" />
-          <SelectItem value="current_month" text="Current month" />
-          <SelectItem value="previous_month" text="Previous month" />
-          <SelectItem value="current_quarter" text="Current quarter" />
-          <SelectItem value="previous_quarter" text="Previous quarter" />
-          <SelectItem value="current_year" text="Current year" />
-          <SelectItem value="previous_year" text="Previous year" />
+          <SelectItem value="" text="Select a supported reporting period" />
+          {availablePeriods.map(([value, label]) => (
+            <SelectItem key={value} value={value} text={label} />
+          ))}
         </Select>
         <Select
           id="report-scheduler-format"
           labelText="Output format"
-          value={format}
+          value={formatSupported ? format : ""}
           onChange={(event) => setFormat(event.target.value)}
         >
+          <SelectItem value="" text="Select an output format" />
           {formats.map((item) => (
             <SelectItem key={item} value={item.toLowerCase()} text={item.toUpperCase()} />
           ))}
@@ -299,6 +308,13 @@ export function ScheduleFormPanel({
         />
       </div>
 
+      {reportQuery.isFetching && <InlineLoading description="Loading report capabilities…" />}
+      {(reportQuery.isError || parametersQuery.isError) && (
+        <InlineNotification kind="error" title="Unable to load report configuration" hideCloseButton />
+      )}
+      {selectedReport && availablePeriods.length === 0 && (
+        <InlineNotification kind="warning" title="This report does not support scheduled reporting periods" hideCloseButton />
+      )}
       {parametersQuery.isFetching && <InlineLoading description="Loading report parameters…" />}
       {(parametersQuery.data ?? []).length > 0 && (
         <div className="report-scheduler__parameters">
@@ -444,6 +460,13 @@ export function ScheduleFormPanel({
           type="submit"
           disabled={
             !reportId ||
+            !selectedReport ||
+            reportQuery.isFetching ||
+            reportQuery.isError ||
+            parametersQuery.isFetching ||
+            parametersQuery.isError ||
+            !periodSupported ||
+            !formatSupported ||
             createState.isLoading ||
             updateState.isLoading ||
             !moduleQuery.data?.healthBiEnabled

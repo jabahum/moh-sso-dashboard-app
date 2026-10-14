@@ -29,6 +29,7 @@ data:
   # Server
   # --------------------------------------------------
   SERVER_PORT: {{ .Values.backend.service.port | quote }}
+  APP_BASE_URL: {{ include "moh-sso.backend.baseUrl" . | quote }}
 
   # --------------------------------------------------
   # Database
@@ -54,6 +55,12 @@ data:
   REFRESH_TOKEN_DURATION: "720h"
 
   ENABLE_TLS: "false"
+
+  HEALTH_BI_BASE_URL: {{ .Values.backend.healthBI.baseUrl | quote }}
+  HEALTH_BI_KEYCLOAK_CLIENT_ID: {{ .Values.backend.healthBI.keycloakClientId | quote }}
+  HEALTH_BI_TIMEOUT: {{ .Values.backend.healthBI.timeout | quote }}
+  REPORT_SCHEDULER_WORKER_INTERVAL: {{ .Values.backend.reportScheduler.workerInterval | quote }}
+  REPORT_SCHEDULER_DELIVERY_LINK_TTL: {{ .Values.backend.reportScheduler.deliveryLinkTTL | quote }}
 
   # --------------------------------------------------
   # SMS
@@ -96,6 +103,7 @@ data:
     KEYCLOAK_REDIRECT_URI={{ include "moh-sso.keycloak.redirectUri" . }}
 
     SERVER_PORT={{ .Values.backend.service.port }}
+    APP_BASE_URL={{ include "moh-sso.backend.baseUrl" . }}
 
     DB_DRIVER=postgres
     DB_HOST={{ printf "%s-postgres-app" .Release.Name }}
@@ -112,6 +120,12 @@ data:
     REFRESH_TOKEN_DURATION=720h
 
     ENABLE_TLS=false
+
+    HEALTH_BI_BASE_URL={{ .Values.backend.healthBI.baseUrl }}
+    HEALTH_BI_KEYCLOAK_CLIENT_ID={{ .Values.backend.healthBI.keycloakClientId }}
+    HEALTH_BI_TIMEOUT={{ .Values.backend.healthBI.timeout }}
+    REPORT_SCHEDULER_WORKER_INTERVAL={{ .Values.backend.reportScheduler.workerInterval }}
+    REPORT_SCHEDULER_DELIVERY_LINK_TTL={{ .Values.backend.reportScheduler.deliveryLinkTTL }}
 
     SMS_ENABLED={{ .Values.backend.sms.enabled }}
     SMS_PROVIDER={{ .Values.backend.sms.provider }}
@@ -139,6 +153,7 @@ type: Opaque
 stringData:
   KEYCLOAK_ADMIN_CLIENT_SECRET: {{ .Values.backend.secrets.KEYCLOAK_ADMIN_CLIENT_SECRET | quote }}
   KEYCLOAK_WEB_CLIENT_SECRET: {{ .Values.backend.secrets.KEYCLOAK_WEB_CLIENT_SECRET | quote }}
+  HEALTH_BI_KEYCLOAK_CLIENT_SECRET: {{ .Values.backend.secrets.HEALTH_BI_KEYCLOAK_CLIENT_SECRET | quote }}
 
   DB_USER: {{ .Values.postgresApp.auth.username | quote }}
   DB_PASSWORD: {{ .Values.postgresApp.auth.password | quote }}
