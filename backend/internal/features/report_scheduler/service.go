@@ -655,7 +655,7 @@ func (s *Service) ProcessOneRetry(ctx context.Context) (bool, error) {
 	execution, found, err := s.repo.ClaimRetryExecution(ctx, time.Now())
 	if err != nil || !found { return found, err }
 	if execution.ScheduleID == nil {
-		_ = s.repo.UpdateExecutionJob(ctx, execution.ID, execution.HealthBIJobID, "failed", "retry execution has no schedule")
+		_ = s.repo.UpdateExecutionJob(ctx, execution.ID, execution.HealthBIJobID, "cancelled", "Report schedule was deleted")
 		return true, nil
 	}
 	schedule, err := s.repo.GetSchedule(ctx, *execution.ScheduleID, "", true)
@@ -673,10 +673,20 @@ func (s *Service) ProcessOneRetry(ctx context.Context) (bool, error) {
 
 func (s *Service) PollGenerating(ctx context.Context, limit int) error {
 	executions, err := s.repo.ClaimGeneratingExecutions(ctx, limit)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	for _, execution := range executions {
-		if execution.ScheduleID == nil || strings.TrimSpace(execution.HealthBIJobID) == "" {
-			_ = s.repo.UpdateExecutionJob(ctx, execution.ID, execution.HealthBIJobID, "failed", "execution is missing schedule or Health BI job reference")
+		if execution.ScheduleID == nil {
+			if err := s.repo.UpdateExecutionJob(ctx, execution.ID, execution.HealthBIJobID, "cancelled", "Report schedule was deleted"); err != nil {
+				return err
+			}
+			continue
+		}
+		if strings.TrimSpace(execution.HealthBIJobID) == "" {
+			if err := s.repo.UpdateExecutionJob(ctx, execution.ID, execution.HealthBIJobID, "failed", "execution is missing its Health BI job reference"); err != nil {
+				return err
+			}
 			continue
 		}
 		schedule, err := s.repo.GetSchedule(ctx, *execution.ScheduleID, "", true)
@@ -733,14 +743,18 @@ func (s *Service) ProcessOneDelivery(ctx context.Context) (bool, error) {
 }
 
 func (s *Service) submitExecution(ctx context.Context, schedule Schedule, execution Execution) error {
-	if err := s.repo.MarkGenerationAttempt(ctx, execution.ID); err != nil { return err }
+	if err := s.repo.MarkGenerationAttempt(ctx, execution.ID); err != nil {
+		return err
+	}
 	execution.GenerationAttempts++
 	job, err := s.healthBI.GenerateReport(ctx, schedule.HealthBIReportID, GenerateReportRequest{
 		Parameters: execution.Parameters,
 		Format:     schedule.OutputFormat,
 	})
 	if err != nil {
-		return s.handleGenerationFailure(ctx, schedule, execution, "", err.Error())
+		var rejection *HealthBIRequestError
+		retryable := !(errors.As(err, &rejection) && (rejection.StatusCode == 400 || rejection.StatusCode == 404 || rejection.StatusCode == 422))
+		return s.handleGenerationFailureWithRetry(ctx, schedule, execution, "", err.Error(), retryable)
 	}
 	return s.applyJobResult(ctx, schedule, execution, job)
 }
@@ -793,28 +807,38 @@ func (s *Service) applyJobResult(ctx context.Context, schedule Schedule, executi
 }
 
 func (s *Service) handleGenerationFailure(ctx context.Context, schedule Schedule, execution Execution, jobID, message string) error {
+	return s.handleGenerationFailureWithRetry(ctx, schedule, execution, jobID, message, true)
+}
+
+func (s *Service) handleGenerationFailureWithRetry(ctx context.Context, schedule Schedule, execution Execution, jobID, message string, retryable bool) error {
 	maxAttempts := execution.MaxGenerationAttempts
-	if maxAttempts <= 0 { maxAttempts = 3 }
-	if execution.GenerationAttempts < maxAttempts {
+	if maxAttempts <= 0 {
+		maxAttempts = 3
+	}
+	if retryable && execution.GenerationAttempts < maxAttempts {
 		next := time.Now().Add(reportRetryDelay(execution.GenerationAttempts))
-		if err := s.repo.ScheduleExecutionRetry(ctx, execution.ID, message, next); err != nil { return err }
+		if err := s.repo.ScheduleExecutionRetry(ctx, execution.ID, message, next); err != nil {
+			return err
+		}
 		s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.generation_retry_scheduled", map[string]any{
-			"execution_id": execution.ID,
-			"schedule_id": schedule.ID,
-			"attempt": execution.GenerationAttempts,
-			"max_attempts": maxAttempts,
+			"execution_id":  execution.ID,
+			"schedule_id":   schedule.ID,
+			"attempt":       execution.GenerationAttempts,
+			"max_attempts":  maxAttempts,
 			"next_retry_at": next.UTC(),
-			"error": message,
+			"error":         message,
 		})
 		return nil
 	}
-	if err := s.repo.UpdateExecutionJob(ctx, execution.ID, jobID, "failed", message); err != nil { return err }
+	if err := s.repo.UpdateExecutionJob(ctx, execution.ID, jobID, "failed", message); err != nil {
+		return err
+	}
 	s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.execution_failed", map[string]any{
 		"execution_id": execution.ID,
-		"schedule_id": schedule.ID,
-		"stage": "generation",
-		"attempts": execution.GenerationAttempts,
-		"error": message,
+		"schedule_id":  schedule.ID,
+		"stage":        "generation",
+		"attempts":     execution.GenerationAttempts,
+		"error":        message,
 	})
 	s.notifyExecutionFailure(ctx, schedule, execution, message)
 	return nil

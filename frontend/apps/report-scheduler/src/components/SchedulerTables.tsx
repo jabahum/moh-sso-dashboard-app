@@ -263,7 +263,7 @@ export function ExecutionsTable({
               >
                 Details
               </Button>
-              {execution.status === "failed" && (
+              {execution.status === "failed" && execution.scheduleId && (
                 <Button
                   kind="ghost"
                   size="sm"

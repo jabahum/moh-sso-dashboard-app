@@ -42,6 +42,16 @@ func NewKeycloakHealthBIClient(baseURL, tokenURL, clientID, clientSecret string,
 	}
 }
 
+// HealthBIRequestError preserves the status and decodes the public error envelope.
+type HealthBIRequestError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *HealthBIRequestError) Error() string {
+	return fmt.Sprintf("Health BI returned %d: %s", e.StatusCode, e.Message)
+}
+
 func (c *healthBIClient) Enabled() bool {
 	return c != nil && c.baseURL != "" && c.tokens != nil && c.tokens.configured()
 }
@@ -98,12 +108,19 @@ func (c *healthBIClient) do(ctx context.Context, method, path string, body any, 
 		return fmt.Errorf("read Health BI response: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		message := strings.TrimSpace(string(payload))
+		message := "request failed"
+		var envelope struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(payload, &envelope) == nil && strings.TrimSpace(envelope.Error) != "" {
+			message = strings.TrimSpace(envelope.Error)
+		}
 		if len(message) > 500 {
 			message = message[:500]
 		}
-		return fmt.Errorf("Health BI returned %s: %s", resp.Status, message)
+		return &HealthBIRequestError{StatusCode: resp.StatusCode, Message: message}
 	}
+
 	if target == nil || len(payload) == 0 {
 		return nil
 	}

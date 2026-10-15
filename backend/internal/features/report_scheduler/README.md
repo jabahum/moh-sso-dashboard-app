@@ -195,3 +195,24 @@ Run from the repository root. It reproduces the old constraint violation and
 verifies the repair, reapplication, rollback compatibility, and invalid-state rejection.
 
 See the [frontend module README](../../../../frontend/apps/report-scheduler/README.md) for development and access setup.
+
+## Generation failures and deleted schedules
+
+Health BI validation/not-found responses (HTTP 400, 404, 422) end the generation
+attempt immediately; repeating the same rejected parameters cannot repair them.
+Rate limits and server/network failures retain the bounded retry policy. JSON
+error messages are decoded before display so report titles remain readable.
+
+Deleting a schedule atomically cancels its active executions and stops pending
+or retrying deliveries, preserving execution history. Work already sent to an
+email transport cannot be recalled. A late poll/retry update cannot restore a
+cancelled execution. Historical executions whose schedule has been deleted have
+no Retry action; create a new schedule to run that report again.
+
+Some Health BI report components intentionally show a rolling time window rather
+than just the selected period. Those raw SQL components explicitly declare
+`schedulerContextTimeFilters` in their Health BI definition. This exemption is
+restricted to time dimensions; location scope must still be bound in every SQL
+component. District-profile mortality now applies its month filter consistently.
+Missing warehouse views/columns require actual warehouse changes in production;
+Health BI's `database/testdb` fixtures repair only the synthetic local database.

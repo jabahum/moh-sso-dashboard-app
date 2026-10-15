@@ -208,21 +208,41 @@ func (r *postgresRepository) UpdateSchedule(ctx context.Context, id string, inpu
 }
 
 func (r *postgresRepository) DeleteSchedule(ctx context.Context, id, userID string, includeAll bool) error {
-	query := `DELETE FROM report_schedules WHERE id=$1::uuid`
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	query := `SELECT id FROM report_schedules WHERE id=$1::uuid`
 	args := []any{id}
 	if !includeAll {
 		query += ` AND created_by=$2`
 		args = append(args, userID)
 	}
-	result, err := r.db.ExecContext(ctx, query, args...)
-	if err != nil {
+	query += ` FOR UPDATE`
+	var found string
+	if err := tx.QueryRowContext(ctx, query, args...).Scan(&found); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrScheduleNotFound
+		}
 		return err
 	}
-	count, err := result.RowsAffected()
-	if err == nil && count == 0 {
-		return ErrScheduleNotFound
+	// Keep execution history, but stop pending work before the FK detaches it.
+	if _, err := tx.ExecContext(ctx, `UPDATE report_executions SET status='cancelled',
+ error_message='Report schedule was deleted',finished_at=now(),next_retry_at=NULL,poll_claimed_at=NULL
+ WHERE schedule_id=$1::uuid AND status NOT IN ('completed','failed','cancelled')`, id); err != nil {
+		return err
 	}
-	return err
+	if _, err := tx.ExecContext(ctx, `UPDATE report_deliveries SET status='failed',
+ last_error='Report schedule was deleted',next_retry_at=NULL,updated_at=now()
+ WHERE execution_id IN (SELECT id FROM report_executions WHERE schedule_id=$1::uuid)
+ AND status IN ('pending','sending','retrying')`, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM report_schedules WHERE id=$1::uuid`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *postgresRepository) replaceRecipients(ctx context.Context, scheduleID string, recipients []ScheduleRecipient) error {
@@ -427,7 +447,7 @@ func (r *postgresRepository) UpdateExecutionJob(ctx context.Context, id, jobID, 
 	finished := status == "completed" || status == "failed" || status == "cancelled"
 	_, err := r.db.ExecContext(ctx, `UPDATE report_executions SET health_bi_job_id=NULLIF($2,''), status=$3,
 		error_message=NULLIF($4,''), poll_claimed_at=NULL,
-		finished_at=CASE WHEN $5 THEN now() ELSE finished_at END WHERE id=$1::uuid`, id, jobID, status, errorMessage, finished)
+		finished_at=CASE WHEN $5 THEN now() ELSE finished_at END WHERE id=$1::uuid AND status<>'cancelled'`, id, jobID, status, errorMessage, finished)
 	return err
 }
 
@@ -460,7 +480,7 @@ func (r *postgresRepository) MarkGenerationAttempt(ctx context.Context, id strin
 
 func (r *postgresRepository) ScheduleExecutionRetry(ctx context.Context, id, message string, next time.Time) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE report_executions SET status='retrying', error_message=$2,
-		next_retry_at=$3, poll_claimed_at=NULL, finished_at=NULL WHERE id=$1::uuid`, id, message, next.UTC())
+		next_retry_at=$3, poll_claimed_at=NULL, finished_at=NULL WHERE id=$1::uuid AND status<>'cancelled'`, id, message, next.UTC())
 	return err
 }
 
