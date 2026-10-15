@@ -19,6 +19,7 @@ import { useToast } from "@moh-sso/ui";
 import { useSchedulerQueryToasts } from "../hooks/useSchedulerQueryToasts";
 import { parameterInputValue, populateReportParameters } from "../utils/report-parameters";
 import { RecipientSelect } from "./RecipientSelect";
+import { useSchedulerPermissions } from "../hooks/useSchedulerPermissions";
 import "../report-scheduler.scss";
 
 const periodOptions = [
@@ -62,7 +63,24 @@ type ScheduleFormPanelProps = {
   onCancel: () => void;
 };
 
-export function ScheduleFormPanel({
+export function ScheduleFormPanel(props: ScheduleFormPanelProps) {
+  const access = useSchedulerPermissions();
+  if (!(props.initialSchedule ? access.update : access.create))
+    return (
+      <div>
+        <p>
+          You do not have permission to {props.initialSchedule ? "edit" : "create"} report
+          schedules.
+        </p>
+        <Button kind="secondary" onClick={props.onCancel}>
+          Close
+        </Button>
+      </div>
+    );
+  return <ScheduleFormContent {...props} />;
+}
+
+function ScheduleFormContent({
   initialSchedule,
   currentUserId,
   onSuccess,

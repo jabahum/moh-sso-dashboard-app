@@ -45,9 +45,9 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
-      - name: Report scheduler parameter defaults
+      - name: Report scheduler parameters and permissions
         working-directory: frontend
-        run: node --test scripts/report-scheduler-parameters.test.mjs
+        run: node --test scripts/report-scheduler-parameters.test.mjs scripts/report-scheduler-permissions.test.mjs
 
       - name: Frontend architecture and configuration
         working-directory: frontend

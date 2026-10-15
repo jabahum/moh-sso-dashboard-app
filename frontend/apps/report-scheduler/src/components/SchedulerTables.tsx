@@ -15,6 +15,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import type { SchedulerPermissions } from "../utils/scheduler-permissions";
 import type { PortalReport, ReportExecution, ReportSchedule } from "../types";
 
 export type ScheduleAction = "pause" | "resume" | "duplicate" | "run" | "delete";
@@ -150,6 +151,7 @@ function PagedTable<T>({
 
 export function SchedulesTable({
   rows,
+  access,
   busy,
   pending,
   onEdit,
@@ -157,6 +159,7 @@ export function SchedulesTable({
   empty,
 }: {
   rows: ReportSchedule[];
+  access: SchedulerPermissions;
   busy: boolean;
   pending?: { id: string; action: ScheduleAction };
   onEdit: (schedule: ReportSchedule) => void;
@@ -197,39 +200,53 @@ export function SchedulesTable({
           </TableCell>
           <TableCell>
             <div className="report-scheduler__row-actions">
-              <Button
-                kind="ghost"
-                size="sm"
-                disabled={busy}
-                aria-label={`Run ${schedule.reportName} now`}
-                onClick={() => onAction("run", schedule)}
-              >
-                {pending?.id === schedule.id && pending.action === "run" ? "Starting…" : "Run now"}
-              </Button>
-              <OverflowMenu flipped ariaLabel={`Actions for ${schedule.reportName}`}>
-                <OverflowMenuItem
-                  itemText="Edit schedule"
+              {access.execute && (
+                <Button
+                  kind="ghost"
+                  size="sm"
                   disabled={busy}
-                  onClick={() => onEdit(schedule)}
-                />
-                <OverflowMenuItem
-                  itemText={schedule.enabled ? "Pause schedule" : "Resume schedule"}
-                  disabled={busy}
-                  onClick={() => onAction(schedule.enabled ? "pause" : "resume", schedule)}
-                />
-                <OverflowMenuItem
-                  itemText="Duplicate schedule"
-                  disabled={busy}
-                  onClick={() => onAction("duplicate", schedule)}
-                />
-                <OverflowMenuItem
-                  itemText="Delete schedule"
-                  isDelete
-                  hasDivider
-                  disabled={busy}
-                  onClick={() => onAction("delete", schedule)}
-                />
-              </OverflowMenu>
+                  aria-label={`Run ${schedule.reportName} now`}
+                  onClick={() => onAction("run", schedule)}
+                >
+                  {pending?.id === schedule.id && pending.action === "run"
+                    ? "Starting…"
+                    : "Run now"}
+                </Button>
+              )}
+              {(access.update || access.create || access.delete) && (
+                <OverflowMenu flipped ariaLabel={`Actions for ${schedule.reportName}`}>
+                  {access.update && (
+                    <OverflowMenuItem
+                      itemText="Edit schedule"
+                      disabled={busy}
+                      onClick={() => onEdit(schedule)}
+                    />
+                  )}
+                  {access.update && (
+                    <OverflowMenuItem
+                      itemText={schedule.enabled ? "Pause schedule" : "Resume schedule"}
+                      disabled={busy}
+                      onClick={() => onAction(schedule.enabled ? "pause" : "resume", schedule)}
+                    />
+                  )}
+                  {access.create && (
+                    <OverflowMenuItem
+                      itemText="Duplicate schedule"
+                      disabled={busy}
+                      onClick={() => onAction("duplicate", schedule)}
+                    />
+                  )}
+                  {access.delete && (
+                    <OverflowMenuItem
+                      itemText="Delete schedule"
+                      isDelete
+                      hasDivider
+                      disabled={busy}
+                      onClick={() => onAction("delete", schedule)}
+                    />
+                  )}
+                </OverflowMenu>
+              )}
             </div>
           </TableCell>
         </>
@@ -244,6 +261,7 @@ export function ExecutionsTable({
   onDetails,
   onRetry,
   retrying,
+  canRetry,
   selectedId,
   expandedDetails,
   empty,
@@ -253,6 +271,7 @@ export function ExecutionsTable({
   onDetails: (id?: string) => void;
   onRetry: (id: string) => void;
   retrying: boolean;
+  canRetry: boolean;
   selectedId?: string;
   expandedDetails: ReactNode;
   empty: ReactNode;
@@ -301,7 +320,7 @@ export function ExecutionsTable({
           <TableCell>{execution.outputFormat.toUpperCase()}</TableCell>
           <TableCell>
             <div className="report-scheduler__row-actions">
-              {execution.status === "failed" && execution.scheduleId && (
+              {canRetry && execution.status === "failed" && execution.scheduleId && (
                 <Button
                   kind="ghost"
                   size="sm"

@@ -42,8 +42,9 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/microfrontend": "^1.0.0",
     "@moh-sso/api": "^1.0.0",
+    "@moh-sso/auth": "^1.0.0",
+    "@moh-sso/microfrontend": "^1.0.0",
     "@moh-sso/ui": "^1.0.0"
   },
   "private": false,

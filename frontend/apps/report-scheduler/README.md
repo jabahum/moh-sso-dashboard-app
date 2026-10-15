@@ -89,3 +89,30 @@ go run ./cmd/cli system-rbac seed --file config/system-rbac.seed.yaml
 
 Existing installations should assign `data-statistics:report-scheduler_access` to authorized users/groups and refresh their sessions.
 The `report_admin` role adds `report_scheduler:manage` for cross-owner administration, subject to the authenticated district/facility health context when one is present.
+
+## Frontend permissions
+
+The scheduler uses the shared `@moh-sso/auth` authorization state. Both module
+entry and the independently mounted schedule form deny access without
+`data-statistics` system access and `report_scheduler:read`. Protected requests
+are skipped when their permission is absent; hiding controls alone is insufficient.
+
+| Permission                 | Frontend access                                                             |
+| -------------------------- | --------------------------------------------------------------------------- |
+| `report_scheduler:read`    | Own schedules, portal inbox, authorized artifact downloads                  |
+| `report_scheduler:create`  | Create and duplicate schedules, recipient directory and preview             |
+| `report_scheduler:update`  | Edit, pause and resume schedules, recipient directory and preview           |
+| `report_scheduler:delete`  | Delete schedule controls and confirmation                                   |
+| `report_scheduler:execute` | Run now; retry when execution history is also accessible                    |
+| `report_scheduler:history` | Execution tab, expandable details, health strip and summary metrics         |
+| `report_scheduler:manage`  | Broader ownership scope from the backend; does not grant action permissions |
+
+Read-only users do not subscribe to history/health endpoints, see mutation
+controls, or load the recipient directory. Revoking history access returns an
+open history tab to schedules and stops detail polling. Revoking create/update
+access unmounts an open form. Backend permissions, ownership, and health-context
+checks remain authoritative for every request. Portal downloads use `read` and
+server-side recipient authorization; no additional download permission is required.
+
+Run `node --test scripts/report-scheduler-permissions.test.mjs` from `frontend`
+for permission, rendered-control, query-subscription, and retry boundary checks.
