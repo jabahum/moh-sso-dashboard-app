@@ -45,7 +45,7 @@ func TestHealthBIAdapterContract(t *testing.T) {
 			}
 			json.NewEncoder(w).Encode(map[string]any{"data": HealthBIReport{ID: id, Name: "Test", SupportedFormats: []string{"pdf", "csv"}, Metadata: map[string]any{"periodStrategies": []string{"previous_month"}}}})
 		case reportPath + "/parameters":
-			json.NewEncoder(w).Encode(map[string]any{"data": []HealthBIParameter{}})
+			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"name": "basket", "type": "string", "required": false, "defaultValue": "EMHS"}}})
 		case reportPath + "/generate":
 			if r.Method != "POST" {
 				t.Errorf("method: %s", r.Method)
@@ -73,6 +73,10 @@ func TestHealthBIAdapterContract(t *testing.T) {
 	defer upstream.Close()
 	client := NewKeycloakHealthBIClient(upstream.URL+"/report-browser/", upstream.URL+"/token", "report-scheduler-worker", key, time.Second)
 	ctx := context.Background()
+	parameters, err := client.GetReportParameters(ctx, id)
+	if err != nil || len(parameters) != 1 || parameters[0].DefaultValue != "EMHS" {
+		t.Fatalf("report parameter defaults lost: %+v, %v", parameters, err)
+	}
 	reports, err := client.ListReports(ctx)
 	if err != nil || len(reports) != 1 || reports[0].ID != id {
 		t.Fatalf("catalogue: %+v, %v", reports, err)

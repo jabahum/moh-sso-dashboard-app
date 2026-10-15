@@ -12,6 +12,7 @@ import {
 import type { CreateScheduleRequest, ReportSchedule, ScheduleRecipient } from "../types";
 import { useToast } from "@moh-sso/ui";
 import { useSchedulerQueryToasts } from "../hooks/useSchedulerQueryToasts";
+import { parameterInputValue, populateReportParameters } from "../utils/report-parameters";
 import "../report-scheduler.scss";
 
 const periodOptions = [
@@ -47,14 +48,6 @@ const optionValue = (option: unknown) => {
   }
   return undefined;
 };
-
-const toStringParameters = (parameters: Record<string, unknown>) =>
-  Object.fromEntries(
-    Object.entries(parameters ?? {}).map(([key, value]) => [
-      key,
-      value == null ? "" : String(value),
-    ]),
-  );
 
 type ScheduleFormPanelProps = {
   initialSchedule?: ReportSchedule;
@@ -112,21 +105,39 @@ export function ScheduleFormPanel({
   const [healthFacility, setHealthFacility] = useState(
     initialSchedule?.healthContext?.facility ?? "",
   );
-  const [parameterValues, setParameterValues] = useState<Record<string, string>>(() =>
-    toStringParameters(initialSchedule?.parameters ?? {}),
+  const [parameterOverrides, setParameterOverrides] = useState<Record<string, unknown>>(
+    initialSchedule?.parameters ?? {},
   );
   const toast = useToast();
 
   const parametersQuery = useGetHealthBIReportParametersQuery(reportId, { skip: !reportId });
   const reportQuery = useGetHealthBIReportQuery(reportId, { skip: !reportId });
   const selectedReport = reportQuery.currentData;
+  const parameterSchema = parametersQuery.currentData;
+  const parameterValues = useMemo(
+    () => populateReportParameters(parameterSchema ?? [], parameterOverrides),
+    [parameterSchema, parameterOverrides],
+  );
   const formats = selectedReport?.supportedFormats ?? [];
   const supportedPeriods = selectedReport?.metadata?.periodStrategies;
   const availablePeriods = periodOptions.filter(
     ([value]) => supportedPeriods === undefined || supportedPeriods.includes(value),
   );
-  const periodSupported = availablePeriods.some(([value]) => value === periodStrategy);
-  const formatSupported = formats.includes(format);
+  const keepingSavedReport = initialSchedule?.healthBiReportId === reportId;
+  const selectedPeriod = availablePeriods.some(([value]) => value === periodStrategy)
+    ? periodStrategy
+    : keepingSavedReport
+      ? ""
+      : (availablePeriods.find(([value]) => value.startsWith("previous_"))?.[0] ??
+        availablePeriods[0]?.[0] ??
+        "");
+  const selectedFormat = formats.includes(format)
+    ? format
+    : keepingSavedReport
+      ? ""
+      : (formats[0] ?? "");
+  const periodSupported = availablePeriods.some(([value]) => value === selectedPeriod);
+  const formatSupported = formats.includes(selectedFormat);
 
   useSchedulerQueryToasts([
     {
@@ -174,10 +185,14 @@ export function ScheduleFormPanel({
       reportName: name.trim() || report.name,
       frequency,
       timezone: "Africa/Kampala",
-      periodStrategy,
+      periodStrategy: selectedPeriod,
       parameters: parameterValues,
-      outputFormat: format,
-      outputConfig: { format, deliveryMode: "link", fileNamePrefix: fileNamePrefix.trim() },
+      outputFormat: selectedFormat,
+      outputConfig: {
+        format: selectedFormat,
+        deliveryMode: "link",
+        fileNamePrefix: fileNamePrefix.trim(),
+      },
       timing: { timeOfDay, weekday, dayOfMonth },
       healthContext: {
         ...moduleQuery.data?.healthContext,
@@ -231,7 +246,7 @@ export function ScheduleFormPanel({
           onChange={(event) => {
             const next = event.target.value;
             setReportId(next);
-            setParameterValues({});
+            setParameterOverrides({});
             const report = reportsQuery.data?.find((item) => item.id === next);
             if (report && !editingId) setName(report.name);
           }}
@@ -296,7 +311,7 @@ export function ScheduleFormPanel({
         <Select
           id="report-scheduler-period"
           labelText="Reporting period"
-          value={periodSupported ? periodStrategy : ""}
+          value={selectedPeriod}
           onChange={(event) => setPeriodStrategy(event.target.value)}
         >
           <SelectItem value="" text="Select a supported reporting period" />
@@ -307,7 +322,7 @@ export function ScheduleFormPanel({
         <Select
           id="report-scheduler-format"
           labelText="Output format"
-          value={formatSupported ? format : ""}
+          value={selectedFormat}
           onChange={(event) => setFormat(event.target.value)}
         >
           <SelectItem value="" text="Select an output format" />
@@ -324,16 +339,35 @@ export function ScheduleFormPanel({
         />
       </div>
 
+      {selectedReport && (
+        <section className="report-scheduler__context" aria-label="Selected report details">
+          <h3>{selectedReport.name}</h3>
+          {selectedReport.category && <p>{selectedReport.category}</p>}
+          {selectedReport.description && <p>{selectedReport.description}</p>}
+        </section>
+      )}
       {reportQuery.isFetching && <InlineLoading description="Loading report capabilities…" />}
       {parametersQuery.isFetching && <InlineLoading description="Loading report parameters…" />}
-      {(parametersQuery.data ?? []).length > 0 && (
+      {(parameterSchema ?? []).length > 0 && (
         <div className="report-scheduler__parameters">
           <h3>Report parameters</h3>
+          <p>
+            Defaults from the selected report are filled in below. You can adjust them before
+            saving.
+          </p>
           <div className="report-scheduler__grid">
-            {(parametersQuery.data ?? []).map((parameter) => {
+            {(parameterSchema ?? []).map((parameter) => {
               const options = (parameter.options ?? [])
                 .map(optionValue)
                 .filter((option): option is { value: string; label: string } => Boolean(option));
+              const currentValue = parameterInputValue(parameterValues[parameter.name]);
+              if (
+                currentValue &&
+                options.length > 0 &&
+                !options.some((option) => option.value === currentValue)
+              ) {
+                options.push({ value: currentValue, label: currentValue });
+              }
               const label = `${parameter.label || parameter.name}${parameter.required ? " *" : ""}`;
               if (options.length > 0)
                 return (
@@ -341,9 +375,10 @@ export function ScheduleFormPanel({
                     key={parameter.name}
                     id={`report-parameter-${parameter.name}`}
                     labelText={label}
-                    value={parameterValues[parameter.name] ?? ""}
+                    required={parameter.required}
+                    value={currentValue}
                     onChange={(event) =>
-                      setParameterValues((current) => ({
+                      setParameterOverrides((current) => ({
                         ...current,
                         [parameter.name]: event.target.value,
                       }))
@@ -360,10 +395,11 @@ export function ScheduleFormPanel({
                   key={parameter.name}
                   id={`report-parameter-${parameter.name}`}
                   labelText={label}
+                  required={parameter.required}
                   helperText={parameter.description}
-                  value={parameterValues[parameter.name] ?? ""}
+                  value={parameterInputValue(parameterValues[parameter.name])}
                   onChange={(event) =>
-                    setParameterValues((current) => ({
+                    setParameterOverrides((current) => ({
                       ...current,
                       [parameter.name]: event.target.value,
                     }))
@@ -373,6 +409,13 @@ export function ScheduleFormPanel({
             })}
           </div>
         </div>
+      )}
+
+      {reportId && parameterSchema?.length === 0 && !parametersQuery.isFetching && (
+        <p>
+          This report has no additional parameters. Reporting period and health scope are applied
+          when it runs.
+        </p>
       )}
 
       <div className="report-scheduler__parameters">

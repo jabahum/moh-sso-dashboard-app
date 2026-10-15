@@ -59,6 +59,12 @@ Health BI artifacts expire after seven days, even if their portal inbox entry
 remains. End-to-end verification requires both services, the configured Keycloak service
 account, and configured database/email services.
 
+Selecting a report prefills its declared parameter defaults, supported reporting
+period, and export format. Saved values and manual edits override defaults;
+refreshes do not overwrite them. Changing the report clears its previous
+parameters. Filters without declared defaults remain blank. Health BI's
+`defaultValue` and `metadata.noDefault`/`hideNone` settings control prepopulation.
+
 ## Development
 
 Run from `frontend/`:

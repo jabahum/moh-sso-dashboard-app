@@ -20,13 +20,14 @@ type HealthBIReport struct {
 }
 
 type HealthBIParameter struct {
-	Name        string         `json:"name"`
-	Label       string         `json:"label,omitempty"`
-	Type        string         `json:"type"`
-	Required    bool           `json:"required"`
-	Description string         `json:"description,omitempty"`
-	Options     []any          `json:"options,omitempty"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Name         string         `json:"name"`
+	Label        string         `json:"label,omitempty"`
+	Type         string         `json:"type"`
+	Required     bool           `json:"required"`
+	Description  string         `json:"description,omitempty"`
+	Options      []any          `json:"options,omitempty"`
+	DefaultValue any            `json:"defaultValue,omitempty"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
 }
 
 type HealthContext struct {

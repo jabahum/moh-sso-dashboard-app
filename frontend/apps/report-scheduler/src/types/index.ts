@@ -28,6 +28,7 @@ export type HealthBIParameter = {
   required: boolean;
   description?: string;
   options?: unknown[];
+  defaultValue?: unknown;
   metadata?: Record<string, unknown>;
 };
 
