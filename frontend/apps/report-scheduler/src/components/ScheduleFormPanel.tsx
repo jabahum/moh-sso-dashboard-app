@@ -190,7 +190,7 @@ export function ScheduleFormPanel({
       outputFormat: selectedFormat,
       outputConfig: {
         format: selectedFormat,
-        deliveryMode: "link",
+        deliveryMode: "attachment",
         fileNamePrefix: fileNamePrefix.trim(),
       },
       timing: { timeOfDay, weekday, dayOfMonth },

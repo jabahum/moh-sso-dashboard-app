@@ -17,7 +17,7 @@ The current module supports:
 - Output format selection using the formats exposed by Health BI.
 - Schedule recipients using direct email addresses, SSO users, and Keycloak groups.
 - Group-recipient preview/resolution through the existing email feature.
-- Email delivery through the existing queued email service.
+- PDF/CSV email attachments through the existing queued email service, with a secure download link.
 - Portal delivery to authenticated users.
 - Secure artifact download links through the configured storage provider.
 - Persistent schedules, recipients, executions, artifacts, and deliveries.

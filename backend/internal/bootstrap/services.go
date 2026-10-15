@@ -150,6 +150,7 @@ func buildServices(deps serviceDependencies) services {
 	reportSchedulerService.SetAudit(auditService)
 	reportSchedulerService.SetPublicBaseURL(deps.Config.AppBaseURL)
 	reportSchedulerService.SetDeliveryLinkTTL(deps.Config.ReportSchedulerDeliveryLinkTTL)
+	reportSchedulerService.SetEmailAttachmentLimit(deps.Config.Email.MaxAttachmentBytes)
 
 	storageLocationService := storagelocationfeature.NewService(
 		deps.Repositories.StorageLocations,

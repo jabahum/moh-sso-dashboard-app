@@ -116,7 +116,21 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 - `GET /artifacts/{artifactId}/download` - authorize and redirect to the report artifact
 - `GET /public/deliveries/{token}/download` - rate-limited expiring email delivery link
 
-Schedule configuration now validates Health BI required parameters and output formats, constrains health scope using the authenticated Keycloak district/facility claims, and persists email/portal recipient configuration. The delivery service can queue report-link emails through the existing email service and register portal artifacts using the configured storage provider.
+Schedule configuration validates Health BI required parameters and output formats, constrains health scope using the authenticated Keycloak district/facility claims, and persists email/portal recipient configuration. Email delivery attaches the generated PDF/CSV through the existing queued email service and includes a secure download link.
+
+The portal fetches the file from Health BI's Keycloak-protected
+`GET /api/v1/report-jobs/{jobId}/artifact` endpoint, or reads an existing storage
+object. Attachment bytes are persisted as `data_base64` so queue/outbox retries
+retain the file. The sender never follows the external recipient capability URL
+with its service credentials. Existing schedules receive attachments too,
+including schedules previously saved with `outputConfig.deliveryMode=link`.
+
+`EMAIL_MAX_ATTACHMENT_BYTES` bounds downloads and email attachments (default
+10 MiB); Health BI's independent artifact cap is 25 MiB. Missing, expired,
+oversized, empty, or invalid PDF downloads cause delivery retry/failure instead
+of a successful link-only email. Delivery retries reuse the generated job and
+never regenerate the report. Deploy the matching Health BI artifact endpoint
+before enabling attachment delivery in the portal.
 
 List APIs are bounded to a maximum of 200 rows. `GET /schedules` supports `limit`, `search`, and `enabled`; `GET /executions` supports `limit`, `search`, and `status`; `GET /portal-reports` supports `limit`. Owner and health-context constraints are applied in SQL before the limit.
 

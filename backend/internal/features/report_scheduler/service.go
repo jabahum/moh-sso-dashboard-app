@@ -32,6 +32,7 @@ type Service struct {
 	audit         *sharedservice.AuditService
 	publicBaseURL string
 	deliveryLinkTTL time.Duration
+	emailAttachmentLimit int64
 }
 
 func NewService(
@@ -42,12 +43,13 @@ func NewService(
 	fileStorage storage.Storage,
 	dwh *sql.DB,
 ) *Service {
-	return &Service{repo: repo, healthBI: healthBI, email: email, users: users, fileStorage: fileStorage, dwh: dwh, deliveryLinkTTL: 24 * time.Hour}
+	return &Service{repo: repo, healthBI: healthBI, email: email, users: users, fileStorage: fileStorage, dwh: dwh, deliveryLinkTTL: 24 * time.Hour, emailAttachmentLimit: 10 << 20}
 }
 
 func (s *Service) SetNotifications(notifications sharedservice.NotificationsService) { s.notifications = notifications }
 func (s *Service) SetAudit(audit *sharedservice.AuditService) { s.audit = audit }
 func (s *Service) SetPublicBaseURL(value string) { s.publicBaseURL = strings.TrimRight(strings.TrimSpace(value), "/") }
+func (s *Service) SetEmailAttachmentLimit(value int64) { if value > 0 { s.emailAttachmentLimit = value } }
 func (s *Service) SetDeliveryLinkTTL(value time.Duration) { if value > 0 { s.deliveryLinkTTL = value } }
 
 func (s *Service) Module() ModuleResponse {
@@ -716,34 +718,10 @@ func (s *Service) ProcessOneDelivery(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	if delivery.DeliveryChannel == "email" {
-		if s.email == nil {
-			err = errors.New("email service is not configured")
-		} else {
-			if s.publicBaseURL == "" {
-				err = errors.New("APP_BASE_URL is required for secure report delivery links")
-			} else {
-				token, tokenErr := newDeliveryToken()
-				if tokenErr != nil {
-					err = tokenErr
-				} else {
-					expiresAt := time.Now().Add(s.deliveryLinkTTL)
-					if tokenErr = s.repo.SetDeliveryAccessToken(ctx, delivery.ID, hashDeliveryToken(token), expiresAt); tokenErr != nil {
-						err = tokenErr
-					} else {
-						downloadURL := s.publicBaseURL + "/api/v1/report-scheduler/public/deliveries/" + token + "/download"
-						err = s.email.Queue(ctx, model.Message{
-							To:       []model.Address{{Email: delivery.RecipientValue}},
-							Subject:  fmt.Sprintf("%s report is ready", schedule.ReportName),
-							TextBody: fmt.Sprintf("Your scheduled report %q is ready. Download it here: %s", schedule.ReportName, downloadURL),
-							HTMLBody: fmt.Sprintf("<p>Your scheduled report <strong>%s</strong> is ready.</p><p><a href=%q>Download report</a></p>", html.EscapeString(schedule.ReportName), downloadURL),
-							Metadata: map[string]string{"report_execution_id": execution.ID, "report_artifact_id": artifact.ID},
-						})
-					}
-				}
-			}
-		}
-	}
+ if delivery.DeliveryChannel == "email" {
+  err = s.queueReportEmail(ctx, schedule, execution, delivery, artifact)
+ }
+
 	// Portal delivery is represented by the delivery record itself. Once it is
 	// marked sent it becomes visible from /portal-reports.
 	if err != nil {
