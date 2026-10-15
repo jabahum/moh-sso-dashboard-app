@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useId, useState, type ReactNode } from "react";
 import {
   Button,
   OverflowMenu,
@@ -7,6 +7,9 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableExpandHeader,
+  TableExpandRow,
+  TableExpandedRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -53,6 +56,7 @@ function PagedTable<T>({
   rows,
   rowKey,
   renderRow,
+  expansion,
   empty,
 }: {
   label: string;
@@ -60,8 +64,15 @@ function PagedTable<T>({
   rows: T[];
   rowKey: (row: T) => string;
   renderRow: (row: T) => ReactNode;
+  expansion?: {
+    selectedId?: string;
+    onToggle: (id?: string) => void;
+    label: (row: T) => string;
+    content: ReactNode;
+  };
   empty: ReactNode;
 }) {
+  const expansionHeaderId = useId();
   const [pagination, setPagination] = useState({ page: 1, pageSize: 10 });
   const page = Math.min(pagination.page, Math.max(1, Math.ceil(rows.length / pagination.pageSize)));
   const visibleRows = rows.slice((page - 1) * pagination.pageSize, page * pagination.pageSize);
@@ -76,18 +87,40 @@ function PagedTable<T>({
         <Table aria-label={label} size="lg" useZebraStyles>
           <TableHead>
             <TableRow>
+              {expansion && (
+                <TableExpandHeader id={expansionHeaderId} aria-label="Execution details" />
+              )}
               {headers.map((header) => (
                 <TableHeader key={header}>{header}</TableHeader>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
-            {visibleRows.map((row) => (
-              <TableRow key={rowKey(row)}>{renderRow(row)}</TableRow>
-            ))}
+            {visibleRows.map((row) => {
+              const id = rowKey(row);
+              if (!expansion) return <TableRow key={id}>{renderRow(row)}</TableRow>;
+              const expanded = expansion.selectedId === id;
+              const detailsId = `${expansionHeaderId}-${id}`;
+              return (
+                <Fragment key={id}>
+                  <TableExpandRow
+                    expandHeader={expansionHeaderId}
+                    aria-label={`${expanded ? "Collapse" : "Expand"} execution details for ${expansion.label(row)}`}
+                    aria-controls={detailsId}
+                    isExpanded={expanded}
+                    onExpand={() => expansion.onToggle(expanded ? undefined : id)}
+                  >
+                    {renderRow(row)}
+                  </TableExpandRow>
+                  <TableExpandedRow id={detailsId} colSpan={headers.length + 1}>
+                    {expanded && expansion.content}
+                  </TableExpandedRow>
+                </Fragment>
+              );
+            })}
             {!rows.length && (
               <TableRow>
-                <TableCell colSpan={headers.length}>
+                <TableCell colSpan={headers.length + (expansion ? 1 : 0)}>
                   <div className="report-scheduler__empty">{empty}</div>
                 </TableCell>
               </TableRow>
@@ -102,7 +135,10 @@ function PagedTable<T>({
           pageSizes={[10, 20, 50]}
           totalItems={rows.length}
           itemsPerPageText="Rows per page"
-          onChange={({ page, pageSize }) => setPagination({ page, pageSize })}
+          onChange={({ page, pageSize }) => {
+            setPagination({ page, pageSize });
+            expansion?.onToggle(undefined);
+          }}
         />
       )}
       <p className="report-scheduler__table-note">
@@ -209,19 +245,29 @@ export function ExecutionsTable({
   onRetry,
   retrying,
   selectedId,
+  expandedDetails,
   empty,
 }: {
   rows: ReportExecution[];
   schedules: ReportSchedule[];
-  onDetails: (id: string) => void;
+  onDetails: (id?: string) => void;
   onRetry: (id: string) => void;
   retrying: boolean;
   selectedId?: string;
+  expandedDetails: ReactNode;
   empty: ReactNode;
 }) {
   return (
     <PagedTable
       label="Execution history"
+      expansion={{
+        selectedId,
+        onToggle: onDetails,
+        label: (execution) =>
+          schedules.find((schedule) => schedule.id === execution.scheduleId)?.reportName ||
+          execution.reportId,
+        content: expandedDetails,
+      }}
       headers={["Report", "Status", "Scheduled · EAT", "Attempts", "Format", "Actions"]}
       rows={rows}
       rowKey={(row) => row.id}
@@ -255,14 +301,6 @@ export function ExecutionsTable({
           <TableCell>{execution.outputFormat.toUpperCase()}</TableCell>
           <TableCell>
             <div className="report-scheduler__row-actions">
-              <Button
-                kind={selectedId === execution.id ? "tertiary" : "ghost"}
-                size="sm"
-                aria-label={`View details for ${execution.reportId}`}
-                onClick={() => onDetails(execution.id)}
-              >
-                Details
-              </Button>
               {execution.status === "failed" && execution.scheduleId && (
                 <Button
                   kind="ghost"

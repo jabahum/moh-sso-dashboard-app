@@ -114,9 +114,8 @@
 .report-scheduler__execution-detail {
   display: grid;
   gap: 1rem;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--cds-border-subtle-01);
+  padding: 1rem 0;
+  white-space: normal;
 }
 
 .report-scheduler__detail-grid {
@@ -177,10 +176,24 @@
     overflow-wrap: anywhere;
   }
 
-  .cds--data-table th:first-child,
-  .cds--data-table td:first-child {
+  .cds--data-table th:first-child:not(.cds--table-expand),
+  .cds--data-table td:first-child:not(.cds--table-expand),
+  .cds--data-table .cds--table-expand + th,
+  .cds--data-table .cds--table-expand + td {
     min-width: 14rem;
     max-width: 24rem;
+  }
+
+  .cds--data-table .cds--table-expand {
+    width: 3rem;
+    min-width: 3rem;
+    padding: 0;
+    vertical-align: middle;
+  }
+
+  .cds--data-table .cds--expandable-row > td {
+    min-width: 0;
+    max-width: none;
   }
 
   .cds--tag {

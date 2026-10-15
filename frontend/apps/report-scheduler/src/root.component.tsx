@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useHeaderPanel, useToast } from "@moh-sso/ui";
 import {
   Button,
@@ -81,16 +81,12 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
   const [selectedExecutionId, setSelectedExecutionId] = useState<string>();
   const [pendingSchedule, setPendingSchedule] = useState<{ id: string; action: ScheduleAction }>();
   const [deleteTarget, setDeleteTarget] = useState<ReportSchedule>();
-  const executionDetailsRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (selectedExecutionId && selectedTab === 1) executionDetailsRef.current?.focus();
-  }, [selectedExecutionId, selectedTab]);
   const { openPanel, closePanel } = useHeaderPanel();
   const toast = useToast();
   const panelInstance = useRef(0);
 
   const executionDetailQuery = useGetReportExecutionQuery(selectedExecutionId ?? "", {
-    skip: !selectedExecutionId,
+    skip: !selectedExecutionId || selectedTab !== 1,
     pollingInterval: 15_000,
   });
   const openSchedulePanel = (schedule?: ReportSchedule) => {
@@ -368,13 +364,19 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                     labelText="Search executions"
                     placeholder="Report name or report ID"
                     value={executionSearch}
-                    onChange={(event) => setExecutionSearch(event.target.value)}
+                    onChange={(event) => {
+                      setExecutionSearch(event.target.value);
+                      setSelectedExecutionId(undefined);
+                    }}
                   />
                   <Select
                     id="report-execution-status"
                     labelText="Execution status"
                     value={executionStatus}
-                    onChange={(event) => setExecutionStatus(event.target.value)}
+                    onChange={(event) => {
+                      setExecutionStatus(event.target.value);
+                      setSelectedExecutionId(undefined);
+                    }}
                   >
                     <SelectItem value="all" text="All statuses" />
                     <SelectItem value="queued" text="Queued" />
@@ -397,6 +399,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                         onClick={() => {
                           setExecutionSearch("");
                           setExecutionStatus("all");
+                          setSelectedExecutionId(undefined);
                         }}
                       >
                         Clear filters
@@ -420,10 +423,119 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                       rows={executionsQuery.data ?? []}
                       schedules={schedulesQuery.data ?? []}
                       selectedId={selectedExecutionId}
-                      onDetails={(id) => {
-                        setSelectedExecutionId(id);
-                        if (id === selectedExecutionId) executionDetailsRef.current?.focus();
-                      }}
+                      onDetails={(id) => setSelectedExecutionId(id)}
+                      expandedDetails={
+                        selectedExecutionId && (
+                          <div
+                            className="report-scheduler__execution-detail"
+                            role="region"
+                            aria-label="Execution details"
+                          >
+                            <h3>Execution details</h3>
+                            {executionDetailQuery.isFetching && (
+                              <InlineLoading description="Loading execution details…" />
+                            )}
+                            {executionDetailQuery.isError && (
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                disabled={executionDetailQuery.isFetching}
+                                onClick={() => void executionDetailQuery.refetch()}
+                              >
+                                Reload execution details
+                              </Button>
+                            )}
+                            {executionDetailQuery.currentData && (
+                              <>
+                                <div className="report-scheduler__detail-grid">
+                                  <span>
+                                    <strong>Status</strong>
+                                    <br />
+                                    {executionDetailQuery.currentData.execution.status}
+                                  </span>
+                                  <span>
+                                    <strong>Generation attempts</strong>
+                                    <br />
+                                    {executionDetailQuery.currentData.execution.generationAttempts}/
+                                    {
+                                      executionDetailQuery.currentData.execution
+                                        .maxGenerationAttempts
+                                    }
+                                  </span>
+                                  <span>
+                                    <strong>Period</strong>
+                                    <br />
+                                    {executionDetailQuery.currentData.execution.resolvedPeriod
+                                      ? `${executionDetailQuery.currentData.execution.resolvedPeriod.strategy}: ${formatReportDate(executionDetailQuery.currentData.execution.resolvedPeriod.start)} – ${formatReportDate(executionDetailQuery.currentData.execution.resolvedPeriod.end)}`
+                                      : "—"}
+                                  </span>
+                                  <span>
+                                    <strong>Health scope</strong>
+                                    <br />
+                                    {executionDetailQuery.currentData.schedule?.healthContext
+                                      .facility ||
+                                      executionDetailQuery.currentData.schedule?.healthContext
+                                        .district ||
+                                      executionDetailQuery.currentData.schedule?.healthContext
+                                        .level ||
+                                      "National"}
+                                  </span>
+                                </div>
+
+                                {executionDetailQuery.currentData.artifacts.length > 0 && (
+                                  <div className="report-scheduler__detail-section">
+                                    <h3>Artifacts</h3>
+                                    {executionDetailQuery.currentData.artifacts.map((artifact) => (
+                                      <div
+                                        key={artifact.id}
+                                        className="report-scheduler__detail-row"
+                                      >
+                                        <span>{artifact.fileName}</span>
+                                        {artifact.downloadUrl && (
+                                          <Button
+                                            kind="ghost"
+                                            size="sm"
+                                            href={artifact.downloadUrl}
+                                          >
+                                            Download
+                                          </Button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="report-scheduler__detail-section">
+                                  <h3>Deliveries</h3>
+                                  {executionDetailQuery.currentData.deliveries.map((delivery) => (
+                                    <div key={delivery.id} className="report-scheduler__detail-row">
+                                      <div>
+                                        <strong>{delivery.deliveryChannel}</strong> ·{" "}
+                                        {delivery.recipientValue}
+                                        <p>
+                                          {delivery.status} · attempts {delivery.attempts}/
+                                          {delivery.maxAttempts}
+                                        </p>
+                                        {delivery.lastError && (
+                                          <small className="report-scheduler__error">
+                                            {delivery.lastError}
+                                          </small>
+                                        )}
+                                      </div>
+                                      {delivery.nextRetryAt && (
+                                        <small>{formatReportDate(delivery.nextRetryAt)}</small>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {!executionDetailQuery.currentData.deliveries.length && (
+                                    <p>No recipient deliveries recorded.</p>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )
+                      }
                       onRetry={(id) => void handleRetryExecution(id)}
                       retrying={retryExecutionState.isLoading}
                       empty={
@@ -442,105 +554,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                       }
                     />
                   )}
-
-                {selectedExecutionId && (
-                  <div
-                    className="report-scheduler__execution-detail"
-                    ref={executionDetailsRef}
-                    tabIndex={-1}
-                    role="region"
-                    aria-label="Execution details"
-                  >
-                    <div className="report-scheduler__heading-row">
-                      <h3>Execution details</h3>
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        onClick={() => setSelectedExecutionId(undefined)}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                    {executionDetailQuery.isFetching && (
-                      <InlineLoading description="Loading execution details…" />
-                    )}
-                    {executionDetailQuery.currentData && (
-                      <>
-                        <div className="report-scheduler__detail-grid">
-                          <span>
-                            <strong>Status</strong>
-                            <br />
-                            {executionDetailQuery.currentData.execution.status}
-                          </span>
-                          <span>
-                            <strong>Generation attempts</strong>
-                            <br />
-                            {executionDetailQuery.currentData.execution.generationAttempts}/
-                            {executionDetailQuery.currentData.execution.maxGenerationAttempts}
-                          </span>
-                          <span>
-                            <strong>Period</strong>
-                            <br />
-                            {executionDetailQuery.currentData.execution.resolvedPeriod
-                              ? `${executionDetailQuery.currentData.execution.resolvedPeriod.strategy}: ${formatReportDate(executionDetailQuery.currentData.execution.resolvedPeriod.start)} – ${formatReportDate(executionDetailQuery.currentData.execution.resolvedPeriod.end)}`
-                              : "—"}
-                          </span>
-                          <span>
-                            <strong>Health scope</strong>
-                            <br />
-                            {executionDetailQuery.currentData.schedule?.healthContext.facility ||
-                              executionDetailQuery.currentData.schedule?.healthContext.district ||
-                              executionDetailQuery.currentData.schedule?.healthContext.level ||
-                              "National"}
-                          </span>
-                        </div>
-
-                        {executionDetailQuery.currentData.artifacts.length > 0 && (
-                          <div className="report-scheduler__detail-section">
-                            <h3>Artifacts</h3>
-                            {executionDetailQuery.currentData.artifacts.map((artifact) => (
-                              <div key={artifact.id} className="report-scheduler__detail-row">
-                                <span>{artifact.fileName}</span>
-                                {artifact.downloadUrl && (
-                                  <Button kind="ghost" size="sm" href={artifact.downloadUrl}>
-                                    Download
-                                  </Button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="report-scheduler__detail-section">
-                          <h3>Deliveries</h3>
-                          {executionDetailQuery.currentData.deliveries.map((delivery) => (
-                            <div key={delivery.id} className="report-scheduler__detail-row">
-                              <div>
-                                <strong>{delivery.deliveryChannel}</strong> ·{" "}
-                                {delivery.recipientValue}
-                                <p>
-                                  {delivery.status} · attempts {delivery.attempts}/
-                                  {delivery.maxAttempts}
-                                </p>
-                                {delivery.lastError && (
-                                  <small className="report-scheduler__error">
-                                    {delivery.lastError}
-                                  </small>
-                                )}
-                              </div>
-                              {delivery.nextRetryAt && (
-                                <small>{formatReportDate(delivery.nextRetryAt)}</small>
-                              )}
-                            </div>
-                          ))}
-                          {!executionDetailQuery.currentData.deliveries.length && (
-                            <p>No recipient deliveries recorded.</p>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
               </Tile>
             </TabPanel>
             <TabPanel className="report-scheduler__tab-panel">
