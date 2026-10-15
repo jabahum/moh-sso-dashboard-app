@@ -256,3 +256,13 @@
     flex-wrap: wrap;
   }
 }
+
+.report-scheduler__recipient-select {
+  min-width: 0;
+}
+
+.report-scheduler__recipient-hint {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}

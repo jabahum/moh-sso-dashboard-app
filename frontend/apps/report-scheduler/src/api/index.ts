@@ -6,6 +6,7 @@ import type {
   HealthBIReport,
   PortalReport,
   RecipientPreview,
+  RecipientOption,
   ReportExecution,
   ReportSchedule,
   ReportSchedulerModule,
@@ -19,6 +20,13 @@ type ExecutionListArgs = { limit?: number; search?: string; status?: string };
 
 export const reportSchedulerApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getSchedulerRecipientOptions: builder.query<
+      RecipientOption[],
+      { kind: "email" | "group" | "portal"; search?: string; selected?: string }
+    >({
+      query: (params) => ({ url: "/report-scheduler/recipients/options", params }),
+      transformResponse: (response: Envelope<RecipientOption[]>) => response.data,
+    }),
     getReportSchedulerModule: builder.query<ReportSchedulerModule, void>({
       query: () => "/report-scheduler",
       transformResponse: (response: Envelope<ReportSchedulerModule>) => response.data,
@@ -59,7 +67,10 @@ export const reportSchedulerApi = baseApi.injectEndpoints({
       query: (body) => ({ url: "/report-scheduler/schedules", method: "POST", body }),
       transformResponse: (response: Envelope<ReportSchedule>) => response.data,
     }),
-    updateReportSchedule: builder.mutation<ReportSchedule, { id: string; body: CreateScheduleRequest }>({
+    updateReportSchedule: builder.mutation<
+      ReportSchedule,
+      { id: string; body: CreateScheduleRequest }
+    >({
       query: ({ id, body }) => ({ url: `/report-scheduler/schedules/${id}`, method: "PUT", body }),
       transformResponse: (response: Envelope<ReportSchedule>) => response.data,
     }),
@@ -92,13 +103,17 @@ export const reportSchedulerApi = baseApi.injectEndpoints({
       transformResponse: (response: Envelope<RecipientPreview>) => response.data,
     }),
     getPortalReports: builder.query<PortalReport[], number | void>({
-      query: (limit) => ({ url: "/report-scheduler/portal-reports", params: limit ? { limit } : undefined }),
+      query: (limit) => ({
+        url: "/report-scheduler/portal-reports",
+        params: limit ? { limit } : undefined,
+      }),
       transformResponse: (response: Envelope<PortalReport[]>) => response.data,
     }),
   }),
 });
 
 export const {
+  useGetSchedulerRecipientOptionsQuery,
   useGetReportSchedulerModuleQuery,
   useGetReportSchedulerOverviewQuery,
   useGetHealthBIReportsQuery,

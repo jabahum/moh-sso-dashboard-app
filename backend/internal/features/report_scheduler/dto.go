@@ -50,6 +50,13 @@ type RecipientPreview struct {
 	PortalCount      int      `json:"portalCount"`
 }
 
+type RecipientOption struct {
+	ID string `json:"id"`
+	Type string `json:"type"`
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
 type OutputConfig struct {
 	Format         string `json:"format"`
 	DeliveryMode   string `json:"deliveryMode,omitempty"`

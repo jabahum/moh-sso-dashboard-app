@@ -39,6 +39,13 @@ export type ScheduleRecipient = {
   deliveryChannel: "email" | "portal";
 };
 
+export type RecipientOption = {
+  id: string;
+  type: ScheduleRecipient["type"];
+  value: string;
+  label: string;
+};
+
 export type OutputConfig = {
   format: string;
   deliveryMode?: string;

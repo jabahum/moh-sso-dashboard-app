@@ -93,6 +93,7 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 
 - `GET /` - module status
 - `GET /reports` - Health BI report catalogue
+- `GET /recipients/options?kind=email|group|portal&search=...` - searchable recipient labels and values; requires scheduler create or update permission, returns at most 100 options, and omits disabled users/groups and service accounts. Optional `selected` is a JSON array of up to 100 saved values to retain their labels while searching.
 - `GET /report?reportId={id}` - report metadata (supports category paths)
 - `GET /reports/{reportId}` - legacy metadata route for single-segment IDs
 - `GET /report-parameters?reportId={id}` - report parameter schema (supports category paths)

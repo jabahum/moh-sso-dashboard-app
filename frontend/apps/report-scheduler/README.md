@@ -16,6 +16,7 @@ The current module supports:
 - Health-context-aware schedules using Keycloak `district` and `facility` claims.
 - Output format selection using the formats exposed by Health BI.
 - Schedule recipients using direct email addresses, SSO users, and Keycloak groups.
+- Searchable multi-select dropdowns for email recipients, recipient groups, and portal users, with optional external email addresses. Saved selections retain their labels when filtering; administrative user/group permissions are not required.
 - Group-recipient preview/resolution through the existing email feature.
 - PDF/CSV email attachments through the existing queued email service, with a secure download link.
 - Portal delivery to authenticated users.

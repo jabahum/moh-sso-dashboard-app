@@ -30,7 +30,8 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, handler *Handler) {
 	scheduler.GET("/executions", middleware.RequirePermission(authz.PermissionReportSchedulerHistory), handler.ListExecutions)
 	scheduler.GET("/executions/:executionId", middleware.RequirePermission(authz.PermissionReportSchedulerHistory), handler.GetExecution)
 	scheduler.POST("/executions/:executionId/retry", middleware.RequirePermission(authz.PermissionReportSchedulerExecute), handler.RetryExecution)
-	scheduler.POST("/recipients/preview", middleware.RequirePermission(authz.PermissionReportSchedulerCreate), handler.PreviewRecipients)
+	scheduler.GET("/recipients/options", middleware.RequireAnyPermission(authz.PermissionReportSchedulerCreate, authz.PermissionReportSchedulerUpdate), handler.RecipientOptions)
+	scheduler.POST("/recipients/preview", middleware.RequireAnyPermission(authz.PermissionReportSchedulerCreate, authz.PermissionReportSchedulerUpdate), handler.PreviewRecipients)
 	scheduler.GET("/portal-reports", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.ListPortalReports)
 	scheduler.GET("/artifacts/:artifactId/download", middleware.RequirePermission(authz.PermissionReportSchedulerRead), handler.DownloadArtifact)
 }

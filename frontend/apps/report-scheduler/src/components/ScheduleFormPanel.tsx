@@ -9,10 +9,16 @@ import {
   useGetReportSchedulerModuleQuery,
   usePreviewReportRecipientsMutation,
 } from "../api";
-import type { CreateScheduleRequest, ReportSchedule, ScheduleRecipient } from "../types";
+import type {
+  CreateScheduleRequest,
+  ReportSchedule,
+  ScheduleRecipient,
+  RecipientOption,
+} from "../types";
 import { useToast } from "@moh-sso/ui";
 import { useSchedulerQueryToasts } from "../hooks/useSchedulerQueryToasts";
 import { parameterInputValue, populateReportParameters } from "../utils/report-parameters";
+import { RecipientSelect } from "./RecipientSelect";
 import "../report-scheduler.scss";
 
 const periodOptions = [
@@ -81,24 +87,28 @@ export function ScheduleFormPanel({
   const [fileNamePrefix, setFileNamePrefix] = useState(
     initialSchedule?.outputConfig?.fileNamePrefix ?? "",
   );
-  const [emailRecipients, setEmailRecipients] = useState(
-    initialSchedule?.recipients
-      .filter((r) => r.type === "email" && r.deliveryChannel === "email")
-      .map((r) => r.value)
-      .join(", ") ?? "",
+  const asOption = (recipient: ScheduleRecipient): RecipientOption => ({
+    id: `${recipient.type}:${recipient.value}`,
+    type: recipient.type,
+    value: recipient.value,
+    label: recipient.value,
+  });
+  const [emailRecipients, setEmailRecipients] = useState<RecipientOption[]>(() =>
+    (initialSchedule?.recipients ?? [])
+      .filter((recipient) => recipient.deliveryChannel === "email" && recipient.type !== "group")
+      .map(asOption),
   );
-  const [groupRecipients, setGroupRecipients] = useState(
-    initialSchedule?.recipients
-      .filter((r) => r.type === "group" && r.deliveryChannel === "email")
-      .map((r) => r.value)
-      .join(", ") ?? "",
+  const [groupRecipients, setGroupRecipients] = useState<RecipientOption[]>(() =>
+    (initialSchedule?.recipients ?? [])
+      .filter((recipient) => recipient.deliveryChannel === "email" && recipient.type === "group")
+      .map(asOption),
   );
-  const [portalRecipients, setPortalRecipients] = useState(
-    initialSchedule?.recipients
-      .filter((r) => r.type === "user" && r.deliveryChannel === "portal")
-      .map((r) => r.value)
-      .join(", ") ?? "",
+  const [portalRecipients, setPortalRecipients] = useState<RecipientOption[]>(() =>
+    (initialSchedule?.recipients ?? [])
+      .filter((recipient) => recipient.deliveryChannel === "portal")
+      .map(asOption),
   );
+  const [externalEmails, setExternalEmails] = useState("");
   const [healthDistrict, setHealthDistrict] = useState(
     initialSchedule?.healthContext?.district ?? "",
   );
@@ -156,26 +166,35 @@ export function ScheduleFormPanel({
     },
   ]);
 
-  const recipients = useMemo<ScheduleRecipient[]>(
-    () => [
-      ...splitValues(emailRecipients).map((value) => ({
+  const recipients = useMemo<ScheduleRecipient[]>(() => {
+    const values: ScheduleRecipient[] = [
+      ...emailRecipients.map((item) => ({
+        type: item.type,
+        value: item.value,
+        deliveryChannel: "email" as const,
+      })),
+      ...splitValues(externalEmails).map((value) => ({
         type: "email" as const,
         value,
         deliveryChannel: "email" as const,
       })),
-      ...splitValues(groupRecipients).map((value) => ({
+      ...groupRecipients.map((item) => ({
         type: "group" as const,
-        value,
+        value: item.value,
         deliveryChannel: "email" as const,
       })),
-      ...splitValues(portalRecipients).map((value) => ({
+      ...portalRecipients.map((item) => ({
         type: "user" as const,
-        value,
+        value: item.value,
         deliveryChannel: "portal" as const,
       })),
-    ],
-    [emailRecipients, groupRecipients, portalRecipients],
-  );
+    ];
+    return [
+      ...new Map(
+        values.map((item) => [`${item.type}:${item.value}:${item.deliveryChannel}`, item]),
+      ).values(),
+    ];
+  }, [emailRecipients, externalEmails, groupRecipients, portalRecipients]);
 
   const requestBody = (): CreateScheduleRequest | undefined => {
     const report = reportsQuery.data?.find((item) => item.id === reportId);
@@ -451,26 +470,47 @@ export function ScheduleFormPanel({
       <div className="report-scheduler__parameters">
         <h3>Recipients</h3>
         <div className="report-scheduler__grid">
-          <TextInput
-            id="report-email-recipients"
-            labelText="Email addresses"
-            helperText="Comma-separated email addresses"
-            value={emailRecipients}
-            onChange={(event) => setEmailRecipients(event.target.value)}
+          <RecipientSelect
+            kind="email"
+            label="Email recipients"
+            selected={emailRecipients}
+            onChange={(items) => {
+              previewState.reset();
+              setEmailRecipients(items);
+            }}
+            disabled={createState.isLoading || updateState.isLoading}
+          />
+          <RecipientSelect
+            kind="group"
+            label="Recipient groups"
+            selected={groupRecipients}
+            onChange={(items) => {
+              previewState.reset();
+              setGroupRecipients(items);
+            }}
+            disabled={createState.isLoading || updateState.isLoading}
+          />
+          <RecipientSelect
+            kind="portal"
+            label="Portal recipients"
+            selected={portalRecipients}
+            onChange={(items) => {
+              previewState.reset();
+              setPortalRecipients(items);
+            }}
+            disabled={createState.isLoading || updateState.isLoading}
           />
           <TextInput
-            id="report-group-recipients"
-            labelText="Keycloak groups"
-            helperText="Comma-separated group IDs or /group/paths"
-            value={groupRecipients}
-            onChange={(event) => setGroupRecipients(event.target.value)}
-          />
-          <TextInput
-            id="report-portal-recipients"
-            labelText="Portal user IDs"
-            helperText="Comma-separated Keycloak user UUIDs"
-            value={portalRecipients}
-            onChange={(event) => setPortalRecipients(event.target.value)}
+            id="report-external-email-recipients"
+            type="email"
+            multiple
+            labelText="Additional email addresses"
+            helperText="Optional addresses outside the portal, separated by commas"
+            value={externalEmails}
+            onChange={(event) => {
+              previewState.reset();
+              setExternalEmails(event.target.value);
+            }}
           />
         </div>
         <div className="report-scheduler__actions">
@@ -489,9 +529,17 @@ export function ScheduleFormPanel({
               size="sm"
               type="button"
               onClick={() => {
-                const values = splitValues(portalRecipients);
-                if (!values.includes(currentUserId))
-                  setPortalRecipients([...values, currentUserId].join(", "));
+                previewState.reset();
+                if (!portalRecipients.some((item) => item.value === currentUserId))
+                  setPortalRecipients([
+                    ...portalRecipients,
+                    {
+                      id: `user:${currentUserId}`,
+                      type: "user",
+                      value: currentUserId,
+                      label: "Me",
+                    },
+                  ]);
               }}
             >
               Deliver to my portal

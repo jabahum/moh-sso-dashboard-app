@@ -13,6 +13,7 @@ import (
 var ErrScheduleNotFound = errors.New("report schedule not found")
 
 type Repository interface {
+	ListRecipientOptions(context.Context, string, string, int, []string) ([]RecipientOption, error)
 	CreateSchedule(context.Context, CreateScheduleRequest, string) (Schedule, error)
 	ListSchedules(context.Context, string, bool, HealthContext, ListOptions) ([]Schedule, error)
 	GetSchedule(context.Context, string, string, bool) (Schedule, error)
