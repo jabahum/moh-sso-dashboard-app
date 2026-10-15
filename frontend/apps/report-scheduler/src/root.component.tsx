@@ -11,6 +11,7 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
+  Tag,
   TextInput,
   Tile,
 } from "@carbon/react";
@@ -70,7 +71,10 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
     },
     { pollingInterval: 30_000 },
   );
-  const portalReportsQuery = useGetPortalReportsQuery(100);
+  const portalReportsQuery = useGetPortalReportsQuery(100, {
+    pollingInterval: selectedTab === 2 ? 30_000 : 0,
+    refetchOnMountOrArgChange: true,
+  });
   const [deleteSchedule] = useDeleteReportScheduleMutation();
   const [pauseSchedule] = usePauseReportScheduleMutation();
   const [resumeSchedule] = useResumeReportScheduleMutation();
@@ -213,7 +217,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
     },
     {
       id: "overview",
-      active: selectedTab === 3 && overviewQuery.isError && !moduleQuery.isError,
+      active: overviewQuery.isError && !moduleQuery.isError,
       kind: "error",
       title: "Unable to load scheduler health",
     },
@@ -228,43 +232,87 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
         <p>Schedule Health BI reports and deliver them by email or through the portal.</p>
       </header>
 
+      <section className="report-scheduler__health" aria-label="Scheduler health">
+        <div className="report-scheduler__health-bar">
+          <div className="report-scheduler__health-title">
+            <h2>Scheduler health</h2>
+            <Tag
+              type={
+                !overviewQuery.data ? "gray" : overviewQuery.data.workerHealthy ? "green" : "red"
+              }
+              size="sm"
+            >
+              {!overviewQuery.data
+                ? "Unavailable"
+                : overviewQuery.data.workerHealthy
+                  ? "Healthy"
+                  : "Attention required"}
+            </Tag>
+          </div>
+          <span className="report-scheduler__health-heartbeat">
+            Last heartbeat:{" "}
+            {overviewQuery.data?.workerLastHeartbeatAt
+              ? formatReportDate(overviewQuery.data.workerLastHeartbeatAt)
+              : "Not recorded"}
+          </span>
+        </div>
+        <details className="report-scheduler__health-details">
+          <summary>View health details</summary>
+          <div className="report-scheduler__status-grid">
+            <div>
+              <strong>Execution states</strong>
+              <p>
+                {(overviewQuery.data?.executionStatuses ?? [])
+                  .map((item) => `${item.status}: ${item.count}`)
+                  .join(" · ") || "No executions"}
+              </p>
+            </div>
+            <div>
+              <strong>Delivery states</strong>
+              <p>
+                {(overviewQuery.data?.deliveryStatuses ?? [])
+                  .map((item) => `${item.status}: ${item.count}`)
+                  .join(" · ") || "No deliveries"}
+              </p>
+            </div>
+          </div>
+        </details>
+      </section>
+
       <div className="report-scheduler__summary">
         <Tile>
-          <strong>{overviewQuery.data?.enabledSchedules ?? 0}</strong>
+          <strong>{overviewQuery.data?.enabledSchedules ?? "—"}</strong>
           <span>Enabled schedules</span>
         </Tile>
         <Tile>
-          <strong>{overviewQuery.data?.executions24h ?? 0}</strong>
+          <strong>{overviewQuery.data?.executions24h ?? "—"}</strong>
           <span>Executions · 24h</span>
+          <small>
+            {overviewQuery.data?.failed24h ?? "—"} failed · {overviewQuery.data?.retryingNow ?? "—"}{" "}
+            retrying now
+          </small>
         </Tile>
         <Tile>
-          <strong>{Math.round(overviewQuery.data?.successRate24h ?? 0)}%</strong>
+          <strong>
+            {overviewQuery.data ? `${Math.round(overviewQuery.data.successRate24h)}%` : "—"}
+          </strong>
           <span>Success rate · 24h</span>
-        </Tile>
-        <Tile>
-          <strong>{overviewQuery.data?.failed24h ?? 0}</strong>
-          <span>Failed · 24h</span>
-        </Tile>
-        <Tile>
-          <strong>{overviewQuery.data?.retryingNow ?? 0}</strong>
-          <span>Retrying now</span>
-        </Tile>
-        <Tile>
-          <strong>{overviewQuery.data?.deliveryFailures24h ?? 0}</strong>
-          <span>Delivery failures · 24h</span>
+          <small>{overviewQuery.data?.deliveryFailures24h ?? "—"} delivery failures · 24h</small>
         </Tile>
       </div>
 
       <section className="report-scheduler__workspace" aria-label="Report scheduler views">
         <Tabs
           selectedIndex={selectedTab}
-          onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}
+          onChange={({ selectedIndex }) => {
+            setSelectedTab(selectedIndex);
+            if (selectedIndex === 2) void portalReportsQuery.refetch();
+          }}
         >
           <TabList aria-label="Report scheduler views" contained>
             <Tab>Scheduled reports</Tab>
             <Tab>Execution history</Tab>
             <Tab>Delivered to me</Tab>
-            <Tab>Scheduler health</Tab>
           </TabList>
           <TabPanels>
             <TabPanel className="report-scheduler__tab-panel">
@@ -580,48 +628,15 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                         <>
                           <strong>No delivered reports yet</strong>
                           <p>
-                            Reports sent to your portal inbox will appear here, ready to download.
+                            Only reports delivered to your signed-in account’s portal inbox appear
+                            here. In a schedule’s recipients, select your account under Portal
+                            recipients or choose “Deliver to my portal”. Email-only deliveries
+                            appear in Execution history.
                           </p>
                         </>
                       }
                     />
                   )}
-              </Tile>
-            </TabPanel>
-            <TabPanel className="report-scheduler__tab-panel">
-              <Tile>
-                <div className="report-scheduler__heading-row">
-                  <h2>Scheduler health</h2>
-                  <span>
-                    {overviewQuery.data?.workerHealthy ? "Healthy" : "Attention required"}
-                  </span>
-                </div>
-                <div className="report-scheduler__status-grid">
-                  <div>
-                    <strong>Worker heartbeat</strong>
-                    <p>
-                      {overviewQuery.data?.workerLastHeartbeatAt
-                        ? formatReportDate(overviewQuery.data.workerLastHeartbeatAt)
-                        : "No heartbeat recorded"}
-                    </p>
-                  </div>
-                  <div>
-                    <strong>Execution states</strong>
-                    <p>
-                      {(overviewQuery.data?.executionStatuses ?? [])
-                        .map((item) => `${item.status}: ${item.count}`)
-                        .join(" · ") || "No executions"}
-                    </p>
-                  </div>
-                  <div>
-                    <strong>Delivery states</strong>
-                    <p>
-                      {(overviewQuery.data?.deliveryStatuses ?? [])
-                        .map((item) => `${item.status}: ${item.count}`)
-                        .join(" · ") || "No deliveries"}
-                    </p>
-                  </div>
-                </div>
               </Tile>
             </TabPanel>
           </TabPanels>
