@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useHeaderPanel } from "@moh-sso/ui";
+import { useHeaderPanel, useToast } from "@moh-sso/ui";
 import {
   Button,
   InlineLoading,
-  InlineNotification,
   Modal,
   Select,
   SelectItem,
@@ -40,6 +39,7 @@ import {
   formatReportDate,
   type ScheduleAction,
 } from "./components/SchedulerTables";
+import { useSchedulerQueryToasts } from "./hooks/useSchedulerQueryToasts";
 import "./report-scheduler.scss";
 
 export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
@@ -79,16 +79,14 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
   const [retryExecution, retryExecutionState] = useRetryReportExecutionMutation();
 
   const [selectedExecutionId, setSelectedExecutionId] = useState<string>();
-  const [message, setMessage] = useState("");
-  const [messageKind, setMessageKind] = useState<"success" | "error" | "info">("info");
   const [pendingSchedule, setPendingSchedule] = useState<{ id: string; action: ScheduleAction }>();
   const [deleteTarget, setDeleteTarget] = useState<ReportSchedule>();
-  const [deleteError, setDeleteError] = useState("");
   const executionDetailsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (selectedExecutionId && selectedTab === 1) executionDetailsRef.current?.focus();
   }, [selectedExecutionId, selectedTab]);
   const { openPanel, closePanel } = useHeaderPanel();
+  const toast = useToast();
   const panelInstance = useRef(0);
 
   const executionDetailQuery = useGetReportExecutionQuery(selectedExecutionId ?? "", {
@@ -107,8 +105,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
           currentUserId={currentUserId}
           onCancel={closePanel}
           onSuccess={() => {
-            setMessageKind("success");
-            setMessage(schedule ? "Report schedule updated." : "Report schedule created.");
+            toast.success(schedule ? "Report schedule updated" : "Report schedule created");
             closePanel();
             void schedulesQuery.refetch();
           }}
@@ -126,7 +123,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
       if (action === "duplicate") await duplicateSchedule(schedule.id).unwrap();
       if (action === "run") await runNow(schedule.id).unwrap();
       if (action === "delete") await deleteSchedule(schedule.id).unwrap();
-      setMessageKind("success");
       const outcomes: Record<ScheduleAction, string> = {
         run: "Report execution started.",
         pause: "Schedule paused.",
@@ -134,7 +130,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
         duplicate: "Schedule duplicated.",
         delete: "Schedule deleted.",
       };
-      setMessage(outcomes[action]);
+      toast.success(outcomes[action]);
       await schedulesQuery.refetch();
       await portalReportsQuery.refetch();
       await executionsQuery.refetch();
@@ -142,8 +138,7 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
       if (action === "run") setSelectedTab(1);
       return true;
     } catch {
-      setMessageKind("error");
-      setMessage(`Unable to ${action} this schedule. Please try again.`);
+      toast.error(`Unable to ${action} this schedule`, "Please try again.");
       return false;
     } finally {
       setPendingSchedule(undefined);
@@ -155,15 +150,78 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
       const wasSelected = selectedExecutionId === id;
       await retryExecution(id).unwrap();
       setSelectedExecutionId(id);
-      setMessageKind("success");
-      setMessage("Execution retry started.");
+      toast.success("Execution retry started");
       await Promise.all([executionsQuery.refetch(), overviewQuery.refetch()]);
       if (wasSelected) await executionDetailQuery.refetch();
     } catch {
-      setMessageKind("error");
-      setMessage("Unable to retry this execution. Please try again.");
+      toast.error("Unable to retry this execution", "Please try again.");
     }
   };
+
+  useSchedulerQueryToasts([
+    {
+      id: "module",
+      active: moduleQuery.isError,
+      kind: "error",
+      title: "Report Scheduler is unavailable",
+      subtitle: "Please try again or contact your portal administrator.",
+    },
+    {
+      id: "health-bi",
+      active: !!moduleQuery.data && !moduleQuery.data.healthBiEnabled,
+      kind: "warning",
+      title: "Health BI is not configured",
+      subtitle: "Contact your portal administrator to connect Health BI.",
+    },
+    {
+      id: "catalogue",
+      active: reportsQuery.isError && !!moduleQuery.data?.healthBiEnabled,
+      kind: "error",
+      title: "Unable to load Health BI reports",
+    },
+    {
+      id: "worker",
+      active: !!overviewQuery.data && !overviewQuery.data.workerHealthy,
+      kind: "warning",
+      title: "Scheduler worker needs attention",
+      subtitle:
+        overviewQuery.data?.workerLastCycleError ||
+        "The scheduler has not reported a healthy cycle recently.",
+    },
+    {
+      id: "schedules",
+      active: selectedTab === 0 && schedulesQuery.isError && !moduleQuery.isError,
+      kind: "error",
+      title: "Unable to load schedules",
+      subtitle: "Use Refresh schedules to try again.",
+    },
+    {
+      id: "executions",
+      active: selectedTab === 1 && executionsQuery.isError && !moduleQuery.isError,
+      kind: "error",
+      title: "Unable to load execution history",
+      subtitle: "Use Refresh history to try again.",
+    },
+    {
+      id: "inbox",
+      active: selectedTab === 2 && portalReportsQuery.isError && !moduleQuery.isError,
+      kind: "error",
+      title: "Unable to load delivered reports",
+      subtitle: "Use Refresh inbox to try again.",
+    },
+    {
+      id: `detail-${selectedExecutionId}`,
+      active: selectedTab === 1 && !!selectedExecutionId && executionDetailQuery.isError,
+      kind: "error",
+      title: "Unable to load execution details",
+    },
+    {
+      id: "overview",
+      active: selectedTab === 3 && overviewQuery.isError && !moduleQuery.isError,
+      kind: "error",
+      title: "Unable to load scheduler health",
+    },
+  ]);
 
   if (moduleQuery.isLoading) return <InlineLoading description="Loading Report Scheduler…" />;
 
@@ -173,41 +231,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
         <h1>Report Scheduler</h1>
         <p>Schedule Health BI reports and deliver them by email or through the portal.</p>
       </header>
-
-      {(moduleQuery.isError || reportsQuery.isError) && (
-        <InlineNotification
-          kind="error"
-          title="Report Scheduler is unavailable"
-          subtitle="Check the SSO backend and Health BI integration."
-          hideCloseButton
-        />
-      )}
-      {moduleQuery.data && !moduleQuery.data.healthBiEnabled && (
-        <InlineNotification
-          kind="warning"
-          title="Health BI is not configured"
-          subtitle="Contact your portal administrator to connect Health BI."
-          hideCloseButton
-        />
-      )}
-      {overviewQuery.data && !overviewQuery.data.workerHealthy && (
-        <InlineNotification
-          kind="warning"
-          title="Scheduler worker heartbeat is stale"
-          subtitle={
-            overviewQuery.data.workerLastCycleError ||
-            "The background scheduler has not reported a healthy cycle recently."
-          }
-          hideCloseButton
-        />
-      )}
-      {message && (
-        <InlineNotification
-          kind={messageKind}
-          title={message}
-          onCloseButtonClick={() => setMessage("")}
-        />
-      )}
 
       <div className="report-scheduler__summary">
         <Tile>
@@ -305,13 +328,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                   </div>
                 </div>
                 {schedulesQuery.isLoading && <InlineLoading description="Loading schedules…" />}
-                {schedulesQuery.isError && (
-                  <InlineNotification
-                    kind="error"
-                    title="Unable to load schedules"
-                    hideCloseButton
-                  />
-                )}
                 {!schedulesQuery.isLoading &&
                   (!schedulesQuery.isError || !!schedulesQuery.data?.length) && (
                     <SchedulesTable
@@ -322,7 +338,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                       onEdit={openSchedulePanel}
                       onAction={(action, schedule) => {
                         if (action === "delete") {
-                          setDeleteError("");
                           setDeleteTarget(schedule);
                         } else void mutateSchedule(action, schedule);
                       }}
@@ -398,13 +413,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                   </div>
                 </div>
                 {executionsQuery.isLoading && <InlineLoading description="Loading executions…" />}
-                {executionsQuery.isError && (
-                  <InlineNotification
-                    kind="error"
-                    title="Unable to load executions"
-                    hideCloseButton
-                  />
-                )}
                 {!executionsQuery.isLoading &&
                   (!executionsQuery.isError || !!executionsQuery.data?.length) && (
                     <ExecutionsTable
@@ -455,13 +463,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                     </div>
                     {executionDetailQuery.isFetching && (
                       <InlineLoading description="Loading execution details…" />
-                    )}
-                    {executionDetailQuery.isError && (
-                      <InlineNotification
-                        kind="error"
-                        title="Unable to load execution details"
-                        hideCloseButton
-                      />
                     )}
                     {executionDetailQuery.currentData && (
                       <>
@@ -558,13 +559,6 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
                 {portalReportsQuery.isLoading && (
                   <InlineLoading description="Loading delivered reports…" />
                 )}
-                {portalReportsQuery.isError && (
-                  <InlineNotification
-                    kind="error"
-                    title="Unable to load delivered reports"
-                    hideCloseButton
-                  />
-                )}
                 {!portalReportsQuery.isLoading &&
                   (!portalReportsQuery.isError || !!portalReportsQuery.data?.length) && (
                     <DeliveredReportsTable
@@ -633,12 +627,9 @@ export function ReportSchedulerRoot(props: MicrofrontendRuntimeProps) {
         }}
         onRequestSubmit={async () => {
           if (!deleteTarget) return;
-          setDeleteError("");
           if (await mutateSchedule("delete", deleteTarget)) setDeleteTarget(undefined);
-          else setDeleteError("Unable to delete this schedule. Please try again.");
         }}
       >
-        {deleteError && <InlineNotification kind="error" title={deleteError} hideCloseButton />}
         <p>
           Delete <strong>{deleteTarget?.reportName}</strong>? Future runs will stop. Existing
           execution history and delivered reports will remain available.

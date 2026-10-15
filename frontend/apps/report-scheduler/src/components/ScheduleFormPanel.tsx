@@ -1,12 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Button,
-  InlineLoading,
-  InlineNotification,
-  Select,
-  SelectItem,
-  TextInput,
-} from "@carbon/react";
+import { Button, InlineLoading, Select, SelectItem, TextInput } from "@carbon/react";
 import {
   useCreateReportScheduleMutation,
   useUpdateReportScheduleMutation,
@@ -17,15 +10,23 @@ import {
   usePreviewReportRecipientsMutation,
 } from "../api";
 import type { CreateScheduleRequest, ReportSchedule, ScheduleRecipient } from "../types";
+import { useToast } from "@moh-sso/ui";
+import { useSchedulerQueryToasts } from "../hooks/useSchedulerQueryToasts";
 import "../report-scheduler.scss";
 
 const periodOptions = [
-  ["current_day", "Current day"], ["previous_day", "Previous day"],
-  ["current_week", "Current week"], ["previous_week", "Previous week"],
-  ["current_epi_week", "Current epi week"], ["previous_epi_week", "Previous epi week"],
-  ["current_month", "Current month"], ["previous_month", "Previous month"],
-  ["current_quarter", "Current quarter"], ["previous_quarter", "Previous quarter"],
-  ["current_year", "Current year"], ["previous_year", "Previous year"],
+  ["current_day", "Current day"],
+  ["previous_day", "Previous day"],
+  ["current_week", "Current week"],
+  ["previous_week", "Previous week"],
+  ["current_epi_week", "Current epi week"],
+  ["previous_epi_week", "Previous epi week"],
+  ["current_month", "Current month"],
+  ["previous_month", "Previous month"],
+  ["current_quarter", "Current quarter"],
+  ["previous_quarter", "Previous quarter"],
+  ["current_year", "Current year"],
+  ["previous_year", "Previous year"],
 ];
 
 const splitValues = (value: string) =>
@@ -114,18 +115,35 @@ export function ScheduleFormPanel({
   const [parameterValues, setParameterValues] = useState<Record<string, string>>(() =>
     toStringParameters(initialSchedule?.parameters ?? {}),
   );
-  const [message, setMessage] = useState("");
+  const toast = useToast();
 
   const parametersQuery = useGetHealthBIReportParametersQuery(reportId, { skip: !reportId });
   const reportQuery = useGetHealthBIReportQuery(reportId, { skip: !reportId });
   const selectedReport = reportQuery.currentData;
   const formats = selectedReport?.supportedFormats ?? [];
   const supportedPeriods = selectedReport?.metadata?.periodStrategies;
-  const availablePeriods = periodOptions.filter(([value]) =>
-    supportedPeriods === undefined || supportedPeriods.includes(value),
+  const availablePeriods = periodOptions.filter(
+    ([value]) => supportedPeriods === undefined || supportedPeriods.includes(value),
   );
   const periodSupported = availablePeriods.some(([value]) => value === periodStrategy);
   const formatSupported = formats.includes(format);
+
+  useSchedulerQueryToasts([
+    {
+      id: `configuration-${reportId}`,
+      active: reportQuery.isError || parametersQuery.isError,
+      kind: "error",
+      title: "Unable to load report configuration",
+      subtitle: "Select the report again to retry.",
+    },
+    {
+      id: `periods-${reportId}`,
+      active: !!selectedReport && availablePeriods.length === 0,
+      kind: "warning",
+      title: "This report does not support scheduled reporting periods",
+      subtitle: "Choose another Health BI report.",
+    },
+  ]);
 
   const recipients = useMemo<ScheduleRecipient[]>(
     () => [
@@ -174,7 +192,6 @@ export function ScheduleFormPanel({
   const handleSave = async () => {
     const body = requestBody();
     if (!body) return;
-    setMessage("");
     try {
       if (editingId) {
         await updateSchedule({ id: editingId, body }).unwrap();
@@ -183,18 +200,18 @@ export function ScheduleFormPanel({
       }
       onSuccess();
     } catch {
-      setMessage(
-        "Unable to save the report schedule. Review timing, parameters, health scope, and recipients.",
+      toast.error(
+        "Unable to save the report schedule",
+        "Review timing, parameters, health scope, and recipients.",
       );
     }
   };
 
   const handlePreview = async () => {
-    setMessage("");
     try {
       await previewRecipients(recipients).unwrap();
     } catch {
-      setMessage("Unable to resolve one or more recipients.");
+      toast.error("Unable to resolve recipients", "Check the recipient details and try again.");
     }
   };
 
@@ -206,7 +223,6 @@ export function ScheduleFormPanel({
         void handleSave();
       }}
     >
-      {message && <InlineNotification kind="error" title={message} hideCloseButton />}
       <div className="report-scheduler__grid">
         <Select
           id="report-scheduler-report"
@@ -309,12 +325,6 @@ export function ScheduleFormPanel({
       </div>
 
       {reportQuery.isFetching && <InlineLoading description="Loading report capabilities…" />}
-      {(reportQuery.isError || parametersQuery.isError) && (
-        <InlineNotification kind="error" title="Unable to load report configuration" hideCloseButton />
-      )}
-      {selectedReport && availablePeriods.length === 0 && (
-        <InlineNotification kind="warning" title="This report does not support scheduled reporting periods" hideCloseButton />
-      )}
       {parametersQuery.isFetching && <InlineLoading description="Loading report parameters…" />}
       {(parametersQuery.data ?? []).length > 0 && (
         <div className="report-scheduler__parameters">
