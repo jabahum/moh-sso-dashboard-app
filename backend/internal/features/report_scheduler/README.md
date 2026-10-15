@@ -162,4 +162,21 @@ The `/metrics` route exposes the same scheduler telemetry for operations tooling
 
 Migrations `000045_report_scheduler_operational_indexes` and `000046_report_scheduler_runtime_interval` add production indexes for due schedules, polling, retries, portal inbox/history queries, health-scope administration, and configurable worker-heartbeat monitoring.
 
+Migration `000047_repair_report_execution_polling_status` repairs installations
+whose applied execution-status constraint excludes `polling`, even though their
+migration version is already 42 or later. The worker uses this state to claim
+Health BI jobs. The repair preserves records and all existing valid statuses;
+it runs through the normal backend startup migrations. Deploy/restart the updated
+backend instead of resetting migration history or changing already-applied files.
+
+The PostgreSQL regression check uses a temporary table and leaves application
+records untouched:
+
+```sh
+psql "$TEST_DATABASE_URL" -X -f scripts/test-report-scheduler-status-migration.sql
+```
+
+Run from the repository root. It reproduces the old constraint violation and
+verifies the repair, reapplication, rollback compatibility, and invalid-state rejection.
+
 See the [frontend module README](../../../../frontend/apps/report-scheduler/README.md) for development and access setup.
