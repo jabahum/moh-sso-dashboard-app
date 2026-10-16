@@ -7,3 +7,7 @@ secrets/*.txt
 backend/go.mod
 backend/go.sum
 backend/tmp/
+
+# Generated local SSO/Health BI credentials, process state and logs
+.local-sso/
+scripts/__pycache__/

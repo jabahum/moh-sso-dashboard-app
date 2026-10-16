@@ -176,9 +176,24 @@ backend-dev-logs:
 # Utility Commands
 # -----------------------------
 .PHONY: dev
-dev:
-	@echo "⚡ Starting full-stack dev environment..."
-	make -j2 run frontend-start
+dev: sso-up
+
+.PHONY: sso-up sso-down sso-status sso-reconcile-keycloak dev-native
+sso-up:
+	python3 scripts/local-sso.py up
+
+sso-down:
+	python3 scripts/local-sso.py down
+
+sso-status:
+	python3 scripts/local-sso.py status
+
+sso-reconcile-keycloak:
+	python3 scripts/local-sso.py reconcile-keycloak
+
+dev-native:
+	@echo "Starting native backend and frontend (infrastructure managed separately)..."
+	$(MAKE) -j2 run frontend-start
 
 .PHONY: all
 all: tidy build frontend-build

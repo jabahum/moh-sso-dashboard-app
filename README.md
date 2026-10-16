@@ -463,6 +463,13 @@ The frontend reads `window.__APP_CONFIG__` at runtime. This allows the same sour
 
 ## Local Development
 
+To start SSO and the sibling Health BI project together, run `make dev` (alias
+`make sso-up`). Keycloak imports the Health BI clients from `keycloak/realm-export.json`; this
+starts Health BI and its test database and connects the existing
+report-browser module and scheduler to it. See [combined startup](docs/local-healthbi-startup.md)
+for prerequisites, configuration, `make sso-status`, and `make sso-down`.
+Use `make dev-native` for the previous native backend/frontend workflow.
+
 ### Prerequisites
 
 - Go matching `backend/go.mod`

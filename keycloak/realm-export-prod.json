@@ -323,6 +323,12 @@
               "report_scheduler:history"
             ]
           }
+        },
+        {
+          "name": "report_scheduler_service",
+          "description": "Health BI scheduler service; no portal user permissions",
+          "composite": false,
+          "clientRole": true
         }
       ]
     }
@@ -371,19 +377,9 @@
         "http://localhost:3000/portal/*",
         "http://localhost:9000/api/v1/auth/callback"
       ],
-      "webOrigins": [
-        "http://localhost:3000"
-      ],
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "roles"
-      ],
-      "optionalClientScopes": [
-        "health-context",
-        "user_id"
-      ],
+      "webOrigins": ["http://localhost:3000"],
+      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "optionalClientScopes": ["health-context", "user_id"],
       "protocolMappers": [
         {
           "name": "audience-mapper",
@@ -421,12 +417,8 @@
       "authorizationServicesEnabled": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": [
-        "http://localhost:3001/auth/callback"
-      ],
-      "webOrigins": [
-        "http://localhost:3001"
-      ],
+      "redirectUris": ["http://localhost:3001/auth/callback"],
+      "webOrigins": ["http://localhost:3001"],
       "attributes": {
         "access.token.lifespan": "1800",
         "ui.icon": "warning-alt",
@@ -440,16 +432,8 @@
         "ui.launchMode": "internal",
         "ui.launchUrl": "/portal/apps/outbreak-management"
       },
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "roles"
-      ],
-      "optionalClientScopes": [
-        "health-context",
-        "user_id"
-      ]
+      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "optionalClientScopes": ["health-context", "user_id"]
     },
     {
       "clientId": "data-statistics",
@@ -476,6 +460,72 @@
         "ui.launchUrl": "/portal/apps/dwh",
         "ui.navigation": "[{\"id\":\"dashboards\",\"label\":\"Dashboards\",\"path\":\"/apps/dwh/dashboards\",\"permission\":\"report_browser:read\"},{\"id\":\"data-validation\",\"label\":\"Data Validation\",\"path\":\"/apps/dwh/data-validation\",\"permission\":\"data_quality:read\"},{\"id\":\"documents\",\"label\":\"Documents\",\"path\":\"/apps/dwh/documents\",\"permission\":\"documents:read\"},{\"id\":\"surveillance\",\"label\":\"Surveillance\",\"path\":\"/apps/dwh/surveillance\",\"permission\":\"surveillance:read\"},{\"id\":\"issue-tracker\",\"label\":\"Issue Tracker\",\"path\":\"/apps/dwh/issue-tracker\",\"permission\":\"issue_tracker:read\"},{\"id\":\"report-scheduler\",\"label\":\"Report Scheduler\",\"path\":\"/apps/dwh/report-scheduler\",\"permission\":\"report_scheduler:read\",\"icon\":\"reporting\",\"description\":\"Schedule report generation and delivery.\",\"order\":70,\"displayInLauncher\":true,\"displayInSideNav\":true}]"
       }
+    },
+    {
+      "clientId": "health-bi",
+      "name": "Health BI",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://dashboards.health.go.ug/report-browser/*"],
+      "webOrigins": ["https://dashboards.health.go.ug"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://dashboards.health.go.ug/report-browser/*",
+        "portal.system": "false",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "false"
+      },
+      "defaultClientScopes": ["web-origins", "roles", "profile", "email"],
+      "protocolMappers": [
+        {
+          "name": "portal-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "data-statistics",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "description": "Health BI browser login for the existing portal report-browser module; roles belong to data-statistics."
+    },
+    {
+      "clientId": "report-scheduler-worker",
+      "name": "Report Scheduler Worker",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": ["roles"],
+      "protocolMappers": [
+        {
+          "name": "healthbi-service-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "data-statistics",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "attributes": {
+        "portal.system": "false",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "false"
+      }
     }
   ],
   "users": [
@@ -493,28 +543,18 @@
           "temporary": false
         }
       ],
-      "realmRoles": [
-        "admin"
-      ],
+      "realmRoles": ["admin"],
       "clientRoles": {
-        "dashboard-web": [
-          "dashboard-web_access",
-          "portal_admin"
-        ],
+        "dashboard-web": ["dashboard-web_access", "portal_admin"],
         "outbreak-management": [
           "outbreak-management_access",
           "super_admin",
           "admin"
         ],
-        "data-statistics": [
-          "report_admin",
-          "report_manager"
-        ]
+        "data-statistics": ["report_admin", "report_manager"]
       },
       "attributes": {
-        "accessible_systems": [
-          "data-statistics"
-        ]
+        "accessible_systems": ["data-statistics"]
       }
     },
     {
@@ -531,27 +571,14 @@
           "temporary": false
         }
       ],
-      "realmRoles": [
-        "user"
-      ],
+      "realmRoles": ["user"],
       "clientRoles": {
-        "dashboard-web": [
-          "dashboard-web_access",
-          "portal_user"
-        ],
-        "outbreak-management": [
-          "outbreak-management_access",
-          "viewer"
-        ],
-        "data-statistics": [
-          "report_viewer",
-          "report-scheduler_access"
-        ]
+        "dashboard-web": ["dashboard-web_access", "portal_user"],
+        "outbreak-management": ["outbreak-management_access", "viewer"],
+        "data-statistics": ["report_viewer", "report-scheduler_access"]
       },
       "attributes": {
-        "accessible_systems": [
-          "data-statistics"
-        ]
+        "accessible_systems": ["data-statistics"]
       }
     },
     {
@@ -568,28 +595,18 @@
           "temporary": false
         }
       ],
-      "realmRoles": [
-        "manager"
-      ],
+      "realmRoles": ["manager"],
       "clientRoles": {
-        "dashboard-web": [
-          "dashboard-web_access",
-          "portal_manager"
-        ],
+        "dashboard-web": ["dashboard-web_access", "portal_manager"],
         "outbreak-management": [
           "outbreak-management_access",
           "manager",
           "surveillance_officer"
         ],
-        "data-statistics": [
-          "report_manager",
-          "report_analyst"
-        ]
+        "data-statistics": ["report_manager", "report_analyst"]
       },
       "attributes": {
-        "accessible_systems": [
-          "data-statistics"
-        ]
+        "accessible_systems": ["data-statistics"]
       }
     },
     {
@@ -606,27 +623,18 @@
           "temporary": false
         }
       ],
-      "realmRoles": [
-        "user"
-      ],
+      "realmRoles": ["user"],
       "clientRoles": {
-        "dashboard-web": [
-          "dashboard-web_access",
-          "portal_user"
-        ],
+        "dashboard-web": ["dashboard-web_access", "portal_user"],
         "outbreak-management": [
           "outbreak-management_access",
           "data_entry",
           "surveillance_officer"
         ],
-        "data-statistics": [
-          "report_analyst"
-        ]
+        "data-statistics": ["report_analyst"]
       },
       "attributes": {
-        "accessible_systems": [
-          "data-statistics"
-        ]
+        "accessible_systems": ["data-statistics"]
       }
     },
     {
@@ -643,26 +651,14 @@
           "temporary": false
         }
       ],
-      "realmRoles": [
-        "user"
-      ],
+      "realmRoles": ["user"],
       "clientRoles": {
-        "dashboard-web": [
-          "dashboard-web_access",
-          "portal_user"
-        ],
-        "outbreak-management": [
-          "outbreak-management_access",
-          "viewer"
-        ],
-        "data-statistics": [
-          "report_viewer"
-        ]
+        "dashboard-web": ["dashboard-web_access", "portal_user"],
+        "outbreak-management": ["outbreak-management_access", "viewer"],
+        "data-statistics": ["report_viewer"]
       },
       "attributes": {
-        "accessible_systems": [
-          "data-statistics"
-        ]
+        "accessible_systems": ["data-statistics"]
       }
     },
     {
@@ -695,6 +691,22 @@
           "view-realm"
         ]
       }
+    },
+    {
+      "username": "service-account-report-scheduler-worker",
+      "enabled": true,
+      "serviceAccountClientId": "report-scheduler-worker",
+      "clientRoles": {
+        "data-statistics": ["report_scheduler_service"]
+      }
     }
-  ]
+  ],
+  "clientScopeMappings": {
+    "data-statistics": [
+      {
+        "client": "report-scheduler-worker",
+        "roles": ["report_scheduler_service"]
+      }
+    ]
+  }
 }
