@@ -64,7 +64,7 @@ func TestHealthBIAdapterContract(t *testing.T) {
 			w.WriteHeader(http.StatusAccepted)
 			json.NewEncoder(w).Encode(map[string]any{"data": HealthBIJob{ID: "job-1", ReportID: id, Status: "queued"}})
 		case "/report-browser/api/v1/report-jobs/job-1":
-			json.NewEncoder(w).Encode(map[string]any{"data": HealthBIJob{ID: "job-1", ReportID: id, Status: "completed", ArtifactURL: "https://health-bi.example/report-browser/api/v1/report-artifacts/job-1?token=signed"}})
+			json.NewEncoder(w).Encode(map[string]any{"data": HealthBIJob{ID: "job-1", ReportID: id, Status: "completed", ArtifactURL: "https://datawarehouse-report-browser.example/report-browser/api/v1/report-artifacts/job-1?token=signed"}})
 		default:
 			t.Errorf("unexpected upstream path: %s", r.URL.Path)
 			w.WriteHeader(404)
@@ -152,7 +152,7 @@ func TestValidateReportPeriod(t *testing.T) {
 }
 
 func TestHealthBIRequiresServiceKey(t *testing.T) {
-	client := NewKeycloakHealthBIClient("https://health-bi.example/report-browser", "https://keycloak.example/token", "report-scheduler-worker", "", time.Second)
+	client := NewKeycloakHealthBIClient("https://datawarehouse-report-browser.example/report-browser", "https://keycloak.example/token", "report-scheduler-worker", "", time.Second)
 	if client.Enabled() {
 		t.Fatal("scheduler integration must remain disabled without its service key")
 	}

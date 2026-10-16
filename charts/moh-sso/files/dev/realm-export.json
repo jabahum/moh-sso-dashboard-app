@@ -541,7 +541,7 @@
       }
     },
     {
-      "clientId": "health-bi",
+      "clientId": "datawarehouse-report-browser",
       "name": "Health BI",
       "enabled": true,
       "protocol": "openid-connect",

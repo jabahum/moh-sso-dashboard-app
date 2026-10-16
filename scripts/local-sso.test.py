@@ -59,7 +59,7 @@ class LocalBootstrapTests(unittest.TestCase):
         second = bootstrap.reconcile_clients(kc)
         self.assertEqual(first, second)
         self.assertEqual(kc.creates, 2)
-        self.assertEqual(set(kc.clients), {'data-statistics', 'health-bi', 'report-scheduler-worker'})
+        self.assertEqual(set(kc.clients), {'data-statistics', 'datawarehouse-report-browser', 'report-scheduler-worker'})
         browser = kc.clients[bootstrap.BROWSER_CLIENT]
         worker = kc.clients[bootstrap.WORKER_CLIENT]
         self.assertTrue(browser['publicClient'])
@@ -98,8 +98,8 @@ class LocalBootstrapTests(unittest.TestCase):
         for name in ['keycloak/realm-export.json', 'charts/moh-sso/files/dev/realm-export.json', 'keycloak/realm-export-prod.json']:
             realm = json.loads((bootstrap.ROOT / name).read_text())
             clients = {client['clientId']: client for client in realm['clients']}
-            self.assertTrue(clients['health-bi']['publicClient'])
-            self.assertEqual(clients['health-bi']['attributes']['pkce.code.challenge.method'], 'S256')
+            self.assertTrue(clients['datawarehouse-report-browser']['publicClient'])
+            self.assertEqual(clients['datawarehouse-report-browser']['attributes']['pkce.code.challenge.method'], 'S256')
             self.assertTrue(clients['report-scheduler-worker']['serviceAccountsEnabled'])
             self.assertNotIn('secret', clients['report-scheduler-worker'])
             worker = next(user for user in realm['users'] if user.get('serviceAccountClientId') == 'report-scheduler-worker')

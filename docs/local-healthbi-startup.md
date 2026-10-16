@@ -1,7 +1,7 @@
 # Start the portal and Health BI together
 
 `keycloak/realm-export.json` owns the Health BI client definitions. On a fresh
-Keycloak database, the existing `--import-realm` startup imports `health-bi`, the
+Keycloak database, the existing `--import-realm` startup imports `datawarehouse-report-browser`, the
 scheduler worker, its service-account role grant, and its audience/scope mappings.
 Matching definitions are included in the production export and Helm dev realm.
 No committed worker secret is needed: Keycloak generates it during import.
@@ -24,7 +24,7 @@ The reconciliation command reads the same realm export and applies only the
 Health BI clients and service-role mappings. It retains existing credentials,
 redirects, user accounts, and realm data. It does not delete the older
 `datawarehouse-report-browser` client or its sessions; new Health BI configuration
-uses `health-bi`. No database reset or full realm replacement is required.
+uses `datawarehouse-report-browser`. No database reset or full realm replacement is required.
 
 Existing development images are reused; missing images are built by Compose.
 Use `SSO_BUILD=1 make dev` when Dockerfiles or image dependencies change.
@@ -40,7 +40,7 @@ command when infrastructure is managed separately. The existing Kubernetes
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | Portal report-browser module               | `/apps/dwh/dashboards`, permission `report_browser:read`               |
 | Parent system and existing report roles    | Keycloak client `data-statistics`                                      |
-| Health BI browser login                    | Public PKCE client `health-bi`                                         |
+| Health BI browser login                    | Public PKCE client `datawarehouse-report-browser`                                         |
 | Scheduled generation                       | Confidential client `report-scheduler-worker`                          |
 | Worker grant                               | `data-statistics:report_scheduler_service`, audience `data-statistics` |
 | Portal                                     | `http://localhost:3000`                                                |

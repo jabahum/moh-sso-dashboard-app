@@ -187,7 +187,7 @@ function ReportSchedulerWorkspace(props: MicrofrontendRuntimeProps) {
       subtitle: "Please try again or contact your portal administrator.",
     },
     {
-      id: "health-bi",
+      id: "datawarehouse-report-browser",
       active: !!moduleQuery.data && !moduleQuery.data.healthBiEnabled,
       kind: "warning",
       title: "Health BI is not configured",

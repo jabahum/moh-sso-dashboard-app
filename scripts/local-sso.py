@@ -16,7 +16,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / '.local-sso'
-BROWSER_CLIENT = 'health-bi'
+BROWSER_CLIENT = 'datawarehouse-report-browser'
 WORKER_CLIENT = 'report-scheduler-worker'
 ROLE_CLIENT = 'data-statistics'
 SERVICE_ROLE = 'report_scheduler_service'
