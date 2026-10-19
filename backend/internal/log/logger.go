@@ -39,7 +39,9 @@ func (logger *Logger) Error(args ...interface{}) {
 }
 
 func (logger *Logger) Fatal(args ...interface{}) {
-	logger.Print(zerolog.FatalLevel, args...)
+	// WithLevel(FatalLevel) only labels the event; Fatal also terminates the
+	// process. Startup callers rely on this to stop after initialization fails.
+	log.Fatal().Msg(fmt.Sprint(args...))
 }
 func (logger *Logger) Panic(args ...interface{}) {
 	logger.Print(zerolog.PanicLevel, args...)
