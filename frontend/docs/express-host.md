@@ -4,6 +4,30 @@ This follows O3's development-host pattern: Express serves the shell, supplies r
 configuration and an import map, and proxies backend requests. The existing Vite/native
 ESM loader and single-spa lifecycle contract remain in use.
 
+## Command helper
+
+From `frontend/`, use `npm run portal -- --help` to discover the common tasks:
+
+```bash
+npm run portal -- setup
+npm run portal -- build
+npm run portal -- serve
+npm run portal -- serve users --backend http://127.0.0.1:9000
+npm run portal -- serve documents --import-map https://assets.example.com/import-map.json
+npm run portal -- modules
+npm run portal -- check
+```
+
+`build` builds and stages the full frontend. `build users` builds only the Users app;
+`preview users` then serves its existing build on the local import-map port. Start the
+host in another terminal with an appropriate local/mixed import map to use that preview.
+`build shell` builds only the shell for deployments whose modules are hosted elsewhere.
+Add `--dry-run` to inspect a command without executing it. Existing host environment
+variables remain supported; explicit flags override them. `serve` without an app always
+selects the full portal. Local paths supplied as flags resolve from your current directory.
+From the repository root, use `node frontend/scripts/portal.mjs` in place of
+`npm run portal --`. Node 22+ is required for execution.
+
 ## Local setup
 
 Use Node 22 or later. From `frontend/`:

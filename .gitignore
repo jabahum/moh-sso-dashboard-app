@@ -7,3 +7,4 @@ secrets/*.txt
 backend/go.mod
 backend/go.sum
 backend/tmp/
+.local-sso/
