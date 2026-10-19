@@ -1,0 +1,17 @@
+{
+  "services": {
+    "backend": {
+      "env_file": [
+        "/Users/jaba/Documents/projects/web/moh-sso-dashboard/.local-sso/healthbi.env"
+      ],
+      "extra_hosts": [
+        "host.docker.internal:host-gateway"
+      ]
+    },
+    "frontend": {
+      "environment": {
+        "VITE_HEALTH_BI_BASE_URL": "http://localhost:8080"
+      }
+    }
+  }
+}

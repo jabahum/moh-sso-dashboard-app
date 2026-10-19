@@ -26,6 +26,7 @@ import { registeredMicrofrontends } from "./registerApps";
 type MicrofrontendMountMode = "hybrid" | "orchestrated";
 
 type RuntimeMicrofrontendConfig = {
+  hostRuntime?: boolean;
   singleSpaOrchestration?: boolean;
   microfrontendMode?: "local" | "remote";
   microfrontendMountMode?: MicrofrontendMountMode;
@@ -87,7 +88,7 @@ function getRuntimeConfig() {
     window.location.hostname === "127.0.0.1" ||
     window.location.hostname === "::1";
 
-  if (!isLocalDevelopmentHost) {
+  if (!isLocalDevelopmentHost || runtimeConfig?.hostRuntime) {
     return runtimeConfig;
   }
 
@@ -102,7 +103,8 @@ function getRuntimeConfig() {
 export function shouldUseSingleSpaOrchestration() {
   const runtimeConfig = getRuntimeConfig();
   const orchestrationEnabled =
-    import.meta.env.VITE_SINGLE_SPA_ORCHESTRATION === "true" || runtimeConfig?.singleSpaOrchestration === true;
+    import.meta.env.VITE_SINGLE_SPA_ORCHESTRATION === "true" ||
+    runtimeConfig?.singleSpaOrchestration === true;
 
   return (
     orchestrationEnabled &&
@@ -126,7 +128,11 @@ function getMicrofrontendMode() {
 
 function getMicrofrontendMountMode(): MicrofrontendMountMode {
   const runtimeConfig = getRuntimeConfig();
-  return runtimeConfig?.microfrontendMountMode ?? import.meta.env.VITE_MICROFRONTEND_MOUNT_MODE ?? "hybrid";
+  return (
+    runtimeConfig?.microfrontendMountMode ??
+    import.meta.env.VITE_MICROFRONTEND_MOUNT_MODE ??
+    "hybrid"
+  );
 }
 
 function pathMatches(pathname: string, basePath: string) {

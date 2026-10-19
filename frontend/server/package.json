@@ -1,0 +1,16 @@
+{
+  "name": "@moh-sso/frontend-host",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node --test host.test.mjs"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5"
+  }
+}

@@ -8,6 +8,9 @@
     "packages/*"
   ],
   "scripts": {
+    "host:install": "npm ci --prefix server",
+    "host:start": "node server/index.mjs",
+    "host:test": "node --test server/host.test.mjs",
     "dev": "npm run config:dev && npm run dev -w @moh-sso/shell",
     "build": "npm run build -w @moh-sso/shell",
     "lint": "eslint . --cache --cache-location .eslintcache --max-warnings=0",
