@@ -24,9 +24,116 @@ host in another terminal with an appropriate local/mixed import map to use that 
 `build shell` builds only the shell for deployments whose modules are hosted elsewhere.
 Add `--dry-run` to inspect a command without executing it. Existing host environment
 variables remain supported; explicit flags override them. `serve` without an app always
-selects the full portal. Local paths supplied as flags resolve from your current directory.
+selects the full portal unless the selected profile defines a module. Local paths supplied
+as flags resolve from your current directory.
 From the repository root, use `node frontend/scripts/portal.mjs` in place of
 `npm run portal --`. Node 22+ is required for execution.
+
+## Managed local stack
+
+```bash
+npm run portal -- up --profile local
+npm run portal -- status
+npm run portal -- doctor
+npm run portal -- logs backend
+npm run portal -- restart backend
+npm run portal -- down
+```
+
+Start Docker Desktop first. `up` requires a staged frontend (`portal build`) and uses
+`docker-compose.dev.yml` plus the tracked `docker-compose.express.yml` overlay. It starts
+PostgreSQL, Redis, MailHog and Keycloak, creates the profile's database if absent, registers
+the local Express callback on the Keycloak client, starts the backend, waits for strict
+backend readiness, then starts Express in Docker and checks its API proxy. The initial
+database seed can take several minutes; `--timeout 600` extends each readiness deadline.
+Existing databases are never reset and migration versions are never forced.
+
+The `local` profile selects `sso_express_dev`, preserving the older development database.
+The backend development image rebuilds the mounted source with Air. Express uses the
+small `Dockerfile.host` image and mounts the staged build and import map read-only. Missing
+images are built by Compose; use `up --build` or `restart express --build` to rebuild images
+after changing host code or dependencies. Backend dependencies must be installed/reachable
+by the images' build steps. The current local realm/bootstrap administrator credentials
+must match the development Compose settings for automatic callback registration.
+
+`up` refuses to take a port already held by another server. Stop an earlier foreground
+`serve` with Ctrl+C (or the old Vite frontend container) before using managed Express.
+The helper never kills an unrelated process to free a port. A failed readiness check leaves
+started containers available for inspection with `logs` and `doctor`.
+
+`down` uses **stop**, retaining containers, networks and database volumes. It stops only
+the managed local service list. `down express` stops just managed Express while keeping
+the backend available. `frontend` is an alias for `express` in service commands. Other
+service names are `backend`, `keycloak`, `keycloak-db`, `backend-db`, `remote-postgres`,
+`redis`, and `mailhog`.
+
+`restart` recreates a service using the selected profile, rather than retaining stale
+container environment variables. Backend and Express restarts wait for HTTP readiness.
+An Express restart preserves its active standalone module unless the profile sets one.
+
+`status` separates Docker container state from HTTP application readiness, shows published
+ports, the active database, and the selected module. `doctor` checks staged assets, resolved
+and active database/callback configuration, newer or dirty migrations, port availability,
+backend/proxy readiness, and the public Keycloak login form. It exits nonzero on problems.
+It does not reset databases, repair dirty migrations, or change identity-provider settings.
+
+## Named profiles
+
+Tracked defaults live in `frontend/portal.profiles.json`. Add personal profiles to the
+ignored repository file `.local-sso/profiles.json`, for example:
+
+```json
+{
+  "training": {
+    "port": 3100,
+    "publicOrigin": "http://localhost:3100",
+    "database": "sso_training_dev",
+    "module": "users"
+  }
+}
+```
+
+```bash
+npm run portal -- up --profile training
+npm run portal -- status --profile training
+npm run portal -- restart backend --profile training
+```
+
+Profiles inherit the local defaults. Fields include `backend`, `host`, `port`,
+`publicOrigin`, `database`, `keycloak`, `realm`, `client`, `module`, `dist`, `importMap`,
+`composeFiles`, and `network`. `publicOrigin` is the browser-facing origin used for SSO.
+Profile asset paths resolve from `frontend/`; Compose paths resolve from the repository
+root. Use `--profiles-file /path/to/profiles.json` for another JSON profile file. Explicit
+CLI path flags resolve from the invoking directory.
+
+Foreground `serve`/`dev` honor backend/map environment variables; explicit flags override
+them. Managed stack settings come from the profile, with explicit `up` flags overriding
+that invocation only. Store persistent port/map/module choices in a named profile so
+`status`, `doctor`, and `restart` use the same settings. Profiles select configurations for
+the same development Compose stack; they do not create concurrently isolated stacks or
+separate backend/Keycloak ports. Local callback registration does not configure an external
+identity provider or production deployment.
+
+## Watch one module
+
+```bash
+npm run portal -- down express
+npm run portal -- dev users --profile local
+```
+
+Keep the backend running. `dev` builds the app, starts a Vite build watcher and strict-port
+preview server, and starts standalone Express. It copies the selected production/central
+map into an ignored `.local-sso/import-map.<profile>.<app>.json`, overriding only the selected
+module. Other module/vendor URLs remain intact; the central map is not modified. Remote
+map-relative URLs are resolved against their original map URL before copying.
+
+Refresh the browser after a rebuild; this uses build-and-preview rather than HMR. Ctrl+C
+stops the watcher, preview, host, and their child processes. A failed development process
+stops its siblings. Use `--module-port` to change the preview port. A different Express
+`--port` is useful for asset checks, but live SSO requires matching backend/callback settings;
+use a matching named profile and backend configuration for that case.
+
+`portal check` now runs command-helper regression tests, host HTTP tests and TypeScript.
 
 ## Local setup
 

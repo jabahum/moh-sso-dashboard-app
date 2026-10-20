@@ -45,6 +45,8 @@ For an O3-style Express host with a shared runtime import map, backend proxy, an
 standalone module mode, see [Express host setup](docs/express-host.md).
 
 Run `npm run portal -- --help` for the setup, build, serve, preview, and check helper.
+It also provides `up`, `down`, `status`, `doctor`, `logs`, `restart`, and `dev` with named
+profiles. Start the integrated stack with `npm run portal -- up --profile local`.
 
 ## Prerequisites
 

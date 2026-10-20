@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "portal": "node scripts/portal.mjs",
+    "portal:test": "node --test scripts/portal.test.mjs",
     "host:install": "npm ci --prefix server",
     "host:start": "node server/index.mjs",
     "host:test": "node --test server/host.test.mjs",

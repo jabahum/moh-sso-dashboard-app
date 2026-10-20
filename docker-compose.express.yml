@@ -1,0 +1,82 @@
+# Overlay for docker-compose.dev.yml. The portal helper selects services explicitly.
+services:
+  keycloak-db:
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+
+  keycloak:
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+
+  backend:
+    image: moh-sso-dashboard-backend:latest
+    environment:
+      ENVIRONMENT: development
+      DB_NAME: ${PORTAL_DB_NAME:-sso_express_dev}
+      APP_BASE_URL: ${PORTAL_PUBLIC_ORIGIN:-http://localhost:3000}/backend
+      FRONTEND_BASE_URL: ${PORTAL_PUBLIC_ORIGIN:-http://localhost:3000}
+      FRONTEND_REDIRECT_URI: ${PORTAL_PUBLIC_ORIGIN:-http://localhost:3000}/portal/
+      AUTH_RETURN_URL_ALLOWED_ORIGINS: ${PORTAL_PUBLIC_ORIGIN:-http://localhost:3000}
+      KEYCLOAK_REDIRECT_URI: ${PORTAL_PUBLIC_ORIGIN:-http://localhost:3000}/backend/api/v1/auth/callback
+    depends_on:
+      - keycloak-db
+      - remote-postgres
+
+  portal-db-init:
+    image: postgres:15
+    environment:
+      PGHOST: backend-db
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD:-postgres}
+      PGDATABASE: postgres
+      PORTAL_DB_NAME: ${PORTAL_DB_NAME:-sso_express_dev}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for attempt in $$(seq 1 60); do
+          if pg_isready -q; then break; fi
+          sleep 1
+        done
+        psql -v ON_ERROR_STOP=1 -v database="$$PORTAL_DB_NAME" <<'SQL'
+        SELECT format('CREATE DATABASE %I', :'database')
+        WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'database')
+        \gexec
+        SQL
+    networks: [sso_network]
+
+  express:
+    image: moh-sso-dashboard-express:local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.host
+    environment:
+      BACKEND_URL: http://backend:9000
+      STANDALONE_MODULE: ${PORTAL_MODULE:-}
+      IMPORT_MAP_URL: ${PORTAL_IMPORT_MAP_URL:-}
+    volumes:
+      - type: bind
+        source: ${PORTAL_DIST_DIR:-./frontend/dist}
+        target: /app/dist
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PORTAL_IMPORT_MAP_FILE:-./frontend/public/import-map.json}
+        target: /app/import-map.json
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      - "${PORTAL_BIND_HOST:-127.0.0.1}:${PORTAL_PORT:-3000}:3000"
+    depends_on: [backend]
+    networks: [sso_network]
+
+networks:
+  sso_network:
+    name: ${PORTAL_NETWORK:-sso_network}

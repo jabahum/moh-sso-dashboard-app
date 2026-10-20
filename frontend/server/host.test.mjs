@@ -1,4 +1,4 @@
-/* global fetch */
+/* global fetch, process, URL */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
@@ -7,6 +7,8 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { Script } from "node:vm";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { createHost, hostOptions } from "./host.mjs";
 
 async function listen(t, server) {
@@ -44,8 +46,31 @@ async function fixture(t, overrides = {}) {
     ...overrides,
   });
   const origin = await listen(t, createServer(app));
-  return { origin, writeMap };
+  return { origin, writeMap, dir };
 }
+
+test("host startup reports an occupied port and exits unsuccessfully", async (t) => {
+  const { origin, dir } = await fixture(t);
+  assert.throws(
+    () =>
+      execFileSync(process.execPath, [fileURLToPath(new URL("./index.mjs", import.meta.url))], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          HOST: "127.0.0.1",
+          PORT: new URL(origin).port,
+          FRONTEND_DIST_DIR: dir,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stderr, /Unable to start frontend host:.*EADDRINUSE/);
+      assert.doesNotMatch(error.stdout, /listening/);
+      return true;
+    },
+  );
+});
 
 test("serves fresh map, runtime settings, static assets, and deep links", async (t) => {
   const { origin, writeMap } = await fixture(t);
