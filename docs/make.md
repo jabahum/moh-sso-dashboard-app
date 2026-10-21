@@ -155,7 +155,7 @@ with `GO_CMD=/path/to/go`; frontend targets accept `NPM=/path/to/npm`.
 
 | Target | Scope |
 | --- | --- |
-| `make infra-check` | Compose/env coverage, service alignment, source/mount paths, launcher modes, safe env-file handling, secret loading and public-config serialization. Does not start the application stack. |
+| `make infra-check` | CD transaction tests plus Compose/env coverage, service alignment, source/mount paths, launcher modes, safe env-file handling, secret loading and public-config serialization. Does not start the application stack. |
 | `make infra-runtime-check` | Build the actual runtime stages with tiny fixture build outputs; check frontend startup config, backend secrets/user/uploads/version arguments and a disposable Keycloak readiness probe. |
 | `make infra-nginx-check` | Test gateway, same-host and remote-IP HTTPS routing, SSO, cache/security headers, uploads, WebSocket upgrade, logs, proxy trust and DNS recovery. |
 | `make infra-test` | Run all three infrastructure checks. |
@@ -165,6 +165,25 @@ images and clean them up. They preserve running application stacks and data
 volumes. Runtime fixtures do not compile the complete apps or verify real remote
 network/firewall access. API contract validation is separate: use
 `make contracts-check` alongside these checks.
+
+## Continuous delivery and server commands
+
+See the [CD runbook](cd-pipeline.md) for the separate image-build, deployment and
+rollback workflows, server bootstrap, and required GitHub/server configuration.
+
+| Target | Behavior |
+| --- | --- |
+| `make cd-check` | Test bundle validation, image pairing, config snapshots, locking, rollout failure and rollback/recovery. Python only; no server or Docker daemon needed. |
+| `make cd-preflight` | Check Docker/Compose and private deployment configuration on the prepared application server. Does not start containers. |
+| `make cd-status` | Print the server's recorded current/previous releases. |
+| `make cd-verify` | Check the currently recorded release's runtime metadata, modules and configured public HTTPS edge. |
+| `make cd-rollback` | Restore and verify the previous recorded server release; changes running containers. |
+
+Server commands default to `DEPLOY_CONFIG=/etc/moh-sso/deploy.json`; override it
+for another absolute configuration path. Run them as the configured deployment
+account on the application server. On servers without a source checkout, invoke
+`python3 /opt/moh-sso/current/infra/scripts/cd_server.py <command>` instead of Make.
+For interrupted rollout recovery, use the rollback workflow as documented.
 
 For Kubernetes, local SSO, image building and releases, see
 [deployment](deployment.md), [tooling](tooling.md) and `make release-help`.

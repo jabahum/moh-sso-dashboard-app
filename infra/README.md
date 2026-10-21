@@ -6,6 +6,8 @@ its prerequisites, options, effects and examples.
 Deployment files and tooling live here. Run `make help` from the repository root
 or `make -C infra` for deployment commands. See the [deployment guide](../docs/deployment.md)
 for environment setup, host/remote Nginx, Compose, Kubernetes and migration notes.
+For the complete CD pipeline, server bootstrap, GitHub settings, production
+promotion and rollback, follow the [CD runbook](../docs/cd-pipeline.md).
 
 Private configuration goes in `env/*.env`; copy the matching `.example` and keep
 credentials out of Git. Private Compose secrets go in `secrets/`. Docker build

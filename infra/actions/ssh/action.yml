@@ -1,0 +1,50 @@
+name: Configure deployment SSH
+description: Install an ephemeral deployment identity and pinned known-host records.
+inputs:
+  private-key:
+    required: true
+    description: Environment-scoped SSH private key
+  known-hosts:
+    required: true
+    description: Host keys verified outside this workflow (ssh-keyscan is not used here)
+  host:
+    required: true
+    description: Application server DNS name or IP
+  user:
+    required: true
+    description: Deployment user
+  port:
+    default: '22'
+    description: SSH port
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        KEY: ${{ inputs.private-key }}
+        KNOWN_HOSTS: ${{ inputs.known-hosts }}
+        HOST: ${{ inputs.host }}
+        USER_NAME: ${{ inputs.user }}
+        PORT: ${{ inputs.port }}
+      run: |
+        [[ "$HOST" =~ ^[A-Za-z0-9.:-]+$ && "$USER_NAME" =~ ^[a-z_][a-z0-9_-]*$ && "$PORT" =~ ^[1-9][0-9]{0,4}$ ]]
+        (( PORT >= 1 && PORT <= 65535 ))
+        test -n "$KEY" && test -n "$KNOWN_HOSTS"
+        umask 077
+        directory="$RUNNER_TEMP/moh-cd-ssh-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+        mkdir -p "$directory"
+        printf '%s\n' "$KEY" > "$directory/key"
+        printf '%s\n' "$KNOWN_HOSTS" > "$directory/known_hosts"
+        cat > "$directory/config" <<CONFIG
+        Host moh-deploy
+          HostName $HOST
+          User $USER_NAME
+          Port $PORT
+          IdentityFile "$directory/key"
+          UserKnownHostsFile "$directory/known_hosts"
+          IdentitiesOnly yes
+          BatchMode yes
+          StrictHostKeyChecking yes
+          ConnectTimeout 15
+        CONFIG
+        printf 'CD_SSH_CONFIG=%s/config\nCD_SSH_DIR=%s\n' "$directory" "$directory" >> "$GITHUB_ENV"

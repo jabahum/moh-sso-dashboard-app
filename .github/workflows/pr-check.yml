@@ -1,11 +1,12 @@
 name: PR Quality Checks
 
 on:
+  workflow_call:
   pull_request:
     branches: [main]
 
 concurrency:
-  group: pr-${{ github.head_ref }}
+  group: quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

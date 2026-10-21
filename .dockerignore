@@ -5,6 +5,7 @@
 **/__pycache__
 .git
 .local-sso
+.cd-build
 .idea
 .vscode
 **/app.env*

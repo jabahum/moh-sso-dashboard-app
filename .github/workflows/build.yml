@@ -21,8 +21,13 @@ env:
   IMAGE_REPO: ${{ github.event.repository.name }}
 
 jobs:
+  validate:
+    name: Validate before publishing images
+    uses: ./.github/workflows/pr-check.yml
+
   docker-build-push:
     name: Build & Push (${{ matrix.service }})
+    needs: validate
     runs-on: ubuntu-latest
 
     strategy:
@@ -101,6 +106,7 @@ jobs:
             type=raw,value=${{ steps.frontend-meta.outputs.version }},enable=${{ matrix.service == 'frontend' && startsWith(github.ref, 'refs/tags/frontend/v') }}
 
       - name: Build and push backend
+        id: build_backend
         if: matrix.service == 'backend' && !startsWith(github.ref, 'refs/tags/frontend/v')
         uses: docker/build-push-action@v6
         with:
@@ -124,6 +130,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache,mode=max
 
       - name: Build and push frontend
+        id: build_frontend
         if: matrix.service == 'frontend' && !startsWith(github.ref, 'refs/tags/backend/v')
         uses: docker/build-push-action@v6
         with:
@@ -149,7 +156,7 @@ jobs:
         if: matrix.service == 'frontend' && !startsWith(github.ref, 'refs/tags/backend/v')
         shell: bash
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-frontend:sha-${{ steps.sha.outputs.tag }}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-frontend@${{ steps.build_frontend.outputs.digest }}"
           docker pull "$IMAGE"
           docker run --rm --entrypoint jq "$IMAGE" \
             --arg version "${{ steps.frontend-meta.outputs.version }}" \
@@ -161,10 +168,57 @@ jobs:
         if: matrix.service == 'backend' && !startsWith(github.ref, 'refs/tags/frontend/v')
         shell: bash
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-backend:sha-${{ steps.sha.outputs.tag }}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-backend@${{ steps.build_backend.outputs.digest }}"
           docker pull "$IMAGE"
           OUTPUT="$(docker run --rm "$IMAGE" --version)"
           echo "$OUTPUT"
           grep -F "moh-sso-dashboard-backend ${{ steps.backend-meta.outputs.version }} " <<< "$OUTPUT"
           grep -F "commit ${{ steps.backend-meta.outputs.commit }}," <<< "$OUTPUT"
           grep -F "dirty=false" <<< "$OUTPUT"
+
+      - name: Record verified component image
+        if: github.ref == 'refs/heads/main'
+        env:
+          COMPONENT: ${{ matrix.service }}
+          REPOSITORY: ghcr.io/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}
+          DIGEST: ${{ steps.build_backend.outputs.digest || steps.build_frontend.outputs.digest }}
+          VERSION: ${{ matrix.service == 'backend' && steps.backend-meta.outputs.version || steps.frontend-meta.outputs.version }}
+        run: |
+          mkdir -p image-metadata
+          python3 - <<'PYCODE'
+          import json,os
+          from pathlib import Path
+          component=os.environ['COMPONENT']
+          data={'repository':os.environ['REPOSITORY'].lower(),'digest':os.environ['DIGEST'],
+                'tag':'sha-'+os.environ['GITHUB_SHA'][:7], 'version':os.environ['VERSION'],
+                'commit':os.environ['GITHUB_SHA']}
+          Path('image-metadata',component+'.json').write_text(json.dumps(data,indent=2)+'\n')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: component-image-${{ matrix.service }}
+          path: image-metadata/${{ matrix.service }}.json
+          overwrite: true
+          retention-days: 30
+
+  bundle:
+    name: Package verified image pair and deployment configuration
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: component-image-*
+          merge-multiple: true
+          path: image-metadata
+      - name: Package immutable deployment bundle
+        run: python3 infra/scripts/cd_bundle.py package --metadata-dir image-metadata --output deployment --commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deployment-bundle
+          path: deployment/
+          overwrite: true
+          retention-days: 30

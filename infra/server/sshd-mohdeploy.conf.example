@@ -1,0 +1,9 @@
+# Optional /etc/ssh/sshd_config.d/60-mohdeploy.conf, replace username if customized.
+# Check with sudo sshd -t before reloading ssh. Existing operator access is unchanged.
+Match User mohdeploy
+    AuthenticationMethods publickey
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    PermitTTY no
+    DisableForwarding yes
+    X11Forwarding no

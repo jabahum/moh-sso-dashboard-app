@@ -1,0 +1,49 @@
+name: Roll Back Verified Deployment
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Restore the previous verified application/configuration release
+        type: choice
+        options: [staging, production]
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  rollback:
+    runs-on: ${{ fromJSON(vars.DEPLOY_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: ./infra/actions/ssh
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          host: ${{ vars.DEPLOY_HOST }}
+          user: ${{ vars.DEPLOY_USER || 'mohdeploy' }}
+          port: ${{ vars.DEPLOY_PORT || '22' }}
+      - name: Restore and verify previous server release
+        env:
+          DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT || '/opt/moh-sso' }}
+          DEPLOY_CONFIG: ${{ vars.DEPLOY_CONFIG || '/etc/moh-sso/deploy.json' }}
+          DEPLOY_ACTOR: ${{ github.actor }}
+        run: |
+          [[ "$DEPLOY_ROOT" =~ ^/[A-Za-z0-9_/-]+$ && "$DEPLOY_ROOT" != / && "$DEPLOY_ROOT" != *..* ]]
+          [[ "$DEPLOY_CONFIG" =~ ^/[A-Za-z0-9_./-]+$ && "$DEPLOY_CONFIG" != *..* ]]
+          [[ "$DEPLOY_ACTOR" =~ ^[-A-Za-z0-9_]+(\[bot\])?$ ]]
+          # Recover interrupted deployments even if no current symlink was switched.
+          scp -F "$CD_SSH_CONFIG" infra/scripts/cd_server.py infra/scripts/cd_bundle.py "moh-deploy:$DEPLOY_ROOT/incoming/"
+          ssh -F "$CD_SSH_CONFIG" moh-deploy "python3 '$DEPLOY_ROOT/incoming/cd_server.py' rollback --config '$DEPLOY_CONFIG' --actor '$DEPLOY_ACTOR'"
+      - name: Remove runner SSH material
+        if: always()
+        run: |
+          if [[ -n "${CD_SSH_DIR:-}" ]]; then
+            rm -f "$CD_SSH_DIR/key" "$CD_SSH_DIR/known_hosts" "$CD_SSH_DIR/config"
+            rmdir "$CD_SSH_DIR"
+          fi

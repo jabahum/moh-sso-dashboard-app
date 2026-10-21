@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "mode": "remote",
+  "deploy_root": "/opt/moh-sso",
+  "env_file": "/etc/moh-sso/prod.env",
+  "remote_env_file": "/etc/moh-sso/remote-proxy.env",
+  "secret_files": {
+    "DB_PASSWORD_SECRET_FILE": "/etc/moh-sso/secrets/db_password.txt",
+    "KEYCLOAK_ADMIN_SECRET_FILE": "/etc/moh-sso/secrets/keycloak_admin_client_secret.txt",
+    "KEYCLOAK_WEB_SECRET_FILE": "/etc/moh-sso/secrets/keycloak_web_client_secret.txt"
+  },
+  "gateway_trusted_proxies_file": "/etc/moh-sso/trusted-proxies.conf",
+  "public_base_url": "https://dashboards.health.go.ug",
+  "verify_public_edge": true,
+  "wait_timeout": 360,
+  "verifier_image": "node:22-alpine",
+  "pre_deploy_hook": null
+}

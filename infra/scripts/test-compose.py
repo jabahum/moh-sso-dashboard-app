@@ -8,6 +8,9 @@ import subprocess
 import tempfile
 import unittest
 
+import cd_bundle
+from cd_server import Server
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -25,6 +28,41 @@ def config(filename, env_file='infra/env/prod.env.example', **values):
 
 
 class ComposeTests(unittest.TestCase):
+    def test_cd_bundle_resolves_all_production_modes_with_exact_image_digests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            metadata = root / 'metadata'
+            metadata.mkdir()
+            commit = 'a' * 40
+            images = {}
+            for component in ('backend', 'frontend'):
+                images[component] = {'repository': f'ghcr.io/example/portal-{component}',
+                                     'digest': 'sha256:' + 'b' * 64, 'tag': 'sha-aaaaaaa',
+                                     'version': '1.2.3', 'commit': commit}
+                (metadata / f'{component}.json').write_text(json.dumps(images[component]))
+            manifest = cd_bundle.package(metadata, root / 'bundle', commit, '1', '1')
+            release = root / 'releases' / manifest['release_id']
+            cd_bundle.extract(root / 'bundle/deployment.tar.gz', root / 'bundle/deployment.tar.gz.sha256', release)
+            for mode in ('prod', 'remote', 'gateway'):
+                configuration = root / 'deploy.json'
+                trust = ROOT / 'infra/nginx/trusted-proxies.conf'
+                configuration.write_text(json.dumps({
+                    'schema_version': 1, 'deploy_root': str(root), 'mode': mode,
+                    'env_file': str(ROOT / 'infra/env/prod.env.example'),
+                    'remote_env_file': str(ROOT / 'infra/env/remote-proxy.env.example'),
+                    'gateway_trusted_proxies_file': str(trust),
+                    'secret_files': {}, 'verify_public_edge': False}))
+                server = Server(configuration)
+                record = server.candidate(release)
+                model = json.loads(server.compose(record, 'config', '--format', 'json'))
+                for component, image in images.items():
+                    self.assertEqual(model['services'][component]['image'], image['repository'] + '@' + image['digest'])
+                self.assertEqual(model['name'], 'moh-sso-dashboard')
+                if mode == 'gateway':
+                    mounts = model['services']['nginx']['volumes']
+                    self.assertEqual(next(v['source'] for v in mounts if v['target'] == '/etc/nginx/trusted-proxies.conf'), str(trust))
+                cd_bundle.extract(root / 'bundle/deployment.tar.gz', root / 'bundle/deployment.tar.gz.sha256', release)
+
     def test_launcher_resolves_paths_from_outside_the_repository(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)

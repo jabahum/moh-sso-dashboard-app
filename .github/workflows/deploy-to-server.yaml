@@ -1,196 +1,155 @@
-name: Deploy Integrated Health Portal to Server
+name: Deploy Verified Image Bundle
 
 on:
   workflow_run:
-    workflows: ["Backend Release", "Backend Release From PR"]
+    workflows: ["Build & Push Images"]
+    branches: [main]
     types: [completed]
   workflow_dispatch:
     inputs:
-      backend_tag:
-        description: "Immutable backend release tag, for example 1.2.3 or backend/v1.2.3"
-        required: true
+      build_run_id:
+        description: Successful main-branch Build & Push Images run containing deployment-bundle
         type: string
-      frontend_tag:
-        description: "Immutable frontend image tag"
         required: true
-        type: string
-      expected_version:
-        description: "Expected backend runtime version"
+      environment:
+        description: Target environment; promote the same build run to production
+        type: choice
+        options: [staging, production]
+        default: staging
         required: true
-        type: string
-      expected_commit:
-        description: "Expected full backend Git commit"
-        required: true
-        type: string
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: production-deployment
+  group: deploy-${{ inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  prepare:
+    name: Validate build provenance and prepare deployment plan
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' && vars.AUTO_DEPLOY_STAGING == 'true')
     runs-on: ubuntu-latest
-    environment: production
-
+    outputs:
+      environment: ${{ steps.build.outputs.environment }}
+      release_id: ${{ steps.plan.outputs.release_id }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download release metadata
-        if: github.event_name == 'workflow_run'
-        uses: actions/download-artifact@v4
         with:
-          run-id: ${{ github.event.workflow_run.id }}
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Validate producing workflow and source
+        id: build
+        uses: actions/github-script@v7
+        env:
+          BUILD_RUN_ID: ${{ inputs.build_run_id || github.event.workflow_run.id }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+        with:
+          script: |
+            if (!/^[0-9]+$/.test(process.env.BUILD_RUN_ID)) throw new Error('Invalid build run ID');
+            if (!['staging','production'].includes(process.env.TARGET_ENVIRONMENT)) throw new Error('Invalid environment');
+            const { data: run } = await github.rest.actions.getWorkflowRun({ ...context.repo, run_id: Number(process.env.BUILD_RUN_ID) });
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+            if (run.conclusion !== 'success' || run.event !== 'push' || run.head_branch !== 'main' ||
+                run.head_repository?.full_name !== repository || run.path.split('@')[0] !== '.github/workflows/build.yml') {
+              throw new Error('Only successful trusted main-branch image-build runs may deploy');
+            }
+            core.setOutput('run_id', String(run.id));
+            core.setOutput('source_commit', run.head_sha);
+            core.setOutput('run_attempt', String(run.run_attempt));
+            core.setOutput('environment', process.env.TARGET_ENVIRONMENT);
+      - uses: actions/download-artifact@v4
+        with:
+          name: deployment-bundle
+          run-id: ${{ steps.build.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          name: backend-release-metadata
-          path: ./release-metadata
-
-      - name: Resolve immutable deployment metadata
-        id: metadata
-        shell: bash
+          path: deployment
+      - name: Validate archive, digest manifest and deployment plan
+        id: plan
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
-          INPUT_BACKEND_TAG: ${{ inputs.backend_tag }}
-          INPUT_FRONTEND_TAG: ${{ inputs.frontend_tag }}
-          INPUT_VERSION: ${{ inputs.expected_version }}
-          INPUT_COMMIT: ${{ inputs.expected_commit }}
+          SOURCE_COMMIT: ${{ steps.build.outputs.source_commit }}
+          BUILD_ID: ${{ steps.build.outputs.run_id }}
+          BUILD_ATTEMPT: ${{ steps.build.outputs.run_attempt }}
         run: |
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            BACKEND_TAG="$INPUT_BACKEND_TAG"
-            FRONTEND_TAG="$INPUT_FRONTEND_TAG"
-            EXPECTED_VERSION="${INPUT_VERSION#v}"
-            EXPECTED_COMMIT="$INPUT_COMMIT"
-            if [[ "$BACKEND_TAG" =~ ^backend/v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
-              BACKEND_TAG="${BASH_REMATCH[1]}"
-            fi
-          else
-            if [[ ! -f release-metadata/release-metadata.json ]]; then
-              echo "Release metadata artifact was not found"
-              exit 1
-            fi
-
-            BACKEND_TAG="$(jq -r '.image_tag' release-metadata/release-metadata.json)"
-            BACKEND_RELEASE_TAG="$(jq -r '.release_tag' release-metadata/release-metadata.json)"
-            EXPECTED_VERSION="$(jq -r '.version' release-metadata/release-metadata.json)"
-            EXPECTED_COMMIT="$(jq -r '.commit' release-metadata/release-metadata.json)"
-            FRONTEND_TAG="sha-${WORKFLOW_SHA:0:7}"
-          fi
-          if [[ "$BACKEND_TAG" == "latest" || -z "$BACKEND_TAG" ]]; then
-            echo "Mutable or empty backend tag is forbidden"
-            exit 1
-          fi
-          if [[ ! "$BACKEND_TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?|sha-[0-9a-f]{7,40})$ ]]; then
-            echo "Backend deployment must use an immutable image tag"
-            exit 1
-          fi
-          if [[ ! "$FRONTEND_TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?|sha-[0-9a-f]{7,40})$ ]]; then
-            echo "Frontend deployment must use an immutable image tag"
-            exit 1
-          fi
-          if [[ ! "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ || ! "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Expected version and full commit must be valid release metadata"
-            exit 1
-          fi
-          echo "backend_tag=$BACKEND_TAG" >> "$GITHUB_OUTPUT"
-          echo "backend_release_tag=${BACKEND_RELEASE_TAG:-backend/v${EXPECTED_VERSION}}" >> "$GITHUB_OUTPUT"
-          echo "frontend_tag=$FRONTEND_TAG" >> "$GITHUB_OUTPUT"
-          echo "expected_version=$EXPECTED_VERSION" >> "$GITHUB_OUTPUT"
-          echo "expected_commit=$EXPECTED_COMMIT" >> "$GITHUB_OUTPUT"
-
-      - name: Set up SSH key
-        uses: shimataro/ssh-key-action@v2
+          python3 infra/scripts/cd_bundle.py extract --archive deployment/deployment.tar.gz --checksum deployment/deployment.tar.gz.sha256 --destination validated
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          manifest=json.loads(Path('validated/deployment.json').read_text())
+          expected=f"{os.environ['SOURCE_COMMIT']}-{os.environ['BUILD_ID']}-{os.environ['BUILD_ATTEMPT']}"
+          if manifest['release_id'] != expected: raise SystemExit('Bundle/build identity mismatch')
+          Path('deployment/deployment.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('release_id='+expected+'\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+            f.write('### Verified deployment plan\n\n```json\n'+json.dumps(manifest,indent=2)+'\n```\n')
+          PY
+      - uses: actions/upload-artifact@v4
         with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          name: deployment-ready
+          path: deployment/
+          retention-days: 30
 
-      - name: Deploy and verify immutable images
-        shell: bash
+  deploy:
+    name: Deploy and verify selected environment
+    needs: prepare
+    runs-on: ${{ fromJSON(vars.DEPLOY_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    timeout-minutes: 30
+    environment: ${{ needs.prepare.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: deployment-ready
+          path: deployment
+      - name: Configure pinned deployment SSH identity
+        uses: ./infra/actions/ssh
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          host: ${{ vars.DEPLOY_HOST }}
+          user: ${{ vars.DEPLOY_USER || 'mohdeploy' }}
+          port: ${{ vars.DEPLOY_PORT || '22' }}
+      - name: Upload and validate versioned infrastructure release
         env:
-          SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}
-          DEPLOY_FOLDER: ${{ secrets.DEPLOY_FOLDER }}
-          BACKEND_TAG: ${{ steps.metadata.outputs.backend_tag }}
-          BACKEND_RELEASE_TAG: ${{ steps.metadata.outputs.backend_release_tag }}
-          FRONTEND_TAG: ${{ steps.metadata.outputs.frontend_tag }}
-          EXPECTED_VERSION: ${{ steps.metadata.outputs.expected_version }}
-          EXPECTED_COMMIT: ${{ steps.metadata.outputs.expected_commit }}
-          ACTOR: ${{ github.actor }}
-          DEPLOY_COMPOSE_ENV: ${{ vars.DEPLOY_COMPOSE_ENV || 'prod' }}
+          DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT || '/opt/moh-sso' }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
         run: |
-          case "$DEPLOY_COMPOSE_ENV" in
-            prod|gateway|remote) ;;
-            *) echo "DEPLOY_COMPOSE_ENV must be prod, gateway or remote"; exit 1 ;;
-          esac
-          scp infra/scripts/verify-frontend-deployment.mjs "$SSH_TARGET:$DEPLOY_FOLDER/.frontend-deployment-check.mjs"
-          ssh "$SSH_TARGET" \
-            "DEPLOY_FOLDER='$DEPLOY_FOLDER' BACKEND_TAG='$BACKEND_TAG' BACKEND_RELEASE_TAG='$BACKEND_RELEASE_TAG' FRONTEND_TAG='$FRONTEND_TAG' EXPECTED_VERSION='$EXPECTED_VERSION' EXPECTED_COMMIT='$EXPECTED_COMMIT' DEPLOY_ACTOR='$ACTOR' COMPOSE_ENV='$DEPLOY_COMPOSE_ENV' sh -s" <<'REMOTE'
-          set -eu
-          cd "$DEPLOY_FOLDER"
-
-          previous_backend_tag="$(cat .previous-backend-tag 2>/dev/null || true)"
-          previous_frontend_tag="$(cat .previous-frontend-tag 2>/dev/null || true)"
-
-          rollback() {
-            if [ -n "$previous_backend_tag" ]; then
-              echo "Deployment verification failed; rolling back to $previous_backend_tag"
-              BACKEND_TAG="$previous_backend_tag" FRONTEND_TAG="$previous_frontend_tag" sh infra/scripts/update.sh
-            fi
-          }
-          finish() {
-            status=$?
-            trap - EXIT INT TERM HUP
-            if [ "$status" -ne 0 ]; then
-              rollback || echo "Rollback failed; operator intervention required" >&2
-            fi
-            rm -f .frontend-deployment-check.mjs
-            exit "$status"
-          }
-          trap finish EXIT
-          trap 'exit 130' INT
-          trap 'exit 143' TERM
-          trap 'exit 129' HUP
-
-          export BACKEND_TAG FRONTEND_TAG
-          sh infra/scripts/update.sh
-
-          backend_get() {
-            path=$1
-            wget -T 5 -t 1 -qO- "http://localhost:9000$path" 2>/dev/null || \
-              sh infra/scripts/compose.sh "${COMPOSE_ENV:-prod}" exec -T backend wget -T 5 -qO- "http://localhost:9000$path"
-          }
-
-          attempt=0
-          until backend_get /health/ready >/dev/null; do
-            attempt=$((attempt + 1))
-            if [ "$attempt" -ge 12 ]; then
-              echo "Backend did not become ready" >&2
-              exit 1
-            fi
-            sleep 5
-          done
-          response="$(backend_get /version)"
-          echo "$response" | grep -F "\"version\":\"$EXPECTED_VERSION\"" >/dev/null
-          echo "$response" | grep -F "\"commit\":\"$EXPECTED_COMMIT\"" >/dev/null
-          backend_get /health/live >/dev/null
-          frontend_container="$(sh infra/scripts/compose.sh "${COMPOSE_ENV:-prod}" ps -q frontend)"
-          test -n "$frontend_container"
-          # The production frontend is Nginx. Run the Node verifier in a
-          # disposable container sharing its network namespace.
-          docker run --rm -i --network "container:$frontend_container" \
-            node:22-alpine node --input-type=module - < .frontend-deployment-check.mjs
-
-          backend_image="ghcr.io/mohuganda/moh-sso-dashboard-backend:$BACKEND_TAG"
-          digest="$(docker image inspect --format '{{index .RepoDigests 0}}' "$backend_image" 2>/dev/null || true)"
-          printf '%s\n' "$BACKEND_TAG" > .previous-backend-tag
-          printf '%s\n' "$FRONTEND_TAG" > .previous-frontend-tag
-          printf '%s release=%s version=%s commit=%s digest=%s actor=%s\n' \
-            "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$BACKEND_RELEASE_TAG" "$EXPECTED_VERSION" "$EXPECTED_COMMIT" "$digest" "$DEPLOY_ACTOR" \
-            >> deployment-history.log
-          echo "Deployment verified: release=$BACKEND_RELEASE_TAG version=$EXPECTED_VERSION commit=$EXPECTED_COMMIT digest=$digest"
-          REMOTE
+          [[ "$DEPLOY_ROOT" =~ ^/[A-Za-z0-9_/-]+$ && "$DEPLOY_ROOT" != / && "$DEPLOY_ROOT" != *..* ]]
+          [[ "$RELEASE_ID" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]]
+          incoming="$DEPLOY_ROOT/incoming/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          ssh -F "$CD_SSH_CONFIG" moh-deploy "mkdir -p '$incoming'"
+          scp -F "$CD_SSH_CONFIG" deployment/deployment.tar.gz deployment/deployment.tar.gz.sha256 infra/scripts/cd_bundle.py "moh-deploy:$incoming/"
+          ssh -F "$CD_SSH_CONFIG" moh-deploy "python3 '$incoming/cd_bundle.py' extract --archive '$incoming/deployment.tar.gz' --checksum '$incoming/deployment.tar.gz.sha256' --destination '$DEPLOY_ROOT/releases/$RELEASE_ID'"
+          echo "release_dir=$DEPLOY_ROOT/releases/$RELEASE_ID" >> "$GITHUB_ENV"
+      - name: Preflight server prerequisites and private configuration
+        env:
+          DEPLOY_CONFIG: ${{ vars.DEPLOY_CONFIG || '/etc/moh-sso/deploy.json' }}
+        run: |
+          [[ "$DEPLOY_CONFIG" =~ ^/[A-Za-z0-9_./-]+$ && "$DEPLOY_CONFIG" != *..* ]]
+          ssh -F "$CD_SSH_CONFIG" moh-deploy "python3 '$release_dir/infra/scripts/cd_server.py' preflight --config '$DEPLOY_CONFIG'"
+      - name: Pull digests, back up, roll out, verify and automatically roll back on failure
+        env:
+          DEPLOY_CONFIG: ${{ vars.DEPLOY_CONFIG || '/etc/moh-sso/deploy.json' }}
+          DEPLOY_ACTOR: ${{ github.actor }}
+        run: |
+          [[ "$DEPLOY_ACTOR" =~ ^[-A-Za-z0-9_]+(\[bot\])?$ ]]
+          ssh -F "$CD_SSH_CONFIG" moh-deploy "python3 '$release_dir/infra/scripts/cd_server.py' deploy --config '$DEPLOY_CONFIG' --release '$release_dir' --actor '$DEPLOY_ACTOR'" | tee deployment-result.log
+      - name: Record deployment outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-outcome-${{ needs.prepare.outputs.environment }}
+          path: deployment-result.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove runner SSH material
+        if: always()
+        run: |
+          if [[ -n "${CD_SSH_DIR:-}" ]]; then
+            rm -f "$CD_SSH_DIR/key" "$CD_SSH_DIR/known_hosts" "$CD_SSH_DIR/config"
+            rmdir "$CD_SSH_DIR"
+          fi

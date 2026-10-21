@@ -282,18 +282,21 @@ Keycloak readiness probe without compiling or starting the full application.
 
 ## Updates, rollback and migrations
 
-From a checked-out release on the application server, run
+For GitHub-driven delivery, follow the [CD and server setup runbook](cd-pipeline.md).
+The build publishes a matched image pair and infrastructure bundle. A separate
+workflow deploys staging or promotes that same build to production. Server-local
+`/etc/moh-sso/deploy.json` selects `prod`, `remote` or `gateway`; private settings
+remain on the server. Rollout verifies exact image digests, runtime versions,
+modules and the public HTTPS edge, and restores the previous recorded release on
+failure. No repository checkout is needed on the server.
+
+For a manual tag-based update from a checked-out release, run
 `COMPOSE_ENV=prod sh infra/scripts/update.sh` (or `remote`/`gateway`). It validates,
 pulls selected tags and starts services without resetting volumes or Git state.
 It reuses Docker registry login, or reads `GHCR_TOKEN_FILE` when supplied. It does
-not prune images. Keep the chosen Compose mode/env paths in deployment automation. Set the GitHub
-repository variable `DEPLOY_COMPOSE_ENV` to `prod` (default), `gateway`, or
-`remote` so deployment, verification and rollback use the same mode.
-
-Release automation records previous tags, verifies version/commit/readiness and
-frontend resources, and restores previous tags on failure. Frontend verification
-runs in a disposable Node container sharing Nginx's network namespace. The server
-checkout must contain this infrastructure layout before using the updated workflow.
+not prune images. Keep the chosen Compose mode/env paths consistent between
+manual commands. This updater does not create the CD system's verified release
+history; use the CD workflows for managed promotion and rollback.
 
 Back up data and review migration compatibility before rollout. An application
 rollback does not reverse incompatible database migrations. Keep public SSO values

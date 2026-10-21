@@ -16,7 +16,7 @@ ifndef INFRA_EMBEDDED
 .DEFAULT_GOAL := infra-help
 endif
 
-.PHONY: infra-help compose-config compose-up compose-down compose-logs compose-ps compose-pull compose-restart \
+.PHONY: cd-check cd-preflight cd-status cd-verify cd-rollback infra-help compose-config compose-up compose-down compose-logs compose-ps compose-pull compose-restart \
  compose-dev-up compose-prod-up compose-gateway-up compose-remote-up compose-external-up \
  infra-check infra-runtime-check infra-nginx-check infra-test docker-build docker-run backend-dev backend-dev-logs \
  sso-up sso-down sso-status sso-reconcile-keycloak
@@ -39,7 +39,7 @@ infra-help:
 	@echo '  make compose-external-up                   Build/start development with external Keycloak'
 	@echo ''
 	@echo 'Checks:'
-	@echo '  make infra-check                           Validate Compose/env/path/launcher contracts'
+	@echo '  make infra-check                           Validate CD and Compose/env/path/launcher contracts'
 	@echo '  make infra-runtime-check                   Test container startup with disposable fixtures'
 	@echo '  make infra-nginx-check                     Test gateway, host and remote-IP routing'
 	@echo '  make infra-test                            Run all three infrastructure checks'
@@ -48,6 +48,7 @@ infra-help:
 	@echo 'Defaults: infra/env/{prod,dev,external-dev,remote-proxy}.env; dev has an example fallback.'
 	@echo 'Override paths are relative to the repo root or absolute. Env files are never sourced.'
 	@echo 'Guide: docs/make.md (prerequisites, examples, generated files and command effects).'
+	@echo 'CD: make cd-check; server commands cd-preflight, cd-status, cd-verify, cd-rollback [DEPLOY_CONFIG=...]'
 
 compose-config:
 	$(COMPOSE) config --quiet
@@ -77,13 +78,25 @@ backend-dev:
 	ENV_FILE="$(ENV_FILE)" sh "$(REPO_ROOT)/infra/scripts/compose.sh" dev up --build backend
 backend-dev-logs:
 	ENV_FILE="$(ENV_FILE)" sh "$(REPO_ROOT)/infra/scripts/compose.sh" dev logs -f backend
-infra-check:
+infra-check: cd-check
 	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-compose.py"
 infra-runtime-check:
 	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-compose-runtime.py"
 infra-nginx-check:
 	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-nginx.py"
 infra-test: infra-check infra-runtime-check infra-nginx-check
+
+DEPLOY_CONFIG ?= /etc/moh-sso/deploy.json
+cd-check:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-cd.py"
+cd-preflight:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/cd_server.py" preflight --config "$(DEPLOY_CONFIG)"
+cd-status:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/cd_server.py" status --config "$(DEPLOY_CONFIG)"
+cd-verify:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/cd_server.py" verify --config "$(DEPLOY_CONFIG)"
+cd-rollback:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/cd_server.py" rollback --config "$(DEPLOY_CONFIG)"
 
 docker-build:
 	$(DOCKER) build -f "$(REPO_ROOT)/infra/docker/backend/Dockerfile" --build-arg VERSION="$(BACKEND_VERSION)" -t moh-sso-dashboard-backend:local "$(REPO_ROOT)"

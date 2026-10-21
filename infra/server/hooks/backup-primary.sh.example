@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Optional pre_deploy_hook for the BUNDLED primary Postgres only.
+# Install at /etc/moh-sso/backup-primary.sh with mode 0700, owned by deploy user.
+# Configure an equivalent tested hook for external DBs and upload/warehouse backups.
+set -euo pipefail
+umask 077
+destination="/var/backups/moh-sso/primary-$(date -u +%Y%m%dT%H%M%SZ)-$$.sql.gz"
+partial="$destination.partial"
+trap 'rm -f "$partial"' EXIT
+docker exec sso-backend-db sh -ec 'exec pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "$partial"
+test -s "$partial"
+mv "$partial" "$destination"
+printf 'Primary database backup completed: %s\n' "$destination"

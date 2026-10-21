@@ -1425,6 +1425,7 @@ Backend docs:
 | [`docs/releasing.md`](docs/releasing.md) | Automatic version preparation and verified frontend/backend releases. |
 | [`docs/releasing-backend.md`](docs/releasing-backend.md) | Verified backend release workflow and artifacts. |
 | [`docs/deployment.md`](docs/deployment.md) | Immutable backend deployment and runtime verification. |
+| [`docs/cd-pipeline.md`](docs/cd-pipeline.md) | Full CD pipeline, server configuration, staging, production promotion and rollback. |
 | [`docs/rollback.md`](docs/rollback.md) | Automated and manual backend rollback procedure. |
 
 RBAC and onboarding docs:

@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url";
 const requiredApps = [
   "announcements", "audit", "clients", "data-validation", "data-visualizer",
   "documents", "e-services", "email", "issue-tracker", "report-browser",
-  "rbac", "surveillance", "users", "utilities",
+  "rbac", "report-scheduler", "surveillance", "users", "utilities",
 ];
 const requiredPackages = ["api", "auth", "config", "microfrontend", "state", "types", "ui", "utils"];
 

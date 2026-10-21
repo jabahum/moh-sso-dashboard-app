@@ -21,3 +21,4 @@ infra/env/*.env
 infra/secrets/*
 !infra/secrets/.gitkeep
 infra/scripts/__pycache__/
+.cd-build/
