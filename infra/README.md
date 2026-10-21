@@ -1,5 +1,8 @@
 # Infrastructure
 
+See the [Make command reference](../docs/make.md) for every deployment and generation target,
+its prerequisites, options, effects and examples.
+
 Deployment files and tooling live here. Run `make help` from the repository root
 or `make -C infra` for deployment commands. See the [deployment guide](../docs/deployment.md)
 for environment setup, host/remote Nginx, Compose, Kubernetes and migration notes.

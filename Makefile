@@ -156,9 +156,15 @@ all: tidy build frontend-build
 # API contracts remain application artifacts embedded by the Go server.
 .PHONY: help contracts-generate contracts-check openapi-generate openapi-validate openapi-export generate frontend-manifests sqlc-generate
 help: infra-help
-	@echo 'make contracts-generate / contracts-check     Generate or validate the OpenAPI contract'
-	@echo 'make openapi-export OPENAPI_OUTPUT=/tmp/api.yaml'
-	@echo 'make generate                                Regenerate API contracts and frontend manifests'
+	@echo ''
+	@echo 'Contracts and code generation (run from the repo root):'
+	@echo '  make contracts-generate                    Rewrite backend/docs/openapi.yaml'
+	@echo '  make contracts-check                       Check API coverage/schema/freshness; no writes'
+	@echo '  make openapi-export                        Export embedded spec [OPENAPI_OUTPUT=/tmp/api.yaml]'
+	@echo '  make frontend-manifests                    Regenerate import-map and version JSON manifests'
+	@echo '  make generate                              Regenerate API contracts and frontend manifests'
+	@echo '  make sqlc-generate                         Regenerate Go SQL bindings; requires sqlc'
+	@echo 'Aliases: openapi-generate = contracts-generate; openapi-validate = contracts-check.'
 
 contracts-generate openapi-generate:
 	$(MAKE) -C backend openapi-generate GO="$(GO_CMD)"

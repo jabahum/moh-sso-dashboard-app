@@ -1,5 +1,8 @@
 # Deployment
 
+See the [Make command reference](make.md) for every deployment and generation target,
+its prerequisites, options, effects and examples.
+
 ## Infrastructure layout
 
 All deployment files are under `infra/`:

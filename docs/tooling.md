@@ -1,5 +1,8 @@
 # MOH SSO Dashboard Tooling
 
+See the [Make command reference](make.md) for every deployment and generation target,
+its prerequisites, options, effects and examples.
+
 This project uses lightweight operational and architecture tools instead of a large tooling framework.
 
 ## Backend CLI
@@ -25,7 +28,7 @@ Run frontend commands from `frontend/`. With `nvm`, use the project Node version
 
 ```sh
 source ~/.nvm/nvm.sh
-nvm use v20.20.1
+nvm use 22
 ```
 
 Useful checks:
@@ -74,7 +77,7 @@ Frontend:
 
 ```sh
 source ~/.nvm/nvm.sh
-nvm use v20.20.1
+nvm use 22
 npm run typecheck
 npm run lint
 npm run build:shell

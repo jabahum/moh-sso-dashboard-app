@@ -585,6 +585,9 @@ make contracts-check
 make infra-check
 ```
 
+See the [Make command reference](docs/make.md) for prerequisites, mode selection,
+environment overrides, service filters and exactly what each generation command writes.
+
 ## API Reference
 
 Base API prefix:
