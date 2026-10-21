@@ -22,6 +22,21 @@ def docker(*args):
     return result.stdout.strip()
 
 
+def create_network(name):
+    # Docker Engine requires explicit IPAM for the static address used by the
+    # DNS-refresh check. Retry overlapping pools without touching host networks.
+    for _ in range(16):
+        suffix = uuid.uuid4().int % 65536
+        subnet = f'10.{suffix >> 8}.{suffix & 255}.0/24'
+        result = subprocess.run(['docker', 'network', 'create', '--subnet', subnet, name],
+                                text=True, capture_output=True)
+        if result.returncode == 0:
+            return
+        if 'pool overlaps' not in result.stderr.lower():
+            raise RuntimeError(f'Docker test network creation failed: {result.stderr}')
+    raise RuntimeError('No unused test subnet found after 16 attempts')
+
+
 def main():
     # Check actual Compose interpolation without reading real deployment secrets.
     for bind_address in ('', '10.0.0.20'):
@@ -41,7 +56,7 @@ def main():
             assert not services[service].get('ports')
     name = "moh-nginx-test-" + uuid.uuid4().hex[:10]
     containers = []
-    docker("network", "create", name)
+    create_network(name)
     try:
         with tempfile.TemporaryDirectory(prefix="moh-nginx-") as tmp:
             tmp = Path(tmp)
@@ -217,6 +232,9 @@ geo $realip_remote_addr $trusted_proxy {{ default 0; {data['ip']}/32 1; }}
             docker('rm', '-f', old_backend)
             start('ip-holder', 'unused', [], ip=old_ip)
             start('backend-replaced', 'backend', backend_mounts)
+            new_backend = name + '-backend-replaced'
+            new_ip = json.loads(docker('inspect', new_backend))[0]['NetworkSettings']['Networks'][name]['IPAddress']
+            assert new_ip != old_ip, 'DNS-refresh fixture must use a different backend IP'
             wait_for('/ssobackend/health/ready', lambda r: r[0] == 200)
 
             # Emulate host processes sharing one loopback interface: Nginx on

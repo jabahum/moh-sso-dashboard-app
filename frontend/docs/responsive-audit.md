@@ -55,7 +55,7 @@ Use these viewports when checking the portal:
   data. The current pass contains overflow and stacking rules, not a full
   visualization redesign.
 - Confirm RBAC governance panels with large Keycloak/client role payloads.
-- Confirm surveillance infra/helm/maps with production-sized geography and alert
+- Confirm surveillance charts/maps with production-sized geography and alert
   data.
 - Confirm documents and issue tracker with production-sized filenames,
   statuses, users, and IDs.
