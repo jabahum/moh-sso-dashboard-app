@@ -12,3 +12,6 @@ backend/tmp/
 # Generated local SSO/Health BI credentials, process state and logs
 .local-sso/
 scripts/__pycache__/
+
+app.dev.env
+app.external-dev.env

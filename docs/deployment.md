@@ -1,5 +1,160 @@
 # Backend Deployment
 
+## Production and development environments
+
+Requires Docker Compose **2.24.4 or newer** for includes, optional development
+env files and gateway port resets. Run these as separate stacks, not as a
+production base with a development override.
+
+| Entry point | Environment | Purpose |
+| --- | --- | --- |
+| `docker-compose.yml` | `app.env` | Default production stack; host or remote Nginx |
+| `docker-compose.prod.yml` | `app.env` | Explicit production entry point, includes the default stack |
+| `docker-compose-nginx.yml` | `app.env` | Same production services with a container gateway; application ports unpublished |
+| `docker-compose.dev.yml` | `app.dev.env` | Source builds, Air/Vite reload, local Keycloak/Postgres/Redis/MailHog |
+| `docker-compose-without-keycloak.yml` | `app.external-dev.env` | Development with external Keycloak; local IdP services excluded |
+
+Production uses project `moh-sso-dashboard`; development uses
+`moh-sso-dashboard-dev` with separate persistent volumes and a managed bridge
+network. Existing volumes are never reset automatically. If moving from the old
+development setup, stop its containers first and retain its volumes; they remain
+under the old project name. Both modes use host ports 3000 and 9000, so change the
+bindings before running both on the same host at once.
+
+### Production quick start
+
+```bash
+cp app.env.example app.env
+# Edit runtime settings, production DB/IdP/warehouse credentials, and release tags.
+# Create secrets/db_password.txt, secrets/keycloak_admin_client_secret.txt,
+# and secrets/keycloak_web_client_secret.txt using the real credentials.
+docker compose --env-file app.env -f docker-compose.prod.yml config --quiet
+docker compose --env-file app.env -f docker-compose.prod.yml pull
+docker compose --env-file app.env -f docker-compose.prod.yml up -d
+```
+
+Use **newly built backend and frontend release images** for these changes.
+Backend startup now reads mounted `*_FILE` secrets; frontend startup generates
+the public runtime config. Older images do not implement those entrypoints.
+Do not edit or overwrite existing private env files when adopting the examples.
+
+Use `--env-file app.env` on every production command so Compose interpolation
+and the backend's `env_file` agree. `APP_ENV_FILE` selects the backend runtime
+file; if using another name, set it to the same file passed on the CLI.
+The CLI env file configures Postgres user/database, Redis authentication, image
+tags, private binding addresses and the public API URL. `APP_BIND_ADDRESS` remains
+`127.0.0.1` for same-host Nginx; use the remote-proxy section for another machine.
+
+The production backend always uses production/release mode with auth bypass
+disabled and port 9000. Nginx terminates public TLS; backend HTTP is internal.
+`DB_HOST`, `DB_PORT`, `REDIS_HOST` and `REDIS_PORT` default to the managed services
+but can be overridden via the CLI env file. The local Postgres and Redis services
+are still started; replacing them entirely requires a deployment override.
+
+Primary DB and both Keycloak client secrets come from Compose secrets and take
+precedence over the matching plaintext env values. `DB_PASSWORD` in `app.env`
+may remain blank. Secret source paths can be set with `DB_PASSWORD_SECRET_FILE`,
+`KEYCLOAK_ADMIN_SECRET_FILE` and `KEYCLOAK_WEB_SECRET_FILE`. Additional backend
+secrets support corresponding `*_FILE` paths when mounted via a deployment
+override; unreadable or empty mounted secrets fail startup. Files must be readable
+by the backend's non-root user. Keep source files restricted to the deployment
+account and mount them read-only with suitable permissions for that user.
+
+The backend receives the full runtime env file, including SMTP/GM, SMS, storage,
+notification workers, RBAC, Health BI, DWH and DQA settings. Frontend receives only
+public settings and does not receive database or client credentials. Its generated
+`config.js` is served at both `/config.js` and `/portal/config.js` with `no-store`.
+Set `API_BASE_URL` to the browser-facing API base, normally `/ssobackend`.
+Redis authentication uses the same `REDIS_PASSWORD` in server, client and health
+check; leave it empty only for an isolated internal Redis network.
+
+The application currently requires the upload-management DB (`REMOTE_DB_*`) and
+warehouse (`DWH_*`) during startup, as well as its primary DB and Keycloak.
+Configure reachable real services; production does not create a mock warehouse.
+`DQA_DB_USERNAME`/`DQA_DB_PASSWORD` select the role that writes DQA results, or
+fall back to warehouse credentials when the username is empty. `DB_ENABLE_SSL`
+is currently shared by primary/upload/warehouse connections, so all selected
+databases must support the chosen mode; the bundled Postgres defaults to no TLS.
+
+Local uploads persist in `upload_data` mounted at `/data/uploads`, owned by the
+backend image's application user on new volumes. Preserve existing data and
+permissions on upgrades. For NFS, mount the host's actual NFS directory at
+`NFS_BASE_PATH` using a deployment override; selecting `STORAGE_PROVIDER=nfs`
+alone does not mount a network filesystem. S3/MinIO credentials and endpoints
+remain runtime settings; no object-storage service is assumed.
+
+### Development quick start
+
+```bash
+cp backend/app.env.example app.dev.env
+docker compose --env-file app.dev.env -f docker-compose.dev.yml config --quiet
+docker compose --env-file app.dev.env -f docker-compose.dev.yml up --build
+```
+
+With no private file, development uses `backend/app.env.example` as a complete
+fallback. The optional `app.dev.env` is applied afterwards, so custom SMTP,
+notification, storage and scheduler settings win. For a differently named file,
+set `DEV_ENV_FILE` to that path and pass the same file with `--env-file`.
+Explicit topology values keep the local stack consistent: local DB/Redis/IdP,
+HTTP port 9000, browser frontend on `http://localhost:3000/portal/`, host-only
+cookies and development mode. Auth bypass defaults to false; it is never enabled
+by the production Compose file.
+
+The imported local realm fixes the browser callback to
+`http://localhost:9000/api/v1/auth/callback`, client IDs to `dashboard-admin` and
+`dashboard-web`, and their fixture secrets to the values in the development
+example. Changing those secrets in the env file alone does not change imported
+Keycloak clients. Existing Keycloak databases retain their current client settings.
+
+All development published ports bind to localhost:
+
+| Service | Host address |
+| --- | --- |
+| Portal | `http://localhost:3000/portal/` |
+| API / Swagger | `http://localhost:9000/swagger/` |
+| Keycloak | `http://localhost:8081` |
+| MailHog UI / SMTP | `http://localhost:8025` / `localhost:1025` |
+| Primary Postgres | `localhost:5436` |
+| Upload/warehouse Postgres | `localhost:5433` |
+| Module development servers | `localhost:4101` through `localhost:4115` |
+
+Backend and frontend source are bind-mounted. Air and Vite reload source changes;
+uploads, Go caches and frontend dependencies use named volumes. Rebuild after
+Dockerfile/lockfile changes; refresh the frontend dependency volume when its
+installed dependencies no longer match the lockfile, preserving database/upload
+volumes. The default frontend command launches the local shell. Set
+`FRONTEND_DEV_COMMAND` to `npm run dev:remote:all` to launch module servers.
+Development uses local Postgres as an empty upload/warehouse fixture, not a copy
+of production datasets. Health BI is optional; configure its local adapter and
+service account before using report execution.
+
+For external Keycloak, copy the development example to `app.external-dev.env`,
+set its reachable internal/base/browser URLs, realm, client IDs and secrets, then:
+
+```bash
+DEV_ENV_FILE=./app.external-dev.env docker compose --env-file app.external-dev.env \
+  -f docker-compose-without-keycloak.yml up --build
+```
+
+Register the same localhost web callback and origin on that external web client.
+The local Keycloak and its database are excluded; API data dependencies remain local.
+
+### Validate environment and container startup changes
+
+```bash
+python3 scripts/test-compose.py
+python3 scripts/test-compose-runtime.py
+python3 scripts/test-nginx.py
+```
+
+The first checks environment coverage, Compose service alignment, optional dev
+overrides, secret loading and safe frontend config serialization. The runtime
+suite builds the actual production runtime stages with tiny fixture build outputs
+and starts a disposable Keycloak to check its development readiness probe. It
+does not compile the complete frontend/backend or connect to production services.
+The Nginx suite checks same-host, remote-IP and container-gateway routing. Tests
+use temporary resources and preserve running application stacks.
+
 ## Immutable Inputs
 
 Production Compose requires immutable `BACKEND_TAG` and `FRONTEND_TAG` values. Accepted examples:
@@ -11,7 +166,7 @@ FRONTEND_TAG=1.2.3
 FRONTEND_TAG=sha-d3062e2
 ```
 
-An empty tag or `latest` is not accepted for production. Backend and frontend tags remain independently managed, but both must be explicit.
+Compose rejects empty image tags. Use explicit semantic-version or SHA tags for production; `latest` is outside the release policy. Backend and frontend tags remain independently managed.
 
 ## Compose Production Files
 
@@ -49,11 +204,11 @@ or the Nginx machine's address as the application binding.
 ```bash
 cp .env.remote-proxy.example .env.remote-proxy
 # Edit APP_BIND_ADDRESS, BACKEND_TAG, FRONTEND_TAG and APP_ENV_FILE.
-docker compose --env-file .env.remote-proxy -f docker-compose.yml config --quiet
-docker compose --env-file .env.remote-proxy -f docker-compose.yml up -d
+docker compose --env-file app.env --env-file .env.remote-proxy -f docker-compose.yml config --quiet
+docker compose --env-file app.env --env-file .env.remote-proxy -f docker-compose.yml up -d
 ```
 
-Use the same `--env-file .env.remote-proxy` on subsequent pull, update and rollback
+Use the same `--env-file app.env --env-file .env.remote-proxy` on subsequent pull, update and rollback
 commands, including deployment automation. Without it (or the equivalent exported
 variable), Compose falls back to `127.0.0.1`. The file is git-ignored. Keep runtime
 credentials in `app.env` and the existing secret files; `.env.remote-proxy` holds
@@ -174,7 +329,7 @@ snippets; do not accept arbitrary browser-supplied forwarded headers.
 Start/update application containers using the selected immutable release tags:
 
 ```bash
-BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 docker compose -f docker-compose.yml up -d
+docker compose --env-file app.env -f docker-compose.prod.yml up -d
 sudo nginx -t && sudo systemctl reload nginx
 
 curl -fsS http://127.0.0.1:3000/nginx/health
@@ -281,8 +436,8 @@ All three frontend Dockerfiles use Nginx 1.30.6. The default published image and
 default frontend container port is now 3000, with the Service still on port 80;
 set `frontend.service.port=80` if using the alternate `Dockerfile.nginx` image.
 The runtime ConfigMap is mounted at both `/config.js` and `/portal/config.js`.
-Rebuild and publish a new frontend image
-to activate the updated static-server configuration, then deploy its immutable
+Rebuild and publish backend and frontend images
+to activate secret loading and the updated static-server configuration, then deploy its immutable
 `FRONTEND_TAG`. Mounting gateway configs does not update an existing frontend
 image.
 
@@ -305,8 +460,8 @@ log policy on any outer proxy, especially for SSO callback URLs.
 python3 scripts/test-nginx.py
 
 # Validate the deployed config, then reload gateway workers after config edits.
-docker compose -f docker-compose-nginx.yml exec nginx nginx -t
-docker compose -f docker-compose-nginx.yml exec nginx nginx -s reload
+docker compose --env-file app.env -f docker-compose-nginx.yml exec nginx nginx -t
+docker compose --env-file app.env -f docker-compose-nginx.yml exec nginx nginx -s reload
 ```
 
 The integration suite checks routing, SPA fallback, cache/security headers,
@@ -326,10 +481,10 @@ For deployment:
 
 ```bash
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose -f docker-compose-nginx.yml pull
+  docker compose --env-file app.env -f docker-compose-nginx.yml pull
 
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose -f docker-compose-nginx.yml up -d
+  docker compose --env-file app.env -f docker-compose-nginx.yml up -d
 ```
 
 ## Automated Deployment

@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate production Compose
         run: APP_ENV_FILE=./app.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 docker compose -f docker-compose-nginx.yml config --quiet
+      - name: Validate production and development environment contracts
+        run: python3 scripts/test-compose.py
       - name: Exercise production Nginx
         run: python3 scripts/test-nginx.py
 

@@ -52,9 +52,11 @@ COPY --from=builder /app/internal/db/migrations ./internal/db/migrations
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/sso-server ./sso-server
 
-RUN adduser -D appuser
+COPY --chmod=755 scripts/container-entrypoint.sh /usr/local/bin/sso-entrypoint
+RUN adduser -D appuser && mkdir -p /data/uploads && chown appuser:appuser /data/uploads
 USER appuser
 
 EXPOSE 9000
 
-ENTRYPOINT ["./sso-server"]
+ENTRYPOINT ["/usr/local/bin/sso-entrypoint"]
+CMD ["./sso-server"]

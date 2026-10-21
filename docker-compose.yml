@@ -1,142 +1,120 @@
+# Production application stack. Compose 2.24.4+.
+# Use --env-file app.env so infrastructure and application settings agree.
 name: moh-sso-dashboard
 
-x-logging: &default-logging
-  driver: "json-file"
+x-logging: &logging
+  driver: json-file
   options:
-    max-size: "10m"
+    max-size: 10m
     max-file: "5"
+x-service: &service
+  restart: unless-stopped
+  networks: [sso]
+  logging: *logging
+  security_opt: [no-new-privileges:true]
 
 networks:
   sso:
     driver: bridge
-
 volumes:
   backend_data:
   redis_data:
   upload_data:
-
 secrets:
   db_password:
-    file: ./secrets/db_password.txt
+    file: ${DB_PASSWORD_SECRET_FILE:-./secrets/db_password.txt}
   keycloak_admin_client_secret:
-    file: ./secrets/keycloak_admin_client_secret.txt
+    file: ${KEYCLOAK_ADMIN_SECRET_FILE:-./secrets/keycloak_admin_client_secret.txt}
   keycloak_web_client_secret:
-    file: ./secrets/keycloak_web_client_secret.txt
+    file: ${KEYCLOAK_WEB_SECRET_FILE:-./secrets/keycloak_web_client_secret.txt}
 
 services:
-  # --------------------------------------------------
-  # Redis
-  # --------------------------------------------------
   redis:
+    <<: *service
     image: redis:7-alpine
     container_name: sso-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command:
+      - sh
+      - -ec
+      - |
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+        fi
+        exec redis-server --appendonly yes
+    volumes: [redis_data:/data]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
       interval: 10s
       timeout: 3s
       retries: 10
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
 
-  # --------------------------------------------------
-  # Postgres
-  # --------------------------------------------------
   backend-db:
+    <<: *service
     image: postgres:15-alpine
     container_name: sso-backend-db
-    restart: unless-stopped
-    env_file:
-      - ${APP_ENV_FILE:-./app.env}
     environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_DB: ${DB_NAME:-sso_dashboard}
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       PGDATA: /var/lib/postgresql/data/pgdata
-    secrets:
-      - db_password
-    volumes:
-      - backend_data:/var/lib/postgresql/data
+    secrets: [db_password]
+    volumes: [backend_data:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${DB_USER} -d $${DB_NAME}"]
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 10s
       timeout: 5s
       retries: 15
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
 
-  # --------------------------------------------------
-  # Go Backend (Gin)
-  # --------------------------------------------------
   backend:
+    <<: *service
     image: ghcr.io/mohuganda/moh-sso-dashboard-backend:${BACKEND_TAG:?BACKEND_TAG must be an immutable semantic or sha tag}
     container_name: sso-backend
     working_dir: /app
-    restart: unless-stopped
-
-    env_file:
-      - ${APP_ENV_FILE:-./app.env}
-
-    volumes:
-      - ${APP_ENV_FILE:-./app.env}:/app/app.env:ro
-      - upload_data:/data/uploads
-
-    secrets:
-      - db_password
-      - keycloak_admin_client_secret
-      - keycloak_web_client_secret
-
+    env_file: ["${APP_ENV_FILE:-./app.env}"]
+    environment:
+      ENVIRONMENT: production
+      GIN_MODE: release
+      DEV_AUTH_BYPASS: "false"
+      SERVER_PORT: "9000"
+      ENABLE_TLS: "false" # public TLS terminates at Nginx
+      DB_HOST: ${DB_HOST:-backend-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_NAME: ${DB_NAME:-sso_dashboard}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      KEYCLOAK_ADMIN_CLIENT_SECRET_FILE: /run/secrets/keycloak_admin_client_secret
+      KEYCLOAK_WEB_CLIENT_SECRET_FILE: /run/secrets/keycloak_web_client_secret
+      LOCAL_BASE_PATH: /data/uploads
+    secrets: [db_password, keycloak_admin_client_secret, keycloak_web_client_secret]
+    volumes: [upload_data:/data/uploads]
+    ports: ["${APP_BIND_ADDRESS:-127.0.0.1}:9000:9000"]
     depends_on:
-      backend-db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-    ports:
-      - "${APP_BIND_ADDRESS:-127.0.0.1}:9000:9000" # Set to the app server's private IPv4 for remote Nginx
-
+      backend-db: {condition: service_healthy}
+      redis: {condition: service_healthy}
     healthcheck:
-      test:
-        ["CMD-SHELL", "wget -qO- http://localhost:9000/health/ready || exit 1"]
+      test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:9000/health/ready || exit 1']
+      start_period: 60s
       interval: 15s
       timeout: 5s
       retries: 10
 
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
-
-  # --------------------------------------------------
-  # Frontend
-  # --------------------------------------------------
   frontend:
+    <<: *service
     image: ghcr.io/mohuganda/moh-sso-dashboard-frontend:${FRONTEND_TAG:?FRONTEND_TAG must be an immutable semantic or sha tag}
     container_name: sso-frontend
-    restart: unless-stopped
-
-    env_file:
-      - ${APP_ENV_FILE:-./app.env}
-
-    ports:
-      - "${APP_BIND_ADDRESS:-127.0.0.1}:3000:3000"
-
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-/ssobackend}
+      FRONTEND_MICROFRONTEND_MODE: remote
+      FRONTEND_SINGLE_SPA_ORCHESTRATION: "true"
+      FRONTEND_MICROFRONTEND_MOUNT_MODE: orchestrated
+    ports: ["${APP_BIND_ADDRESS:-127.0.0.1}:3000:3000"]
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:3000/nginx/health || exit 1']
       interval: 20s
       timeout: 5s
       retries: 10
-
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true

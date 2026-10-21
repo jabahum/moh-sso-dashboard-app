@@ -1,0 +1,18 @@
+# Internal override used by docker-compose-without-keycloak.yml.
+services:
+  keycloak:
+    profiles: [local-keycloak]
+  keycloak-db:
+    profiles: [local-keycloak]
+  backend:
+    depends_on:
+      keycloak: !reset null
+    environment:
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:?Set the external Keycloak internal URL}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:?Set the external Keycloak base URL}
+      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL:?Set the browser-facing Keycloak URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:?Set the external Keycloak realm}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:?Set the service-account client ID}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?Set the service-account client secret}
+      KEYCLOAK_WEB_CLIENT_ID: ${KEYCLOAK_WEB_CLIENT_ID:?Set the web client ID}
+      KEYCLOAK_WEB_CLIENT_SECRET: ${KEYCLOAK_WEB_CLIENT_SECRET:?Set the web client secret}

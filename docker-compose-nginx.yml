@@ -1,32 +1,23 @@
+# Production with the optional container gateway. Compose 2.24.4+.
+# Application service settings are inherited from the default production stack.
 name: moh-sso-dashboard
-
 x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "5"
-
+  driver: json-file
+  options: {max-size: 10m, max-file: "5"}
 networks:
-  sso:
-    driver: bridge
-
+  sso: {driver: bridge}
 volumes:
   backend_data:
   redis_data:
   upload_data:
-
 secrets:
   db_password:
-    file: ./secrets/db_password.txt
+    file: ${DB_PASSWORD_SECRET_FILE:-./secrets/db_password.txt}
   keycloak_admin_client_secret:
-    file: ./secrets/keycloak_admin_client_secret.txt
+    file: ${KEYCLOAK_ADMIN_SECRET_FILE:-./secrets/keycloak_admin_client_secret.txt}
   keycloak_web_client_secret:
-    file: ./secrets/keycloak_web_client_secret.txt
-
+    file: ${KEYCLOAK_WEB_SECRET_FILE:-./secrets/keycloak_web_client_secret.txt}
 services:
-  # --------------------------------------------------
-  # NGINX (Reverse Proxy)
-  # --------------------------------------------------
   nginx:
     image: nginx:1.30.6-alpine
     container_name: sso-nginx
@@ -56,112 +47,15 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-
-  # --------------------------------------------------
-  # Redis
-  # --------------------------------------------------
   redis:
-    image: redis:7-alpine
-    container_name: sso-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
-
-  # --------------------------------------------------
-  # Postgres
-  # --------------------------------------------------
+    extends: {file: docker-compose.yml, service: redis}
   backend-db:
-    image: postgres:15-alpine
-    container_name: sso-backend-db
-    restart: unless-stopped
-    env_file:
-      - ${APP_ENV_FILE:-./app.env}
-    environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-      PGDATA: /var/lib/postgresql/data/pgdata
-    secrets:
-      - db_password
-    volumes:
-      - backend_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${DB_USER} -d $${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
-
-  # --------------------------------------------------
-  # Go Backend (Gin)
-  # --------------------------------------------------
+    extends: {file: docker-compose.yml, service: backend-db}
   backend:
-    image: ghcr.io/mohuganda/moh-sso-dashboard-backend:${BACKEND_TAG:?BACKEND_TAG must be an immutable semantic or sha tag}
-    container_name: sso-backend
-    working_dir: /app
-    volumes:
-      - ${APP_ENV_FILE:-./app.env}:/app/app.env:ro
-      - upload_data:/data/uploads
-    restart: unless-stopped
-    env_file:
-      - ${APP_ENV_FILE:-./app.env}
-    secrets:
-      - db_password
-      - keycloak_admin_client_secret
-      - keycloak_web_client_secret
-    depends_on:
-      backend-db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-    expose:
-      - "9000"
-
-    healthcheck:
-      test:
-        ["CMD-SHELL", "wget -qO- http://localhost:9000/health/ready || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
-
-  # --------------------------------------------------
-  # Frontend
-  # --------------------------------------------------
+    extends: {file: docker-compose.yml, service: backend}
+    ports: !reset []
+    expose: ["9000"]
   frontend:
-    image: ghcr.io/mohuganda/moh-sso-dashboard-frontend:${FRONTEND_TAG:?FRONTEND_TAG must be an immutable semantic or sha tag}
-    container_name: sso-frontend
-    restart: unless-stopped
-    env_file:
-      - ${APP_ENV_FILE:-./app.env}
-    expose:
-      - "3000"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 10
-    networks:
-      - sso
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
+    extends: {file: docker-compose.yml, service: frontend}
+    ports: !reset []
+    expose: ["3000"]

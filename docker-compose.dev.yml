@@ -1,17 +1,48 @@
-# version: "3.9"
+# Standalone development stack. Uses app.dev.env when present, otherwise the
+# checked-in backend example. Prefer --env-file app.dev.env for custom values.
+name: moh-sso-dashboard-dev
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+x-service: &service
+  restart: unless-stopped
+  networks: [sso_network]
+  logging: *logging
+
+networks:
+  sso_network: {driver: bridge}
+volumes:
+  keycloak_data:
+  backend_data:
+  remote_pg_data:
+  redis_data:
+  upload_data:
+  frontend_node_modules:
+  go_modules:
+  go_build:
 
 services:
-  # --------------------------------------------------
-  # Keycloak
-  # --------------------------------------------------
-  keycloak:
-    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.0.5}
-    container_name: keycloak
-    command:
-      - start-dev
-      - --import-realm
+  keycloak-db:
+    <<: *service
+    image: postgres:15-alpine
     environment:
-      KC_DB: ${KEYCLOAK_DB:-postgres}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+    volumes: [keycloak_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    <<: *service
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.0.5}
+    container_name: keycloak # retained for scripts/local-sso.py
+    command: [start-dev, --import-realm]
+    environment:
+      KC_DB: postgres
       KC_DB_URL_HOST: keycloak-db
       KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
       KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
@@ -19,216 +50,163 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HTTP_ENABLED: "true"
-      KC_PROXY: "edge"
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:8081}
-      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HOSTNAME: http://localhost:8081
+      KC_HEALTH_ENABLED: "true"
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
-      - ./keycloak/themes:/opt/keycloak/themes
-    ports:
-      - "8081:8080"
-    networks:
-      - sso_network
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
+    ports: ["127.0.0.1:8081:8080"]
+    depends_on:
+      keycloak-db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, bash, -ec, "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 30
 
-  # --------------------------------------------------
-  # Keycloak Database
-  # --------------------------------------------------
-  keycloak-db:
-    image: postgres:15
-    container_name: keycloak-db
-    environment:
-      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
-      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
-    volumes:
-      - keycloak_data:/var/lib/postgresql/data
-    networks:
-      - sso_network
-
-  # --------------------------------------------------
-  # Redis
-  # --------------------------------------------------
   redis:
+    <<: *service
     image: redis:7-alpine
-    container_name: redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - sso_network
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command:
+      - sh
+      - -ec
+      - |
+        if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi
+        exec redis-server --appendonly yes
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
-  # --------------------------------------------------
-  # MailHog - Local SMTP Testing
-  # --------------------------------------------------
   mailhog:
+    <<: *service
     image: mailhog/mailhog:v1.0.1
-    container_name: mailhog
-    restart: unless-stopped
-    ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # Web UI
-    networks:
-      - sso_network
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
 
-  # --------------------------------------------------
-  # Backend Database
-  # --------------------------------------------------
   backend-db:
-    image: postgres:15
-    container_name: backend-db
+    <<: *service
+    image: postgres:15-alpine
     environment:
       POSTGRES_DB: ${DB_NAME:-sso_dashboard}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes:
-      - backend_data:/var/lib/postgresql/data
-    ports:
-      - "5436:5432"
-    networks:
-      - sso_network
+    volumes: [backend_data:/var/lib/postgresql/data]
+    ports: ["127.0.0.1:5436:5432"]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
-  # --------------------------------------------------
-  # Go Backend (Gin)
-  # --------------------------------------------------
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    container_name: sso-backend
+  remote-postgres:
+    <<: *service
+    image: postgres:16-alpine
     environment:
-      SERVER_PORT: 9000
+      POSTGRES_USER: ${REMOTE_DB_USER:-dev_uploads}
+      POSTGRES_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
+      POSTGRES_DB: ${REMOTE_DB_NAME:-file_upload}
+    volumes: [remote_pg_data:/var/lib/postgresql/data]
+    ports: ["127.0.0.1:5433:5432"]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
-      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8080}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-moh-realm}
-      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI:-http://localhost:9000/api/v1/auth/callback}
-      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-dashboard-admin}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-dashboard-admin-secret}
-      KEYCLOAK_WEB_CLIENT_ID: ${KEYCLOAK_WEB_CLIENT_ID:-dashboard-web}
-      KEYCLOAK_WEB_CLIENT_SECRET: ${KEYCLOAK_WEB_CLIENT_SECRET:-dashboard-web-secret}
-      KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL:-http://localhost:8081}
-
-      DB_HOST: ${DB_HOST:-backend-db}
+  backend:
+    <<: *service
+    build: {context: ./backend, dockerfile: Dockerfile.dev}
+    env_file:
+      - path: ./backend/app.env.example
+        required: true
+      - path: ${DEV_ENV_FILE:-./app.dev.env}
+        required: false
+    # Explicit topology settings cannot point accidentally at production services.
+    environment:
+      ENVIRONMENT: development
+      GIN_MODE: debug
+      SERVER_PORT: "9000"
+      ENABLE_TLS: "false"
+      DB_HOST: backend-db
+      DB_PORT: "5432"
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: ${DB_NAME:-sso_dashboard}
-
+      DB_ENABLE_SSL: "false"
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
-      AUTH_RETURN_URL_ALLOWED_ORIGINS: ${AUTH_RETURN_URL_ALLOWED_ORIGINS:-http://localhost:3000}
-      LOGIN_URL: ${LOGIN_URL:-http://localhost:9000/api/v1/auth/login}
-
-      # --------------------------------------------------
-      # Email SMTP - MailHog
-      # --------------------------------------------------
-      SMTP_HOST: ${SMTP_HOST:-mailhog}
-      SMTP_PORT: ${SMTP_PORT:-1025}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@moh.go.ug}
-      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-MOH Integrated Health Portal}
-      SMTP_CONNECT_TIMEOUT: ${SMTP_CONNECT_TIMEOUT:-10s}
-      SMTP_SEND_TIMEOUT: ${SMTP_SEND_TIMEOUT:-15s}
-
-      SMS_ENABLED: ${SMS_ENABLED:-false}
-      SMS_PROVIDER: ${SMS_PROVIDER:-mock}
-      SMS_DEFAULT_COUNTRY_CODE: ${SMS_DEFAULT_COUNTRY_CODE:-+256}
-      SMS_FROM_NAME: ${SMS_FROM_NAME:-MOH}
-      SMS_MAX_LENGTH: ${SMS_MAX_LENGTH:-160}
-      SMS_SEND_TIMEOUT: ${SMS_SEND_TIMEOUT:-10s}
-      NOTIFICATION_DELIVERY_WORKER_ENABLED: ${NOTIFICATION_DELIVERY_WORKER_ENABLED:-true}
-      NOTIFICATION_DELIVERY_WORKER_INTERVAL: ${NOTIFICATION_DELIVERY_WORKER_INTERVAL:-3s}
-      NOTIFICATION_DELIVERY_BATCH_SIZE: ${NOTIFICATION_DELIVERY_BATCH_SIZE:-20}
-      AFRICASTALKING_USERNAME: ${AFRICASTALKING_USERNAME:-}
-      AFRICASTALKING_API_KEY: ${AFRICASTALKING_API_KEY:-}
-      AFRICASTALKING_SENDER_ID: ${AFRICASTALKING_SENDER_ID:-}
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
-      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
-
-      RETRY_MAX_ATTEMPTS: ${RETRY_MAX_ATTEMPTS:-3}
-      RETRY_BASE_DELAY: ${RETRY_BASE_DELAY:-2s}
-    ports:
-      - "9000:9000"
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REMOTE_DB_HOST: remote-postgres
+      REMOTE_DB_PORT: "5432"
+      REMOTE_DB_USER: ${REMOTE_DB_USER:-dev_uploads}
+      REMOTE_DB_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
+      REMOTE_DB_NAME: ${REMOTE_DB_NAME:-file_upload}
+      DWH_HOST: remote-postgres
+      DWH_PORT: "5432"
+      DWH_USERNAME: ${REMOTE_DB_USER:-dev_uploads}
+      DWH_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
+      DWH_DB: ${REMOTE_DB_NAME:-file_upload}
+      DQA_DB_USERNAME: ${REMOTE_DB_USER:-dev_uploads}
+      DQA_DB_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_EXTERNAL_URL: http://localhost:8081
+      KEYCLOAK_REALM: moh-realm
+      KEYCLOAK_REDIRECT_URI: http://localhost:9000/api/v1/auth/callback
+      FRONTEND_BASE_URL: http://localhost:3000/portal
+      FRONTEND_REDIRECT_URI: http://localhost:3000/portal
+      APP_BASE_URL: http://localhost:9000
+      AUTH_RETURN_URL_ALLOWED_ORIGINS: http://localhost:3000
+      LOGIN_URL: http://localhost:9000/api/v1/auth/login
+      COOKIE_DOMAIN: ""
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      LOCAL_BASE_PATH: /data/uploads
     volumes:
       - ./backend:/app
-    command: air -c .air.toml
+      - upload_data:/data/uploads
+      - go_modules:/go/pkg/mod
+      - go_build:/root/.cache/go-build
+    ports: ["127.0.0.1:9000:9000"]
     depends_on:
-      - backend-db
-      - redis
-      - keycloak
-      - mailhog
-    networks:
-      - sso_network
+      backend-db: {condition: service_healthy}
+      remote-postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+      mailhog: {condition: service_started}
+    healthcheck:
+      test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:9000/health/ready || exit 1']
+      start_period: 120s
+      interval: 15s
+      timeout: 5s
+      retries: 20
 
-  # --------------------------------------------------
-  # Frontend (Vite + React)
-  # --------------------------------------------------
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: sso-frontend
+    <<: *service
+    build: {context: ./frontend, dockerfile: Dockerfile.dev}
     environment:
-      VITE_API_BASE_URL: http://localhost:9000
-      VITE_KEYCLOAK_URL: http://localhost:8081
-      VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-moh-realm}
-      VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_WEB_CLIENT_ID:-dashboard-web}
-      VITE_KEYCLOAK_REDIRECT_URI: ${VITE_KEYCLOAK_REDIRECT_URI:-http://localhost:9000/api/v1/auth/callback}
-      VITE_SINGLE_SPA_ORCHESTRATION: ${VITE_SINGLE_SPA_ORCHESTRATION:-false}
-      VITE_MICROFRONTEND_MODE: ${VITE_MICROFRONTEND_MODE:-local}
-      FRONTEND_DEV_COMMAND: ${FRONTEND_DEV_COMMAND:-npm run dev:shell}
-    ports:
-      - "3000:3000"
-      - "4101:4101"
-      - "4102:4102"
-      - "4103:4103"
-      - "4104:4104"
-      - "4105:4105"
-      - "4106:4106"
-      - "4107:4107"
-      - "4108:4108"
-      - "4109:4109"
-      - "4110:4110"
-      - "4111:4111"
-      - "4112:4112"
+      API_BASE_URL: http://localhost:9000
+      FRONTEND_MICROFRONTEND_MODE: local
+      FRONTEND_SINGLE_SPA_ORCHESTRATION: "false"
+      FRONTEND_MICROFRONTEND_MOUNT_MODE: hybrid
+      FRONTEND_DEV_COMMAND: ${FRONTEND_DEV_COMMAND:-npm run dev -w @moh-sso/shell}
+      VITE_VISUALIZER_API_BASE: /visualizer-proxy
+      VITE_VISUALIZER_PROXY_TARGET: http://backend:9000
+      VITE_HEALTH_BI_BASE_URL: ${VITE_HEALTH_BI_BASE_URL:-http://localhost:8080}
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - sso_network
-
-  # -------------------------------------------------
-  # Remote DB
-  # --------------------------------------------------
-  remote-postgres:
-    image: postgres:16
-    container_name: remote-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: jaba
-      POSTGRES_PASSWORD: 12345678=j
-      POSTGRES_DB: file_upload
+      - frontend_node_modules:/app/node_modules
     ports:
-      - "5433:5432"
-    volumes:
-      - remote_pg_data:/var/lib/postgresql/data
-    networks:
-      - sso_network
-
-# --------------------------------------------------
-# Volumes
-# --------------------------------------------------
-volumes:
-  keycloak_data:
-  backend_data:
-  remote_pg_data:
-
-# --------------------------------------------------
-# Network
-# --------------------------------------------------
-networks:
-  sso_network:
-    driver: bridge
-    external: true
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:4101-4115:4101-4115"
+    healthcheck:
+      test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:3000/portal/ || exit 1']
+      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      retries: 20

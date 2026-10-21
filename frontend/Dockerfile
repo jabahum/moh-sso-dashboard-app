@@ -24,6 +24,8 @@ RUN npm run build:docker
 # Stage 2: Production (Static server)
 # ======================
 FROM nginx:1.30.6-alpine
+RUN apk add --no-cache jq
+COPY --chmod=755 docker/40-runtime-config.sh /docker-entrypoint.d/40-runtime-config.sh
 
 ARG VERSION
 ARG COMMIT=none

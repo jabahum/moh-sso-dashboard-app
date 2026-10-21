@@ -1,0 +1,4 @@
+# Explicit production entry point; shares the default stack to prevent drift.
+name: moh-sso-dashboard
+include:
+  - docker-compose.yml

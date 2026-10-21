@@ -506,7 +506,8 @@ When running with Docker Compose, backend uses service hostnames such as `backen
 ### Docker Development
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+cp backend/app.env.example app.dev.env
+docker compose --env-file app.dev.env -f docker-compose.dev.yml up --build
 ```
 
 Use the development compose file when you want local containers for backend dependencies and development-friendly ports.
@@ -622,14 +623,14 @@ Start production with the reverse proxy:
 
 ```bash
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose -f docker-compose-nginx.yml up -d
+  docker compose --env-file app.env -f docker-compose-nginx.yml up -d
 ```
 
 Or start the direct-host compose:
 
 ```bash
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose up -d
+  docker compose --env-file app.env -f docker-compose.prod.yml up -d
 ```
 
 ## API Reference

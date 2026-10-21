@@ -22,6 +22,9 @@ RUN go mod download
 # Copy all source code
 COPY . .
 
+COPY --chmod=755 scripts/container-entrypoint.sh /usr/local/bin/sso-entrypoint
+ENTRYPOINT ["/usr/local/bin/sso-entrypoint"]
+
 # Expose backend port
 EXPOSE 9000
 

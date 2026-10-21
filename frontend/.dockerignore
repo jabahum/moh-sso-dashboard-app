@@ -5,3 +5,7 @@ packages/*/dist
 .eslintcache
 .git
 .github
+
+.env
+.env.local
+.env.*.local
