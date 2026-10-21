@@ -100,7 +100,7 @@ services:
         condition: service_healthy
 
     ports:
-      - "127.0.0.1:9000:9000" # Only accessible from host
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:9000:9000" # Set to the app server's private IPv4 for remote Nginx
 
     healthcheck:
       test:
@@ -127,7 +127,7 @@ services:
       - ${APP_ENV_FILE:-./app.env}
 
     ports:
-      - "127.0.0.1:3000:3000" # Only accessible from host
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:3000:3000"
 
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]

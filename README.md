@@ -587,6 +587,12 @@ For Nginx installed directly on the host, use `docker-compose.yml` and the
 `127.0.0.1:3000` and backend on `127.0.0.1:9000`, preserving the shared host's
 Report Browser routes. Follow the [host Nginx setup](docs/deployment.md#nginx-installed-on-the-host-no-compose-gateway).
 
+For Nginx on a **separate machine**, use `.env.remote-proxy.example` to configure
+`APP_BIND_ADDRESS` with the application server's private IP, and install the
+[`nginx/remote/http.conf`](nginx/remote/http.conf) upstream variant on the Nginx
+machine. Replace its example application IP and allow application ports only
+from the proxy's IP. See the [remote Nginx setup](docs/deployment.md#nginx-on-a-separate-machine).
+
 Production compose expects:
 
 - immutable image tags in `BACKEND_TAG` and `FRONTEND_TAG`

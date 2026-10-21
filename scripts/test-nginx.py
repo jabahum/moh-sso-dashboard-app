@@ -2,6 +2,8 @@
 """Exercise production Nginx; requires Python 3, Docker and the OpenSSL CLI."""
 import http.client
 import json
+import os
+import shutil
 import ssl
 from pathlib import Path
 import subprocess
@@ -21,6 +23,22 @@ def docker(*args):
 
 
 def main():
+    # Check actual Compose interpolation without reading real deployment secrets.
+    for bind_address in ('', '10.0.0.20'):
+        env = {**os.environ, 'APP_BIND_ADDRESS': bind_address,
+               'APP_ENV_FILE': str(ROOT / 'app.env.example'),
+               'BACKEND_TAG': '1.2.3', 'FRONTEND_TAG': '1.2.3'}
+        result = subprocess.run(['docker', 'compose', '-f', str(ROOT / 'docker-compose.yml'),
+                                 'config', '--format', 'json'],
+                                env=env, text=True, capture_output=True, check=True)
+        services = json.loads(result.stdout)['services']
+        for service, port in (('frontend', 3000), ('backend', 9000)):
+            bindings = services[service]['ports']
+            assert len(bindings) == 1
+            assert bindings[0]['host_ip'] == (bind_address or '127.0.0.1')
+            assert int(bindings[0]['published']) == port and bindings[0]['target'] == port
+        for service in ('redis', 'backend-db'):
+            assert not services[service].get('ports')
     name = "moh-nginx-test-" + uuid.uuid4().hex[:10]
     containers = []
     docker("network", "create", name)
@@ -268,7 +286,46 @@ server {
             assert request('/ssobackend/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})[0] == 101
             request('/ssobackend/api/v1/probe?code=HOST_LOG_SECRET')
             assert 'HOST_LOG_SECRET' not in docker('exec', host, 'cat', '/var/log/nginx/moh-sso-access.log')
-            print('PASS: Compose gateway and host HTTPS Nginx; routing, SSO, uploads, WebSocket, cache/security headers, proxy trust, safe logs and DNS recovery')
+
+            # A separate proxy process/network address reaches the application
+            # through its IP, using the committed remote upstream template.
+            app_ip = json.loads(docker('inspect', host))[0]['NetworkSettings']['Networks'][name]['IPAddress']
+            remote_config = tmp / 'remote-nginx'
+            shutil.copytree(ROOT / 'nginx/host', remote_config)
+            (remote_config / 'http.conf').write_text(
+                (ROOT / 'nginx/remote/http.conf').read_text().replace('10.0.0.20', app_ip))
+            remote = start('remote', 'remote', [
+                (host_site, '/etc/nginx/conf.d/default.conf'),
+                (remote_config, '/etc/nginx/moh-sso'),
+                (tmp / 'cert.pem', '/fixtures/cert.pem'),
+                (tmp / 'key.pem', '/fixtures/key.pem')], tls=True)
+            docker('exec', remote, 'nginx', '-t')
+            port = int(docker('port', remote, '443/tcp').rsplit(':', 1)[1])
+            wait_for('/portal/import-map.json', lambda r: r[0] == 200)
+            assert request('/')[2] == b'report-browser-root'
+            assert request('/report-browser/reports')[2] == b'report-browser-route'
+            for path, expected_cache in (
+                ('/portal/import-map.json', 'no-store'),
+                ('/portal/assets/index-abcdefgh.js', 'public, max-age=31536000, immutable'),
+                ('/portal/mf/users/single-spa.js', 'no-cache'),
+                ('/ssobackend/swagger/openapi.json', 'no-store'),
+            ):
+                status, headers, _ = request(path)
+                assert status == 200 and headers['Cache-Control'] == expected_cache
+                assert headers['X-Host-Security'] == 'retained'
+            status, headers, body = request('/ssobackend/api/v1/probe?batch=2', 'POST', b'payload',
+                                            {**spoof, 'X-Forwarded-Proto': 'http'})
+            data = json.loads(body)
+            assert status == 200 and data['proto'] == 'https' and data['method'] == 'POST'
+            assert data['uri'] == '/api/v1/probe?batch=2' and data['length'] == '7'
+            assert data['ip'] != '203.0.113.99' and data['forwarded'] == ''
+            assert data['request_id'] == headers['X-Request-ID']
+            assert request('/ssobackend/swagger')[1]['Location'] == 'swagger/'
+            status, headers, _ = request('/ssobackend/api/v1/auth/callback')
+            assert status == 302 and headers['Location'] == 'https://identity.example/login'
+            assert len(headers.get_all('Set-Cookie')) == 2
+            assert request('/ssobackend/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})[0] == 101
+            print('PASS: Compose bindings, gateway, same-host and remote-IP HTTPS Nginx; routing, SSO, uploads, WebSocket, caching, security headers, proxy trust, safe logs and DNS recovery')
     finally:
         for container in reversed(containers):
             subprocess.run(['docker', 'rm', '-f', container], capture_output=True)

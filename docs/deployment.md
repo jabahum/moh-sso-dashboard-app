@@ -26,7 +26,89 @@ stripping that prefix before forwarding. Other paths go to the frontend.
 For example, `/ssobackend/swagger/` serves the API documentation and
 `/ssobackend/swagger/openapi.json` serves its specification.
 
-Use `docker-compose.yml` when another reverse proxy already exists on the host and you only want the backend/frontend bound to localhost.
+Use `docker-compose.yml` when Nginx runs outside Compose. Application ports bind
+to localhost by default. For Nginx on a separate machine, set `APP_BIND_ADDRESS`
+to the application server's private IPv4 using the remote deployment settings
+below.
+
+### Nginx on a separate machine
+
+```text
+Browser --HTTPS--> Nginx machine (example private IP 10.0.0.10)
+                     /portal/*     --> App machine 10.0.0.20:3000
+                     /ssobackend/* --> App machine 10.0.0.20:9000
+```
+
+The IPs below are examples; replace them with the actual private/VPN addresses.
+The application server must own `APP_BIND_ADDRESS` on one of its interfaces, and
+that address must be reachable from Nginx. Do not use `0.0.0.0`, a public interface
+or the Nginx machine's address as the application binding.
+
+**On the application machine:**
+
+```bash
+cp .env.remote-proxy.example .env.remote-proxy
+# Edit APP_BIND_ADDRESS, BACKEND_TAG, FRONTEND_TAG and APP_ENV_FILE.
+docker compose --env-file .env.remote-proxy -f docker-compose.yml config --quiet
+docker compose --env-file .env.remote-proxy -f docker-compose.yml up -d
+```
+
+Use the same `--env-file .env.remote-proxy` on subsequent pull, update and rollback
+commands, including deployment automation. Without it (or the equivalent exported
+variable), Compose falls back to `127.0.0.1`. The file is git-ignored. Keep runtime
+credentials in `app.env` and the existing secret files; `.env.remote-proxy` holds
+Compose interpolation settings. Setting `APP_BIND_ADDRESS` only in the service's
+`app.env` does not change Compose port mappings. Shell variables override values
+in the CLI env file; clear conflicting exported deployment variables first.
+
+**On the Nginx machine:**
+
+```bash
+sudo install -d -m 0755 /etc/nginx/moh-sso
+sudo install -m 0644 nginx/host/*.conf /etc/nginx/moh-sso/
+# Replace the loopback upstream file with the remote-machine variant.
+sudo install -m 0644 nginx/remote/http.conf /etc/nginx/moh-sso/http.conf
+# Edit BOTH 10.0.0.20 upstream addresses to match APP_BIND_ADDRESS.
+sudoedit /etc/nginx/moh-sso/http.conf
+```
+
+Use the same Nginx version and includes described in the host setup below:
+include `/etc/nginx/moh-sso/http.conf` once inside `http {}`, and
+`/etc/nginx/moh-sso/portal.locations.conf` inside the existing public HTTPS
+`server {}`. Choose either the host or remote upstream file, never both; they
+define the same upstream names and share `http-common.conf` and route snippets.
+For remote deployments, subsequent config updates must reinstall the remote
+upstream variant and retain the actual application IP.
+
+Keep public DNS pointed at the Nginx machine. TLS certificates and HTTPS
+termination remain there. Browser-facing API URLs and Keycloak callback URLs
+retain `https://dashboards.health.go.ug/ssobackend`; the private IP is used only
+between Nginx and the application server. The existing prefix stripping, Swagger,
+SSO, WebSocket, caching and security-header rules apply to both deployment modes.
+
+**Network access:** allow TCP 3000 and 9000 on the application server only from
+the Nginx server's actual private/VPN source IP (10.0.0.10 in this example), and
+deny other remote sources. Database and Redis ports remain unpublished. Enforce
+this with network firewall/security-group ACLs or rules that cover Docker's
+forwarded/published traffic. Ordinary host UFW rules alone may not filter Docker
+published ports; see [Docker firewall behavior](https://docs.docker.com/engine/network/packet-filtering-firewalls/).
+Use private/VPN connectivity for these HTTP upstreams; do not send this traffic
+across an untrusted network without transport encryption.
+
+Verify direct application connectivity from the Nginx machine before reload:
+
+```bash
+curl -fsS http://10.0.0.20:3000/nginx/health
+curl -fsS http://10.0.0.20:9000/health/ready
+sudo nginx -t && sudo systemctl reload nginx
+curl -fsS https://dashboards.health.go.ug/portal/import-map.json
+curl -fsS https://dashboards.health.go.ug/ssobackend/health/ready
+```
+
+After firewall setup, also verify that a machine outside the allowed source
+cannot reach application ports. The integration suite exercises a separate
+Nginx instance reaching application services through another container's IP;
+the actual machines' routing and firewall rules must be verified on deployment.
 
 ### Nginx installed on the host (no Compose gateway)
 

@@ -2,6 +2,7 @@
 .vscode
 .DS_Store
 app.env
+.env.remote-proxy
 secrets/*.txt
 !secrets/.gitkeep
 backend/go.mod
