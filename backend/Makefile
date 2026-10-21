@@ -74,6 +74,13 @@ test: ## Run all tests
 	@echo "Running tests..."
 	@$(GOTEST) ./... -v
 
+.PHONY: openapi-generate openapi-validate
+openapi-generate: ## Generate Swagger/OpenAPI documentation for every registered endpoint
+	$(GORUN) ./cmd/cli openapi generate
+
+openapi-validate: ## Verify OpenAPI contracts match routes and handler types
+	$(GORUN) ./cmd/cli openapi validate
+
 architecture: ## Run backend architecture boundary checks
 	@echo "Checking backend architecture boundaries..."
 	@$(GOTEST) ./internal/architecture -v

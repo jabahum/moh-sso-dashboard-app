@@ -1,0 +1,30 @@
+{
+  "services": {
+    "backend": {
+      "image": "moh-sso-dashboard-backend:latest",
+      "environment": {
+        "ENVIRONMENT": "development",
+        "APP_BASE_URL": "http://localhost:3000/backend",
+        "FRONTEND_BASE_URL": "http://localhost:3000",
+        "FRONTEND_REDIRECT_URI": "http://localhost:3000/portal/",
+        "AUTH_RETURN_URL_ALLOWED_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000",
+        "KEYCLOAK_REDIRECT_URI": "http://localhost:3000/backend/api/v1/auth/callback",
+        "DB_NAME": "sso_express_dev"
+      },
+      "depends_on": [
+        "keycloak-db",
+        "remote-postgres"
+      ]
+    },
+    "keycloak": {
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "/Users/jaba/Documents/projects/web/moh-sso-dashboard/.local-sso/realm.express.json",
+          "target": "/opt/keycloak/data/import/realm-export.json",
+          "read_only": true
+        }
+      ]
+    }
+  }
+}

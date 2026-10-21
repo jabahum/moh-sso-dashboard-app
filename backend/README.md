@@ -22,7 +22,7 @@ backend/
 |   `-- cli/                    # Operational CLI tools
 |-- config/                     # RBAC seed and backend configuration assets
 |-- docs/
-|   `-- openapi.yaml            # Machine-readable API contract starter
+|   `-- openapi.yaml            # Generated complete OpenAPI API contract
 |-- internal/
 |   |-- api/                    # Router shell and cross-cutting API handlers
 |   |-- authz/                  # Permission constants, policies, and authz helpers
@@ -309,6 +309,10 @@ NODE_OPTIONS=--max-old-space-size=8192 ./node_modules/.bin/eslint . --cache --ca
 ```
 
 ## Related Documentation
+
+Swagger UI is available at `/swagger/` on the running backend. Use
+`make openapi-generate` after changing routes/DTOs and `make openapi-validate` to
+check the complete contract. See [Swagger setup and maintenance](docs/README.md).
 
 - [`../README.md`](../README.md)
 - [`../docs/api-reference.md`](../docs/api-reference.md)

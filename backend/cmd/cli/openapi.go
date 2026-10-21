@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/moh-sso-dashboard/docs"
+	"github.com/moh-sso-dashboard/internal/apidocgen"
 	"github.com/spf13/cobra"
 )
 
@@ -17,28 +20,29 @@ var openAPICmd = &cobra.Command{
 
 var openAPIValidateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate that the starter OpenAPI document exists",
+	Short: "Validate complete route coverage, schemas, references and generation freshness",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		info, err := os.Stat("docs/openapi.yaml")
+		generated, err := apidocgen.Generate(".")
 		if err != nil {
 			return err
 		}
-		if info.IsDir() || info.Size() == 0 {
-			return fmt.Errorf("docs/openapi.yaml must be a non-empty file")
+		actual, err := os.ReadFile("docs/openapi.yaml")
+		if err != nil {
+			return err
 		}
-		fmt.Println("OpenAPI document exists: docs/openapi.yaml")
+		if !bytes.Equal(actual, generated) {
+			return fmt.Errorf("OpenAPI document is stale; run go run ./cmd/cli openapi generate")
+		}
+		fmt.Printf("OpenAPI valid and current: %d registered endpoints\n", len(apidocgen.Routes()))
 		return nil
 	},
 }
 
 var openAPIExportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "Export the starter OpenAPI document",
+	Short: "Export the embedded OpenAPI document",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		data, err := os.ReadFile("docs/openapi.yaml")
-		if err != nil {
-			return err
-		}
+		data := docs.YAML()
 
 		if openAPIOutput == "" || openAPIOutput == "-" {
 			fmt.Print(string(data))
@@ -57,6 +61,17 @@ var openAPIExportCmd = &cobra.Command{
 }
 
 func init() {
+	openAPICmd.AddCommand(&cobra.Command{Use: "generate", Short: "Generate complete OpenAPI documentation from registered routes and typed handlers", RunE: func(cmd *cobra.Command, args []string) error {
+		data, err := apidocgen.Generate(".")
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile("docs/openapi.yaml", data, 0o644); err != nil {
+			return err
+		}
+		fmt.Printf("Generated docs/openapi.yaml for %d endpoints\n", len(apidocgen.Routes()))
+		return nil
+	}})
 	openAPICmd.AddCommand(openAPIValidateCmd)
 	openAPICmd.AddCommand(openAPIExportCmd)
 	openAPIExportCmd.Flags().StringVarP(&openAPIOutput, "output", "o", "-", "Output path, or '-' for stdout")

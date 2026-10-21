@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/moh-sso-dashboard/docs"
 
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	"github.com/moh-sso-dashboard/internal/api/routes"
@@ -139,6 +140,7 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 
 	routes.RegisterProtectedRoutes(protected, routeDeps)
 	routes.RegisterAdminRoutes(protected, routeDeps)
+	docs.Register(r)
 
 	return r
 }

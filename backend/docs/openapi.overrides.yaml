@@ -1,0 +1,177 @@
+# Curated descriptions and manual form semantics. Types, responses and route coverage come from Go source.
+paths:
+  /api/v1/documents:
+    post:
+      summary: Upload a document
+      description: 'Uploads a file to the selected storage location. metadata is a JSON-encoded object;
+        template-based processing may require template_code and sheet mappings.
+
+        '
+      x-required-form-fields:
+      - storage_location
+      x-form-properties:
+        storage_location:
+          type: string
+          format: uuid
+          description: ID of an existing storage location.
+        metadata:
+          type: string
+          description: JSON-encoded metadata object.
+        is_template:
+          type: boolean
+          default: false
+  /health:
+    get:
+      summary: Health check
+  /health/live:
+    get:
+      summary: Liveness check
+  /health/ready:
+    get:
+      summary: Readiness check
+  /version:
+    get:
+      summary: Backend build information
+      description: Returns safe build metadata without checking external dependencies.
+  /api/v1/auth/login:
+    get:
+      summary: Start Keycloak login
+      description: Starts the authorization-code flow and redirects to Keycloak.
+  /api/v1/auth/launch:
+    get:
+      summary: Start Keycloak login for a portal destination
+      description: 'Starts the authorization-code flow and, after the fixed Keycloak callback, returns
+        the browser to a validated /portal path or an allowlisted absolute origin. The return target
+        is bound to OAuth state in an HttpOnly cookie.
+
+        '
+  /api/v1/auth/callback:
+    get:
+      summary: Complete Keycloak login
+      description: Handles the fixed Keycloak callback, creates the portal session, and redirects
+        to the state-bound return target when present.
+  /api/v1/auth/me:
+    get:
+      summary: Current authenticated user
+  /api/v1/announcements/public:
+    get:
+      summary: List public announcements
+  /api/v1/announcements/active:
+    get:
+      summary: List active published announcements
+  /api/v1/announcements/me:
+    get:
+      summary: List announcements for current user
+  /api/v1/announcements/user:
+    get:
+      summary: List user-targeted announcements
+  /api/v1/announcements/role/{roleName}:
+    get:
+      summary: List announcements for a role
+  /api/v1/announcements/client/{clientId}:
+    get:
+      summary: List announcements for a client/system
+  /api/v1/announcements/{id}/attachments/{attachmentId}/download:
+    get:
+      summary: Download announcement attachment
+  /api/v1/admin/announcements:
+    get:
+      summary: List announcements for administrators
+    post:
+      summary: Create announcement
+  /api/v1/admin/announcements/stats:
+    get:
+      summary: Announcement statistics
+  /api/v1/admin/announcements/{id}:
+    get:
+      summary: Get announcement detail
+    put:
+      summary: Update announcement
+    delete:
+      summary: Soft delete announcement
+  /api/v1/admin/announcements/{id}/publish:
+    post:
+      summary: Publish announcement
+  /api/v1/admin/announcements/{id}/schedule:
+    post:
+      summary: Schedule announcement
+  /api/v1/admin/announcements/{id}/restore:
+    post:
+      summary: Restore deleted announcement
+  /api/v1/admin/announcements/{id}/draft:
+    post:
+      summary: Move announcement to draft
+  /api/v1/admin/announcements/{id}/archive:
+    post:
+      summary: Archive announcement
+  /api/v1/admin/announcements/{id}/pin:
+    patch:
+      summary: Pin or unpin announcement
+  /api/v1/admin/announcements/{id}/priority:
+    patch:
+      summary: Update announcement priority
+  /api/v1/admin/announcements/{id}/attachments:
+    get:
+      summary: List announcement attachments
+    post:
+      summary: Upload announcement attachment
+  /api/v1/admin/announcements/{id}/attachments/{attachmentId}:
+    patch:
+      summary: Update announcement attachment metadata
+    delete:
+      summary: Delete announcement attachment
+  /api/v1/admin/announcements/{id}/attachments/{attachmentId}/download:
+    get:
+      summary: Download announcement attachment as administrator
+  /api/v1/admin/notifications:
+    get:
+      summary: List notifications
+    post:
+      summary: Create notification
+  /api/v1/admin/notifications/count:
+    get:
+      summary: Count notifications
+  /api/v1/admin/notifications/count/unread:
+    get:
+      summary: Count unread notifications
+  /api/v1/admin/notifications/{notificationId}:
+    get:
+      summary: Get notification
+    delete:
+      summary: Delete notification
+  /api/v1/admin/notifications/{notificationId}/read:
+    patch:
+      summary: Mark notification as read
+  /api/v1/admin/notifications/{notificationId}/deliveries:
+    get:
+      summary: List notification deliveries
+  /api/v1/admin/notifications/deliveries/{deliveryId}/retry:
+    post:
+      summary: Retry notification delivery
+components:
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required:
+      - success
+      - error
+      - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+              example: INVALID_INPUT
+            message:
+              type: string
+        meta:
+          type: object
+          additionalProperties: true

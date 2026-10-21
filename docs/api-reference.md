@@ -2,7 +2,18 @@
 
 This document is the human-readable API map for the MOH Integrated Health Portal backend.
 
-Machine-readable OpenAPI starter:
+Interactive Swagger UI:
+
+- Backend: <http://localhost:9000/swagger/>
+- When using Express: <http://localhost:3000/backend/swagger/>
+- YAML/JSON: `/swagger/openapi.yaml` and `/swagger/openapi.json`
+
+The complete machine-readable contract is generated from the registered routes and Go
+handler types. Regenerate with `cd backend && make openapi-generate`; validate with
+`make openapi-validate` from `backend/`. Normal backend tests enforce documentation
+freshness. See [Swagger documentation maintenance](../backend/docs/README.md).
+
+Generated OpenAPI specification:
 
 ```text
 backend/docs/openapi.yaml
