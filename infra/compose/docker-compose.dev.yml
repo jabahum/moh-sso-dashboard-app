@@ -158,6 +158,7 @@ services:
       KEYCLOAK_EXTERNAL_URL: http://localhost:8081
       KEYCLOAK_REALM: moh-realm
       KEYCLOAK_REDIRECT_URI: http://localhost:9000/api/v1/auth/callback
+      RBAC_STARTUP_SYNC_REALM_EXPORT_PATH: /infra/keycloak/realm-export.json
       FRONTEND_BASE_URL: http://localhost:3000/portal
       FRONTEND_REDIRECT_URI: http://localhost:3000/portal
       APP_BASE_URL: http://localhost:9000
@@ -169,6 +170,7 @@ services:
       LOCAL_BASE_PATH: /data/uploads
     volumes:
       - ../../backend:/app
+      - ../keycloak/realm-export.json:/infra/keycloak/realm-export.json:ro
       - upload_data:/data/uploads
       - go_modules:/go/pkg/mod
       - go_build:/root/.cache/go-build

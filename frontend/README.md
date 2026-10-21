@@ -126,8 +126,8 @@ More detail: [docs/versioning.md](docs/versioning.md).
 From the repository root:
 
 ```bash
-docker build -f infra/docker/frontend/Dockerfile.nginx frontend
-docker build -f infra/docker/frontend/Dockerfile.dev frontend
+docker build -f infra/docker/frontend/Dockerfile.nginx .
+docker build -f infra/docker/frontend/Dockerfile.dev .
 ```
 
 Docker dev defaults to shell-only mode. To run all remote dev servers in Docker:

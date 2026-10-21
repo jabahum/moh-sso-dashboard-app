@@ -151,10 +151,10 @@ jobs:
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-frontend:sha-${{ steps.sha.outputs.tag }}"
           docker pull "$IMAGE"
-          docker run --rm --entrypoint jq \
+          docker run --rm --entrypoint jq "$IMAGE" \
             --arg version "${{ steps.frontend-meta.outputs.version }}" \
             --arg commit "${{ github.sha }}" \
-            "$IMAGE" -e '.service.version == $version and .service.commit == $commit' \
+            -e '.service.version == $version and .service.commit == $commit' \
             /usr/share/nginx/html/version-manifest.json
 
       - name: Verify backend runtime metadata

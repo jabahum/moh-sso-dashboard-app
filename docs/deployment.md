@@ -1,362 +1,300 @@
-# Backend Deployment
+# Deployment
+
+## Infrastructure layout
+
+All deployment files are under `infra/`:
+
+```text
+infra/
+  Makefile                 deployment targets, also included by the root Makefile
+  compose/                 production, development and gateway Compose files
+  docker/backend/          backend Dockerfiles and secret-loading entrypoint
+  docker/frontend/         frontend Dockerfiles, runtime config writer and static Nginx
+  nginx/                   gateway, host and remote reverse-proxy snippets
+  helm/moh-sso/             Kubernetes chart and environment values
+  keycloak/                realm fixtures and themes
+  env/                     public environment examples; private *.env files are ignored
+  secrets/                 private Compose secrets (ignored)
+  certs/                   existing local certificate fixtures
+  scripts/                 Compose launcher, updater, SSO tooling and deployment checks
+```
+
+Run commands below from the repository root. `make -C infra` also exposes the
+same deployment targets. Requires Docker Compose 2.24.4+, Python 3 and jq for
+contract checks; runtime tests use Docker. Frontend build tools require Node 22.
 
 ## Production and development environments
 
-Requires Docker Compose **2.24.4 or newer** for includes, optional development
-env files and gateway port resets. Run these as separate stacks, not as a
-production base with a development override.
-
-| Entry point | Environment | Purpose |
+| Mode | Compose entry point under `infra/compose/` | Private environment file |
 | --- | --- | --- |
-| `infra/compose/docker-compose.yml` | `app.env` | Default production stack; host or remote Nginx |
-| `infra/compose/docker-compose.prod.yml` | `app.env` | Explicit production entry point, includes the default stack |
-| `infra/compose/docker-compose-nginx.yml` | `app.env` | Same production services with a container gateway; application ports unpublished |
-| `infra/compose/docker-compose.dev.yml` | `app.dev.env` | Source builds, Air/Vite reload, local Keycloak/Postgres/Redis/MailHog |
-| `infra/compose/docker-compose-without-keycloak.yml` | `app.external-dev.env` | Development with external Keycloak; local IdP services excluded |
+| `prod` | `docker-compose.prod.yml` (includes `docker-compose.yml`) | `infra/env/prod.env` |
+| `dev` | `docker-compose.dev.yml` | `infra/env/dev.env`, with checked-in fallback |
+| `gateway` | `docker-compose-nginx.yml` | `infra/env/prod.env` |
+| `remote` | `docker-compose.prod.yml` | production file plus `infra/env/remote-proxy.env` |
+| `external` | `docker-compose-without-keycloak.yml` | `infra/env/external-dev.env` |
 
-Production uses project `moh-sso-dashboard`; development uses
-`moh-sso-dashboard-dev` with separate persistent volumes and a managed bridge
-network. Existing volumes are never reset automatically. If moving from the old
-development setup, stop its containers first and retain its volumes; they remain
-under the old project name. Both modes use host ports 3000 and 9000, so change the
-bindings before running both on the same host at once.
+Use `make compose-config COMPOSE_ENV=dev`, for example, to validate one mode.
+`compose-up`, `compose-down`, `compose-logs`, `compose-ps`, `compose-pull` and
+`compose-restart` accept the same `COMPOSE_ENV`. `SERVICE=backend` selects a service
+where supported. `ENV_FILE` and `REMOTE_ENV_FILE` select alternative files; paths
+are relative to the repository root or absolute.
+
+`infra/scripts/compose.sh` resolves the repository root, passes env files to
+Compose without sourcing them as shell code, and supplies absolute runtime-file
+paths. Prefer Make/the launcher instead of duplicating raw CLI flags in scripts.
+For raw Compose commands, paths in YAML are relative to `infra/compose/`; Docker
+build contexts are the repository root. Source files, credentials and generated
+build output are filtered by the root `.dockerignore`.
+
+Production keeps project `moh-sso-dashboard`; development keeps
+`moh-sso-dashboard-dev`. Moving the files does not rename projects or data volumes.
+Existing private root env files are not moved automatically. Copy them to the
+new ignored `infra/env/` locations, or use `ENV_FILE=/absolute/old/path.env`.
+Do not run development as an override of the production stack. Both use host
+ports 3000 and 9000, so customize bindings before running both on one machine.
 
 ### Production quick start
 
 ```bash
-cp infra/env/prod.env.example app.env
-# Edit runtime settings, production DB/IdP/warehouse credentials, and release tags.
-# Create secrets/db_password.txt, secrets/keycloak_admin_client_secret.txt,
-# and secrets/keycloak_web_client_secret.txt using the real credentials.
-docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml config --quiet
-docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml pull
-docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml up -d
+cp infra/env/prod.env.example infra/env/prod.env
+# Edit release tags, public URLs, signing key, external databases and credentials.
+# Create the real credentials in:
+# infra/secrets/db_password.txt
+# infra/secrets/keycloak_admin_client_secret.txt
+# infra/secrets/keycloak_web_client_secret.txt
+chmod 600 infra/env/prod.env infra/secrets/*.txt
+make compose-config
+make compose-pull
+make compose-prod-up
 ```
 
-Use **newly built backend and frontend release images** for these changes.
-Backend startup now reads mounted `*_FILE` secrets; frontend startup generates
-the public runtime config. Older images do not implement those entrypoints.
-Do not edit or overwrite existing private env files when adopting the examples.
+Use semantic-version or SHA tags for both `BACKEND_TAG` and `FRONTEND_TAG`.
+Compose rejects empty tags; release automation also rejects mutable tags.
+Rebuild and publish backend/frontend images after Dockerfile or entrypoint changes.
+Image builds now run from the repository root, for example:
 
-Use `--env-file app.env` on every production command so Compose interpolation
-and the backend's `env_file` agree. `APP_ENV_FILE` selects the backend runtime
-file; if using another name, set it to the same file passed on the CLI.
-The CLI env file configures Postgres user/database, Redis authentication, image
-tags, private binding addresses and the public API URL. `APP_BIND_ADDRESS` remains
-`127.0.0.1` for same-host Nginx; use the remote-proxy section for another machine.
+```bash
+docker build -f infra/docker/backend/Dockerfile --build-arg VERSION=1.2.3 -t backend:1.2.3 .
+docker build -f infra/docker/frontend/Dockerfile --build-arg VERSION=1.2.3 -t frontend:1.2.3 .
+```
 
-The production backend always uses production/release mode with auth bypass
-disabled and port 9000. Nginx terminates public TLS; backend HTTP is internal.
-`DB_HOST`, `DB_PORT`, `REDIS_HOST` and `REDIS_PORT` default to the managed services
-but can be overridden via the CLI env file. The local Postgres and Redis services
-are still started; replacing them entirely requires a deployment override.
+The backend receives the full runtime environment, covering SMTP/GM, SMS, RBAC,
+storage, notification workers, Health BI, DWH and DQA. Infrastructure reads the
+same CLI env file for Postgres user/database and Redis authentication. The backend
+always uses production/release mode, HTTP port 9000 and disabled auth bypass.
+Public TLS terminates at Nginx. Frontend receives public runtime settings only;
+its entrypoint writes JSON-escaped `config.js` at root and `/portal/config.js`.
+`API_BASE_URL` is normally `/ssobackend`.
 
-Primary DB and both Keycloak client secrets come from Compose secrets and take
-precedence over the matching plaintext env values. `DB_PASSWORD` in `app.env`
-may remain blank. Secret source paths can be set with `DB_PASSWORD_SECRET_FILE`,
-`KEYCLOAK_ADMIN_SECRET_FILE` and `KEYCLOAK_WEB_SECRET_FILE`. Additional backend
-secrets support corresponding `*_FILE` paths when mounted via a deployment
-override; unreadable or empty mounted secrets fail startup. The production
-entrypoint reads restricted secret files as root, then replaces itself with the
-server running as `appuser`; the API does not run as root. Keep source files
-restricted to the deployment account (for example mode 0600) and mount them
-read-only. Development leaves the privilege-drop setting unset so Air can build
-the bind-mounted source.
+The backend entrypoint reads DB and Keycloak client secrets from mounted files,
+then execs the server as `appuser`. Matching plaintext values can be blank in the
+env file. Secret source paths can be overridden with `DB_PASSWORD_SECRET_FILE`,
+`KEYCLOAK_ADMIN_SECRET_FILE`, and `KEYCLOAK_WEB_SECRET_FILE`; relative source paths
+are interpreted from `infra/compose/`. Additional secrets support `*_FILE` paths
+when mounted through an override. Empty/unreadable mounted secrets fail startup.
+Redis server, client and readiness probe use the same `REDIS_PASSWORD`.
 
-The backend receives the full runtime env file, including SMTP/GM, SMS, storage,
-notification workers, RBAC, Health BI, DWH and DQA settings. Frontend receives only
-public settings and does not receive database or client credentials. Its generated
-`config.js` is served at both `/config.js` and `/portal/config.js` with `no-store`.
-Set `API_BASE_URL` to the browser-facing API base, normally `/ssobackend`.
-Redis authentication uses the same `REDIS_PASSWORD` in server, client and health
-check; leave it empty only for an isolated internal Redis network.
+The backend needs reachable upload-management (`REMOTE_DB_*`) and warehouse
+(`DWH_*`) databases during startup; production does not create mock datasets.
+DQA credentials select the warehouse role that writes results, falling back to
+DWH credentials when its username is blank. `DB_ENABLE_SSL` currently applies to
+all database connections; the bundled primary Postgres defaults to no TLS.
+`DB_HOST`, `DB_PORT`, `REDIS_HOST`, and `REDIS_PORT` can target other services,
+but bundled DB/Redis containers still start unless excluded by an override.
 
-The application currently requires the upload-management DB (`REMOTE_DB_*`) and
-warehouse (`DWH_*`) during startup, as well as its primary DB and Keycloak.
-Configure reachable real services; production does not create a mock warehouse.
-`DQA_DB_USERNAME`/`DQA_DB_PASSWORD` select the role that writes DQA results, or
-fall back to warehouse credentials when the username is empty. `DB_ENABLE_SSL`
-is currently shared by primary/upload/warehouse connections, so all selected
-databases must support the chosen mode; the bundled Postgres defaults to no TLS.
-
-Local uploads persist in `upload_data` mounted at `/data/uploads`, owned by the
-backend image's application user on new volumes. Preserve existing data and
-permissions on upgrades. For NFS, mount the host's actual NFS directory at
-`NFS_BASE_PATH` using a deployment override; selecting `STORAGE_PROVIDER=nfs`
-alone does not mount a network filesystem. S3/MinIO credentials and endpoints
-remain runtime settings; no object-storage service is assumed.
+Uploads persist in `upload_data` at `/data/uploads`. New volumes inherit the
+backend image's upload directory ownership. Preserve existing permissions/data.
+NFS requires an explicit bind mount of the host's mounted filesystem at
+`NFS_BASE_PATH`; setting a provider name alone does not mount NFS. S3/MinIO
+endpoints and credentials remain runtime settings.
 
 ### Development quick start
 
 ```bash
-cp infra/env/dev.env.example app.dev.env
-docker compose --env-file app.dev.env -f infra/compose/docker-compose.dev.yml config --quiet
-docker compose --env-file app.dev.env -f infra/compose/docker-compose.dev.yml up --build
+cp infra/env/dev.env.example infra/env/dev.env
+make compose-config COMPOSE_ENV=dev
+make compose-dev-up
+make compose-logs COMPOSE_ENV=dev SERVICE=backend
 ```
 
-With no private file, development uses `infra/env/dev.env.example` as a complete
-fallback. The optional `app.dev.env` is applied afterwards, so custom SMTP,
-notification, storage and scheduler settings win. For a differently named file,
-set `DEV_ENV_FILE` to that path and pass the same file with `--env-file`.
-Explicit topology values keep the local stack consistent: local DB/Redis/IdP,
-HTTP port 9000, browser frontend on `http://localhost:3000/portal/`, host-only
-cookies and development mode. Auth bypass defaults to false; it is never enabled
-by the production Compose file.
+Development works without a private env file using the public fallback. A private
+file is loaded after that fallback. Explicit topology values keep service names,
+HTTP ports, local SMTP, cookies and Keycloak callbacks consistent. Backend source
+uses Air; frontend source uses Vite. Uploads, frontend dependencies and Go caches
+persist in named volumes. Rebuild on Dockerfile/lockfile changes, refreshing the
+frontend dependency volume if needed without deleting database/upload volumes.
 
-The imported local realm fixes the browser callback to
-`http://localhost:9000/api/v1/auth/callback`, client IDs to `dashboard-admin` and
-`dashboard-web`, and their fixture secrets to the values in the development
-example. Changing those secrets in the env file alone does not change imported
-Keycloak clients. Existing Keycloak databases retain their current client settings.
-
-All development published ports bind to localhost:
-
-| Service | Host address |
+| Service | Local address |
 | --- | --- |
 | Portal | `http://localhost:3000/portal/` |
 | API / Swagger | `http://localhost:9000/swagger/` |
 | Keycloak | `http://localhost:8081` |
 | MailHog UI / SMTP | `http://localhost:8025` / `localhost:1025` |
 | Primary Postgres | `localhost:5436` |
-| Upload/warehouse Postgres | `localhost:5433` |
-| Module development servers | `localhost:4101` through `localhost:4115` |
+| Upload/warehouse fixture | `localhost:5433` |
+| Module servers | ports 4101 through 4115 |
 
-Backend and frontend source are bind-mounted. Air and Vite reload source changes;
-uploads, Go caches and frontend dependencies use named volumes. Rebuild after
-Dockerfile/lockfile changes; refresh the frontend dependency volume when its
-installed dependencies no longer match the lockfile, preserving database/upload
-volumes. The default frontend command launches the local shell. Set
-`FRONTEND_DEV_COMMAND` to `npm run dev:remote:all` to launch module servers.
-Development uses local Postgres as an empty upload/warehouse fixture, not a copy
-of production datasets. Health BI is optional; configure its local adapter and
-service account before using report execution.
+Published development ports bind only to localhost. Keycloak imports
+`infra/keycloak/realm-export.json`; its existing database retains existing client
+credentials. Updating env secrets alone does not change an imported client.
+Default realm/client fixture values are in the dev example. Auth bypass defaults
+to false. Use `FRONTEND_DEV_COMMAND='npm run dev:remote:all'` in the env file for
+module servers; the default runs the shell with local modules.
 
-For external Keycloak, copy the development example to `app.external-dev.env`,
-set its reachable internal/base/browser URLs, realm, client IDs and secrets, then:
+For external Keycloak, copy the dev example to `infra/env/external-dev.env`, set
+its internal/base/browser URLs, realm, client IDs and secrets, then run
+`make compose-external-up`. Register localhost callback
+`http://localhost:9000/api/v1/auth/callback` and frontend origin
+`http://localhost:3000` on that client. The local IdP and its DB are excluded.
+
+`make sso-up`, `sso-down`, `sso-status` and `sso-reconcile-keycloak` use the relocated
+local SSO tool for the separate Health BI checkout. Runtime state stays in
+`.local-sso/` at the repository root. Health BI is optional for ordinary portal
+development; configure its adapter/service account before executing reports.
+
+### Nginx installed on the host (no Compose gateway)
+
+Use `prod` mode, binding applications to `127.0.0.1:3000` and `127.0.0.1:9000`.
+Install the snippets on the Nginx server:
 
 ```bash
-DEV_ENV_FILE=./app.external-dev.env docker compose --env-file app.external-dev.env \
-  -f infra/compose/docker-compose-without-keycloak.yml up --build
+sudo install -d -m 0755 /etc/nginx/moh-sso
+sudo install -m 0644 infra/nginx/host/*.conf /etc/nginx/moh-sso/
 ```
 
-Register the same localhost web callback and origin on that external web client.
-The local Keycloak and its database are excluded; API data dependencies remain local.
+Include `/etc/nginx/moh-sso/http.conf` **once inside `http {}`**, before site
+includes. Include `/etc/nginx/moh-sso/portal.locations.conf` **inside the existing
+HTTPS `server {}`**. Replace existing portal/backend locations to avoid duplicates.
+Keep certificates, HTTPS redirects, HSTS and other security headers on that server.
+The snippets require Nginx 1.29.3+ for [header inheritance](https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header_inherit), tested with 1.30.6.
 
-### Validate environment and container startup changes
+Shared public host routing stays:
 
-```bash
-python3 infra/scripts/test-compose.py
-python3 infra/scripts/test-compose-runtime.py
-python3 infra/scripts/test-nginx.py
+```text
+/ and /report-browser/* -> existing Report Browser owner
+/portal/*              -> portal frontend, preserving the prefix
+/ssobackend/*           -> Go backend, stripping that prefix internally
 ```
 
-The first checks environment coverage, Compose service alignment, optional dev
-overrides, secret loading and safe frontend config serialization. The runtime
-suite builds the actual production runtime stages with tiny fixture build outputs
-and starts a disposable Keycloak to check its development readiness probe. It
-does not compile the complete frontend/backend or connect to production services.
-The Nginx suite checks same-host, remote-IP and container-gateway routing. Tests
-use temporary resources and preserve running application stacks.
-
-## Immutable Inputs
-
-Production Compose requires immutable `BACKEND_TAG` and `FRONTEND_TAG` values. Accepted examples:
-
-```env
-BACKEND_TAG=1.2.3
-BACKEND_TAG=sha-d3062e2
-FRONTEND_TAG=1.2.3
-FRONTEND_TAG=sha-d3062e2
-```
-
-Compose rejects empty image tags. Use explicit semantic-version or SHA tags for production; `latest` is outside the release policy. Backend and frontend tags remain independently managed.
-
-## Compose Production Files
-
-Use `infra/compose/docker-compose-nginx.yml` for the container gateway. It binds to
-`127.0.0.1:8080` by default, behind an HTTPS reverse proxy. Set
-`NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly if another listener is
-required. This replaces the previous public HTTP port 80 default.
-
-The gateway sends `/api/*`, `/swagger`, `/swagger/*`, `/health`, `/health/*` and
-`/version` to the backend. It also accepts `/ssobackend/*` and `/backend/*`,
-stripping that prefix before forwarding. Other paths go to the frontend.
-For example, `/ssobackend/swagger/` serves the API documentation and
-`/ssobackend/swagger/openapi.json` serves its specification.
-
-Use `infra/compose/docker-compose.yml` when Nginx runs outside Compose. Application ports bind
-to localhost by default. For Nginx on a separate machine, set `APP_BIND_ADDRESS`
-to the application server's private IPv4 using the remote deployment settings
-below.
+Swagger is `/ssobackend/swagger/`, with the spec at
+`/ssobackend/swagger/openapi.json`. Stable module URLs revalidate; runtime config,
+import maps and HTML use no-store. Content-hashed static assets use immutable
+caching, and missing code assets return 404. API traffic is not cached. Proxy
+rules handle 50 MiB request bodies, large SSO cookie responses and WebSockets.
+Access logs omit query strings and credentials; rotate
+`/var/log/nginx/moh-sso-access.log` on the host.
 
 ### Nginx on a separate machine
 
 ```text
-Browser --HTTPS--> Nginx machine (example private IP 10.0.0.10)
+Browser --HTTPS--> Nginx machine 10.0.0.10
                      /portal/*     --> App machine 10.0.0.20:3000
                      /ssobackend/* --> App machine 10.0.0.20:9000
 ```
 
-The IPs below are examples; replace them with the actual private/VPN addresses.
-The application server must own `APP_BIND_ADDRESS` on one of its interfaces, and
-that address must be reachable from Nginx. Do not use `0.0.0.0`, a public interface
-or the Nginx machine's address as the application binding.
-
-**On the application machine:**
+Both IPs are examples. On the application machine:
 
 ```bash
-cp infra/env/remote-proxy.env.example .env.remote-proxy
-# Edit APP_BIND_ADDRESS here; keep runtime settings and release tags in app.env.
-docker compose --env-file app.env --env-file .env.remote-proxy -f infra/compose/docker-compose.yml config --quiet
-docker compose --env-file app.env --env-file .env.remote-proxy -f infra/compose/docker-compose.yml up -d
+cp infra/env/remote-proxy.env.example infra/env/remote-proxy.env
+# Edit APP_BIND_ADDRESS to the application's real private/VPN IPv4.
+make compose-config COMPOSE_ENV=remote
+make compose-remote-up
 ```
 
-Use the same `--env-file app.env --env-file .env.remote-proxy` on subsequent pull, update and rollback
-commands, including deployment automation. Without it (or the equivalent exported
-variable), Compose falls back to `127.0.0.1`. The file is git-ignored. Keep runtime
-credentials in `app.env` and the existing secret files; `.env.remote-proxy` holds
-Compose interpolation settings. Setting `APP_BIND_ADDRESS` only in the service's
-`app.env` does not change Compose port mappings. Shell variables override values
-in the CLI env file; clear conflicting exported deployment variables first.
+The remote overlay contains network settings only; release tags and credentials
+stay in the production env file. Use `COMPOSE_ENV=remote` for subsequent pull,
+restart and rollback commands. The application host must own the binding IP.
 
-**On the Nginx machine:**
+On the Nginx machine install the host snippets, then replace only its upstream file:
 
 ```bash
-sudo install -d -m 0755 /etc/nginx/moh-sso
-sudo install -m 0644 infra/nginx/host/*.conf /etc/nginx/moh-sso/
-# Replace the loopback upstream file with the remote-machine variant.
 sudo install -m 0644 infra/nginx/remote/http.conf /etc/nginx/moh-sso/http.conf
-# Edit BOTH 10.0.0.20 upstream addresses to match APP_BIND_ADDRESS.
 sudoedit /etc/nginx/moh-sso/http.conf
-```
-
-Use the same Nginx version and includes described in the host setup below:
-include `/etc/nginx/moh-sso/http.conf` once inside `http {}`, and
-`/etc/nginx/moh-sso/portal.locations.conf` inside the existing public HTTPS
-`server {}`. Choose either the host or remote upstream file, never both; they
-define the same upstream names and share `http-common.conf` and route snippets.
-For remote deployments, subsequent config updates must reinstall the remote
-upstream variant and retain the actual application IP.
-
-Keep public DNS pointed at the Nginx machine. TLS certificates and HTTPS
-termination remain there. Browser-facing API URLs and Keycloak callback URLs
-retain `https://dashboards.health.go.ug/ssobackend`; the private IP is used only
-between Nginx and the application server. The existing prefix stripping, Swagger,
-SSO, WebSocket, caching and security-header rules apply to both deployment modes.
-
-**Network access:** allow TCP 3000 and 9000 on the application server only from
-the Nginx server's actual private/VPN source IP (10.0.0.10 in this example), and
-deny other remote sources. Database and Redis ports remain unpublished. Enforce
-this with network firewall/security-group ACLs or rules that cover Docker's
-forwarded/published traffic. Ordinary host UFW rules alone may not filter Docker
-published ports; see [Docker firewall behavior](https://docs.docker.com/engine/network/packet-filtering-firewalls/).
-Use private/VPN connectivity for these HTTP upstreams; do not send this traffic
-across an untrusted network without transport encryption.
-
-Verify direct application connectivity from the Nginx machine before reload:
-
-```bash
+# Replace BOTH example application IPs with APP_BIND_ADDRESS.
 curl -fsS http://10.0.0.20:3000/nginx/health
 curl -fsS http://10.0.0.20:9000/health/ready
 sudo nginx -t && sudo systemctl reload nginx
-curl -fsS https://dashboards.health.go.ug/portal/import-map.json
-curl -fsS https://dashboards.health.go.ug/ssobackend/health/ready
 ```
 
-After firewall setup, also verify that a machine outside the allowed source
-cannot reach application ports. The integration suite exercises a separate
-Nginx instance reaching application services through another container's IP;
-the actual machines' routing and firewall rules must be verified on deployment.
+Use either the loopback or remote upstream file, never both. Public DNS points to
+Nginx; public API and SSO URLs keep the HTTPS domain, not the private IP. Firewall
+application ports 3000/9000 to the Nginx machine's actual private source address.
+Use ACLs/security groups or Docker-aware filtering; plain UFW rules can be
+bypassed by [published Docker traffic](https://docs.docker.com/engine/network/packet-filtering-firewalls/).
+Verify another source cannot reach those ports. Use a private/VPN network for
+HTTP upstreams; encrypt transport across untrusted networks. Tests emulate the
+separate addresses; verify actual routing/firewalls on deployment.
 
-### Nginx installed on the host (no Compose gateway)
+### Container gateway
 
-Use the ordinary `infra/compose/docker-compose.yml` in this topology:
+`make compose-gateway-up` uses the same production service definitions while
+removing application host port mappings. Only Nginx is published, defaulting to
+`127.0.0.1:8080`; `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` override that listener.
+It uses Docker DNS internally and recovers when upstream container IPs change.
+The outer HTTPS proxy forwards portal/backend paths unchanged to port 8080.
 
-```text
-Browser --HTTPS--> Host Nginx
-                     /portal/*     --> 127.0.0.1:3000 (frontend container)
-                     /ssobackend/* --> 127.0.0.1:9000 (backend container)
-```
+Configure `infra/nginx/trusted-proxies.conf` with the exact connecting proxy IP in
+both `set_real_ip_from` and the `geo` block. Trust nothing by default; never trust
+all addresses or the entire shared Docker network. Nginx on the public edge uses
+its own `$scheme` and `$remote_addr`; gateway trust config is only for the extra
+container hop. If the public edge is itself behind a load balancer, configure its
+trust separately. Preserve WebSocket headers on all proxy hops.
 
-The frontend and backend remain containers. The reverse proxy runs as the host's
-Nginx service; no Compose Nginx service or port 8080 is needed. Compose already
-publishes both application ports on loopback only. Browser-facing SSO URLs remain
-the HTTPS URLs shown below.
-
-The ready-to-install snippets live in `infra/nginx/host/`. Use the tested Nginx 1.30.6
-production baseline on the host. The snippets use `add_header_inherit merge`
-(available since 1.29.3) so location cache headers preserve existing server-level
-headers such as HSTS. See the [official header inheritance documentation](https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header_inherit).
-
-On the deployment server, install the snippets from the checked-out release:
+For reloads, use the launcher rather than a different Compose project:
 
 ```bash
-nginx -v
-sudo install -d -m 0755 /etc/nginx/moh-sso
-sudo install -m 0644 infra/nginx/host/*.conf /etc/nginx/moh-sso/
+sh infra/scripts/compose.sh gateway exec nginx nginx -t
+sh infra/scripts/compose.sh gateway exec nginx nginx -s reload
 ```
 
-Add this include **once inside the existing `http {}` block** in the host's
-`nginx.conf`, before its site includes:
+## Kubernetes
 
-```nginx
-include /etc/nginx/moh-sso/http.conf;
-```
+The chart lives at `infra/helm/moh-sso`. Existing root targets delegate to the
+shared infrastructure Makefile: `make helm-lint`, `helm-template-local`,
+`helm-template-dev`, and `helm-template-prod BACKEND_TAG=... FRONTEND_TAG=...`.
+`local-up`, `dev-up`, and `prod-up` retain their Kubernetes meaning; use the
+`compose-*-up` names for Docker Compose.
 
-Add this include **inside the existing HTTPS `server {}` block** for
-`dashboards.health.go.ug`:
-
-```nginx
-include /etc/nginx/moh-sso/portal.locations.conf;
-```
-
-Replace any existing `/portal`, `/portal/`, `/ssobackend` and `/ssobackend/`
-locations with that include to avoid duplicate locations. Keep the server's
-certificate settings, HTTPS redirect, security headers, `/` and `/report-browser/`
-routes. The snippets only add the portal's paths and do not replace the whole
-site or global Nginx configuration. Existing server-level security headers are
-inherited; keep the site's security policy configured on that server.
-
-`http.conf` defines loopback upstreams, the WebSocket header map, cache policy and
-query-free log format. `proxy.conf` provides proxy timeouts, SSO cookie buffers,
-request IDs and sanitized forwarded headers. `portal.locations.conf` preserves
-`/portal/` for the frontend and strips `/ssobackend/` before forwarding to Go.
-Swagger is available at `https://dashboards.health.go.ug/ssobackend/swagger/`.
-
-Here Nginx terminates TLS itself and forwards `$scheme` and `$remote_addr`.
-`infra/nginx/trusted-proxies.conf` belongs to the Compose gateway and is not used.
-If the host Nginx itself sits behind a load balancer, configure its real-IP and
-scheme trust for that specific load balancer before using these direct-edge
-snippets; do not accept arbitrary browser-supplied forwarded headers.
-
-Start/update application containers using the selected immutable release tags:
+## Contracts and checks
 
 ```bash
-docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml up -d
-sudo nginx -t && sudo systemctl reload nginx
-
-curl -fsS http://127.0.0.1:3000/nginx/health
-curl -fsS http://127.0.0.1:9000/health/ready
-curl -fsS https://dashboards.health.go.ug/portal/import-map.json
-curl -fsS https://dashboards.health.go.ug/ssobackend/health/ready
+make contracts-generate        # regenerate backend/docs/openapi.yaml
+make contracts-check           # check route/schema coverage and freshness
+make openapi-export OPENAPI_OUTPUT=/tmp/moh-openapi.yaml
+make frontend-manifests        # regenerate import map and version manifest
+make generate                  # API contracts plus frontend manifests
+make sqlc-generate             # Go SQL bindings; requires installed sqlc
+make infra-check               # Compose/env/path/launcher contracts
+make infra-runtime-check       # real runtime stages with tiny build fixtures
+make infra-nginx-check         # gateway, host and remote-IP HTTPS routing
+make infra-test                # all infrastructure checks
 ```
 
-Replace the example tags with the releases being deployed. Rebuild/publish the
-frontend image to activate its improved static caching rules. Host Nginx writes
-portal access logs to `/var/log/nginx/moh-sso-access.log`; include that path in the
-host's log rotation policy. To test these snippets before installing them, run
-`python3 infra/scripts/test-nginx.py`. The test uses disposable containers to emulate
-the host's loopback services and actual HTTPS termination; it does not install
-or reload the host service.
+OpenAPI inputs/output remain in `backend/`, including `go:embed` resources. Root
+Make delegates with the correct backend working directory. Native backend Make
+commands still work (`make -C backend contracts-check`). CI runs contract
+freshness, moved infrastructure tests, Helm checks and application tests. Runtime
+fixtures validate secret loading, non-root uploads, public config and the actual
+Keycloak readiness probe without compiling or starting the full application.
 
-Both compose files expect:
+## Updates, rollback and migrations
 
-- `./app.env` for runtime environment
-- `./secrets/db_password.txt`
-- `./secrets/keycloak_admin_client_secret.txt`
-- `./secrets/keycloak_web_client_secret.txt`
+From a checked-out release on the application server, run
+`COMPOSE_ENV=prod sh infra/scripts/update.sh` (or `remote`/`gateway`). It validates,
+pulls selected tags and starts services without resetting volumes or Git state.
+It reuses Docker registry login, or reads `GHCR_TOKEN_FILE` when supplied. It does
+not prune images. Keep the chosen Compose mode/env paths in deployment automation. Set the GitHub
+repository variable `DEPLOY_COMPOSE_ENV` to `prod` (default), `gateway`, or
+`remote` so deployment, verification and rollback use the same mode.
 
-Cross-application SSO also requires `AUTH_RETURN_URL_ALLOWED_ORIGINS` to contain exact browser origins, without paths. For the current production host:
+Release automation records previous tags, verifies version/commit/readiness and
+frontend resources, and restores previous tags on failure. Frontend verification
+runs in a disposable Node container sharing Nginx's network namespace. The server
+checkout must contain this infrastructure layout before using the updated workflow.
+
+Back up data and review migration compatibility before rollout. An application
+rollback does not reverse incompatible database migrations. Keep public SSO values
+aligned, for example:
 
 ```env
 FRONTEND_BASE_URL=https://dashboards.health.go.ug/portal
@@ -365,165 +303,3 @@ LOGIN_URL=https://dashboards.health.go.ug/ssobackend/api/v1/auth/login
 KEYCLOAK_REDIRECT_URI=https://dashboards.health.go.ug/ssobackend/api/v1/auth/callback
 API_BASE_URL=/ssobackend
 ```
-
-Do not use Docker or Kubernetes service names in browser-facing values.
-
-### Shared production host routing
-
-The production reverse proxy must keep these path owners distinct:
-
-```text
-/                         -> Report Browser
-/report-browser/*         -> Report Browser
-/portal/*                 -> Integrated Health Portal frontend
-/ssobackend/*             -> Integrated Health Portal backend
-```
-
-The bare origin redirecting to Report Browser is intentional. Do not configure the
-portal frontend base as `https://dashboards.health.go.ug/`, and do not strip
-`/ssobackend` from browser-facing login or callback URLs. The repository's simple
-`infra/nginx/app.conf` is suitable when this frontend owns the whole host; the shared
-production host needs an upstream reverse-proxy configuration that implements the
-path table above.
-
-### HTTPS termination and proxy trust
-
-Keep TLS certificates, HTTP-to-HTTPS redirects and HSTS on the existing public
-HTTPS proxy. The checked-in container gateway speaks HTTP on the internal hop.
-In the public proxy's HTTPS server, forward portal paths without stripping them:
-
-```nginx
-# Keep the existing / and /report-browser/ locations unchanged.
-location = /portal {
-    return 308 /portal/$is_args$args;
-}
-location /portal/ {
-    proxy_pass http://127.0.0.1:8080;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-location = /ssobackend {
-    return 308 /ssobackend/$is_args$args;
-}
-location /ssobackend/ {
-    proxy_pass http://127.0.0.1:8080;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    client_max_body_size 50m;
-    proxy_read_timeout 120s;
-    proxy_buffer_size 32k;
-    proxy_buffers 8 32k;
-    proxy_busy_buffers_size 64k;
-}
-```
-
-Configure `infra/nginx/trusted-proxies.conf` with the actual connecting address of the
-HTTPS proxy **as seen inside the gateway** (Docker may translate its source).
-Add that exact IP/CIDR to both `set_real_ip_from` and the `geo` block. Until it is
-configured, the gateway ignores forwarded client addresses and schemes. This
-prevents clients from claiming HTTPS or supplying arbitrary client IPs. Never
-trust all addresses or an entire shared Docker network. The gateway overwrites
-the forwarded chain after resolving the trusted client address.
-
-The example covers the current HTTP API; if a public route requires WebSockets,
-the outer proxy must also pass HTTP/1.1 `Upgrade` and `Connection` headers. The
-container gateway already supports upgrades. Streaming handlers can set
-`X-Accel-Buffering: no` to disable response buffering for their response.
-
-### Frontend runtime and caching
-
-All three frontend Dockerfiles use Nginx 1.30.6. The default published image and
-`Dockerfile.npm-modules` keep port 3000; `Dockerfile.nginx` keeps port 80. Helm's
-default frontend container port is now 3000, with the Service still on port 80;
-set `frontend.service.port=80` if using the alternate `Dockerfile.nginx` image.
-The runtime ConfigMap is mounted at both `/config.js` and `/portal/config.js`.
-Rebuild and publish backend and frontend images
-to activate secret loading and the updated static-server configuration, then deploy its immutable
-`FRONTEND_TAG`. Mounting gateway configs does not update an existing frontend
-image.
-
-Runtime config, import maps, version manifests and HTML use `no-store`. Stable
-microfrontend/package entries and service workers revalidate with `no-cache`.
-Only content-hashed files under `assets/` receive a one-year immutable cache
-policy. Missing assets return 404 with `no-store`, never the SPA HTML fallback.
-Security headers apply to successful responses and errors. API responses through
-the gateway use `no-store`; no shared proxy cache is enabled.
-
-The gateway retains the 50 MiB request-body limit, supports large legacy SSO
-cookie responses, and refreshes Docker DNS when upstream containers are replaced.
-Access logs omit query strings, cookies and authorization headers. Apply the same
-log policy on any outer proxy, especially for SSO callback URLs.
-
-### Validate Nginx before deployment
-
-```bash
-# Disposable fixtures only; does not start the application stack or database.
-python3 infra/scripts/test-nginx.py
-
-# Validate the deployed config, then reload gateway workers after config edits.
-docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml exec nginx nginx -t
-docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml exec nginx nginx -s reload
-```
-
-The integration suite checks routing, SPA fallback, cache/security headers,
-prefix-aware redirects, SSO cookies, upload limits, WebSocket upgrades, forwarded
-header trust, query-free logs and DNS recovery after backend replacement. It
-requires Docker, Python 3 and the OpenSSL CLI, creates a unique temporary network and containers,
-and removes them on completion. Production containers are not touched.
-
-For syntax validation without real production values:
-
-```bash
-APP_ENV_FILE=./infra/env/prod.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose -f infra/compose/docker-compose-nginx.yml config --quiet
-```
-
-For deployment:
-
-```bash
-BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml pull
-
-BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml up -d
-```
-
-## Automated Deployment
-
-The deployment workflow supports:
-
-- merged backend release PRs and backend release workflow runs using the published backend release tag
-- manual deployment of an explicitly supplied immutable backend image tag or `backend/v<version>` tag, which is normalized to the image tag
-
-The remote deployment:
-
-1. Records the previously deployed backend/frontend tags.
-2. Restarts using the requested immutable tags.
-3. Calls `/version` and verifies expected version and commit.
-4. Calls `/health/live`.
-5. Records the image digest, actor, timestamp, version, and commit.
-6. Restores the previous tags when verification fails.
-
-The deploy workflow now reads the release metadata artifact emitted by the backend release workflow, so production follows the exact published backend release instead of a generic build output. The artifact carries both the Git release tag and the Docker image tag, and deployment uses the immutable image tag while recording the matching release tag in the deployment history.
-
-The server-side `restart` script must honor exported `BACKEND_TAG` and
-`FRONTEND_TAG` values and use the production Compose configuration with
-`--env-file app.env` (and `--env-file .env.remote-proxy` for the remote topology).
-Frontend verification runs in a disposable Node container sharing the frontend's
-network namespace because the production frontend image now contains Nginx.
-
-## Manual Verification
-
-```bash
-curl -fsS http://localhost:9000/version
-curl -fsS http://localhost:9000/health/live
-docker image inspect ghcr.io/mohuganda/moh-sso-dashboard-backend:1.2.3
-```
-
-The binary metadata, OCI labels, requested tag, and expected Git commit must agree.
-
-## Database Migrations
-
-Review migration compatibility before deployment. Back up the database before irreversible migrations. Application rollback cannot reverse an incompatible database migration automatically.

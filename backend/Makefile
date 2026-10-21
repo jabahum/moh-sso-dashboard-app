@@ -28,9 +28,8 @@ LDFLAGS := -s -w \
 # ============================================================
 #                 🔧 Configuration
 # ============================================================
-DOCKER_CONTAINER_NAME := backend-db
-DB_NAME               := sso_dashboard
-DB_URL                := postgresql://postgres:postgres@localhost:5432/$(DB_NAME)?sslmode=disable
+DB_NAME               ?= sso_dashboard
+DB_URL                ?= postgresql://postgres:postgres@127.0.0.1:5436/$(DB_NAME)?sslmode=disable
 MIGRATE_PATH          := internal/db/migrations
 COMPOSE_ENV           ?= dev
 

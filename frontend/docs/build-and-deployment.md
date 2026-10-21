@@ -87,7 +87,7 @@ This layout supports single static deployment and prepares remote import-map dep
 From the repository root:
 
 ```bash
-docker build -f infra/docker/frontend/Dockerfile frontend
+docker build -f infra/docker/frontend/Dockerfile .
 ```
 
 The default production image builds the frontend from monorepo source and serves the final static files on port `3000`.
@@ -103,7 +103,7 @@ The shell build keeps `import-map.json` as a static artifact for inspection and 
 The nginx image is still available:
 
 ```bash
-docker build -f infra/docker/frontend/Dockerfile.nginx frontend
+docker build -f infra/docker/frontend/Dockerfile.nginx .
 ```
 
 It serves on port `80`, so compose or Kubernetes service ports must match that image.
@@ -116,7 +116,7 @@ The default Docker build remains source-based. For a future package-versioned de
 docker build \
   -f infra/docker/frontend/Dockerfile.npm-modules \
   --build-arg MOH_SSO_NPM_MODULES="@moh-sso/users@0.1.0 @moh-sso/api@0.1.0" \
-  frontend
+  .
 ```
 
 This optional path builds the shell from source and stages installed `@moh-sso/*` package `dist/` folders from `node_modules`.
@@ -126,7 +126,7 @@ This optional path builds the shell from source and stages installed `@moh-sso/*
 From the repository root:
 
 ```bash
-docker build -f infra/docker/frontend/Dockerfile.dev frontend
+docker build -f infra/docker/frontend/Dockerfile.dev .
 ```
 
 Run with compose:

@@ -121,10 +121,15 @@ jobs:
           EXPECTED_VERSION: ${{ steps.metadata.outputs.expected_version }}
           EXPECTED_COMMIT: ${{ steps.metadata.outputs.expected_commit }}
           ACTOR: ${{ github.actor }}
+          DEPLOY_COMPOSE_ENV: ${{ vars.DEPLOY_COMPOSE_ENV || 'prod' }}
         run: |
+          case "$DEPLOY_COMPOSE_ENV" in
+            prod|gateway|remote) ;;
+            *) echo "DEPLOY_COMPOSE_ENV must be prod, gateway or remote"; exit 1 ;;
+          esac
           scp infra/scripts/verify-frontend-deployment.mjs "$SSH_TARGET:$DEPLOY_FOLDER/.frontend-deployment-check.mjs"
           ssh "$SSH_TARGET" \
-            "DEPLOY_FOLDER='$DEPLOY_FOLDER' BACKEND_TAG='$BACKEND_TAG' BACKEND_RELEASE_TAG='$BACKEND_RELEASE_TAG' FRONTEND_TAG='$FRONTEND_TAG' EXPECTED_VERSION='$EXPECTED_VERSION' EXPECTED_COMMIT='$EXPECTED_COMMIT' DEPLOY_ACTOR='$ACTOR' sh -s" <<'REMOTE'
+            "DEPLOY_FOLDER='$DEPLOY_FOLDER' BACKEND_TAG='$BACKEND_TAG' BACKEND_RELEASE_TAG='$BACKEND_RELEASE_TAG' FRONTEND_TAG='$FRONTEND_TAG' EXPECTED_VERSION='$EXPECTED_VERSION' EXPECTED_COMMIT='$EXPECTED_COMMIT' DEPLOY_ACTOR='$ACTOR' COMPOSE_ENV='$DEPLOY_COMPOSE_ENV' sh -s" <<'REMOTE'
           set -eu
           cd "$DEPLOY_FOLDER"
 

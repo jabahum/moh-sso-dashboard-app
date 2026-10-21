@@ -38,8 +38,6 @@ backend/
 |   |-- storage/                # Local/NFS/S3 storage abstraction
 |   |-- worker/                 # Background workers
 |   `-- ws/                     # Websocket support
-|-- infra/env/prod.env.example
-|-- Dockerfile
 `-- go.mod
 ```
 
@@ -169,7 +167,7 @@ The portal DB stores authorization metadata:
 - access role metadata
 - synced user access profiles and drift reports
 
-Startup sync is controlled through `RBAC_STARTUP_*` env vars in `infra/env/prod.env.example`. The common local posture is:
+Startup sync is controlled through `RBAC_STARTUP_*` env vars in `infra/env/dev.env.example`. The common local posture is:
 
 ```env
 RBAC_STARTUP_SYNC_ENABLED=true
@@ -231,7 +229,7 @@ See:
 
 ```bash
 cd backend
-cp infra/env/prod.env.example app.env
+cp ../infra/env/dev.env.example app.env
 GOCACHE=/private/tmp/moh-sso-go-build go test ./...
 go run ./cmd/server
 ```

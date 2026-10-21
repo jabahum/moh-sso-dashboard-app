@@ -8,6 +8,7 @@ services:
     depends_on:
       keycloak: !reset null
     environment:
+      RBAC_STARTUP_SYNC_REALM_EXPORT: "false"
       KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:?Set the external Keycloak internal URL}
       KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:?Set the external Keycloak base URL}
       KEYCLOAK_EXTERNAL_URL: ${KEYCLOAK_EXTERNAL_URL:?Set the browser-facing Keycloak URL}

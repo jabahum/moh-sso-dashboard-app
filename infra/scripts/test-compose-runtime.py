@@ -83,6 +83,7 @@ def main():
             executable = backend / 'fixture/sso-server'
             executable.write_text('''#!/bin/sh
 set -eu
+if [ "${1:-}" = --version ]; then printf 'runtime-version-argument-ok'; exit 0; fi
 test "$DB_PASSWORD" = 'fixture-password'
 test "$(id -u)" != 0
 touch /data/uploads/runtime-permission-check
@@ -94,6 +95,7 @@ printf 'secret-loading-and-nonroot-upload-ok'
             image = prefix + ':backend'
             images.append(image)
             docker('build', '-q', '-t', image, str(backend))
+            assert docker('run', '--rm', image, '--version') == 'runtime-version-argument-ok'
             secret = tmp / 'password'
             secret.write_text('fixture-password\n')
             secret.chmod(0o600)

@@ -45,32 +45,11 @@ Core runtime components:
 ## Repository Layout
 
 ```text
-.
-|-- backend/
-|   |-- cmd/server/                 # Go server entrypoint
-|   |-- internal/
-|   |   |-- api/                    # Global router shell and shared handlers
-|   |   |-- bootstrap/              # Composition root
-|   |   |-- authz/                  # Permission constants and authorization model
-|   |   |-- features/               # Feature-first backend modules
-|   |   |-- middleware/             # Auth, audit, request, and RBAC middleware
-|   |   |-- repository/             # Shared/cross-cutting repository adapters
-|   |   |-- service/                # Shared/cross-cutting services
-|   |   `-- db/migrations/          # SQL migrations
-|   |-- infra/env/prod.env.example
-|   `-- Dockerfile
-|-- frontend/
-|   |-- apps/                       # Shell and standalone frontend apps
-|   |-- packages/                   # Shared frontend packages
-|   |-- public/                     # Runtime config and import map
-|   |-- scripts/                    # Build, import-map, doctor, and release scripts
-|   |-- Dockerfile
-|   `-- package.json
-|-- keycloak/
-|   `-- realm-export.json           # Local/default realm export
-|-- infra/compose/docker-compose.yml
-|-- infra/compose/docker-compose.dev.yml
-`-- README.md
+backend/           Go API, database schemas, OpenAPI contracts and app tooling
+frontend/          Shell, modules, shared packages and frontend tooling
+infra/             Compose, Dockerfiles, Nginx, Helm, Keycloak, envs and deployment scripts
+scripts/           Repository release/versioning tooling
+Makefile           App commands, contract generation and included infra targets
 ```
 
 ## Frontend Documentation
@@ -496,7 +475,7 @@ The local shell is served under `/portal`.
 
 ```bash
 cd backend
-cp infra/env/prod.env.example app.env
+cp ../infra/env/dev.env.example app.env
 GOCACHE=/private/tmp/moh-sso-go-build go test ./...
 go run ./cmd/server
 ```
@@ -506,8 +485,8 @@ When running with Docker Compose, backend uses service hostnames such as `backen
 ### Docker Development
 
 ```bash
-cp infra/env/dev.env.example app.dev.env
-docker compose --env-file app.dev.env -f infra/compose/docker-compose.dev.yml up --build
+cp infra/env/dev.env.example infra/env/dev.env
+make compose-dev-up
 ```
 
 Use the development compose file when you want local containers for backend dependencies and development-friendly ports.
@@ -523,17 +502,17 @@ configuration, external Keycloak and validation commands.
 `infra/docker/backend/Dockerfile` builds a static Go binary and runs it in Alpine:
 
 ```bash
-docker build -t moh-sso-dashboard-backend ./backend
+docker build -f infra/docker/backend/Dockerfile -t moh-sso-dashboard-backend .
 ```
 
-Production backend expects `app.env` or equivalent environment variables.
+Production Compose reads `infra/env/prod.env` and mounted secrets; native Go can still read `backend/app.env`.
 
 ### Frontend Image
 
 `infra/docker/frontend/Dockerfile` builds the production shell, packages, microfrontend bundles, version manifest, and staged assets.
 
 ```bash
-docker build -t moh-sso-dashboard-frontend ./frontend
+docker build -f infra/docker/frontend/Dockerfile -t moh-sso-dashboard-frontend .
 ```
 
 The production Docker build uses:
@@ -578,68 +557,32 @@ npm run build:docker:npm-modules
 
 ### Production Compose
 
-`infra/compose/docker-compose.yml` defines the direct-host production stack:
-
-- `redis`
-- `backend-db`
-- `backend`
-- `frontend`
-
-`infra/compose/docker-compose.prod.yml` is the explicit production entry point and includes
-that same stack. Pass `--env-file app.env` so Postgres, Redis and browser config
-use the same settings as the backend. New backend/frontend images are required
-for file-backed secrets and generated public runtime config.
-
-`infra/compose/docker-compose-nginx.yml` adds the production Nginx gateway on `127.0.0.1:8080`, behind an HTTPS proxy. It routes API, health and Swagger requests to the backend, including the `/ssobackend/` deployment prefix, and serves the portal through the frontend. See [deployment and proxy trust configuration](docs/deployment.md) before deploying. Override `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly when another listener is required.
-
-For Nginx installed directly on the host, use `infra/compose/docker-compose.yml` and the
-[`infra/nginx/host` snippets](infra/nginx/host/). They connect to the frontend on
-`127.0.0.1:3000` and backend on `127.0.0.1:9000`, preserving the shared host's
-Report Browser routes. Follow the [host Nginx setup](docs/deployment.md#nginx-installed-on-the-host-no-compose-gateway).
-
-For Nginx on a **separate machine**, use `infra/env/remote-proxy.env.example` to configure
-`APP_BIND_ADDRESS` with the application server's private IP, and install the
-[`infra/nginx/remote/http.conf`](infra/nginx/remote/http.conf) upstream variant on the Nginx
-machine. Replace its example application IP and allow application ports only
-from the proxy's IP. See the [remote Nginx setup](docs/deployment.md#nginx-on-a-separate-machine).
-
-Production compose expects:
-
-- immutable image tags in `BACKEND_TAG` and `FRONTEND_TAG`
-- runtime environment in `./app.env`
-- secret files in `./secrets/*`
-- persistent named volumes for Postgres, Redis, and local uploads
-
-Prepare the server once:
+All deployment files now live in [`infra/`](infra/README.md). The default and
+explicit production Compose files share one stack; development builds sources
+with local dependencies. Use the root or infra Makefile:
 
 ```bash
-cp infra/env/prod.env.example app.env
-mkdir -p secrets
-printf '%s' 'replace-db-password' > secrets/db_password.txt
-printf '%s' 'replace-admin-client-secret' > secrets/keycloak_admin_client_secret.txt
-printf '%s' 'replace-web-client-secret' > secrets/keycloak_web_client_secret.txt
-chmod 600 app.env secrets/*.txt
+cp infra/env/prod.env.example infra/env/prod.env
+# Fill in tags, private endpoints and credentials; create infra/secrets/*.txt.
+make compose-config
+make compose-prod-up
+
+# Alternative modes:
+make compose-dev-up
+make compose-gateway-up
+make compose-remote-up
 ```
 
-Validate the compose file without real production values:
+Remote mode additionally requires `infra/env/remote-proxy.env`, copied from its
+example, with the actual application private IP. Install the matching
+[`infra/nginx/remote/http.conf`](infra/nginx/remote/http.conf) on the proxy machine.
+Use `make help` and the [deployment guide](docs/deployment.md) for all modes,
+Kubernetes, firewall rules, secrets, build contexts and migration from old paths.
 
 ```bash
-APP_ENV_FILE=./infra/env/prod.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose -f infra/compose/docker-compose-nginx.yml config --quiet
-```
-
-Start production with the reverse proxy:
-
-```bash
-BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml up -d
-```
-
-Or start the direct-host compose:
-
-```bash
-BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml up -d
+make contracts-generate
+make contracts-check
+make infra-check
 ```
 
 ## API Reference
