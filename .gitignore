@@ -15,3 +15,9 @@ scripts/__pycache__/
 
 app.dev.env
 app.external-dev.env
+
+# Deployment credentials and generated local state
+infra/env/*.env
+infra/secrets/*
+!infra/secrets/.gitkeep
+infra/scripts/__pycache__/

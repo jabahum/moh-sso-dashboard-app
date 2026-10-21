@@ -126,14 +126,14 @@ More detail: [docs/versioning.md](docs/versioning.md).
 From the repository root:
 
 ```bash
-docker build -f frontend/Dockerfile.nginx frontend
-docker build -f frontend/Dockerfile.dev frontend
+docker build -f infra/docker/frontend/Dockerfile.nginx frontend
+docker build -f infra/docker/frontend/Dockerfile.dev frontend
 ```
 
 Docker dev defaults to shell-only mode. To run all remote dev servers in Docker:
 
 ```bash
-FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f docker-compose.dev.yml up frontend
+FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
 ## Deployment

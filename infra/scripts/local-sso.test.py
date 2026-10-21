@@ -95,7 +95,7 @@ class LocalBootstrapTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(env.stat().st_mode), 0o600)
 
     def test_realm_export_contains_complete_healthbi_contract(self):
-        for name in ['keycloak/realm-export.json', 'charts/moh-sso/files/dev/realm-export.json', 'keycloak/realm-export-prod.json']:
+        for name in ['infra/keycloak/realm-export.json', 'infra/helm/moh-sso/files/dev/realm-export.json', 'infra/keycloak/realm-export-prod.json']:
             realm = json.loads((bootstrap.ROOT / name).read_text())
             clients = {client['clientId']: client for client in realm['clients']}
             self.assertTrue(clients['datawarehouse-report-browser']['publicClient'])

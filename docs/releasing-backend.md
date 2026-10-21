@@ -177,10 +177,10 @@ GitHub artifact attestations are controlled by `ENABLE_GITHUB_ARTIFACT_ATTESTATI
 
     ```bash
     BACKEND_TAG=1.2.3 FRONTEND_TAG=<frontend-tag> \
-      docker compose -f docker-compose-nginx.yml pull
+      docker compose -f infra/compose/docker-compose-nginx.yml pull
 
     BACKEND_TAG=1.2.3 FRONTEND_TAG=<frontend-tag> \
-      docker compose -f docker-compose-nginx.yml up -d
+      docker compose -f infra/compose/docker-compose-nginx.yml up -d
     ```
 
 If you prefer a one-shot release without a PR, use the manual dispatch flow below.

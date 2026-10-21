@@ -188,7 +188,7 @@ Or draft from a realm export:
 ```sh
 cd backend
 go run ./cmd/cli system-rbac sync-keycloak \
-  --realm-export ../keycloak/realm-export.json \
+  --realm-export ../infra/keycloak/realm-export.json \
   --draft-file /tmp/system-rbac.seed.yaml
 ```
 

@@ -32,7 +32,7 @@ DOCKER_CONTAINER_NAME := backend-db
 DB_NAME               := sso_dashboard
 DB_URL                := postgresql://postgres:postgres@localhost:5432/$(DB_NAME)?sslmode=disable
 MIGRATE_PATH          := internal/db/migrations
-DOCKER_COMPOSE        := docker-compose.yml
+COMPOSE_ENV           ?= dev
 
 # ============================================================
 #                 🔨 Go Commands
@@ -74,12 +74,22 @@ test: ## Run all tests
 	@echo "Running tests..."
 	@$(GOTEST) ./... -v
 
-.PHONY: openapi-generate openapi-validate
+.PHONY: openapi-generate openapi-validate openapi-export contracts-generate contracts-check sqlc-generate
 openapi-generate: ## Generate Swagger/OpenAPI documentation for every registered endpoint
 	$(GORUN) ./cmd/cli openapi generate
 
 openapi-validate: ## Verify OpenAPI contracts match routes and handler types
 	$(GORUN) ./cmd/cli openapi validate
+
+OUTPUT ?= /tmp/moh-openapi.yaml
+openapi-export: ## Export the embedded OpenAPI contract to OUTPUT
+	$(GORUN) ./cmd/cli openapi export --output "$(OUTPUT)"
+
+contracts-generate: openapi-generate ## Regenerate API contracts
+contracts-check: openapi-validate ## Check contract coverage and freshness
+
+sqlc-generate: ## Regenerate Go database query contracts (requires sqlc)
+	sqlc generate
 
 architecture: ## Run backend architecture boundary checks
 	@echo "Checking backend architecture boundaries..."
@@ -156,43 +166,37 @@ release-status: ## Inspect GitHub release/workflows/image: make release-status V
 verify-image: ## Verify backend Docker image metadata: make verify-image IMAGE=repo/image:tag VERSION=1.2.3 [COMMIT=sha]
 	@test -n "$(IMAGE)" || { echo "IMAGE is required, for example make verify-image IMAGE=ghcr.io/mohuganda/moh-sso-dashboard-backend:1.2.3 VERSION=1.2.3"; exit 2; }
 	@test -n "$(VERSION)" || { echo "VERSION is required, for example make verify-image IMAGE=... VERSION=1.2.3"; exit 2; }
-	@./scripts/verify-backend-image.sh "$(IMAGE)" "$(VERSION)" "$(COMMIT)"
+	@../infra/scripts/verify-backend-image.sh "$(IMAGE)" "$(VERSION)" "$(COMMIT)"
 
 # ============================================================
 #        🐳 Docker Commands
 # ============================================================
 
-postgres: ## Run Postgres container
-	docker run --name $(DOCKER_CONTAINER_NAME) \
-		-p 5432:5432 \
-		-e POSTGRES_USER=sitoowa \
-		-e POSTGRES_PASSWORD=sitoowa123 \
-		-d postgres:14.4-alpine
+postgres: ## Start the local development Postgres dependency
+	$(MAKE) -C .. compose-dev-up SERVICE=backend-db
 
-createdb: ## Create database inside container
-	docker exec -it $(DOCKER_CONTAINER_NAME) \
-		createdb --username=sitoowa --owner=sitoowa $(DB_NAME)
+createdb: ## Create DB_NAME in the selected stack
+	sh ../infra/scripts/compose.sh "$(COMPOSE_ENV)" exec -T backend-db sh -ec 'createdb -U "$$POSTGRES_USER" "$(DB_NAME)"'
 
-backupdb: ## Backup the database to backup.sql
-	docker exec -it $(DOCKER_CONTAINER_NAME) \
-		pg_dump $(DB_NAME) > backup.sql
+backupdb: ## Backup the selected stack's database to backup.sql
+	sh ../infra/scripts/compose.sh "$(COMPOSE_ENV)" exec -T backend-db sh -ec 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' > backup.sql
 
-restoredb: ## Restore database from backup.sql
-	docker exec -i $(DOCKER_CONTAINER_NAME) \
-		psql $(DB_NAME) < backup.sql
+restoredb: ## Restore backup.sql into the selected stack
+	sh ../infra/scripts/compose.sh "$(COMPOSE_ENV)" exec -T backend-db sh -ec 'psql -U "$$POSTGRES_USER" "$$POSTGRES_DB"' < backup.sql
 
 docker-up: ## Start docker-compose services
 	@echo "🟢 Starting Docker containers..."
-	docker compose -f $(DOCKER_COMPOSE) up -d
+	$(MAKE) -C .. compose-up COMPOSE_ENV="$(COMPOSE_ENV)"
 
 docker-down: ## Stop docker-compose services
 	@echo "🔴 Stopping Docker containers..."
-	docker compose -f $(DOCKER_COMPOSE) down
+	$(MAKE) -C .. compose-down COMPOSE_ENV="$(COMPOSE_ENV)"
 
 docker-logs: ## View logs from docker containers
-	docker compose logs -f
+	$(MAKE) -C .. compose-logs COMPOSE_ENV="$(COMPOSE_ENV)"
 
-docker-restart: docker-down docker-up ## Restart docker services
+docker-restart: ## Restart docker services
+	$(MAKE) -C .. compose-restart COMPOSE_ENV="$(COMPOSE_ENV)"
 
 # ============================================================
 #        🗄️ Database Migrations

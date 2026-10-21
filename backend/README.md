@@ -38,7 +38,7 @@ backend/
 |   |-- storage/                # Local/NFS/S3 storage abstraction
 |   |-- worker/                 # Background workers
 |   `-- ws/                     # Websocket support
-|-- app.env.example
+|-- infra/env/prod.env.example
 |-- Dockerfile
 `-- go.mod
 ```
@@ -92,19 +92,19 @@ The development backend image includes [Air](https://github.com/air-verse/air), 
 Start the full local stack:
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f infra/compose/docker-compose.dev.yml up --build
 ```
 
 Or use the development stack connected to an external Keycloak instance:
 
 ```bash
-docker compose -f docker-compose-without-keycloak.yml up --build
+docker compose -f infra/compose/docker-compose-without-keycloak.yml up --build
 ```
 
 Follow backend rebuild and application logs:
 
 ```bash
-docker compose -f docker-compose.dev.yml logs -f backend
+docker compose -f infra/compose/docker-compose.dev.yml logs -f backend
 ```
 
 Air watches Go, template, and YAML files. Test files are excluded, while generated sqlc Go files remain watched so regenerated database code reloads the API. A compile error leaves the container running and Air rebuilds again when the source is corrected.
@@ -112,10 +112,10 @@ Air watches Go, template, and YAML files. Test files are excluded, while generat
 When `Dockerfile.dev`, `.air.toml`, `go.mod`, or `go.sum` changes, rebuild the development image:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d --build backend
+docker compose -f infra/compose/docker-compose.dev.yml up -d --build backend
 ```
 
-This behavior is development-only. The production `backend/Dockerfile` continues to build and run an immutable compiled binary.
+This behavior is development-only. The production `infra/docker/backend/Dockerfile` continues to build and run an immutable compiled binary.
 
 ## API Response Rules
 
@@ -169,7 +169,7 @@ The portal DB stores authorization metadata:
 - access role metadata
 - synced user access profiles and drift reports
 
-Startup sync is controlled through `RBAC_STARTUP_*` env vars in `app.env.example`. The common local posture is:
+Startup sync is controlled through `RBAC_STARTUP_*` env vars in `infra/env/prod.env.example`. The common local posture is:
 
 ```env
 RBAC_STARTUP_SYNC_ENABLED=true
@@ -231,7 +231,7 @@ See:
 
 ```bash
 cd backend
-cp app.env.example app.env
+cp infra/env/prod.env.example app.env
 GOCACHE=/private/tmp/moh-sso-go-build go test ./...
 go run ./cmd/server
 ```

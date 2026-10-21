@@ -37,8 +37,8 @@ NODE_OPTIONS=--max-old-space-size=8192 ./node_modules/.bin/eslint . --cache --ca
 Run from the repository root:
 
 ```bash
-docker build -f frontend/Dockerfile.nginx frontend
-docker build -f frontend/Dockerfile.dev frontend
+docker build -f infra/docker/frontend/Dockerfile.nginx frontend
+docker build -f infra/docker/frontend/Dockerfile.dev frontend
 ```
 
 ## Compatibility Import Check

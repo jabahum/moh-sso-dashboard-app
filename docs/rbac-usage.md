@@ -14,7 +14,7 @@ The frontend reads access from `/auth/me`:
 
 Realm roles and client roles are inputs. Permission checks are the preferred authorization model.
 
-Keycloak clients are the source candidates for portal systems. Use `system-rbac sync-keycloak` against live Keycloak, or use `--realm-export keycloak/realm-export.json`, to draft/apply portal systems from Keycloak clients and client roles. Portal RBAC then maps those discovered roles to application permissions.
+Keycloak clients are the source candidates for portal systems. Use `system-rbac sync-keycloak` against live Keycloak, or use `--realm-export infra/keycloak/realm-export.json`, to draft/apply portal systems from Keycloak clients and client roles. Portal RBAC then maps those discovered roles to application permissions.
 
 For the full operator workflow, including startup sync, new client onboarding, permission mapping, and troubleshooting, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md). For group-based assignments and inherited access behavior, see [RBAC Groups](./rbac-groups.md).
 

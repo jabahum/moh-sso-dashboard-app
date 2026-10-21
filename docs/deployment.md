@@ -8,11 +8,11 @@ production base with a development override.
 
 | Entry point | Environment | Purpose |
 | --- | --- | --- |
-| `docker-compose.yml` | `app.env` | Default production stack; host or remote Nginx |
-| `docker-compose.prod.yml` | `app.env` | Explicit production entry point, includes the default stack |
-| `docker-compose-nginx.yml` | `app.env` | Same production services with a container gateway; application ports unpublished |
-| `docker-compose.dev.yml` | `app.dev.env` | Source builds, Air/Vite reload, local Keycloak/Postgres/Redis/MailHog |
-| `docker-compose-without-keycloak.yml` | `app.external-dev.env` | Development with external Keycloak; local IdP services excluded |
+| `infra/compose/docker-compose.yml` | `app.env` | Default production stack; host or remote Nginx |
+| `infra/compose/docker-compose.prod.yml` | `app.env` | Explicit production entry point, includes the default stack |
+| `infra/compose/docker-compose-nginx.yml` | `app.env` | Same production services with a container gateway; application ports unpublished |
+| `infra/compose/docker-compose.dev.yml` | `app.dev.env` | Source builds, Air/Vite reload, local Keycloak/Postgres/Redis/MailHog |
+| `infra/compose/docker-compose-without-keycloak.yml` | `app.external-dev.env` | Development with external Keycloak; local IdP services excluded |
 
 Production uses project `moh-sso-dashboard`; development uses
 `moh-sso-dashboard-dev` with separate persistent volumes and a managed bridge
@@ -24,13 +24,13 @@ bindings before running both on the same host at once.
 ### Production quick start
 
 ```bash
-cp app.env.example app.env
+cp infra/env/prod.env.example app.env
 # Edit runtime settings, production DB/IdP/warehouse credentials, and release tags.
 # Create secrets/db_password.txt, secrets/keycloak_admin_client_secret.txt,
 # and secrets/keycloak_web_client_secret.txt using the real credentials.
-docker compose --env-file app.env -f docker-compose.prod.yml config --quiet
-docker compose --env-file app.env -f docker-compose.prod.yml pull
-docker compose --env-file app.env -f docker-compose.prod.yml up -d
+docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml config --quiet
+docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml pull
+docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml up -d
 ```
 
 Use **newly built backend and frontend release images** for these changes.
@@ -89,12 +89,12 @@ remain runtime settings; no object-storage service is assumed.
 ### Development quick start
 
 ```bash
-cp backend/app.env.example app.dev.env
-docker compose --env-file app.dev.env -f docker-compose.dev.yml config --quiet
-docker compose --env-file app.dev.env -f docker-compose.dev.yml up --build
+cp infra/env/dev.env.example app.dev.env
+docker compose --env-file app.dev.env -f infra/compose/docker-compose.dev.yml config --quiet
+docker compose --env-file app.dev.env -f infra/compose/docker-compose.dev.yml up --build
 ```
 
-With no private file, development uses `backend/app.env.example` as a complete
+With no private file, development uses `infra/env/dev.env.example` as a complete
 fallback. The optional `app.dev.env` is applied afterwards, so custom SMTP,
 notification, storage and scheduler settings win. For a differently named file,
 set `DEV_ENV_FILE` to that path and pass the same file with `--env-file`.
@@ -136,7 +136,7 @@ set its reachable internal/base/browser URLs, realm, client IDs and secrets, the
 
 ```bash
 DEV_ENV_FILE=./app.external-dev.env docker compose --env-file app.external-dev.env \
-  -f docker-compose-without-keycloak.yml up --build
+  -f infra/compose/docker-compose-without-keycloak.yml up --build
 ```
 
 Register the same localhost web callback and origin on that external web client.
@@ -145,9 +145,9 @@ The local Keycloak and its database are excluded; API data dependencies remain l
 ### Validate environment and container startup changes
 
 ```bash
-python3 scripts/test-compose.py
-python3 scripts/test-compose-runtime.py
-python3 scripts/test-nginx.py
+python3 infra/scripts/test-compose.py
+python3 infra/scripts/test-compose-runtime.py
+python3 infra/scripts/test-nginx.py
 ```
 
 The first checks environment coverage, Compose service alignment, optional dev
@@ -173,7 +173,7 @@ Compose rejects empty image tags. Use explicit semantic-version or SHA tags for 
 
 ## Compose Production Files
 
-Use `docker-compose-nginx.yml` for the container gateway. It binds to
+Use `infra/compose/docker-compose-nginx.yml` for the container gateway. It binds to
 `127.0.0.1:8080` by default, behind an HTTPS reverse proxy. Set
 `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly if another listener is
 required. This replaces the previous public HTTP port 80 default.
@@ -184,7 +184,7 @@ stripping that prefix before forwarding. Other paths go to the frontend.
 For example, `/ssobackend/swagger/` serves the API documentation and
 `/ssobackend/swagger/openapi.json` serves its specification.
 
-Use `docker-compose.yml` when Nginx runs outside Compose. Application ports bind
+Use `infra/compose/docker-compose.yml` when Nginx runs outside Compose. Application ports bind
 to localhost by default. For Nginx on a separate machine, set `APP_BIND_ADDRESS`
 to the application server's private IPv4 using the remote deployment settings
 below.
@@ -205,10 +205,10 @@ or the Nginx machine's address as the application binding.
 **On the application machine:**
 
 ```bash
-cp .env.remote-proxy.example .env.remote-proxy
+cp infra/env/remote-proxy.env.example .env.remote-proxy
 # Edit APP_BIND_ADDRESS here; keep runtime settings and release tags in app.env.
-docker compose --env-file app.env --env-file .env.remote-proxy -f docker-compose.yml config --quiet
-docker compose --env-file app.env --env-file .env.remote-proxy -f docker-compose.yml up -d
+docker compose --env-file app.env --env-file .env.remote-proxy -f infra/compose/docker-compose.yml config --quiet
+docker compose --env-file app.env --env-file .env.remote-proxy -f infra/compose/docker-compose.yml up -d
 ```
 
 Use the same `--env-file app.env --env-file .env.remote-proxy` on subsequent pull, update and rollback
@@ -223,9 +223,9 @@ in the CLI env file; clear conflicting exported deployment variables first.
 
 ```bash
 sudo install -d -m 0755 /etc/nginx/moh-sso
-sudo install -m 0644 nginx/host/*.conf /etc/nginx/moh-sso/
+sudo install -m 0644 infra/nginx/host/*.conf /etc/nginx/moh-sso/
 # Replace the loopback upstream file with the remote-machine variant.
-sudo install -m 0644 nginx/remote/http.conf /etc/nginx/moh-sso/http.conf
+sudo install -m 0644 infra/nginx/remote/http.conf /etc/nginx/moh-sso/http.conf
 # Edit BOTH 10.0.0.20 upstream addresses to match APP_BIND_ADDRESS.
 sudoedit /etc/nginx/moh-sso/http.conf
 ```
@@ -270,7 +270,7 @@ the actual machines' routing and firewall rules must be verified on deployment.
 
 ### Nginx installed on the host (no Compose gateway)
 
-Use the ordinary `docker-compose.yml` in this topology:
+Use the ordinary `infra/compose/docker-compose.yml` in this topology:
 
 ```text
 Browser --HTTPS--> Host Nginx
@@ -283,7 +283,7 @@ Nginx service; no Compose Nginx service or port 8080 is needed. Compose already
 publishes both application ports on loopback only. Browser-facing SSO URLs remain
 the HTTPS URLs shown below.
 
-The ready-to-install snippets live in `nginx/host/`. Use the tested Nginx 1.30.6
+The ready-to-install snippets live in `infra/nginx/host/`. Use the tested Nginx 1.30.6
 production baseline on the host. The snippets use `add_header_inherit merge`
 (available since 1.29.3) so location cache headers preserve existing server-level
 headers such as HSTS. See the [official header inheritance documentation](https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header_inherit).
@@ -293,7 +293,7 @@ On the deployment server, install the snippets from the checked-out release:
 ```bash
 nginx -v
 sudo install -d -m 0755 /etc/nginx/moh-sso
-sudo install -m 0644 nginx/host/*.conf /etc/nginx/moh-sso/
+sudo install -m 0644 infra/nginx/host/*.conf /etc/nginx/moh-sso/
 ```
 
 Add this include **once inside the existing `http {}` block** in the host's
@@ -324,7 +324,7 @@ request IDs and sanitized forwarded headers. `portal.locations.conf` preserves
 Swagger is available at `https://dashboards.health.go.ug/ssobackend/swagger/`.
 
 Here Nginx terminates TLS itself and forwards `$scheme` and `$remote_addr`.
-`nginx/trusted-proxies.conf` belongs to the Compose gateway and is not used.
+`infra/nginx/trusted-proxies.conf` belongs to the Compose gateway and is not used.
 If the host Nginx itself sits behind a load balancer, configure its real-IP and
 scheme trust for that specific load balancer before using these direct-edge
 snippets; do not accept arbitrary browser-supplied forwarded headers.
@@ -332,7 +332,7 @@ snippets; do not accept arbitrary browser-supplied forwarded headers.
 Start/update application containers using the selected immutable release tags:
 
 ```bash
-docker compose --env-file app.env -f docker-compose.prod.yml up -d
+docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml up -d
 sudo nginx -t && sudo systemctl reload nginx
 
 curl -fsS http://127.0.0.1:3000/nginx/health
@@ -345,7 +345,7 @@ Replace the example tags with the releases being deployed. Rebuild/publish the
 frontend image to activate its improved static caching rules. Host Nginx writes
 portal access logs to `/var/log/nginx/moh-sso-access.log`; include that path in the
 host's log rotation policy. To test these snippets before installing them, run
-`python3 scripts/test-nginx.py`. The test uses disposable containers to emulate
+`python3 infra/scripts/test-nginx.py`. The test uses disposable containers to emulate
 the host's loopback services and actual HTTPS termination; it does not install
 or reload the host service.
 
@@ -382,7 +382,7 @@ The production reverse proxy must keep these path owners distinct:
 The bare origin redirecting to Report Browser is intentional. Do not configure the
 portal frontend base as `https://dashboards.health.go.ug/`, and do not strip
 `/ssobackend` from browser-facing login or callback URLs. The repository's simple
-`nginx/app.conf` is suitable when this frontend owns the whole host; the shared
+`infra/nginx/app.conf` is suitable when this frontend owns the whole host; the shared
 production host needs an upstream reverse-proxy configuration that implements the
 path table above.
 
@@ -419,7 +419,7 @@ location /ssobackend/ {
 }
 ```
 
-Configure `nginx/trusted-proxies.conf` with the actual connecting address of the
+Configure `infra/nginx/trusted-proxies.conf` with the actual connecting address of the
 HTTPS proxy **as seen inside the gateway** (Docker may translate its source).
 Add that exact IP/CIDR to both `set_real_ip_from` and the `geo` block. Until it is
 configured, the gateway ignores forwarded client addresses and schemes. This
@@ -460,11 +460,11 @@ log policy on any outer proxy, especially for SSO callback URLs.
 
 ```bash
 # Disposable fixtures only; does not start the application stack or database.
-python3 scripts/test-nginx.py
+python3 infra/scripts/test-nginx.py
 
 # Validate the deployed config, then reload gateway workers after config edits.
-docker compose --env-file app.env -f docker-compose-nginx.yml exec nginx nginx -t
-docker compose --env-file app.env -f docker-compose-nginx.yml exec nginx nginx -s reload
+docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml exec nginx nginx -t
+docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml exec nginx nginx -s reload
 ```
 
 The integration suite checks routing, SPA fallback, cache/security headers,
@@ -476,18 +476,18 @@ and removes them on completion. Production containers are not touched.
 For syntax validation without real production values:
 
 ```bash
-APP_ENV_FILE=./app.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose -f docker-compose-nginx.yml config --quiet
+APP_ENV_FILE=./infra/env/prod.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
+  docker compose -f infra/compose/docker-compose-nginx.yml config --quiet
 ```
 
 For deployment:
 
 ```bash
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f docker-compose-nginx.yml pull
+  docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml pull
 
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f docker-compose-nginx.yml up -d
+  docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml up -d
 ```
 
 ## Automated Deployment

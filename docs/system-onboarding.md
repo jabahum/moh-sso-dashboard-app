@@ -69,7 +69,7 @@ From `backend/`, draft from a checked-in or exported Keycloak realm file:
 
 ```sh
 go run ./cmd/cli system-rbac sync-keycloak \
-  --realm-export ../keycloak/realm-export.json \
+  --realm-export ../infra/keycloak/realm-export.json \
   --draft-file /tmp/system-rbac.seed.yaml
 ```
 
@@ -124,7 +124,7 @@ Against a realm export:
 
 ```sh
 go run ./cmd/cli system-rbac unmapped \
-  --realm-export ../keycloak/realm-export.json \
+  --realm-export ../infra/keycloak/realm-export.json \
   --file config/system-rbac.seed.yaml
 ```
 

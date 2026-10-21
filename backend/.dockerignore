@@ -1,5 +1,0 @@
-bin/
-app.env
-app.dev.env
-.git/
-*.log

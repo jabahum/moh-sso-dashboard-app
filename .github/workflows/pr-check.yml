@@ -16,13 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate production Compose
-        run: APP_ENV_FILE=./app.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 docker compose -f docker-compose-nginx.yml config --quiet
+        run: BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 make compose-config COMPOSE_ENV=gateway ENV_FILE=infra/env/prod.env.example
       - name: Validate production and development environment contracts
-        run: python3 scripts/test-compose.py
+        run: make infra-check
       - name: Exercise production Nginx
-        run: python3 scripts/test-nginx.py
+        run: make infra-nginx-check
       - name: Exercise production container startup and development readiness
-        run: python3 scripts/test-compose-runtime.py
+        run: make infra-runtime-check
 
   quality:
     name: Fast Quality Gate
@@ -50,7 +50,7 @@ jobs:
         run: npm run version:audit && npm run audit:packages && node --test scripts/test-versioning.mjs
 
       - name: Local SSO startup contracts
-        run: python3 scripts/local-sso.test.py
+        run: python3 infra/scripts/local-sso.test.py
 
       - name: Release tooling tests
         run: node --test scripts/release.test.mjs scripts/auto-release.test.mjs scripts/release-notes.test.mjs
@@ -77,7 +77,7 @@ jobs:
           npm run audit:packages
 
       - name: Deployment verifier tests
-        run: node --test scripts/verify-frontend-deployment.test.mjs
+        run: node --test infra/scripts/verify-frontend-deployment.test.mjs
 
       # ========================
       # BACKEND
@@ -89,6 +89,9 @@ jobs:
       - name: Backend vet
         working-directory: backend
         run: go vet ./...
+
+      - name: API contract freshness
+        run: make contracts-check
 
       - name: Backend test
         working-directory: backend

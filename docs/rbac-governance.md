@@ -45,8 +45,8 @@ Newly discovered roles do not grant portal permissions until an admin maps them.
 Use the admin UI or CLI to compare Keycloak with portal RBAC.
 
 ```bash
-system-rbac sync-keycloak --realm-export ../keycloak/realm-export.json --draft-file /tmp/rbac-draft.yaml
-system-rbac unmapped --realm-export ../keycloak/realm-export.json
+system-rbac sync-keycloak --realm-export ../infra/keycloak/realm-export.json --draft-file /tmp/rbac-draft.yaml
+system-rbac unmapped --realm-export ../infra/keycloak/realm-export.json
 ```
 
 The UI supports:

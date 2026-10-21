@@ -33,12 +33,12 @@
 #       matrix:
 #         include:
 #           - service: backend
-#             context: backend
-#             dockerfile: backend/Dockerfile
+#             context: .
+#             dockerfile: infra/docker/backend/Dockerfile
 #             suffix: backend
 #           - service: frontend
-#             context: frontend
-#             dockerfile: frontend/Dockerfile
+#             context: .
+#             dockerfile: infra/docker/frontend/Dockerfile
 #             suffix: frontend
 
 #     outputs:
@@ -133,14 +133,14 @@
 #           chmod 600 ~/.kube/config
 
 #       - name: Helm lint
-#         run: helm lint charts/moh-sso
+#         run: helm lint infra/helm/moh-sso
 
 #       - name: Deploy via Helm (Dev)
 #         run: |
-#           helm upgrade --install $HELM_RELEASE charts/moh-sso \
+#           helm upgrade --install $HELM_RELEASE infra/helm/moh-sso \
 #             -n sso-dev \
 #             --create-namespace \
-#             -f charts/moh-sso/values-dev.yaml \
+#             -f infra/helm/moh-sso/values-dev.yaml \
 #             --set backend.image.tag=${{ needs.docker-build-push.outputs.image_tag }} \
 #             --set frontend.image.tag=${{ needs.docker-build-push.outputs.image_tag }} \
 #             --wait \
@@ -185,10 +185,10 @@
 
 #       - name: Deploy via Helm (Prod)
 #         run: |
-#           helm upgrade --install $HELM_RELEASE charts/moh-sso \
+#           helm upgrade --install $HELM_RELEASE infra/helm/moh-sso \
 #             -n sso-prod \
 #             --create-namespace \
-#             -f charts/moh-sso/values-prod.yaml \
+#             -f infra/helm/moh-sso/values-prod.yaml \
 #             --set backend.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-backend \
 #             --set backend.image.tag=${{ needs.docker-build-push.outputs.image_tag }} \
 #             --set frontend.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-frontend \

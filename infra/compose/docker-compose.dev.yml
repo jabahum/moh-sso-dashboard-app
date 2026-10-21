@@ -39,7 +39,7 @@ services:
   keycloak:
     <<: *service
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.0.5}
-    container_name: keycloak # retained for scripts/local-sso.py
+    container_name: keycloak # retained for infra/scripts/local-sso.py
     command: [start-dev, --import-realm]
     environment:
       KC_DB: postgres
@@ -53,8 +53,8 @@ services:
       KC_HOSTNAME: http://localhost:8081
       KC_HEALTH_ENABLED: "true"
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-      - ./keycloak/themes:/opt/keycloak/themes:ro
+      - ../keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ../keycloak/themes:/opt/keycloak/themes:ro
     ports: ["127.0.0.1:8081:8080"]
     depends_on:
       keycloak-db: {condition: service_healthy}
@@ -120,11 +120,11 @@ services:
 
   backend:
     <<: *service
-    build: {context: ./backend, dockerfile: Dockerfile.dev}
+    build: {context: ../.., dockerfile: infra/docker/backend/Dockerfile.dev}
     env_file:
-      - path: ./backend/app.env.example
+      - path: ../env/dev.env.example
         required: true
-      - path: ${DEV_ENV_FILE:-./app.dev.env}
+      - path: ${DEV_ENV_FILE:-../env/dev.env}
         required: false
     # Explicit topology settings cannot point accidentally at production services.
     environment:
@@ -168,7 +168,7 @@ services:
       SMTP_PORT: "1025"
       LOCAL_BASE_PATH: /data/uploads
     volumes:
-      - ./backend:/app
+      - ../../backend:/app
       - upload_data:/data/uploads
       - go_modules:/go/pkg/mod
       - go_build:/root/.cache/go-build
@@ -188,7 +188,7 @@ services:
 
   frontend:
     <<: *service
-    build: {context: ./frontend, dockerfile: Dockerfile.dev}
+    build: {context: ../.., dockerfile: infra/docker/frontend/Dockerfile.dev}
     environment:
       API_BASE_URL: http://localhost:9000
       FRONTEND_MICROFRONTEND_MODE: local
@@ -199,7 +199,7 @@ services:
       VITE_VISUALIZER_PROXY_TARGET: http://backend:9000
       VITE_HEALTH_BI_BASE_URL: ${VITE_HEALTH_BI_BASE_URL:-http://localhost:8080}
     volumes:
-      - ./frontend:/app
+      - ../../frontend:/app
       - frontend_node_modules:/app/node_modules
     ports:
       - "127.0.0.1:3000:3000"

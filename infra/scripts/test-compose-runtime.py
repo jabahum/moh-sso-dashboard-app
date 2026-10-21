@@ -13,7 +13,7 @@ import tempfile
 import time
 import uuid
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def docker(*args):
@@ -31,13 +31,13 @@ def main():
             tmp = Path(tmp)
             # Supply only build outputs; execute the actual checked-in runtime stages.
             frontend = tmp / 'frontend'
-            (frontend / 'docker').mkdir(parents=True)
+            (frontend / 'infra/docker/frontend').mkdir(parents=True)
             (frontend / 'fixture/portal').mkdir(parents=True)
             (frontend / 'fixture/portal/index.html').write_text('<!doctype html><title>Runtime fixture</title>')
             (frontend / 'fixture/index.html').write_text('<!doctype html><title>Runtime fixture</title>')
-            (frontend / 'docker/40-runtime-config.sh').write_bytes((ROOT / 'frontend/docker/40-runtime-config.sh').read_bytes())
-            (frontend / 'nginx.conf').write_bytes((ROOT / 'frontend/nginx.conf').read_bytes())
-            stage = (ROOT / 'frontend/Dockerfile').read_text().split('FROM nginx:', 1)[1]
+            (frontend / 'infra/docker/frontend/40-runtime-config.sh').write_bytes((ROOT / 'infra/docker/frontend/40-runtime-config.sh').read_bytes())
+            (frontend / 'infra/docker/frontend/nginx.conf').write_bytes((ROOT / 'infra/docker/frontend/nginx.conf').read_bytes())
+            stage = (ROOT / 'infra/docker/frontend/Dockerfile').read_text().split('FROM nginx:', 1)[1]
             (frontend / 'Dockerfile').write_text('FROM nginx:1.30.6-alpine AS build\nCOPY fixture /app/dist\nFROM nginx:' + stage)
             image = prefix + ':frontend'
             images.append(image)
@@ -76,10 +76,10 @@ def main():
                 assert 'never-publish' not in text
 
             backend = tmp / 'backend'
-            for path in ('scripts', 'fixture/internal/db/migrations', 'fixture/config'):
+            for path in ('infra/docker/backend', 'fixture/internal/db/migrations', 'fixture/config'):
                 (backend / path).mkdir(parents=True)
-            entrypoint = ROOT / 'backend/scripts/container-entrypoint.sh'
-            (backend / 'scripts/container-entrypoint.sh').write_bytes(entrypoint.read_bytes())
+            entrypoint = ROOT / 'infra/docker/backend/entrypoint.sh'
+            (backend / 'infra/docker/backend/entrypoint.sh').write_bytes(entrypoint.read_bytes())
             executable = backend / 'fixture/sso-server'
             executable.write_text('''#!/bin/sh
 set -eu
@@ -89,7 +89,7 @@ touch /data/uploads/runtime-permission-check
 printf 'secret-loading-and-nonroot-upload-ok'
 ''')
             executable.chmod(0o755)
-            stage = (ROOT / 'backend/Dockerfile').read_text().split('FROM alpine:', 1)[1]
+            stage = (ROOT / 'infra/docker/backend/Dockerfile').read_text().split('FROM alpine:', 1)[1]
             (backend / 'Dockerfile').write_text('FROM nginx:1.30.6-alpine AS builder\nCOPY fixture /app\nFROM alpine:' + stage)
             image = prefix + ':backend'
             images.append(image)
@@ -103,10 +103,10 @@ printf 'secret-loading-and-nonroot-upload-ok'
             assert result == 'secret-loading-and-nonroot-upload-ok'
 
             # Use the exact development healthcheck against a fresh local IdP.
-            spec = importlib.util.spec_from_file_location('compose_contracts', ROOT / 'scripts/test-compose.py')
+            spec = importlib.util.spec_from_file_location('compose_contracts', ROOT / 'infra/scripts/test-compose.py')
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            service = module.config('docker-compose.dev.yml', 'backend/app.env.example')['services']['keycloak']
+            service = module.config('infra/compose/docker-compose.dev.yml', 'infra/env/dev.env.example')['services']['keycloak']
             container = prefix + '-keycloak'
             containers.append(container)
             docker('run', '-d', '--name', container, '-e', 'KC_DB=dev-file',

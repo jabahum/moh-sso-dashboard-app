@@ -30,12 +30,12 @@ jobs:
       matrix:
         include:
           - service: backend
-            context: backend
-            dockerfile: backend/Dockerfile
+            context: .
+            dockerfile: infra/docker/backend/Dockerfile
             suffix: backend
           - service: frontend
-            context: frontend
-            dockerfile: frontend/Dockerfile
+            context: .
+            dockerfile: infra/docker/frontend/Dockerfile
             suffix: frontend
 
     steps:
@@ -151,16 +151,11 @@ jobs:
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-frontend:sha-${{ steps.sha.outputs.tag }}"
           docker pull "$IMAGE"
-          docker run --rm --entrypoint node \
-            -e EXPECTED_VERSION="${{ steps.frontend-meta.outputs.version }}" \
-            -e EXPECTED_COMMIT="${{ github.sha }}" \
-            "$IMAGE" -e '
-              const assert = require("node:assert/strict");
-              const manifest = require("./dist/version-manifest.json");
-              assert.equal(manifest.service.version, process.env.EXPECTED_VERSION);
-              assert.equal(manifest.service.commit, process.env.EXPECTED_COMMIT);
-              console.log(manifest.service);
-            '
+          docker run --rm --entrypoint jq \
+            --arg version "${{ steps.frontend-meta.outputs.version }}" \
+            --arg commit "${{ github.sha }}" \
+            "$IMAGE" -e '.service.version == $version and .service.commit == $commit' \
+            /usr/share/nginx/html/version-manifest.json
 
       - name: Verify backend runtime metadata
         if: matrix.service == 'backend' && !startsWith(github.ref, 'refs/tags/frontend/v')

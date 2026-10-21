@@ -24,11 +24,11 @@ require_text() {
 
 require_text "$backend_dir/Makefile" "VERSION_PACKAGE = $version_package"
 require_text "$backend_dir/Makefile" 'sh ./scripts/build-version.sh'
-require_text "$backend_dir/Dockerfile" "$version_package.Version="
+require_text "$repo_root/infra/docker/backend/Dockerfile" "$version_package.Version="
 require_text "$repo_root/.github/workflows/backend-release.yml" "VERSION_PACKAGE: $version_package"
 require_text "$repo_root/.github/workflows/backend-release-pr.yml" "VERSION_PACKAGE: $version_package"
-require_text "$backend_dir/Dockerfile" "golang:$go_version-alpine"
-require_text "$backend_dir/Dockerfile.dev" "golang:$go_version-alpine"
+require_text "$repo_root/infra/docker/backend/Dockerfile" "golang:$go_version-alpine"
+require_text "$repo_root/infra/docker/backend/Dockerfile.dev" "golang:$go_version-alpine"
 require_text "$repo_root/.github/workflows/build.yml" 'backend/v*.*.*'
 require_text "$repo_root/.github/workflows/build.yml" 'frontend/v*.*.*'
 require_text "$repo_root/.github/workflows/backend-release.yml" 'tag_name: backend/v${{ steps.version.outputs.version }}'
@@ -37,7 +37,7 @@ require_text "$repo_root/.github/workflows/backend-release-pr.yml" 'tag_name: ba
 require_text "$repo_root/.github/workflows/backend-release-pr.yml" 'TAG="backend/v${{ steps.version.outputs.version }}"'
 
 if grep -F 'moh-sso-dashboard-backend:${BACKEND_TAG:-latest}' \
-  "$repo_root/docker-compose.yml" "$repo_root/docker-compose-nginx.yml" >/dev/null; then
+  "$repo_root/infra/compose/docker-compose.yml" "$repo_root/infra/compose/docker-compose-nginx.yml" >/dev/null; then
   echo "version consistency check failed: production backend falls back to latest" >&2
   exit 1
 fi

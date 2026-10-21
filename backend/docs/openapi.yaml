@@ -4354,6 +4354,445 @@ components:
         effectiveAccess:
           $ref: '#/components/schemas/rbac.EffectiveAccessResponse'
       type: object
+    report_scheduler.Artifact:
+      properties:
+        contentType:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        downloadUrl:
+          type: string
+        executionId:
+          type: string
+        fileName:
+          type: string
+        id:
+          type: string
+        sizeBytes:
+          format: int64
+          type: integer
+      type: object
+    report_scheduler.CreateScheduleRequest:
+      properties:
+        cronExpression:
+          type: string
+        description:
+          type: string
+        enabled:
+          nullable: true
+          type: boolean
+        frequency:
+          type: string
+        healthBiReportId:
+          type: string
+        healthContext:
+          $ref: '#/components/schemas/report_scheduler.HealthContext'
+        outputConfig:
+          $ref: '#/components/schemas/report_scheduler.OutputConfig'
+        outputFormat:
+          type: string
+        parameters:
+          additionalProperties: {}
+          type: object
+        periodStrategy:
+          type: string
+        recipients:
+          items:
+            $ref: '#/components/schemas/report_scheduler.ScheduleRecipient'
+          type: array
+        reportName:
+          type: string
+        timezone:
+          type: string
+        timing:
+          $ref: '#/components/schemas/report_scheduler.ScheduleTiming'
+      required:
+        - healthBiReportId
+        - reportName
+        - frequency
+        - timezone
+        - periodStrategy
+        - outputFormat
+      type: object
+    report_scheduler.Delivery:
+      properties:
+        artifactId:
+          type: string
+        attempts:
+          format: int64
+          type: integer
+        createdAt:
+          format: date-time
+          type: string
+        deliveryChannel:
+          type: string
+        executionId:
+          type: string
+        id:
+          type: string
+        lastAttemptAt:
+          format: date-time
+          nullable: true
+          type: string
+        lastError:
+          type: string
+        maxAttempts:
+          format: int64
+          type: integer
+        nextRetryAt:
+          format: date-time
+          nullable: true
+          type: string
+        recipientType:
+          type: string
+        recipientValue:
+          type: string
+        sentAt:
+          format: date-time
+          nullable: true
+          type: string
+        status:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      type: object
+    report_scheduler.Execution:
+      properties:
+        createdAt:
+          format: date-time
+          type: string
+        errorMessage:
+          type: string
+        finishedAt:
+          format: date-time
+          nullable: true
+          type: string
+        generationAttempts:
+          format: int64
+          type: integer
+        healthBiJobId:
+          type: string
+        id:
+          type: string
+        lastAttemptAt:
+          format: date-time
+          nullable: true
+          type: string
+        maxGenerationAttempts:
+          format: int64
+          type: integer
+        nextRetryAt:
+          format: date-time
+          nullable: true
+          type: string
+        outputFormat:
+          type: string
+        parameters:
+          additionalProperties: {}
+          type: object
+        reportId:
+          type: string
+        resolvedPeriod:
+          allOf:
+            - $ref: '#/components/schemas/report_scheduler.ResolvedPeriod'
+          nullable: true
+        scheduleId:
+          nullable: true
+          type: string
+        scheduledFor:
+          format: date-time
+          nullable: true
+          type: string
+        startedAt:
+          format: date-time
+          nullable: true
+          type: string
+        status:
+          type: string
+        triggerType:
+          type: string
+        triggeredBy:
+          type: string
+      type: object
+    report_scheduler.ExecutionDetail:
+      properties:
+        artifacts:
+          items:
+            $ref: '#/components/schemas/report_scheduler.Artifact'
+          type: array
+        deliveries:
+          items:
+            $ref: '#/components/schemas/report_scheduler.Delivery'
+          type: array
+        execution:
+          $ref: '#/components/schemas/report_scheduler.Execution'
+        schedule:
+          allOf:
+            - $ref: '#/components/schemas/report_scheduler.Schedule'
+          nullable: true
+      type: object
+    report_scheduler.HealthBIParameter:
+      properties:
+        defaultValue: {}
+        description:
+          type: string
+        label:
+          type: string
+        metadata:
+          additionalProperties: {}
+          type: object
+        name:
+          type: string
+        options:
+          items: {}
+          type: array
+        required:
+          type: boolean
+        type:
+          type: string
+      type: object
+    report_scheduler.HealthBIReport:
+      properties:
+        category:
+          type: string
+        description:
+          type: string
+        id:
+          type: string
+        metadata:
+          additionalProperties: {}
+          type: object
+        name:
+          type: string
+        supportedFormats:
+          items:
+            type: string
+          type: array
+      type: object
+    report_scheduler.HealthContext:
+      properties:
+        district:
+          type: string
+        facility:
+          type: string
+        level:
+          type: string
+      type: object
+    report_scheduler.ModuleResponse:
+      properties:
+        healthBiEnabled:
+          type: boolean
+        healthContext:
+          $ref: '#/components/schemas/report_scheduler.HealthContext'
+        name:
+          type: string
+        schedulingEnabled:
+          type: boolean
+        status:
+          type: string
+      type: object
+    report_scheduler.OutputConfig:
+      properties:
+        deliveryMode:
+          type: string
+        fileNamePrefix:
+          type: string
+        format:
+          type: string
+      type: object
+    report_scheduler.PortalReport:
+      properties:
+        artifact:
+          $ref: '#/components/schemas/report_scheduler.Artifact'
+        deliveredAt:
+          format: date-time
+          type: string
+        deliveryId:
+          type: string
+        executionId:
+          type: string
+        reportId:
+          type: string
+        reportName:
+          type: string
+      type: object
+    report_scheduler.RecipientOption:
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+        value:
+          type: string
+      type: object
+    report_scheduler.RecipientPreview:
+      properties:
+        emailCount:
+          format: int64
+          type: integer
+        emailRecipients:
+          items:
+            type: string
+          type: array
+        portalCount:
+          format: int64
+          type: integer
+        portalRecipients:
+          items:
+            type: string
+          type: array
+      type: object
+    report_scheduler.ResolvedPeriod:
+      properties:
+        end:
+          format: date-time
+          type: string
+        start:
+          format: date-time
+          type: string
+        strategy:
+          type: string
+      type: object
+    report_scheduler.Schedule:
+      properties:
+        createdAt:
+          format: date-time
+          type: string
+        createdBy:
+          type: string
+        cronExpression:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        frequency:
+          type: string
+        healthBiReportId:
+          type: string
+        healthContext:
+          $ref: '#/components/schemas/report_scheduler.HealthContext'
+        id:
+          type: string
+        lastRunAt:
+          format: date-time
+          nullable: true
+          type: string
+        nextRunAt:
+          format: date-time
+          nullable: true
+          type: string
+        outputConfig:
+          $ref: '#/components/schemas/report_scheduler.OutputConfig'
+        outputFormat:
+          type: string
+        parameters:
+          additionalProperties: {}
+          type: object
+        periodStrategy:
+          type: string
+        recipients:
+          items:
+            $ref: '#/components/schemas/report_scheduler.ScheduleRecipient'
+          type: array
+        reportName:
+          type: string
+        timezone:
+          type: string
+        timing:
+          $ref: '#/components/schemas/report_scheduler.ScheduleTiming'
+        updatedAt:
+          format: date-time
+          type: string
+      type: object
+    report_scheduler.ScheduleRecipient:
+      properties:
+        deliveryChannel:
+          type: string
+        id:
+          type: string
+        type:
+          type: string
+        value:
+          type: string
+      required:
+        - type
+        - value
+        - deliveryChannel
+      type: object
+    report_scheduler.ScheduleTiming:
+      properties:
+        dayOfMonth:
+          format: int64
+          type: integer
+        timeOfDay:
+          type: string
+        weekday:
+          format: int64
+          type: integer
+      type: object
+    report_scheduler.SchedulerOverview:
+      properties:
+        completed24h:
+          format: int64
+          type: integer
+        deliveryFailures24h:
+          format: int64
+          type: integer
+        deliveryStatuses:
+          items:
+            $ref: '#/components/schemas/report_scheduler.SchedulerStatusCount'
+          type: array
+        enabledSchedules:
+          format: int64
+          type: integer
+        executionStatuses:
+          items:
+            $ref: '#/components/schemas/report_scheduler.SchedulerStatusCount'
+          type: array
+        executions24h:
+          format: int64
+          type: integer
+        failed24h:
+          format: int64
+          type: integer
+        generatedAt:
+          format: date-time
+          type: string
+        recentFailures:
+          items:
+            $ref: '#/components/schemas/report_scheduler.Execution'
+          type: array
+        retryingNow:
+          format: int64
+          type: integer
+        successRate24h:
+          format: double
+          type: number
+        totalSchedules:
+          format: int64
+          type: integer
+        workerHealthy:
+          type: boolean
+        workerLastCycleError:
+          type: string
+        workerLastHeartbeatAt:
+          format: date-time
+          nullable: true
+          type: string
+      type: object
+    report_scheduler.SchedulerStatusCount:
+      properties:
+        count:
+          format: int64
+          type: integer
+        status:
+          type: string
+      type: object
     sessions.SessionResponse:
       properties:
         clients:
@@ -16552,6 +16991,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Too Many Requests
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
         default:
           content:
             application/json:
@@ -24296,6 +24741,1810 @@ paths:
       tags:
         - notifications
       x-go-handler: github.com/moh-sso-dashboard/internal/features/notifications.(*Handler).UpdateNotificationPreferences
+  /api/v1/report-scheduler:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.ModuleResponse'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Module
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).GetModule
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/artifacts/{artifactId}/download:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_artifacts_artifactId_download
+      parameters:
+        - in: path
+          name: artifactId
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to browser login or configured portal destination.
+          headers:
+            Location:
+              schema:
+                format: uri-reference
+                type: string
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "502":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Gateway
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Download Artifact
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).DownloadArtifact
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/executions:
+    get:
+      description: 'Explicit route permission: report_scheduler:history. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_executions
+      parameters:
+        - in: query
+          name: enabled
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/report_scheduler.Execution'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Executions
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).ListExecutions
+      x-route-permissions:
+        - report_scheduler:history
+  /api/v1/report-scheduler/executions/{executionId}:
+    get:
+      description: 'Explicit route permission: report_scheduler:history. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_executions_executionId
+      parameters:
+        - in: path
+          name: executionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.ExecutionDetail'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Execution
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).GetExecution
+      x-route-permissions:
+        - report_scheduler:history
+  /api/v1/report-scheduler/executions/{executionId}/retry:
+    post:
+      description: 'Explicit route permission: report_scheduler:execute. Additional group/system access checks may apply.'
+      operationId: post_api_v1_report-scheduler_executions_executionId_retry
+      parameters:
+        - in: path
+          name: executionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Execution'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Accepted
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "502":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Gateway
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Retry Execution
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).RetryExecution
+      x-route-permissions:
+        - report_scheduler:execute
+  /api/v1/report-scheduler/metrics:
+    get:
+      description: 'Explicit route permission: metrics:read, report_scheduler:history, report_scheduler:manage. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_metrics
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.SchedulerOverview'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Overview
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).Overview
+      x-route-permissions:
+        - metrics:read
+        - report_scheduler:history
+        - report_scheduler:manage
+  /api/v1/report-scheduler/overview:
+    get:
+      description: 'Explicit route permission: metrics:read, report_scheduler:history, report_scheduler:manage. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_overview
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.SchedulerOverview'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Overview
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).Overview
+      x-route-permissions:
+        - metrics:read
+        - report_scheduler:history
+        - report_scheduler:manage
+  /api/v1/report-scheduler/portal-reports:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_portal-reports
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/report_scheduler.PortalReport'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Portal Reports
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).ListPortalReports
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/public/deliveries/{token}/download:
+    get:
+      operationId: get_api_v1_report-scheduler_public_deliveries_token_download
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to browser login or configured portal destination.
+          headers:
+            Location:
+              schema:
+                format: uri-reference
+                type: string
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "502":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Gateway
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Download Delivery Link
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).DownloadDeliveryLink
+  /api/v1/report-scheduler/recipients/options:
+    get:
+      operationId: get_api_v1_report-scheduler_recipients_options
+      parameters:
+        - in: query
+          name: kind
+          required: false
+          schema:
+            default: email
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: selected
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/report_scheduler.RecipientOption'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Recipient Options
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).RecipientOptions
+  /api/v1/report-scheduler/recipients/preview:
+    post:
+      operationId: post_api_v1_report-scheduler_recipients_preview
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                recipients:
+                  items:
+                    $ref: '#/components/schemas/report_scheduler.ScheduleRecipient'
+                  type: array
+              required:
+                - recipients
+              type: object
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.RecipientPreview'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Preview Recipients
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).PreviewRecipients
+  /api/v1/report-scheduler/report:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_report
+      parameters:
+        - in: query
+          name: reportId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.HealthBIReport'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Report
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).GetReport
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/report-parameters:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_report-parameters
+      parameters:
+        - in: query
+          name: reportId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/report_scheduler.HealthBIParameter'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Report Parameters
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).GetReportParameters
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/reports:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_reports
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/report_scheduler.HealthBIReport'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Reports
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).ListReports
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/reports/{reportId}:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_reports_reportId
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: reportId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.HealthBIReport'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Report
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).GetReport
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/reports/{reportId}/parameters:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_reports_reportId_parameters
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: reportId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/report_scheduler.HealthBIParameter'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Report Parameters
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).GetReportParameters
+      x-route-permissions:
+        - report_scheduler:read
+  /api/v1/report-scheduler/schedules:
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_schedules
+      parameters:
+        - in: query
+          name: enabled
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/report_scheduler.Schedule'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Schedules
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).ListSchedules
+      x-route-permissions:
+        - report_scheduler:read
+    post:
+      description: 'Explicit route permission: report_scheduler:create. Additional group/system access checks may apply.'
+      operationId: post_api_v1_report-scheduler_schedules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/report_scheduler.CreateScheduleRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Schedule'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Created
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Create Schedule
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).CreateSchedule
+      x-route-permissions:
+        - report_scheduler:create
+  /api/v1/report-scheduler/schedules/{scheduleId}:
+    delete:
+      description: 'Explicit route permission: report_scheduler:delete. Additional group/system access checks may apply.'
+      operationId: delete_api_v1_report-scheduler_schedules_scheduleId
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      deleted:
+                        type: boolean
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Delete Schedule
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).DeleteSchedule
+      x-route-permissions:
+        - report_scheduler:delete
+    get:
+      description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_report-scheduler_schedules_scheduleId
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Schedule'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Schedule
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).GetSchedule
+      x-route-permissions:
+        - report_scheduler:read
+    put:
+      description: 'Explicit route permission: report_scheduler:update. Additional group/system access checks may apply.'
+      operationId: put_api_v1_report-scheduler_schedules_scheduleId
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/report_scheduler.CreateScheduleRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Schedule'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Update Schedule
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).UpdateSchedule
+      x-route-permissions:
+        - report_scheduler:update
+  /api/v1/report-scheduler/schedules/{scheduleId}/duplicate:
+    post:
+      description: 'Explicit route permission: report_scheduler:create. Additional group/system access checks may apply.'
+      operationId: post_api_v1_report-scheduler_schedules_scheduleId_duplicate
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Schedule'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Created
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Duplicate Schedule
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).DuplicateSchedule
+      x-route-permissions:
+        - report_scheduler:create
+  /api/v1/report-scheduler/schedules/{scheduleId}/pause:
+    post:
+      description: 'Explicit route permission: report_scheduler:update. Additional group/system access checks may apply.'
+      operationId: post_api_v1_report-scheduler_schedules_scheduleId_pause
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Schedule'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Pause Schedule
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).PauseSchedule
+      x-route-permissions:
+        - report_scheduler:update
+  /api/v1/report-scheduler/schedules/{scheduleId}/resume:
+    post:
+      description: 'Explicit route permission: report_scheduler:update. Additional group/system access checks may apply.'
+      operationId: post_api_v1_report-scheduler_schedules_scheduleId_resume
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Schedule'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Resume Schedule
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).ResumeSchedule
+      x-route-permissions:
+        - report_scheduler:update
+  /api/v1/report-scheduler/schedules/{scheduleId}/run:
+    post:
+      description: 'Explicit route permission: report_scheduler:execute. Additional group/system access checks may apply.'
+      operationId: post_api_v1_report-scheduler_schedules_scheduleId_run
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/report_scheduler.Execution'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Accepted
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "502":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Gateway
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Run Now
+      tags:
+        - report-scheduler
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/report_scheduler.(*Handler).RunNow
+      x-route-permissions:
+        - report_scheduler:execute
   /api/v1/sessions:
     get:
       description: 'Explicit route permission: portal:access. Additional group/system access checks may apply.'
@@ -27940,6 +30189,7 @@ tags:
   - name: notifications
   - name: platform
   - name: rbac
+  - name: report-scheduler
   - name: sessions
   - name: storage-locations
   - name: surveillance

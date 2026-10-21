@@ -57,7 +57,7 @@ Core runtime components:
 |   |   |-- repository/             # Shared/cross-cutting repository adapters
 |   |   |-- service/                # Shared/cross-cutting services
 |   |   `-- db/migrations/          # SQL migrations
-|   |-- app.env.example
+|   |-- infra/env/prod.env.example
 |   `-- Dockerfile
 |-- frontend/
 |   |-- apps/                       # Shell and standalone frontend apps
@@ -68,8 +68,8 @@ Core runtime components:
 |   `-- package.json
 |-- keycloak/
 |   `-- realm-export.json           # Local/default realm export
-|-- docker-compose.yml
-|-- docker-compose.dev.yml
+|-- infra/compose/docker-compose.yml
+|-- infra/compose/docker-compose.dev.yml
 `-- README.md
 ```
 
@@ -420,7 +420,7 @@ Recommended production posture:
 
 ### Backend Environment
 
-Start from `backend/app.env.example`.
+Start from `infra/env/dev.env.example`.
 
 Required groups:
 
@@ -464,7 +464,7 @@ The frontend reads `window.__APP_CONFIG__` at runtime. This allows the same sour
 ## Local Development
 
 To start SSO and the sibling Health BI project together, run `make dev` (alias
-`make sso-up`). Keycloak imports the Health BI clients from `keycloak/realm-export.json`; this
+`make sso-up`). Keycloak imports the Health BI clients from `infra/keycloak/realm-export.json`; this
 starts Health BI and its test database and connects the existing
 report-browser module and scheduler to it. See [combined startup](docs/local-healthbi-startup.md)
 for prerequisites, configuration, `make sso-status`, and `make sso-down`.
@@ -496,7 +496,7 @@ The local shell is served under `/portal`.
 
 ```bash
 cd backend
-cp app.env.example app.env
+cp infra/env/prod.env.example app.env
 GOCACHE=/private/tmp/moh-sso-go-build go test ./...
 go run ./cmd/server
 ```
@@ -506,8 +506,8 @@ When running with Docker Compose, backend uses service hostnames such as `backen
 ### Docker Development
 
 ```bash
-cp backend/app.env.example app.dev.env
-docker compose --env-file app.dev.env -f docker-compose.dev.yml up --build
+cp infra/env/dev.env.example app.dev.env
+docker compose --env-file app.dev.env -f infra/compose/docker-compose.dev.yml up --build
 ```
 
 Use the development compose file when you want local containers for backend dependencies and development-friendly ports.
@@ -520,7 +520,7 @@ configuration, external Keycloak and validation commands.
 
 ### Backend Image
 
-`backend/Dockerfile` builds a static Go binary and runs it in Alpine:
+`infra/docker/backend/Dockerfile` builds a static Go binary and runs it in Alpine:
 
 ```bash
 docker build -t moh-sso-dashboard-backend ./backend
@@ -530,7 +530,7 @@ Production backend expects `app.env` or equivalent environment variables.
 
 ### Frontend Image
 
-`frontend/Dockerfile` builds the production shell, packages, microfrontend bundles, version manifest, and staged assets.
+`infra/docker/frontend/Dockerfile` builds the production shell, packages, microfrontend bundles, version manifest, and staged assets.
 
 ```bash
 docker build -t moh-sso-dashboard-frontend ./frontend
@@ -578,28 +578,28 @@ npm run build:docker:npm-modules
 
 ### Production Compose
 
-`docker-compose.yml` defines the direct-host production stack:
+`infra/compose/docker-compose.yml` defines the direct-host production stack:
 
 - `redis`
 - `backend-db`
 - `backend`
 - `frontend`
 
-`docker-compose.prod.yml` is the explicit production entry point and includes
+`infra/compose/docker-compose.prod.yml` is the explicit production entry point and includes
 that same stack. Pass `--env-file app.env` so Postgres, Redis and browser config
 use the same settings as the backend. New backend/frontend images are required
 for file-backed secrets and generated public runtime config.
 
-`docker-compose-nginx.yml` adds the production Nginx gateway on `127.0.0.1:8080`, behind an HTTPS proxy. It routes API, health and Swagger requests to the backend, including the `/ssobackend/` deployment prefix, and serves the portal through the frontend. See [deployment and proxy trust configuration](docs/deployment.md) before deploying. Override `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly when another listener is required.
+`infra/compose/docker-compose-nginx.yml` adds the production Nginx gateway on `127.0.0.1:8080`, behind an HTTPS proxy. It routes API, health and Swagger requests to the backend, including the `/ssobackend/` deployment prefix, and serves the portal through the frontend. See [deployment and proxy trust configuration](docs/deployment.md) before deploying. Override `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly when another listener is required.
 
-For Nginx installed directly on the host, use `docker-compose.yml` and the
-[`nginx/host` snippets](nginx/host/). They connect to the frontend on
+For Nginx installed directly on the host, use `infra/compose/docker-compose.yml` and the
+[`infra/nginx/host` snippets](infra/nginx/host/). They connect to the frontend on
 `127.0.0.1:3000` and backend on `127.0.0.1:9000`, preserving the shared host's
 Report Browser routes. Follow the [host Nginx setup](docs/deployment.md#nginx-installed-on-the-host-no-compose-gateway).
 
-For Nginx on a **separate machine**, use `.env.remote-proxy.example` to configure
+For Nginx on a **separate machine**, use `infra/env/remote-proxy.env.example` to configure
 `APP_BIND_ADDRESS` with the application server's private IP, and install the
-[`nginx/remote/http.conf`](nginx/remote/http.conf) upstream variant on the Nginx
+[`infra/nginx/remote/http.conf`](infra/nginx/remote/http.conf) upstream variant on the Nginx
 machine. Replace its example application IP and allow application ports only
 from the proxy's IP. See the [remote Nginx setup](docs/deployment.md#nginx-on-a-separate-machine).
 
@@ -613,7 +613,7 @@ Production compose expects:
 Prepare the server once:
 
 ```bash
-cp app.env.example app.env
+cp infra/env/prod.env.example app.env
 mkdir -p secrets
 printf '%s' 'replace-db-password' > secrets/db_password.txt
 printf '%s' 'replace-admin-client-secret' > secrets/keycloak_admin_client_secret.txt
@@ -624,22 +624,22 @@ chmod 600 app.env secrets/*.txt
 Validate the compose file without real production values:
 
 ```bash
-APP_ENV_FILE=./app.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose -f docker-compose-nginx.yml config --quiet
+APP_ENV_FILE=./infra/env/prod.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
+  docker compose -f infra/compose/docker-compose-nginx.yml config --quiet
 ```
 
 Start production with the reverse proxy:
 
 ```bash
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f docker-compose-nginx.yml up -d
+  docker compose --env-file app.env -f infra/compose/docker-compose-nginx.yml up -d
 ```
 
 Or start the direct-host compose:
 
 ```bash
 BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 \
-  docker compose --env-file app.env -f docker-compose.prod.yml up -d
+  docker compose --env-file app.env -f infra/compose/docker-compose.prod.yml up -d
 ```
 
 ## API Reference

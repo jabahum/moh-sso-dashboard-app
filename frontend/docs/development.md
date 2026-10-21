@@ -93,7 +93,7 @@ npm run remote:preview:all
 - `VITE_VISUALIZER_PROXY_COOKIE`: optional cookie header forwarded by the local Vite proxy. Keep this in `.env.local`, not source control.
 - `FRONTEND_DEV_COMMAND`: Docker dev command override.
 
-For local-only visualizer proxying, copy `frontend/.env.example` to `frontend/.env.local` and set the cookie there if needed.
+For local-only visualizer proxying, copy `infra/env/frontend.env.example` to `frontend/.env.local` and set the cookie there if needed.
 
 ## Runtime Config
 
@@ -125,13 +125,13 @@ npm run config:dev
 Shell-only:
 
 ```bash
-docker compose -f docker-compose.dev.yml up frontend
+docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
 All remote app dev servers:
 
 ```bash
-FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f docker-compose.dev.yml up frontend
+FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
 ## Dependency Audit

@@ -14,7 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 STATE = ROOT / '.local-sso'
 BROWSER_CLIENT = 'datawarehouse-report-browser'
 WORKER_CLIENT = 'report-scheduler-worker'
@@ -136,7 +136,7 @@ class Keycloak:
 
 
 def realm_definition():
-    return json.loads((ROOT / 'keycloak/realm-export.json').read_text())
+    return json.loads((ROOT / 'infra/keycloak/realm-export.json').read_text())
 
 
 def healthbi_clients():
@@ -149,7 +149,7 @@ def imported_credential(kc):
     # Normal startup is read-only: Keycloak's realm import owns client creation.
     for name in (ROLE_CLIENT, BROWSER_CLIENT, WORKER_CLIENT):
         if kc.client(name) is None:
-            raise RuntimeError(name + ' is missing. For an existing realm run make sso-reconcile-keycloak once; fresh realms import keycloak/realm-export.json.')
+            raise RuntimeError(name + ' is missing. For an existing realm run make sso-reconcile-keycloak once; fresh realms import infra/keycloak/realm-export.json.')
     worker = kc.client(WORKER_CLIENT)
     credential = kc.call('GET', '/clients/' + worker['id'] + '/client-secret')['value']
     if not credential:
@@ -191,7 +191,7 @@ def local_keycloak():
 
 
 def compose(override=False):
-    command = ['docker', 'compose', '-f', str(ROOT / 'docker-compose.dev.yml')]
+    command = ['sh', str(ROOT / 'infra/scripts/compose.sh'), 'dev']
     if override:
         command += ['-f', str(STATE / 'compose.healthbi.yaml')]
     return command
@@ -336,7 +336,7 @@ def main():
         up(repo)
     elif args.action == 'reconcile-keycloak':
         reconcile_clients(local_keycloak())
-        print('Health BI clients reconciled from keycloak/realm-export.json; existing secrets retained.')
+        print('Health BI clients reconciled from infra/keycloak/realm-export.json; existing secrets retained.')
     elif args.action == 'down':
         down(repo)
     else:

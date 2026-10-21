@@ -1,6 +1,6 @@
 # Start the portal and Health BI together
 
-`keycloak/realm-export.json` owns the Health BI client definitions. On a fresh
+`infra/keycloak/realm-export.json` owns the Health BI client definitions. On a fresh
 Keycloak database, the existing `--import-realm` startup imports `datawarehouse-report-browser`, the
 scheduler worker, its service-account role grant, and its audience/scope mappings.
 Matching definitions are included in the production export and Helm dev realm.
@@ -92,11 +92,11 @@ Health BI server is reused and left running. A startup failure is visible in the
 command output; Health BI build/runtime output is in `.local-sso/healthbi.log` for
 a managed process, or the original terminal/log for a reused process.
 
-Run `python3 scripts/local-sso.test.py` for bootstrap contracts. Health BI's
+Run `python3 infra/scripts/local-sso.test.py` for bootstrap contracts. Health BI's
 `go test ./server -run TestPortalFrameHeaders` verifies framing restrictions.
 
 To exercise a fresh import against the local Keycloak without touching the main
-realm, run `TEST_KEYCLOAK_IMPORT=1 python3 scripts/local-sso.test.py`. This creates
+realm, run `TEST_KEYCLOAK_IMPORT=1 python3 infra/scripts/local-sso.test.py`. This creates
 a uniquely named temporary realm from the export's Health BI definitions, checks
 client-credentials authentication and audience/role claims, then removes only
 that test realm.

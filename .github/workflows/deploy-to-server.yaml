@@ -122,7 +122,7 @@ jobs:
           EXPECTED_COMMIT: ${{ steps.metadata.outputs.expected_commit }}
           ACTOR: ${{ github.actor }}
         run: |
-          scp scripts/verify-frontend-deployment.mjs "$SSH_TARGET:$DEPLOY_FOLDER/.frontend-deployment-check.mjs"
+          scp infra/scripts/verify-frontend-deployment.mjs "$SSH_TARGET:$DEPLOY_FOLDER/.frontend-deployment-check.mjs"
           ssh "$SSH_TARGET" \
             "DEPLOY_FOLDER='$DEPLOY_FOLDER' BACKEND_TAG='$BACKEND_TAG' BACKEND_RELEASE_TAG='$BACKEND_RELEASE_TAG' FRONTEND_TAG='$FRONTEND_TAG' EXPECTED_VERSION='$EXPECTED_VERSION' EXPECTED_COMMIT='$EXPECTED_COMMIT' DEPLOY_ACTOR='$ACTOR' sh -s" <<'REMOTE'
           set -eu
@@ -134,7 +134,7 @@ jobs:
           rollback() {
             if [ -n "$previous_backend_tag" ]; then
               echo "Deployment verification failed; rolling back to $previous_backend_tag"
-              BACKEND_TAG="$previous_backend_tag" FRONTEND_TAG="$previous_frontend_tag" ./restart
+              BACKEND_TAG="$previous_backend_tag" FRONTEND_TAG="$previous_frontend_tag" sh infra/scripts/update.sh
             fi
           }
           finish() {
@@ -152,12 +152,12 @@ jobs:
           trap 'exit 129' HUP
 
           export BACKEND_TAG FRONTEND_TAG
-          ./restart
+          sh infra/scripts/update.sh
 
           backend_get() {
             path=$1
             wget -T 5 -t 1 -qO- "http://localhost:9000$path" 2>/dev/null || \
-              docker compose --env-file "${APP_ENV_FILE:-app.env}" exec -T backend wget -T 5 -qO- "http://localhost:9000$path"
+              sh infra/scripts/compose.sh "${COMPOSE_ENV:-prod}" exec -T backend wget -T 5 -qO- "http://localhost:9000$path"
           }
 
           attempt=0
@@ -173,7 +173,7 @@ jobs:
           echo "$response" | grep -F "\"version\":\"$EXPECTED_VERSION\"" >/dev/null
           echo "$response" | grep -F "\"commit\":\"$EXPECTED_COMMIT\"" >/dev/null
           backend_get /health/live >/dev/null
-          frontend_container="$(docker compose --env-file "${APP_ENV_FILE:-app.env}" ps -q frontend)"
+          frontend_container="$(sh infra/scripts/compose.sh "${COMPOSE_ENV:-prod}" ps -q frontend)"
           test -n "$frontend_container"
           # The production frontend is Nginx. Run the Node verifier in a
           # disposable container sharing its network namespace.

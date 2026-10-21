@@ -121,7 +121,7 @@ Default Docker dev runs shell-only mode.
 Use:
 
 ```bash
-FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f docker-compose.dev.yml up frontend
+FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
 ## Import Map Points To Missing Vendor Files

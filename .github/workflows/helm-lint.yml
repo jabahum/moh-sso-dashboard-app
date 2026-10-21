@@ -3,11 +3,11 @@ name: Helm Lint
 on:
   pull_request:
     paths:
-      - "charts/**"
+      - "infra/helm/**"
   push:
     branches: [main]
     paths:
-      - "charts/**"
+      - "infra/helm/**"
 
 jobs:
   lint:
@@ -21,10 +21,10 @@ jobs:
           version: v3.15.0
 
       - name: Helm Lint (base)
-        run: helm lint charts/moh-sso
+        run: helm lint infra/helm/moh-sso
 
       - name: Helm Template (Dev)
-        run: helm template test charts/moh-sso -f charts/moh-sso/values-dev.yaml
+        run: helm template test infra/helm/moh-sso -f infra/helm/moh-sso/values-dev.yaml
 
       - name: Helm Template (Prod)
-        run: helm template test charts/moh-sso -f charts/moh-sso/values-prod.yaml --set backend.image.tag=1.2.3 --set frontend.image.tag=1.2.3
+        run: helm template test infra/helm/moh-sso -f infra/helm/moh-sso/values-prod.yaml --set backend.image.tag=1.2.3 --set frontend.image.tag=1.2.3

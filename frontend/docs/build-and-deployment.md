@@ -87,7 +87,7 @@ This layout supports single static deployment and prepares remote import-map dep
 From the repository root:
 
 ```bash
-docker build -f frontend/Dockerfile frontend
+docker build -f infra/docker/frontend/Dockerfile frontend
 ```
 
 The default production image builds the frontend from monorepo source and serves the final static files on port `3000`.
@@ -103,7 +103,7 @@ The shell build keeps `import-map.json` as a static artifact for inspection and 
 The nginx image is still available:
 
 ```bash
-docker build -f frontend/Dockerfile.nginx frontend
+docker build -f infra/docker/frontend/Dockerfile.nginx frontend
 ```
 
 It serves on port `80`, so compose or Kubernetes service ports must match that image.
@@ -114,7 +114,7 @@ The default Docker build remains source-based. For a future package-versioned de
 
 ```bash
 docker build \
-  -f frontend/Dockerfile.npm-modules \
+  -f infra/docker/frontend/Dockerfile.npm-modules \
   --build-arg MOH_SSO_NPM_MODULES="@moh-sso/users@0.1.0 @moh-sso/api@0.1.0" \
   frontend
 ```
@@ -126,19 +126,19 @@ This optional path builds the shell from source and stages installed `@moh-sso/*
 From the repository root:
 
 ```bash
-docker build -f frontend/Dockerfile.dev frontend
+docker build -f infra/docker/frontend/Dockerfile.dev frontend
 ```
 
 Run with compose:
 
 ```bash
-docker compose -f docker-compose.dev.yml up frontend
+docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
 Run all remote dev servers in Docker:
 
 ```bash
-FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f docker-compose.dev.yml up frontend
+FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
 ## Deployment Modes

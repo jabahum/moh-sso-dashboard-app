@@ -90,7 +90,7 @@ Audit details include group ID/path/name and counts where useful. Full Keycloak 
 
 Group sync can come from two sources:
 
-- realm export sync reads `groups`, nested `subGroups`, group `realmRoles`, group `clientRoles`, and user `groups` memberships from `keycloak/realm-export.json`
+- realm export sync reads `groups`, nested `subGroups`, group `realmRoles`, group `clientRoles`, and user `groups` memberships from `infra/keycloak/realm-export.json`
 - live Keycloak sync reads groups, members, realm-role mappings, and client-role mappings through the Keycloak Admin API
 
 Realm export sync is useful for local bootstrap and repeatable seed environments. Live Keycloak sync is the production source for an already deployed realm.

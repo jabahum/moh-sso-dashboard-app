@@ -78,7 +78,7 @@ func (s *Service) DriftFromDefaultRealmExport(ctx context.Context) (RbacDriftRep
 			Source:     "default-realm-export",
 			Systems:    []RbacDriftSystem{},
 			RealmRoles: []RbacDriftRealmRole{},
-			Warnings:   []string{"No local keycloak/realm-export.json file was found for drift comparison."},
+			Warnings:   []string{"No local infra/keycloak/realm-export.json file was found for drift comparison."},
 		}, nil
 	}
 
@@ -585,9 +585,9 @@ func firstAttributeValue(attributes map[string][]string, key string, fallback st
 
 func defaultRealmExportPath() (string, bool) {
 	for _, path := range []string{
-		"../keycloak/realm-export.json",
-		"keycloak/realm-export.json",
-		"../../keycloak/realm-export.json",
+		"../infra/keycloak/realm-export.json",
+		"infra/keycloak/realm-export.json",
+		"../../infra/keycloak/realm-export.json",
 	} {
 		if _, err := os.Stat(path); err == nil {
 			return path, true

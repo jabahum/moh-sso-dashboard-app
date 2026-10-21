@@ -15,7 +15,7 @@
 From the repository root:
 
 ```sh
-node --test scripts/verify-frontend-deployment.test.mjs
+node --test infra/scripts/verify-frontend-deployment.test.mjs
 ```
 
 From `backend/`:
@@ -46,7 +46,7 @@ npm run bundle:budget
 For a running frontend, execute the smoke check from the repository root:
 
 ```sh
-FRONTEND_SMOKE_URL=http://127.0.0.1:3000/portal/ node scripts/verify-frontend-deployment.mjs
+FRONTEND_SMOKE_URL=http://127.0.0.1:3000/portal/ node infra/scripts/verify-frontend-deployment.mjs
 ```
 
 Use `npm run config:dev` before returning to local development. Configuration selection writes `frontend/public/config.js`.

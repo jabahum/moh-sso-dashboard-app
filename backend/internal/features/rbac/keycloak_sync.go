@@ -51,7 +51,7 @@ func (s *Service) ApplyRealmExportFileSync(ctx context.Context, path string) (Sy
 				Preview: SyncPreviewResponse{
 					Report: RbacDriftReport{
 						Source:   "default-realm-export",
-						Warnings: []string{"No local keycloak/realm-export.json file was found for startup sync."},
+						Warnings: []string{"No local infra/keycloak/realm-export.json file was found for startup sync."},
 					},
 				},
 			}, nil

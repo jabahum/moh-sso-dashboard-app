@@ -3,7 +3,7 @@
 Start Docker Desktop, then run from the repository root:
 
 ```bash
-docker compose -f docker-compose.dev.yml -f .local-sso/compose.express.json up -d --no-build backend
+docker compose -f infra/compose/docker-compose.dev.yml -f .local-sso/compose.express.json up -d --no-build backend
 ```
 
 Start the frontend in another terminal using Node 22+:

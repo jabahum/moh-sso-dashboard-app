@@ -11,7 +11,7 @@ import tempfile
 import time
 import uuid
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 IMAGE = "nginx:1.30.6-alpine"
 
 
@@ -26,9 +26,9 @@ def main():
     # Check actual Compose interpolation without reading real deployment secrets.
     for bind_address in ('', '10.0.0.20'):
         env = {**os.environ, 'APP_BIND_ADDRESS': bind_address,
-               'APP_ENV_FILE': str(ROOT / 'app.env.example'),
+               'APP_ENV_FILE': str(ROOT / 'infra/env/prod.env.example'),
                'BACKEND_TAG': '1.2.3', 'FRONTEND_TAG': '1.2.3'}
-        result = subprocess.run(['docker', 'compose', '-f', str(ROOT / 'docker-compose.yml'),
+        result = subprocess.run(['docker', 'compose', '-f', str(ROOT / 'infra/compose/docker-compose.yml'),
                                  'config', '--format', 'json'],
                                 env=env, text=True, capture_output=True, check=True)
         services = json.loads(result.stdout)['services']
@@ -65,9 +65,9 @@ def main():
                     target = html / (prefix + path)
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text(contents)
-            # Use the exact port transformation performed by frontend/Dockerfile.
+            # Use the exact port transformation performed by infra/docker/frontend/Dockerfile.
             frontend = tmp / "frontend.conf"
-            frontend.write_text((ROOT / 'frontend/nginx.conf').read_text().replace(
+            frontend.write_text((ROOT / 'infra/docker/frontend/nginx.conf').read_text().replace(
                 'listen 80 default_server;', 'listen 3000 default_server;'))
             backend = tmp / "backend.conf"
             backend.write_text('''server {
@@ -92,7 +92,7 @@ def main():
  }
 }''')
             trusted = tmp / "trusted-proxies.conf"
-            trusted.write_text((ROOT / "nginx/trusted-proxies.conf").read_text())
+            trusted.write_text((ROOT / "infra/nginx/trusted-proxies.conf").read_text())
 
             def start(label, alias, mounts, port=False, ip=None, tls=False):
                 container = name + "-" + label
@@ -115,8 +115,8 @@ def main():
             start("frontend", "frontend", [(frontend, "/etc/nginx/conf.d/default.conf"),
                                              (html, "/usr/share/nginx/html")])
             gateway = start("gateway", "gateway", [
-                (ROOT / "nginx/nginx.conf", "/etc/nginx/nginx.conf"),
-                (ROOT / "nginx/app.conf", "/etc/nginx/conf.d/default.conf"),
+                (ROOT / "infra/nginx/nginx.conf", "/etc/nginx/nginx.conf"),
+                (ROOT / "infra/nginx/app.conf", "/etc/nginx/conf.d/default.conf"),
                 (trusted, "/etc/nginx/trusted-proxies.conf")], port=True)
             docker("exec", gateway, "nginx", "-t")
             docker("exec", name + "-backend", "nginx", "-t")
@@ -243,7 +243,7 @@ server {
                 (backend, '/etc/nginx/conf.d/backend.conf'),
                 (frontend, '/etc/nginx/conf.d/frontend.conf'),
                 (html, '/usr/share/nginx/html'),
-                (ROOT / 'nginx/host', '/etc/nginx/moh-sso'),
+                (ROOT / 'infra/nginx/host', '/etc/nginx/moh-sso'),
                 (tmp / 'cert.pem', '/fixtures/cert.pem'),
                 (tmp / 'key.pem', '/fixtures/key.pem')], tls=True)
             docker('exec', host, 'nginx', '-t')
@@ -291,9 +291,9 @@ server {
             # through its IP, using the committed remote upstream template.
             app_ip = json.loads(docker('inspect', host))[0]['NetworkSettings']['Networks'][name]['IPAddress']
             remote_config = tmp / 'remote-nginx'
-            shutil.copytree(ROOT / 'nginx/host', remote_config)
+            shutil.copytree(ROOT / 'infra/nginx/host', remote_config)
             (remote_config / 'http.conf').write_text(
-                (ROOT / 'nginx/remote/http.conf').read_text().replace('10.0.0.20', app_ip))
+                (ROOT / 'infra/nginx/remote/http.conf').read_text().replace('10.0.0.20', app_ip))
             remote = start('remote', 'remote', [
                 (host_site, '/etc/nginx/conf.d/default.conf'),
                 (remote_config, '/etc/nginx/moh-sso'),

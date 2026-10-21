@@ -45,7 +45,7 @@ This publishes npm packages according to Changesets.
 Build the default production image from source:
 
 ```bash
-docker build -f frontend/Dockerfile frontend
+docker build -f infra/docker/frontend/Dockerfile frontend
 ```
 
 This path remains the default production deployment.
@@ -57,7 +57,7 @@ After packages are published, build the optional npm-module image with exact pac
 
 ```bash
 docker build \
-  -f frontend/Dockerfile.npm-modules \
+  -f infra/docker/frontend/Dockerfile.npm-modules \
   --build-arg MOH_SSO_NPM_MODULES="@moh-sso/users@0.4.1 @moh-sso/api@0.2.0" \
   frontend
 ```

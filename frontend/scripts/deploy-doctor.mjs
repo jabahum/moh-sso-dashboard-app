@@ -4,8 +4,8 @@ import { check, fileExists, finish, readJson, root } from "./workspace-lib.mjs";
 
 const failures = [];
 const packageJson = readJson(join(root, "package.json"));
-const dockerfile = readFileSync(join(root, "Dockerfile"), "utf8");
-const npmDockerfilePath = join(root, "Dockerfile.npm-modules");
+const dockerfile = readFileSync(join(root, "../infra/docker/frontend/Dockerfile"), "utf8");
+const npmDockerfilePath = join(root, "../infra/docker/frontend/Dockerfile.npm-modules");
 const npmDockerfile = fileExists(npmDockerfilePath) ? readFileSync(npmDockerfilePath, "utf8") : "";
 const imports = readJson(join(root, "public", "import-map.json")).imports ?? {};
 

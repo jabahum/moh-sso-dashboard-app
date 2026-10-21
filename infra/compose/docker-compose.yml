@@ -22,11 +22,11 @@ volumes:
   upload_data:
 secrets:
   db_password:
-    file: ${DB_PASSWORD_SECRET_FILE:-./secrets/db_password.txt}
+    file: ${DB_PASSWORD_SECRET_FILE:-../secrets/db_password.txt}
   keycloak_admin_client_secret:
-    file: ${KEYCLOAK_ADMIN_SECRET_FILE:-./secrets/keycloak_admin_client_secret.txt}
+    file: ${KEYCLOAK_ADMIN_SECRET_FILE:-../secrets/keycloak_admin_client_secret.txt}
   keycloak_web_client_secret:
-    file: ${KEYCLOAK_WEB_SECRET_FILE:-./secrets/keycloak_web_client_secret.txt}
+    file: ${KEYCLOAK_WEB_SECRET_FILE:-../secrets/keycloak_web_client_secret.txt}
 
 services:
   redis:
@@ -72,7 +72,7 @@ services:
     image: ghcr.io/mohuganda/moh-sso-dashboard-backend:${BACKEND_TAG:?BACKEND_TAG must be an immutable semantic or sha tag}
     container_name: sso-backend
     working_dir: /app
-    env_file: ["${APP_ENV_FILE:-./app.env}"]
+    env_file: ["${APP_ENV_FILE:-../env/prod.env}"]
     environment:
       ENVIRONMENT: production
       GIN_MODE: release

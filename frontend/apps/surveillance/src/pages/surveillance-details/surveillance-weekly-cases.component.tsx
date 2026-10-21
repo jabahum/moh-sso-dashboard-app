@@ -1,6 +1,6 @@
 import { SimpleBarChart } from "@carbon/charts-react";
 import { ScaleTypes } from "@carbon/charts";
-import "@carbon/charts/styles.css";
+import "@carbon/infra/helm/styles.css";
 import { useMemo } from "react";
 import "./surveillance-details.scss";
 

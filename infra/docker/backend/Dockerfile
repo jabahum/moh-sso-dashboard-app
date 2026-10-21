@@ -14,10 +14,10 @@ ENV CGO_ENABLED=0
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY backend/ .
 
 RUN GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build \
   -trimpath \
@@ -52,12 +52,12 @@ COPY --from=builder /app/internal/db/migrations ./internal/db/migrations
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/sso-server ./sso-server
 
-COPY --chmod=755 scripts/container-entrypoint.sh /usr/local/bin/sso-entrypoint
+COPY --chmod=755 infra/docker/backend/entrypoint.sh /usr/local/bin/sso-entrypoint
 RUN adduser -D appuser && mkdir -p /data/uploads && chown appuser:appuser /data/uploads
 # The entrypoint reads restricted mounted secrets, then execs the server as appuser.
 ENV SSO_RUNTIME_USER=appuser
 
 EXPOSE 9000
 
-ENTRYPOINT ["/usr/local/bin/sso-entrypoint"]
-CMD ["./sso-server"]
+ENTRYPOINT ["/usr/local/bin/sso-entrypoint", "/app/sso-server"]
+CMD []
