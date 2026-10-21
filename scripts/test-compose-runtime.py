@@ -96,7 +96,7 @@ printf 'secret-loading-and-nonroot-upload-ok'
             docker('build', '-q', '-t', image, str(backend))
             secret = tmp / 'password'
             secret.write_text('fixture-password\n')
-            secret.chmod(0o644)
+            secret.chmod(0o600)
             result = docker('run', '--rm', '-v', f'{secret}:/run/secrets/db:ro',
                             '-v', '/data/uploads', '-e', 'DB_PASSWORD=placeholder',
                             '-e', 'DB_PASSWORD_FILE=/run/secrets/db', image)

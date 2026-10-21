@@ -157,7 +157,7 @@ jobs:
           backend_get() {
             path=$1
             wget -T 5 -t 1 -qO- "http://localhost:9000$path" 2>/dev/null || \
-              docker compose exec -T backend wget -T 5 -qO- "http://localhost:9000$path"
+              docker compose --env-file "${APP_ENV_FILE:-app.env}" exec -T backend wget -T 5 -qO- "http://localhost:9000$path"
           }
 
           attempt=0
@@ -173,7 +173,12 @@ jobs:
           echo "$response" | grep -F "\"version\":\"$EXPECTED_VERSION\"" >/dev/null
           echo "$response" | grep -F "\"commit\":\"$EXPECTED_COMMIT\"" >/dev/null
           backend_get /health/live >/dev/null
-          docker compose exec -T frontend node --input-type=module - < .frontend-deployment-check.mjs
+          frontend_container="$(docker compose --env-file "${APP_ENV_FILE:-app.env}" ps -q frontend)"
+          test -n "$frontend_container"
+          # The production frontend is Nginx. Run the Node verifier in a
+          # disposable container sharing its network namespace.
+          docker run --rm -i --network "container:$frontend_container" \
+            node:22-alpine node --input-type=module - < .frontend-deployment-check.mjs
 
           backend_image="ghcr.io/mohuganda/moh-sso-dashboard-backend:$BACKEND_TAG"
           digest="$(docker image inspect --format '{{index .RepoDigests 0}}' "$backend_image" 2>/dev/null || true)"

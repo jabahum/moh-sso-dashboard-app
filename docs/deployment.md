@@ -56,9 +56,12 @@ precedence over the matching plaintext env values. `DB_PASSWORD` in `app.env`
 may remain blank. Secret source paths can be set with `DB_PASSWORD_SECRET_FILE`,
 `KEYCLOAK_ADMIN_SECRET_FILE` and `KEYCLOAK_WEB_SECRET_FILE`. Additional backend
 secrets support corresponding `*_FILE` paths when mounted via a deployment
-override; unreadable or empty mounted secrets fail startup. Files must be readable
-by the backend's non-root user. Keep source files restricted to the deployment
-account and mount them read-only with suitable permissions for that user.
+override; unreadable or empty mounted secrets fail startup. The production
+entrypoint reads restricted secret files as root, then replaces itself with the
+server running as `appuser`; the API does not run as root. Keep source files
+restricted to the deployment account (for example mode 0600) and mount them
+read-only. Development leaves the privilege-drop setting unset so Air can build
+the bind-mounted source.
 
 The backend receives the full runtime env file, including SMTP/GM, SMS, storage,
 notification workers, RBAC, Health BI, DWH and DQA settings. Frontend receives only
@@ -203,7 +206,7 @@ or the Nginx machine's address as the application binding.
 
 ```bash
 cp .env.remote-proxy.example .env.remote-proxy
-# Edit APP_BIND_ADDRESS, BACKEND_TAG, FRONTEND_TAG and APP_ENV_FILE.
+# Edit APP_BIND_ADDRESS here; keep runtime settings and release tags in app.env.
 docker compose --env-file app.env --env-file .env.remote-proxy -f docker-compose.yml config --quiet
 docker compose --env-file app.env --env-file .env.remote-proxy -f docker-compose.yml up -d
 ```
@@ -505,7 +508,11 @@ The remote deployment:
 
 The deploy workflow now reads the release metadata artifact emitted by the backend release workflow, so production follows the exact published backend release instead of a generic build output. The artifact carries both the Git release tag and the Docker image tag, and deployment uses the immutable image tag while recording the matching release tag in the deployment history.
 
-The server-side `restart` script must honor exported `BACKEND_TAG` and `FRONTEND_TAG` values and use the production Compose configuration.
+The server-side `restart` script must honor exported `BACKEND_TAG` and
+`FRONTEND_TAG` values and use the production Compose configuration with
+`--env-file app.env` (and `--env-file .env.remote-proxy` for the remote topology).
+Frontend verification runs in a disposable Node container sharing the frontend's
+network namespace because the production frontend image now contains Nginx.
 
 ## Manual Verification
 

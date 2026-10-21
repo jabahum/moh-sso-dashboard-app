@@ -19,4 +19,9 @@ for key in DB_PASSWORD KEYCLOAK_ADMIN_CLIENT_SECRET KEYCLOAK_WEB_CLIENT_SECRET \
     export "$key=$value"
   fi
 done
+# Production reads root-owned Compose secret files before dropping privileges.
+# Development leaves SSO_RUNTIME_USER unset so Air can build bind-mounted code.
+if [ "$(id -u)" = 0 ] && [ -n "${SSO_RUNTIME_USER:-}" ]; then
+  exec su-exec "$SSO_RUNTIME_USER" "$@"
+fi
 exec "$@"

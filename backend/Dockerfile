@@ -44,7 +44,7 @@ LABEL org.opencontainers.image.title="MOH SSO Dashboard Backend" \
   org.opencontainers.image.created="$BUILD_TIME" \
   org.opencontainers.image.source="$SOURCE_URL"
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata su-exec
 
 WORKDIR /app
 
@@ -54,7 +54,8 @@ COPY --from=builder /app/sso-server ./sso-server
 
 COPY --chmod=755 scripts/container-entrypoint.sh /usr/local/bin/sso-entrypoint
 RUN adduser -D appuser && mkdir -p /data/uploads && chown appuser:appuser /data/uploads
-USER appuser
+# The entrypoint reads restricted mounted secrets, then execs the server as appuser.
+ENV SSO_RUNTIME_USER=appuser
 
 EXPOSE 9000
 

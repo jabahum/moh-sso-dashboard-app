@@ -77,6 +77,7 @@ services:
       ENVIRONMENT: production
       GIN_MODE: release
       DEV_AUTH_BYPASS: "false"
+      SSO_RUNTIME_USER: appuser
       SERVER_PORT: "9000"
       ENABLE_TLS: "false" # public TLS terminates at Nginx
       DB_HOST: ${DB_HOST:-backend-db}

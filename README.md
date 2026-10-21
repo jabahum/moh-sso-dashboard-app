@@ -511,6 +511,10 @@ docker compose --env-file app.dev.env -f docker-compose.dev.yml up --build
 ```
 
 Use the development compose file when you want local containers for backend dependencies and development-friendly ports.
+It builds the API and portal from source and starts local Keycloak, Redis,
+Postgres, an upload/warehouse fixture and MailHog. See the [environment and
+Compose guide](docs/deployment.md#production-and-development-environments) for
+configuration, external Keycloak and validation commands.
 
 ## Docker And Production Deployment
 
@@ -580,6 +584,11 @@ npm run build:docker:npm-modules
 - `backend-db`
 - `backend`
 - `frontend`
+
+`docker-compose.prod.yml` is the explicit production entry point and includes
+that same stack. Pass `--env-file app.env` so Postgres, Redis and browser config
+use the same settings as the backend. New backend/frontend images are required
+for file-backed secrets and generated public runtime config.
 
 `docker-compose-nginx.yml` adds the production Nginx gateway on `127.0.0.1:8080`, behind an HTTPS proxy. It routes API, health and Swagger requests to the backend, including the `/ssobackend/` deployment prefix, and serves the portal through the frontend. See [deployment and proxy trust configuration](docs/deployment.md) before deploying. Override `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly when another listener is required.
 
