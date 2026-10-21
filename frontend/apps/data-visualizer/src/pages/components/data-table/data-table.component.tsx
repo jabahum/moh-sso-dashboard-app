@@ -151,6 +151,13 @@ const DataList: React.FC<ListProps> = ({
                                   </TableCell>
                               );
                             }
+                            if (cell.info.header === "status") {
+                              return (
+                                <TableCell key={cell.id} className="issue-status-cell">
+                                  <span className="issue-status">{cell.value ?? "-"}</span>
+                                </TableCell>
+                              );
+                            }
                             return <TableCell key={cell.id}>{cell.value ?? "-"}</TableCell>;
                           })}
                         </TableExpandRow>

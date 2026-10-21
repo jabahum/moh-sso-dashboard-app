@@ -173,3 +173,206 @@ export function isPeriodMatching(
 
   return false;
 }
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const QUARTER_NAMES: Record<string, string> = {
+  "1": "January - March",
+  "2": "April - June",
+  "3": "July - September",
+  "4": "October - December",
+};
+
+const BI_MONTH_NAMES: Record<string, string> = {
+  "1": "January - February",
+  "2": "March - April",
+  "3": "May - June",
+  "4": "July - August",
+  "5": "September - October",
+  "6": "November - December",
+};
+
+const SIX_MONTH_NAMES: Record<string, string> = {
+  "1": "January - June",
+  "2": "July - December",
+};
+
+/**
+ * Converts a reporting period (e.g., DHIS2 code, timestamp, or raw string)
+ * into a human-readable month, week, or quarter plus year name:
+ * - 2026Q3 -> "July - September 2026"
+ * - 2026Q1 -> "January - March 2026"
+ * - 202602 -> "February 2026"
+ * - 2026W02 -> "Week 2 2026"
+ */
+export function formatReportingPeriod(periodInput: unknown): string {
+  if (periodInput === null || periodInput === undefined || periodInput === "") {
+    return "";
+  }
+
+  let str = "";
+  if (typeof periodInput === "object") {
+    const obj = periodInput as { label?: string; name?: string; value?: string; id?: string };
+    str = obj.label || obj.name || obj.value || obj.id || "";
+  } else {
+    str = String(periodInput).trim();
+  }
+
+  if (!str) return "";
+
+  const clean = str.trim();
+
+  // 1. Quarterly: 2026Q3, 2026-Q3, 2026_Q3, 2026 Q3, 2026Q03, Q3 2026, Q3-2026, Q3/2026
+  const qMatch =
+    clean.match(/^(\d{4})[-_\s/]?[qQ]0?([1-4])$/) ||
+    clean.match(/^[qQ]0?([1-4])[-_\s/]?(\d{4})$/);
+  if (qMatch) {
+    const year = qMatch[1].length === 4 ? qMatch[1] : qMatch[2];
+    const qNum = qMatch[1].length === 4 ? qMatch[2] : qMatch[1];
+    return `${QUARTER_NAMES[qNum]} ${year}`;
+  }
+
+  const qWordMatch =
+    clean.match(/quarter\s*0?([1-4])[,\s-]+(\d{4})/i) ||
+    clean.match(/(\d{4})[,\s-]+quarter\s*0?([1-4])/i);
+  if (qWordMatch) {
+    const year = qWordMatch[1].length === 4 ? qWordMatch[1] : qWordMatch[2];
+    const qNum = qWordMatch[1].length === 4 ? qWordMatch[2] : qWordMatch[1];
+    return `${QUARTER_NAMES[qNum]} ${year}`;
+  }
+
+  // 2. Weekly: 2026W02, 2026W2, 2026-W02, W02 2026, Week 2 - 2026-01-05 - 2026-01-11
+  const wMatch =
+    clean.match(/^(\d{4})[-_\s/]?[wW]0?(\d{1,2})$/) ||
+    clean.match(/^[wW]0?(\d{1,2})[-_\s/]?(\d{4})$/);
+  if (wMatch) {
+    const year = wMatch[1].length === 4 ? wMatch[1] : wMatch[2];
+    const wNum = parseInt(wMatch[1].length === 4 ? wMatch[2] : wMatch[1], 10);
+    return `Week ${wNum} ${year}`;
+  }
+
+  const wRangeMatch = clean.match(/\bweek\s*0?(\d{1,2})\b.*?\b(19\d\d|20\d\d)\b/i);
+  if (wRangeMatch) {
+    const wNum = parseInt(wRangeMatch[1], 10);
+    const year = wRangeMatch[2];
+    return `Week ${wNum} ${year}`;
+  }
+
+  // 3. Bi-monthly: 202601B, 2026B1
+  const bMatch =
+    clean.match(/^(\d{4})[-_\s]?[bB]0?([1-6])$/) ||
+    clean.match(/^(\d{4})0([1-6])[bB]$/);
+  if (bMatch) {
+    return `${BI_MONTH_NAMES[bMatch[2]]} ${bMatch[1]}`;
+  }
+
+  // 4. Six-monthly: 2026S1, 2026S2
+  const sMatch = clean.match(/^(\d{4})[-_\s]?[sS]0?([1-2])$/);
+  if (sMatch) {
+    return `${SIX_MONTH_NAMES[sMatch[2]]} ${sMatch[1]}`;
+  }
+
+  // 5. Full date (ISO YYYY-MM-DD): 2026-02-15 -> February 2026
+  const dateMatch = clean.match(/^(\d{4})-(0[1-9]|1[0-2])-\d{2}$/);
+  if (dateMatch) {
+    const year = dateMatch[1];
+    const mIdx = parseInt(dateMatch[2], 10) - 1;
+    return `${MONTH_NAMES[mIdx]} ${year}`;
+  }
+
+  // 6. Monthly code: 202602 (YYYYMM 6 digits)
+  const mCodeMatch = clean.match(/^(\d{4})(0[1-9]|1[0-2])$/);
+  if (mCodeMatch) {
+    const year = mCodeMatch[1];
+    const mIdx = parseInt(mCodeMatch[2], 10) - 1;
+    return `${MONTH_NAMES[mIdx]} ${year}`;
+  }
+
+  // 7. Monthly with separator: 2026-02, 2026/02, 02-2026, 02/2026, 2026-2
+  const mDashMatch = clean.match(/^(\d{4})[-/](0?[1-9]|1[0-2])$/);
+  if (mDashMatch) {
+    const year = mDashMatch[1];
+    const mIdx = parseInt(mDashMatch[2], 10) - 1;
+    return `${MONTH_NAMES[mIdx]} ${year}`;
+  }
+  const mRevDashMatch = clean.match(/^(0?[1-9]|1[0-2])[-/](\d{4})$/);
+  if (mRevDashMatch) {
+    const year = mRevDashMatch[2];
+    const mIdx = parseInt(mRevDashMatch[1], 10) - 1;
+    return `${MONTH_NAMES[mIdx]} ${year}`;
+  }
+
+  // 8. Quarter range text: e.g. "Jul - Sep 2026", "July - September 2026"
+  const qTextMatch = clean.match(
+    /(jan(?:uary)?\s*-\s*mar(?:ch)?|apr(?:il)?\s*-\s*jun(?:e)?|jul(?:y)?\s*-\s*sep(?:tember)?|oct(?:ober)?\s*-\s*dec(?:ember)?)[,\s-]+(\d{4})/i
+  );
+  if (qTextMatch) {
+    const t = qTextMatch[1].toLowerCase();
+    const year = qTextMatch[2];
+    if (t.includes("jan")) return `January - March ${year}`;
+    if (t.includes("apr")) return `April - June ${year}`;
+    if (t.includes("jul")) return `July - September ${year}`;
+    if (t.includes("oct")) return `October - December ${year}`;
+  }
+
+  // 9. Month name text: e.g. "Feb 2026", "February 2026", "2026 February"
+  const monthWordMatch =
+    clean.match(
+      /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b[,\s-]+(\d{4})/i
+    ) ||
+    clean.match(
+      /(\d{4})[,\s-]+\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i
+    );
+  if (monthWordMatch) {
+    const part1 = monthWordMatch[1];
+    const part2 = monthWordMatch[2];
+    const year = /^\d{4}$/.test(part1) ? part1 : part2;
+    const mName = /^\d{4}$/.test(part1) ? part2.toLowerCase() : part1.toLowerCase();
+    const mIndexMap: Record<string, number> = {
+      jan: 0,
+      january: 0,
+      feb: 1,
+      february: 1,
+      mar: 2,
+      march: 2,
+      apr: 3,
+      april: 3,
+      may: 4,
+      jun: 5,
+      june: 5,
+      jul: 6,
+      july: 6,
+      aug: 7,
+      august: 7,
+      sep: 8,
+      sept: 8,
+      september: 8,
+      oct: 9,
+      october: 9,
+      nov: 10,
+      november: 10,
+      dec: 11,
+      december: 11,
+    };
+    if (mName in mIndexMap) {
+      return `${MONTH_NAMES[mIndexMap[mName]]} ${year}`;
+    }
+  }
+
+  return clean;
+}
+
+export { formatReportingPeriod as convertReportingPeriod };

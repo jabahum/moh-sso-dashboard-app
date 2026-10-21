@@ -17,7 +17,11 @@ export const headers = [
   },
   {
     key: "org_unit",
-    header: "Organization Unit",
+    header: "Facility Name",
+  },
+  {
+    key: "district",
+    header: "District",
   },
   {
     key: "time_Period",

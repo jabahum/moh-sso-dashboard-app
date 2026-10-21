@@ -11,7 +11,7 @@ import {
 import { PERMISSIONS, PermissionGuard, selectUser } from "@moh-sso/auth";
 
 import "./issue-detail.scss";
-import type { Issue } from "../issue-tracker.component.tsx";
+import { formatReportingPeriod, type Issue } from "../issue-tracker.component.tsx";
 import { IssueModal } from "../../component/issue-modal.component.tsx";
 import { AssignModal } from "../../component/assign-modal.component.tsx";
 
@@ -264,7 +264,7 @@ const IssueDetail = ({
 
                 <p className="issue-p-top">
                   <strong>Reporting Period:</strong>{" "}
-                  {selectedIssue?.time_Period ?? selectedIssue?.time_period}
+                  {formatReportingPeriod(selectedIssue?.time_Period ?? selectedIssue?.time_period) || "<<Not set>>"}
                 </p>
 
                 <p className="issue-p-top">

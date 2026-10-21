@@ -252,7 +252,10 @@
   }
 }
 
+.issue-status,
+.issue-status-cell,
 .issue-status-tag {
+  text-transform: uppercase;
   white-space: nowrap;
 }
 

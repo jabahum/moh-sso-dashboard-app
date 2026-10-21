@@ -68,6 +68,9 @@ import { OrgUnitNode } from "../component/tree-node.component.tsx";
 import { headers, IMPORT_TEMPLATE_HEADERS } from "../lib/constants.ts";
 import IssueDetail from "./issue-detail/issue-detail.component.tsx";
 
+import { formatReportingPeriod } from "../lib/periodUtils.ts";
+export { formatReportingPeriod, formatReportingPeriod as convertReportingPeriod } from "../lib/periodUtils.ts";
+
 import "./issue-tracker.scss";
 
 export type Issue = {
@@ -110,10 +113,15 @@ type OrgUnit = {
 
 function normalizeIssueRows(rows: Issue[] | undefined): Issue[] {
   return (
-    rows?.map((item) => ({
-      ...item,
-      id: String(item.issue_id),
-    })) ?? []
+    rows?.map((item) => {
+      const formattedPeriod = formatReportingPeriod(item.time_Period ?? item.time_period);
+      return {
+        ...item,
+        id: String(item.issue_id),
+        time_Period: formattedPeriod,
+        time_period: formattedPeriod,
+      };
+    }) ?? []
   );
 }
 
@@ -353,7 +361,6 @@ const IssueTracker = () => {
   const EXPORT_COLUMNS: { key: string; header: string }[] = [
     ...headers,
     { key: "region", header: "Region" },
-    { key: "district", header: "District" },
     { key: "time_period", header: "Reporting Period" },
     { key: "issue_type", header: "Issue Type" },
     { key: "priority", header: "Priority" },
