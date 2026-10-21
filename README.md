@@ -582,6 +582,11 @@ npm run build:docker:npm-modules
 
 `docker-compose-nginx.yml` adds the production Nginx gateway on `127.0.0.1:8080`, behind an HTTPS proxy. It routes API, health and Swagger requests to the backend, including the `/ssobackend/` deployment prefix, and serves the portal through the frontend. See [deployment and proxy trust configuration](docs/deployment.md) before deploying. Override `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly when another listener is required.
 
+For Nginx installed directly on the host, use `docker-compose.yml` and the
+[`nginx/host` snippets](nginx/host/). They connect to the frontend on
+`127.0.0.1:3000` and backend on `127.0.0.1:9000`, preserving the shared host's
+Report Browser routes. Follow the [host Nginx setup](docs/deployment.md#nginx-installed-on-the-host-no-compose-gateway).
+
 Production compose expects:
 
 - immutable image tags in `BACKEND_TAG` and `FRONTEND_TAG`

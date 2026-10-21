@@ -28,6 +28,87 @@ For example, `/ssobackend/swagger/` serves the API documentation and
 
 Use `docker-compose.yml` when another reverse proxy already exists on the host and you only want the backend/frontend bound to localhost.
 
+### Nginx installed on the host (no Compose gateway)
+
+Use the ordinary `docker-compose.yml` in this topology:
+
+```text
+Browser --HTTPS--> Host Nginx
+                     /portal/*     --> 127.0.0.1:3000 (frontend container)
+                     /ssobackend/* --> 127.0.0.1:9000 (backend container)
+```
+
+The frontend and backend remain containers. The reverse proxy runs as the host's
+Nginx service; no Compose Nginx service or port 8080 is needed. Compose already
+publishes both application ports on loopback only. Browser-facing SSO URLs remain
+the HTTPS URLs shown below.
+
+The ready-to-install snippets live in `nginx/host/`. Use the tested Nginx 1.30.6
+production baseline on the host. The snippets use `add_header_inherit merge`
+(available since 1.29.3) so location cache headers preserve existing server-level
+headers such as HSTS. See the [official header inheritance documentation](https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header_inherit).
+
+On the deployment server, install the snippets from the checked-out release:
+
+```bash
+nginx -v
+sudo install -d -m 0755 /etc/nginx/moh-sso
+sudo install -m 0644 nginx/host/*.conf /etc/nginx/moh-sso/
+```
+
+Add this include **once inside the existing `http {}` block** in the host's
+`nginx.conf`, before its site includes:
+
+```nginx
+include /etc/nginx/moh-sso/http.conf;
+```
+
+Add this include **inside the existing HTTPS `server {}` block** for
+`dashboards.health.go.ug`:
+
+```nginx
+include /etc/nginx/moh-sso/portal.locations.conf;
+```
+
+Replace any existing `/portal`, `/portal/`, `/ssobackend` and `/ssobackend/`
+locations with that include to avoid duplicate locations. Keep the server's
+certificate settings, HTTPS redirect, security headers, `/` and `/report-browser/`
+routes. The snippets only add the portal's paths and do not replace the whole
+site or global Nginx configuration. Existing server-level security headers are
+inherited; keep the site's security policy configured on that server.
+
+`http.conf` defines loopback upstreams, the WebSocket header map, cache policy and
+query-free log format. `proxy.conf` provides proxy timeouts, SSO cookie buffers,
+request IDs and sanitized forwarded headers. `portal.locations.conf` preserves
+`/portal/` for the frontend and strips `/ssobackend/` before forwarding to Go.
+Swagger is available at `https://dashboards.health.go.ug/ssobackend/swagger/`.
+
+Here Nginx terminates TLS itself and forwards `$scheme` and `$remote_addr`.
+`nginx/trusted-proxies.conf` belongs to the Compose gateway and is not used.
+If the host Nginx itself sits behind a load balancer, configure its real-IP and
+scheme trust for that specific load balancer before using these direct-edge
+snippets; do not accept arbitrary browser-supplied forwarded headers.
+
+Start/update application containers using the selected immutable release tags:
+
+```bash
+BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 docker compose -f docker-compose.yml up -d
+sudo nginx -t && sudo systemctl reload nginx
+
+curl -fsS http://127.0.0.1:3000/nginx/health
+curl -fsS http://127.0.0.1:9000/health/ready
+curl -fsS https://dashboards.health.go.ug/portal/import-map.json
+curl -fsS https://dashboards.health.go.ug/ssobackend/health/ready
+```
+
+Replace the example tags with the releases being deployed. Rebuild/publish the
+frontend image to activate its improved static caching rules. Host Nginx writes
+portal access logs to `/var/log/nginx/moh-sso-access.log`; include that path in the
+host's log rotation policy. To test these snippets before installing them, run
+`python3 scripts/test-nginx.py`. The test uses disposable containers to emulate
+the host's loopback services and actual HTTPS termination; it does not install
+or reload the host service.
+
 Both compose files expect:
 
 - `./app.env` for runtime environment
@@ -149,7 +230,7 @@ docker compose -f docker-compose-nginx.yml exec nginx nginx -s reload
 The integration suite checks routing, SPA fallback, cache/security headers,
 prefix-aware redirects, SSO cookies, upload limits, WebSocket upgrades, forwarded
 header trust, query-free logs and DNS recovery after backend replacement. It
-requires Docker and Python 3, creates a unique temporary network and containers,
+requires Docker, Python 3 and the OpenSSL CLI, creates a unique temporary network and containers,
 and removes them on completion. Production containers are not touched.
 
 For syntax validation without real production values:

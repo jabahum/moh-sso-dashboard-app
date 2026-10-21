@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Exercise production Nginx with disposable fixtures; requires Python 3 and Docker."""
+"""Exercise production Nginx; requires Python 3, Docker and the OpenSSL CLI."""
 import http.client
 import json
+import ssl
 from pathlib import Path
 import subprocess
 import tempfile
@@ -75,13 +76,15 @@ def main():
             trusted = tmp / "trusted-proxies.conf"
             trusted.write_text((ROOT / "nginx/trusted-proxies.conf").read_text())
 
-            def start(label, alias, mounts, port=False, ip=None):
+            def start(label, alias, mounts, port=False, ip=None, tls=False):
                 container = name + "-" + label
                 containers.append(container)
                 args = ["run", "-d", "--name", container, "--network", name,
                         "--network-alias", alias]
                 if port:
                     args += ["-p", "127.0.0.1::80"]
+                if tls:
+                    args += ["-p", "127.0.0.1::443"]
                 if ip:
                     args += ["--ip", ip]
                 for source, target in mounts:
@@ -101,9 +104,12 @@ def main():
             docker("exec", name + "-backend", "nginx", "-t")
             docker("exec", name + "-frontend", "nginx", "-t")
             port = int(docker("port", gateway, "80/tcp").rsplit(":", 1)[1])
+            use_tls = False
 
             def request(path, method="GET", body=None, headers=None):
-                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                conn = (http.client.HTTPSConnection("127.0.0.1", port, timeout=5,
+                        context=ssl._create_unverified_context()) if use_tls else
+                        http.client.HTTPConnection("127.0.0.1", port, timeout=5))
                 try:
                     conn.request(method, path, body=body, headers=headers or {})
                     response = conn.getresponse()
@@ -194,7 +200,75 @@ geo $realip_remote_addr $trusted_proxy {{ default 0; {data['ip']}/32 1; }}
             start('ip-holder', 'unused', [], ip=old_ip)
             start('backend-replaced', 'backend', backend_mounts)
             wait_for('/ssobackend/health/ready', lambda r: r[0] == 200)
-            print('PASS: Nginx syntax, routing, SSO redirects/cookies, uploads, WebSocket upgrade, cache/security headers, proxy trust, safe logs and DNS recovery')
+
+            # Emulate host processes sharing one loopback interface: Nginx on
+            # 443, frontend on 3000 and backend on 9000. No Docker DNS upstreams.
+            subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048',
+                            '-nodes', '-keyout', str(tmp / 'key.pem'),
+                            '-out', str(tmp / 'cert.pem'), '-days', '1',
+                            '-subj', '/CN=localhost'], check=True, capture_output=True)
+            host_site = tmp / 'host-site.conf'
+            host_site.write_text('''include /etc/nginx/moh-sso/http.conf;
+server {
+ listen 443 ssl default_server;
+ ssl_certificate /fixtures/cert.pem;
+ ssl_certificate_key /fixtures/key.pem;
+ add_header Strict-Transport-Security "max-age=31536000" always;
+ add_header X-Host-Security "retained" always;
+ include /etc/nginx/moh-sso/portal.locations.conf;
+ location = / { return 200 "report-browser-root"; }
+ location /report-browser/ { return 200 "report-browser-route"; }
+}
+''')
+            host = start('host', 'host', [
+                (host_site, '/etc/nginx/conf.d/default.conf'),
+                (backend, '/etc/nginx/conf.d/backend.conf'),
+                (frontend, '/etc/nginx/conf.d/frontend.conf'),
+                (html, '/usr/share/nginx/html'),
+                (ROOT / 'nginx/host', '/etc/nginx/moh-sso'),
+                (tmp / 'cert.pem', '/fixtures/cert.pem'),
+                (tmp / 'key.pem', '/fixtures/key.pem')], tls=True)
+            docker('exec', host, 'nginx', '-t')
+            port = int(docker('port', host, '443/tcp').rsplit(':', 1)[1])
+            use_tls = True
+            wait_for('/portal/', lambda r: r[0] == 200)
+            for path, expected in (('/', b'report-browser-root'),
+                                   ('/report-browser/reports', b'report-browser-route')):
+                assert request(path)[2] == expected
+            for path, code, cache in (
+                ('/portal/apps/documents', 200, 'no-store'),
+                ('/portal/import-map.json', 200, 'no-store'),
+                ('/portal/assets/index-abcdefgh.js', 200, 'public, max-age=31536000, immutable'),
+                ('/portal/mf/users/single-spa.js', 200, 'no-cache'),
+                ('/portal/assets/missing.js', 404, 'no-store'),
+                ('/ssobackend/swagger/openapi.json', 200, 'no-store'),
+            ):
+                status, headers, _ = request(path)
+                assert status == code and headers['Cache-Control'] == cache, (path, status, headers)
+                assert headers['X-Host-Security'] == 'retained'
+                assert headers.get_all('Strict-Transport-Security') == ['max-age=31536000']
+            for path in ('/portal', '/ssobackend'):
+                status, headers, _ = request(path + '?keep=1')
+                assert status == 308 and headers['Location'] == path + '/?keep=1'
+                assert headers['X-Host-Security'] == 'retained'
+            status, headers, body = request('/ssobackend/api/v1/probe?batch=2', 'POST', b'payload',
+                                            {**spoof, 'X-Forwarded-Proto': 'http'})
+            data = json.loads(body)
+            assert data['uri'] == '/api/v1/probe?batch=2' and data['length'] == '7'
+            assert data['method'] == 'POST' and data['proto'] == 'https'
+            assert data['ip'] != '203.0.113.99' and data['forwarded'] == ''
+            assert data['request_id'] == headers['X-Request-ID']
+            assert request('/ssobackend/swagger')[1]['Location'] == 'swagger/'
+            assert request('/ssobackend/root-redirect')[1]['Location'] == '/ssobackend/api/v1/target'
+            status, headers, _ = request('/ssobackend/api/v1/auth/callback')
+            assert status == 302 and headers['Location'] == 'https://identity.example/login'
+            assert len(headers.get_all('Set-Cookie')) == 2
+            assert headers['Strict-Transport-Security'] == 'max-age=31536000'
+            assert request('/ssobackend/api/v1/probe', 'POST', headers={'Content-Length': str(50 * 1024 * 1024 + 1)})[0] == 413
+            assert request('/ssobackend/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})[0] == 101
+            request('/ssobackend/api/v1/probe?code=HOST_LOG_SECRET')
+            assert 'HOST_LOG_SECRET' not in docker('exec', host, 'cat', '/var/log/nginx/moh-sso-access.log')
+            print('PASS: Compose gateway and host HTTPS Nginx; routing, SSO, uploads, WebSocket, cache/security headers, proxy trust, safe logs and DNS recovery')
     finally:
         for container in reversed(containers):
             subprocess.run(['docker', 'rm', '-f', container], capture_output=True)
