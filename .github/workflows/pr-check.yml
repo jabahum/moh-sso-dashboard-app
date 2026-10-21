@@ -9,6 +9,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  nginx:
+    name: Production Nginx contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose
+        run: APP_ENV_FILE=./app.env.example BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3 docker compose -f docker-compose-nginx.yml config --quiet
+      - name: Exercise production Nginx
+        run: python3 scripts/test-nginx.py
+
   quality:
     name: Fast Quality Gate
     runs-on: ubuntu-latest

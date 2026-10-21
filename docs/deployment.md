@@ -15,8 +15,16 @@ An empty tag or `latest` is not accepted for production. Backend and frontend ta
 
 ## Compose Production Files
 
-Use `docker-compose-nginx.yml` when the server should expose a reverse proxy on port `80`.
-It mounts the checked-in Nginx config from `./nginx`, proxies `/api/*` to the backend, and sends all other traffic to the frontend container.
+Use `docker-compose-nginx.yml` for the container gateway. It binds to
+`127.0.0.1:8080` by default, behind an HTTPS reverse proxy. Set
+`NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly if another listener is
+required. This replaces the previous public HTTP port 80 default.
+
+The gateway sends `/api/*`, `/swagger`, `/swagger/*`, `/health`, `/health/*` and
+`/version` to the backend. It also accepts `/ssobackend/*` and `/backend/*`,
+stripping that prefix before forwarding. Other paths go to the frontend.
+For example, `/ssobackend/swagger/` serves the API documentation and
+`/ssobackend/swagger/openapi.json` serves its specification.
 
 Use `docker-compose.yml` when another reverse proxy already exists on the host and you only want the backend/frontend bound to localhost.
 
@@ -56,6 +64,93 @@ portal frontend base as `https://dashboards.health.go.ug/`, and do not strip
 `nginx/app.conf` is suitable when this frontend owns the whole host; the shared
 production host needs an upstream reverse-proxy configuration that implements the
 path table above.
+
+### HTTPS termination and proxy trust
+
+Keep TLS certificates, HTTP-to-HTTPS redirects and HSTS on the existing public
+HTTPS proxy. The checked-in container gateway speaks HTTP on the internal hop.
+In the public proxy's HTTPS server, forward portal paths without stripping them:
+
+```nginx
+# Keep the existing / and /report-browser/ locations unchanged.
+location = /portal {
+    return 308 /portal/$is_args$args;
+}
+location /portal/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+location = /ssobackend {
+    return 308 /ssobackend/$is_args$args;
+}
+location /ssobackend/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 50m;
+    proxy_read_timeout 120s;
+    proxy_buffer_size 32k;
+    proxy_buffers 8 32k;
+    proxy_busy_buffers_size 64k;
+}
+```
+
+Configure `nginx/trusted-proxies.conf` with the actual connecting address of the
+HTTPS proxy **as seen inside the gateway** (Docker may translate its source).
+Add that exact IP/CIDR to both `set_real_ip_from` and the `geo` block. Until it is
+configured, the gateway ignores forwarded client addresses and schemes. This
+prevents clients from claiming HTTPS or supplying arbitrary client IPs. Never
+trust all addresses or an entire shared Docker network. The gateway overwrites
+the forwarded chain after resolving the trusted client address.
+
+The example covers the current HTTP API; if a public route requires WebSockets,
+the outer proxy must also pass HTTP/1.1 `Upgrade` and `Connection` headers. The
+container gateway already supports upgrades. Streaming handlers can set
+`X-Accel-Buffering: no` to disable response buffering for their response.
+
+### Frontend runtime and caching
+
+All three frontend Dockerfiles use Nginx 1.30.6. The default published image and
+`Dockerfile.npm-modules` keep port 3000; `Dockerfile.nginx` keeps port 80. Helm's
+default frontend container port is now 3000, with the Service still on port 80;
+set `frontend.service.port=80` if using the alternate `Dockerfile.nginx` image.
+The runtime ConfigMap is mounted at both `/config.js` and `/portal/config.js`.
+Rebuild and publish a new frontend image
+to activate the updated static-server configuration, then deploy its immutable
+`FRONTEND_TAG`. Mounting gateway configs does not update an existing frontend
+image.
+
+Runtime config, import maps, version manifests and HTML use `no-store`. Stable
+microfrontend/package entries and service workers revalidate with `no-cache`.
+Only content-hashed files under `assets/` receive a one-year immutable cache
+policy. Missing assets return 404 with `no-store`, never the SPA HTML fallback.
+Security headers apply to successful responses and errors. API responses through
+the gateway use `no-store`; no shared proxy cache is enabled.
+
+The gateway retains the 50 MiB request-body limit, supports large legacy SSO
+cookie responses, and refreshes Docker DNS when upstream containers are replaced.
+Access logs omit query strings, cookies and authorization headers. Apply the same
+log policy on any outer proxy, especially for SSO callback URLs.
+
+### Validate Nginx before deployment
+
+```bash
+# Disposable fixtures only; does not start the application stack or database.
+python3 scripts/test-nginx.py
+
+# Validate the deployed config, then reload gateway workers after config edits.
+docker compose -f docker-compose-nginx.yml exec nginx nginx -t
+docker compose -f docker-compose-nginx.yml exec nginx nginx -s reload
+```
+
+The integration suite checks routing, SPA fallback, cache/security headers,
+prefix-aware redirects, SSO cookies, upload limits, WebSocket upgrades, forwarded
+header trust, query-free logs and DNS recovery after backend replacement. It
+requires Docker and Python 3, creates a unique temporary network and containers,
+and removes them on completion. Production containers are not touched.
 
 For syntax validation without real production values:
 

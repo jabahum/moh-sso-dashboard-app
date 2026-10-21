@@ -23,7 +23,7 @@ RUN npm run build:docker
 # ======================
 # Stage 2: Production (Static server)
 # ======================
-FROM node:20-alpine
+FROM nginx:1.30.6-alpine
 
 ARG VERSION
 ARG COMMIT=none
@@ -35,12 +35,11 @@ LABEL org.opencontainers.image.title="MOH SSO Dashboard Frontend" \
   org.opencontainers.image.created="$BUILD_TIME" \
   org.opencontainers.image.source="$SOURCE_URL"
 
-WORKDIR /app
-
-RUN npm install -g serve
-
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Preserve the published image's existing port contract.
+RUN sed -i 's/listen 80 default_server;/listen 3000 default_server;/' /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["nginx", "-g", "daemon off;"]

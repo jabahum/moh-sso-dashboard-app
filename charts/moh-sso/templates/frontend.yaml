@@ -31,6 +31,11 @@ spec:
             - name: frontend-config
               mountPath: /usr/share/nginx/html/config.js
               subPath: config.js
+              readOnly: true
+            - name: frontend-config
+              mountPath: /usr/share/nginx/html/portal/config.js
+              subPath: config.js
+              readOnly: true
 
           readinessProbe:
             httpGet:

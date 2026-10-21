@@ -129,7 +129,7 @@ frontend:
     pullPolicy: Always
 
   service:
-    port: 80
+    port: 3000 # container port; the Service still exposes port 80
 
   baseUrl: "" # optional override
   apiBaseUrl: "" # optional override

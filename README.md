@@ -580,7 +580,7 @@ npm run build:docker:npm-modules
 - `backend`
 - `frontend`
 
-`docker-compose-nginx.yml` adds an Nginx reverse proxy in front of the frontend and backend. Use this file when the server should expose the portal on port `80` and proxy `/api/*` to the backend.
+`docker-compose-nginx.yml` adds the production Nginx gateway on `127.0.0.1:8080`, behind an HTTPS proxy. It routes API, health and Swagger requests to the backend, including the `/ssobackend/` deployment prefix, and serves the portal through the frontend. See [deployment and proxy trust configuration](docs/deployment.md) before deploying. Override `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` explicitly when another listener is required.
 
 Production compose expects:
 
