@@ -6,7 +6,7 @@ not suppress backend, migration, workflow or deployment recovery results.
 
 | Job | Coverage |
 | --- | --- |
-| Frontend Quality Gate | Lockfile URLs before installation, dependency guard tests, package/version declarations, lint/types, architecture, RBAC, scheduler and release tooling. |
+| Frontend Quality Gate | Lockfile URLs before installation, dependency guard tests, Vite dev/production runtime-config paths, package/version declarations, lint/types, architecture, RBAC, scheduler and release tooling. |
 | Backend Quality Gate | Go vet/tests, API contract freshness and backend version consistency. |
 | Fast Quality Gate | Combined frontend/backend result; retains the existing required-check name while the jobs run independently. |
 | Production Frontend Runtime | Complete production build, CSS/import-map/runtime/bundle checks, then Chromium smoke tests. |

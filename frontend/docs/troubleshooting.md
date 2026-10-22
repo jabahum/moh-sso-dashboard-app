@@ -1,5 +1,22 @@
 # Troubleshooting
 
+## Dev Login Opens External Keycloak
+
+The local stack should navigate from `http://localhost:3000/portal/` to
+`http://localhost:9000/api/v1/auth/login`, then to Keycloak at
+`http://localhost:8081/realms/moh-realm/`.
+
+Check that `/portal/config.js` loads successfully and that
+`window.__APP_CONFIG__.API_BASE_URL` is `http://localhost:9000`. A missing runtime
+config makes the frontend use its fallback API URL. In the shell HTML, keep the
+script source as `/config.js`: Vite adds the `/portal/` base itself. Using
+`%BASE_URL%config.js` produced `/portal/portal/config.js` in development, returning
+404 and sending login to the production API instead.
+
+Reload the portal after correcting the HTML; use a hard refresh if an older tab
+still loads stale assets. Run `node --test scripts/runtime-config-path.test.mjs`
+from `frontend/` to verify the script URL in development and production output.
+
 ## Vite Warns About Node Version
 
 Vite 7 expects Node `20.19+` or `22.12+`.

@@ -50,9 +50,11 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Dependency guard regression tests
+      - name: Dependency and runtime config regression tests
         working-directory: frontend
-        run: npm run test:dependency-guards
+        run: |
+          npm run test:dependency-guards
+          node --test scripts/runtime-config-path.test.mjs
 
       - name: Frontend version consistency
         working-directory: frontend
