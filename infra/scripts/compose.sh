@@ -1,7 +1,7 @@
 #!/bin/sh
 # One location-aware entry point for all deployment modes. No env-file sourcing.
 set -eu
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$ROOT"
 mode=${1:-prod}
 if [ "$#" -gt 0 ]; then shift; fi
@@ -20,7 +20,7 @@ if [ ! -f "$env_file" ]; then
   echo "Missing environment file: $env_file. Copy the corresponding infra/env/*.example first." >&2
   exit 2
 fi
-env_file=$(CDPATH= cd -- "$(dirname -- "$env_file")" && pwd)/$(basename -- "$env_file")
+env_file=$(CDPATH='' cd -- "$(dirname -- "$env_file")" && pwd)/$(basename -- "$env_file")
 case "$mode" in
   dev|external) export DEV_ENV_FILE="$env_file" ;;
   *) export APP_ENV_FILE="$env_file" ;;

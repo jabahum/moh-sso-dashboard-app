@@ -1,11 +1,12 @@
 /* global console, process */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { createRequire, isBuiltin } from "node:module";
+import ts from "typescript";
 
-const root = process.cwd();
 const sourceRoots = ["apps", "packages"];
 const ignoredSpecifiers = new Set(["react/jsx-runtime"]);
-const ignoredPackages = new Set(["node:fs", "node:path", "node:url"]);
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -48,14 +49,11 @@ function packageNameFromSpecifier(specifier) {
 
 function collectImports(sourceDir) {
   const imports = new Set();
-  const importPattern = /(?:from\s+["']([^"']+)["']|import\(["']([^"']+)["']\))/g;
 
   for (const file of walkFiles(sourceDir)) {
     const source = readFileSync(file, "utf8");
 
-    for (const match of source.matchAll(importPattern)) {
-      const specifier = match[1] ?? match[2];
-
+    for (const specifier of sourceImports(source, file)) {
       if (
         !specifier ||
         specifier.startsWith(".") ||
@@ -68,13 +66,28 @@ function collectImports(sourceDir) {
 
       const packageName = packageNameFromSpecifier(specifier);
 
-      if (!ignoredPackages.has(packageName)) {
-        imports.add(packageName);
-      }
+      if (!isBuiltin(packageName)) imports.add(specifier);
     }
   }
 
   return imports;
+}
+
+export function sourceImports(source, filename = "source.tsx") {
+  const result = new Set();
+  const tree = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
+  function visit(node) {
+    const value =
+      ts.isImportDeclaration(node) || ts.isExportDeclaration(node)
+        ? node.moduleSpecifier
+        : ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword
+          ? node.arguments[0]
+          : undefined;
+    if (value && ts.isStringLiteralLike(value)) result.add(value.text);
+    ts.forEachChild(node, visit);
+  }
+  visit(tree);
+  return result;
 }
 
 function declaredPackages(packageJson) {
@@ -85,55 +98,75 @@ function declaredPackages(packageJson) {
   ]);
 }
 
-const failures = [];
+export function auditDependencies(root) {
+  const failures = [];
 
-for (const sourceRoot of sourceRoots) {
-  const rootPath = join(root, sourceRoot);
+  for (const sourceRoot of sourceRoots) {
+    const rootPath = join(root, sourceRoot);
 
-  if (!existsSync(rootPath)) {
-    continue;
-  }
-
-  for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
-    if (!entry.isDirectory()) {
+    if (!existsSync(rootPath)) {
       continue;
     }
 
-    const packagePath = join(rootPath, entry.name, "package.json");
-    const sourcePath = join(rootPath, entry.name, "src");
+    for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
 
-    if (!existsSync(packagePath) || !existsSync(sourcePath)) {
-      continue;
-    }
+      const packagePath = join(rootPath, entry.name, "package.json");
+      const sourcePath = join(rootPath, entry.name, "src");
 
-    const packageJson = readJson(packagePath);
-    const declared = declaredPackages(packageJson);
-    const imports = collectImports(sourcePath);
-    const missing = [...imports]
-      .filter((packageName) => packageName !== packageJson.name && !declared.has(packageName))
-      .sort();
+      if (!existsSync(packagePath) || !existsSync(sourcePath)) {
+        continue;
+      }
 
-    if (missing.length > 0) {
-      failures.push({
-        path: packagePath.replace(`${root}/`, ""),
-        name: packageJson.name,
-        missing,
-      });
+      const packageJson = readJson(packagePath);
+      const declared = declaredPackages(packageJson);
+      const imports = collectImports(sourcePath);
+      const missing = [...new Set([...imports].map(packageNameFromSpecifier))]
+        .filter((packageName) => packageName !== packageJson.name && !declared.has(packageName))
+        .sort();
+
+      if (missing.length > 0) {
+        failures.push({
+          path: packagePath.replace(`${root}/`, ""),
+          name: packageJson.name,
+          missing,
+        });
+      }
+      const require = createRequire(packagePath);
+      for (const specifier of imports) {
+        if (!/\.(?:css|scss)(?:\?|$)/.test(specifier)) continue;
+        try {
+          require.resolve(specifier.split("?")[0]);
+        } catch {
+          failures.push({
+            path: packagePath.replace(`${root}/`, ""),
+            name: packageJson.name,
+            missing: [`Unresolvable stylesheet: ${specifier}`],
+          });
+        }
+      }
     }
   }
+
+  return failures;
 }
 
-if (failures.length > 0) {
-  console.error("Missing package dependency declarations:");
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const failures = auditDependencies(process.cwd());
+  if (failures.length > 0) {
+    console.error("Missing package dependency declarations:");
 
-  for (const failure of failures) {
-    console.error(`\n${failure.path} (${failure.name})`);
-    for (const missing of failure.missing) {
-      console.error(`  - ${missing}`);
+    for (const failure of failures) {
+      console.error(`\n${failure.path} (${failure.name})`);
+      for (const missing of failure.missing) {
+        console.error(`  - ${missing}`);
+      }
     }
+
+    process.exit(1);
   }
 
-  process.exit(1);
+  console.log("All app/package dependency declarations are complete.");
 }
-
-console.log("All app/package dependency declarations are complete.");

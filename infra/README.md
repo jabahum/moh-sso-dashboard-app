@@ -8,6 +8,8 @@ or `make -C infra` for deployment commands. See the [deployment guide](../docs/d
 for environment setup, host/remote Nginx, Compose, Kubernetes and migration notes.
 For the complete CD pipeline, server bootstrap, GitHub settings, production
 promotion and rollback, follow the [CD runbook](../docs/cd-pipeline.md).
+See [CI checks](../docs/ci-checks.md) for workflow linting, browser smoke tests,
+disposable database migration tests and real container recovery tests.
 
 Private configuration goes in `env/*.env`; copy the matching `.example` and keep
 credentials out of Git. Private Compose secrets go in `secrets/`. Docker build

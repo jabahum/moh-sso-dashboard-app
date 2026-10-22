@@ -25,8 +25,8 @@ jobs:
       - name: Exercise production container startup and development readiness
         run: make infra-runtime-check
 
-  quality:
-    name: Fast Quality Gate
+  frontend-quality:
+    name: Frontend Quality Gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -42,9 +42,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Validate lockfile before installing dependencies
+        working-directory: frontend
+        run: node scripts/check-lockfile.mjs
+
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
+
+      - name: Dependency guard regression tests
+        working-directory: frontend
+        run: npm run test:dependency-guards
 
       - name: Frontend version consistency
         working-directory: frontend
@@ -80,12 +88,16 @@ jobs:
       - name: Deployment verifier tests
         run: node --test infra/scripts/verify-frontend-deployment.test.mjs
 
-      # ========================
-      # BACKEND
-      # ========================
+  backend-quality:
+    name: Backend Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.4"
+          cache-dependency-path: backend/go.sum
 
       - name: Backend vet
         working-directory: backend
@@ -101,6 +113,21 @@ jobs:
       - name: Backend version consistency
         working-directory: backend
         run: ./scripts/check-version-consistency.sh
+
+  quality:
+    name: Fast Quality Gate
+    needs: [frontend-quality, backend-quality]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Preserve the existing combined required-check result
+        env:
+          FRONTEND_RESULT: ${{ needs.frontend-quality.result }}
+          BACKEND_RESULT: ${{ needs.backend-quality.result }}
+        run: |
+          test "$FRONTEND_RESULT" = success
+          test "$BACKEND_RESULT" = success
 
   frontend-runtime:
     name: Production Frontend Runtime
@@ -120,6 +147,8 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Validate lockfile before installing dependencies
+        run: node scripts/check-lockfile.mjs
       - run: npm ci
       - name: Build production runtime
         run: |
@@ -130,3 +159,55 @@ jobs:
           npm run audit:import-map
           npm run runtime:verify
           npm run bundle:budget
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser smoke tests
+        run: npm run test:browser
+      - name: Browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failures
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+
+  workflow-lint:
+    name: Workflow and Shell Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.4"
+          cache: false
+      - name: Install pinned workflow checker and ShellCheck
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.11
+          command -v shellcheck || { sudo apt-get update; sudo apt-get install -y shellcheck; }
+      - name: Check workflow expressions and deployment shell scripts
+        run: make workflow-check
+
+  migrations:
+    name: Database Migration Paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.4"
+          cache-dependency-path: backend/go.sum
+      - name: Fresh install and previous-schema upgrade
+        run: make migrations-check
+
+  deployment-recovery:
+    name: Container Deployment Recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise rollout and recovery with isolated image/container fixtures
+        run: make cd-runtime-check

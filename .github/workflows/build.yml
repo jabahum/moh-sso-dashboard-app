@@ -48,7 +48,7 @@ jobs:
 
       - name: Set image tag (short SHA)
         id: sha
-        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Calculate backend build metadata
         id: backend-meta
@@ -59,9 +59,11 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/backend/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/backend/v}"
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "commit=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
-          echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$VERSION"
+            echo "commit=$GITHUB_SHA"
+            echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Calculate frontend build metadata
         id: frontend-meta

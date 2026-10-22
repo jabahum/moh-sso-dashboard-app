@@ -22,3 +22,5 @@ infra/secrets/*
 !infra/secrets/.gitkeep
 infra/scripts/__pycache__/
 .cd-build/
+frontend/playwright-report/
+frontend/test-results/

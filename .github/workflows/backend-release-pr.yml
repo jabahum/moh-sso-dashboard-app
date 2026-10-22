@@ -36,8 +36,9 @@ jobs:
       - name: Resolve release version from branch
         id: version
         shell: bash
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
           VERSION="${BRANCH#release/backend-v}"
 
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then

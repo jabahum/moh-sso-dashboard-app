@@ -16,7 +16,7 @@ ifndef INFRA_EMBEDDED
 .DEFAULT_GOAL := infra-help
 endif
 
-.PHONY: cd-check cd-preflight cd-status cd-verify cd-rollback infra-help compose-config compose-up compose-down compose-logs compose-ps compose-pull compose-restart \
+.PHONY: workflow-check migrations-check cd-runtime-check cd-check cd-preflight cd-status cd-verify cd-rollback infra-help compose-config compose-up compose-down compose-logs compose-ps compose-pull compose-restart \
  compose-dev-up compose-prod-up compose-gateway-up compose-remote-up compose-external-up \
  infra-check infra-runtime-check infra-nginx-check infra-test docker-build docker-run backend-dev backend-dev-logs \
  sso-up sso-down sso-status sso-reconcile-keycloak
@@ -43,6 +43,9 @@ infra-help:
 	@echo '  make infra-runtime-check                   Test container startup with disposable fixtures'
 	@echo '  make infra-nginx-check                     Test gateway, host and remote-IP routing'
 	@echo '  make infra-test                            Run all three infrastructure checks'
+	@echo '  make workflow-check                        Lint active Actions workflows and deployment shell scripts'
+	@echo '  make migrations-check                      Test fresh and previous-schema PostgreSQL migrations'
+	@echo '  make cd-runtime-check                      Test rollout/rollback with isolated container fixtures'
 	@echo ''
 	@echo 'ENV_FILE overrides the main env file; REMOTE_ENV_FILE selects the remote overlay.'
 	@echo 'Defaults: infra/env/{prod,dev,external-dev,remote-proxy}.env; dev has an example fallback.'
@@ -85,6 +88,13 @@ infra-runtime-check:
 infra-nginx-check:
 	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-nginx.py"
 infra-test: infra-check infra-runtime-check infra-nginx-check
+
+workflow-check:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/check-workflows.py"
+migrations-check:
+	GO_CMD="$(if $(GO_CMD),$(GO_CMD),go)" $(PYTHON) "$(REPO_ROOT)/infra/scripts/test-migrations.py"
+cd-runtime-check:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-cd-runtime.py"
 
 DEPLOY_CONFIG ?= /etc/moh-sso/deploy.json
 cd-check:

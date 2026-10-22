@@ -1426,6 +1426,7 @@ Backend docs:
 | [`docs/releasing-backend.md`](docs/releasing-backend.md) | Verified backend release workflow and artifacts. |
 | [`docs/deployment.md`](docs/deployment.md) | Immutable backend deployment and runtime verification. |
 | [`docs/cd-pipeline.md`](docs/cd-pipeline.md) | Full CD pipeline, server configuration, staging, production promotion and rollback. |
+| [`docs/ci-checks.md`](docs/ci-checks.md) | Independent quality gates, dependency guards, browser tests, migrations and container recovery. |
 | [`docs/rollback.md`](docs/rollback.md) | Automated and manual backend rollback procedure. |
 
 RBAC and onboarding docs:

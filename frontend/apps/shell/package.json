@@ -26,13 +26,14 @@
     "@moh-sso/microfrontend": "^1.0.0",
     "@moh-sso/rbac": "~1.0.0",
     "@moh-sso/report-browser": "~1.0.0",
+    "@moh-sso/report-scheduler": "~0.1.0",
     "@moh-sso/state": "^1.0.0",
     "@moh-sso/surveillance": "~1.0.0",
     "@moh-sso/types": "^1.0.0",
     "@moh-sso/ui": "^1.0.0",
     "@moh-sso/users": "~1.0.0",
     "@moh-sso/utilities": "~1.0.0",
-    "@moh-sso/report-scheduler": "~0.1.0"
+    "leaflet": "^1.9.4"
   },
   "peerDependencies": {
     "@carbon/react": "^1.95.0",

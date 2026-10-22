@@ -1,7 +1,7 @@
 #!/bin/sh
 # Run from a checked-out release on the application server; no Git or volume reset.
 set -eu
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 mode=${COMPOSE_ENV:-prod}
 case "$mode" in prod|gateway|remote) ;; *) echo 'COMPOSE_ENV must be prod, gateway or remote' >&2; exit 2 ;; esac
 compose() { sh "$ROOT/infra/scripts/compose.sh" "$mode" "$@"; }

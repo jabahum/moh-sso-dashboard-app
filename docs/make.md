@@ -159,6 +159,9 @@ with `GO_CMD=/path/to/go`; frontend targets accept `NPM=/path/to/npm`.
 | `make infra-runtime-check` | Build the actual runtime stages with tiny fixture build outputs; check frontend startup config, backend secrets/user/uploads/version arguments and a disposable Keycloak readiness probe. |
 | `make infra-nginx-check` | Test gateway, same-host and remote-IP HTTPS routing, SSO, cache/security headers, uploads, WebSocket upgrade, logs, proxy trust and DNS recovery. |
 | `make infra-test` | Run all three infrastructure checks. |
+| `make workflow-check` | Lint active GitHub workflows and deployment shell scripts; requires actionlint and ShellCheck. |
+| `make migrations-check` | Test fresh/previous-schema primary and remote migrations in disposable PostgreSQL; requires Docker and Go. |
+| `make cd-runtime-check` | Verify actual container rollout, failed-version detection, rollback, env snapshots and persistent fixture data. Requires Docker and Python. |
 
 Container suites create uniquely named temporary containers, networks and/or
 images and clean them up. They preserve running application stacks and data
@@ -184,6 +187,9 @@ for another absolute configuration path. Run them as the configured deployment
 account on the application server. On servers without a source checkout, invoke
 `python3 /opt/moh-sso/current/infra/scripts/cd_server.py <command>` instead of Make.
 For interrupted rollout recovery, use the rollback workflow as documented.
+
+See [CI checks](ci-checks.md) for prerequisites, browser commands, fixture
+isolation, failure artifacts and the required-check names for branch protection.
 
 For Kubernetes, local SSO, image building and releases, see
 [deployment](deployment.md), [tooling](tooling.md) and `make release-help`.

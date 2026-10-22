@@ -26,12 +26,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          node --input-type=module -e '
+          node --input-type=module <<'JS'
             import assert from "node:assert/strict";
             import { readFileSync } from "node:fs";
             const shell = JSON.parse(readFileSync("frontend/apps/shell/package.json", "utf8"));
             assert.equal(process.env.RELEASE_TAG, `frontend/v${shell.version}`);
-          '
+          JS
       - name: Generate notes for every frontend module
         run: node scripts/release-notes.mjs frontend
       - name: Archive per-module release notes

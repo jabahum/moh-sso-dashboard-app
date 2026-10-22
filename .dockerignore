@@ -6,6 +6,8 @@
 .git
 .local-sso
 .cd-build
+frontend/playwright-report
+frontend/test-results
 .idea
 .vscode
 **/app.env*
