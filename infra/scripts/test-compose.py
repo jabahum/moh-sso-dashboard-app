@@ -178,7 +178,8 @@ class ComposeTests(unittest.TestCase):
             self.assertEqual(env['SMTP_SEND_TIMEOUT'], '29s')
 
     def test_external_keycloak_mode_has_no_local_idp_dependency(self):
-        model = config('infra/compose/docker-compose-without-keycloak.yml', 'infra/env/dev.env.example',
+        model = config('infra/compose/docker-compose-without-keycloak.yml', 'infra/env/external-dev.env.example',
+                       DEV_ENV_FILE=str(ROOT / 'infra/env/external-dev.env.example'),
                        KEYCLOAK_INTERNAL_URL='https://identity.example.org',
                        KEYCLOAK_BASE_URL='https://identity.example.org',
                        KEYCLOAK_EXTERNAL_URL='https://identity.example.org', KEYCLOAK_REALM='external',

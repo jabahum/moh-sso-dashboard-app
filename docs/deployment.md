@@ -144,8 +144,10 @@ Default realm/client fixture values are in the dev example. Auth bypass defaults
 to false. Use `FRONTEND_DEV_COMMAND='npm run dev:remote:all'` in the env file for
 module servers; the default runs the shell with local modules.
 
-For external Keycloak, copy the dev example to `infra/env/external-dev.env`, set
-its internal/base/browser URLs, realm, client IDs and secrets, then run
+For external Keycloak, copy `infra/env/external-dev.env.example` to
+`infra/env/external-dev.env`. It uses the production Keycloak URL
+`https://auth.health.go.ug` while application URLs stay on localhost. Set the
+realm/client IDs to match that server and fill both client secrets privately, then run
 `make compose-external-up`. Register localhost callback
 `http://localhost:9000/api/v1/auth/callback` and frontend origin
 `http://localhost:3000` on that client. The local IdP and its DB are excluded.

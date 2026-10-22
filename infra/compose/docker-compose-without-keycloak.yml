@@ -1,5 +1,5 @@
 # Development with an external Keycloak; no local IdP dependency is started.
-# Requires --env-file app.external-dev.env with the external URLs/client secrets.
+# Requires infra/env/external-dev.env with the external URLs/client secrets.
 name: moh-sso-dashboard-dev
 include:
   - path:

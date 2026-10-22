@@ -17,7 +17,7 @@ if [ "$mode" = dev ] && [ ! -f "$env_file" ] && [ -z "${ENV_FILE:-}" ]; then
   env_file=infra/env/dev.env.example
 fi
 if [ ! -f "$env_file" ]; then
-  echo "Missing environment file: $env_file. Copy the corresponding infra/env/*.example first." >&2
+  echo "Missing environment file: $env_file. Copy ${default_env}.example to $env_file first." >&2
   exit 2
 fi
 env_file=$(CDPATH='' cd -- "$(dirname -- "$env_file")" && pwd)/$(basename -- "$env_file")

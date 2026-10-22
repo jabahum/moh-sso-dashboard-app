@@ -37,7 +37,7 @@ cp infra/env/dev.env.example infra/env/dev.env
 cp infra/env/prod.env.example infra/env/prod.env
 cp infra/env/remote-proxy.env.example infra/env/remote-proxy.env
 # For external Keycloak:
-cp infra/env/dev.env.example infra/env/external-dev.env
+cp infra/env/external-dev.env.example infra/env/external-dev.env
 ```
 
 These are alternatives; only create the files for the mode you use. Production
