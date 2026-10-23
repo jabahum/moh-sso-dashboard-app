@@ -16,7 +16,7 @@ ifndef INFRA_EMBEDDED
 .DEFAULT_GOAL := infra-help
 endif
 
-.PHONY: workflow-check migrations-check cd-runtime-check cd-check cd-preflight cd-status cd-verify cd-rollback infra-help compose-config compose-up compose-down compose-logs compose-ps compose-pull compose-restart \
+.PHONY: scheduler-env scheduler-env-check workflow-check migrations-check cd-runtime-check cd-check cd-preflight cd-status cd-verify cd-rollback infra-help compose-config compose-up compose-down compose-logs compose-ps compose-pull compose-restart \
  compose-dev-up compose-prod-up compose-gateway-up compose-remote-up compose-external-up \
  infra-check infra-runtime-check infra-nginx-check infra-test docker-build docker-run backend-dev backend-dev-logs \
  sso-up sso-down sso-status sso-reconcile-keycloak
@@ -46,6 +46,8 @@ infra-help:
 	@echo '  make workflow-check                        Lint active Actions workflows and deployment shell scripts'
 	@echo '  make migrations-check                      Test fresh and previous-schema PostgreSQL migrations'
 	@echo '  make cd-runtime-check                      Test rollout/rollback with isolated container fixtures'
+	@echo '  make scheduler-env COMPOSE_ENV=external     Generate private portal/Health BI scheduler settings'
+	@echo '  make scheduler-env-check                    Test env generation and credential preservation'
 	@echo ''
 	@echo 'ENV_FILE overrides the main env file; REMOTE_ENV_FILE selects the remote overlay.'
 	@echo 'Defaults: infra/env/{prod,dev,external-dev,remote-proxy}.env; dev has an example fallback.'
@@ -81,7 +83,7 @@ backend-dev:
 	ENV_FILE="$(ENV_FILE)" sh "$(REPO_ROOT)/infra/scripts/compose.sh" dev up --build backend
 backend-dev-logs:
 	ENV_FILE="$(ENV_FILE)" sh "$(REPO_ROOT)/infra/scripts/compose.sh" dev logs -f backend
-infra-check: cd-check
+infra-check: cd-check scheduler-env-check
 	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-compose.py"
 infra-runtime-check:
 	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-compose-runtime.py"
@@ -95,6 +97,18 @@ migrations-check:
 	GO_CMD="$(if $(GO_CMD),$(GO_CMD),go)" $(PYTHON) "$(REPO_ROOT)/infra/scripts/test-migrations.py"
 cd-runtime-check:
 	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-cd-runtime.py"
+
+HEALTHBI_ENV_FILE ?=
+HEALTH_BI_URL ?=
+HEALTH_BI_PUBLIC_URL ?=
+SCHEDULER_CLIENT_SECRET_FILE ?=
+scheduler-env:
+	SCHEDULER_MODE="$(COMPOSE_ENV)" SCHEDULER_ENV_FILE="$(ENV_FILE)" \
+	 HEALTHBI_ENV_FILE="$(HEALTHBI_ENV_FILE)" HEALTH_BI_URL="$(HEALTH_BI_URL)" \
+	 HEALTH_BI_PUBLIC_URL="$(HEALTH_BI_PUBLIC_URL)" SCHEDULER_CLIENT_SECRET_FILE="$(SCHEDULER_CLIENT_SECRET_FILE)" \
+	 $(PYTHON) "$(REPO_ROOT)/infra/scripts/scheduler-env.py"
+scheduler-env-check:
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-scheduler-env.py"
 
 DEPLOY_CONFIG ?= /etc/moh-sso/deploy.json
 cd-check:

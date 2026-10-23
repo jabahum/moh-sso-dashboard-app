@@ -125,6 +125,17 @@ whole stack; it has no `SERVICE` filter and does not pass `-v`.
 
 ## Contracts and generated files
 
+Scheduler settings are generated separately with
+`make scheduler-env COMPOSE_ENV=external`. It updates the selected private
+application env (creating the default from its mode template if missing) and
+creates a private Health BI companion file without contacting
+Keycloak or restarting services. Existing signing keys and credentials are kept;
+missing worker credentials must come from Keycloak. `ENV_FILE`, `HEALTHBI_ENV_FILE`,
+`HEALTH_BI_URL`, `HEALTH_BI_PUBLIC_URL` and `SCHEDULER_CLIENT_SECRET_FILE` customize
+the operation. See [scheduler configuration](scheduler-configuration.md).
+`make scheduler-env-check` tests generation and credential preservation and is
+included in `make infra-check`.
+
 | Target | Reads/writes and result |
 | --- | --- |
 | `make contracts-generate` | Read registered API routes, handler DTOs and `backend/docs/openapi.overrides.yaml`; rewrite `backend/docs/openapi.yaml`. |
