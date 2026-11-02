@@ -57,7 +57,18 @@ func NewSMTPService(
 	}, nil
 }
 
-func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
+func (s *SMTPService) Send(ctx context.Context, msg model.Message) (sendErr error) {
+	logSubject := msg.Subject
+	safeLogError := func(err error) error { return err }
+	if msg.Metadata["application_id"] != "" {
+		logSubject = "[platform notification]"
+		safeLogError = func(error) error { return errors.New("platform SMTP operation failed") }
+		defer func() {
+			if sendErr != nil {
+				sendErr = errors.New("platform SMTP operation failed")
+			}
+		}()
+	}
 	if s == nil {
 		return errors.New("smtp service is nil")
 	}
@@ -69,8 +80,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := utils.ValidateMessage(msg); err != nil {
 		s.logger.Error(
 			"email message validation failed",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 		)
 
 		return fmt.Errorf("validate email message: %w", err)
@@ -80,8 +91,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err != nil {
 		s.logger.Error(
 			"email attachment validation failed",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 		)
 
 		return fmt.Errorf("validate email attachments: %w", err)
@@ -94,9 +105,9 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 
 			s.logger.Error(
 				"failed to render email template",
-				"error", err,
+				"error", safeLogError(err),
 				"template_name", msg.TemplateName,
-				"subject", msg.Subject,
+				"subject", logSubject,
 			)
 
 			return err
@@ -106,9 +117,9 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 		if err != nil {
 			s.logger.Error(
 				"failed to render email template",
-				"error", err,
+				"error", safeLogError(err),
 				"template_name", msg.TemplateName,
-				"subject", msg.Subject,
+				"subject", logSubject,
 			)
 
 			return fmt.Errorf("render email template %q: %w", msg.TemplateName, err)
@@ -127,9 +138,9 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := setFromAddress(m, from); err != nil {
 		s.logger.Error(
 			"failed to set email from address",
-			"error", err,
+			"error", safeLogError(err),
 			"from_email", from.Email,
-			"subject", msg.Subject,
+			"subject", logSubject,
 		)
 
 		return err
@@ -138,8 +149,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := addRecipients(m, "to", msg.To); err != nil {
 		s.logger.Error(
 			"failed to add email to recipients",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 		)
 
 		return err
@@ -148,8 +159,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := addRecipients(m, "cc", msg.Cc); err != nil {
 		s.logger.Error(
 			"failed to add email cc recipients",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 		)
 
 		return err
@@ -158,8 +169,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := addRecipients(m, "bcc", msg.Bcc); err != nil {
 		s.logger.Error(
 			"failed to add email bcc recipients",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 		)
 
 		return err
@@ -168,8 +179,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := addReplyToRecipients(m, msg.ReplyTo); err != nil {
 		s.logger.Error(
 			"failed to add email reply-to recipients",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 		)
 
 		return err
@@ -200,8 +211,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := addAttachments(m, msg.Attachments); err != nil {
 		s.logger.Error(
 			"failed to add email attachments",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 		)
 
 		return err
@@ -250,7 +261,7 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err != nil {
 		s.logger.Error(
 			"failed to create smtp client",
-			"error", err,
+			"error", safeLogError(err),
 			"smtp_host", host,
 			"smtp_port", s.cfg.SMTP.Port,
 			"tls_policy", tlsPolicy,
@@ -262,8 +273,8 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 	if err := client.DialAndSendWithContext(ctx, m); err != nil {
 		s.logger.Error(
 			"failed to send email",
-			"error", err,
-			"subject", msg.Subject,
+			"error", safeLogError(err),
+			"subject", logSubject,
 			"smtp_host", host,
 			"smtp_port", s.cfg.SMTP.Port,
 			"tls_policy", tlsPolicy,
@@ -274,7 +285,7 @@ func (s *SMTPService) Send(ctx context.Context, msg model.Message) error {
 
 	s.logger.Info(
 		"email sent successfully",
-		"subject", msg.Subject,
+		"subject", logSubject,
 		"from_email", from.Email,
 		"to_count", len(msg.To),
 		"cc_count", len(msg.Cc),

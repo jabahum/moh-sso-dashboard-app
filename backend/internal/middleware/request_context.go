@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,15 +11,17 @@ import (
 	"github.com/moh-sso-dashboard/internal/observability"
 )
 
+var safeTraceID = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,128}$`)
+
 func RequestContext() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader(observability.RequestIDHeader)
-		if requestID == "" {
+		if !safeTraceID.MatchString(requestID) {
 			requestID = uuid.NewString()
 		}
 
 		correlationID := c.GetHeader(observability.CorrelationIDHeader)
-		if correlationID == "" {
+		if !safeTraceID.MatchString(correlationID) {
 			correlationID = requestID
 		}
 
@@ -59,6 +62,9 @@ func RequestLogger() gin.HandlerFunc {
 			Dur("latency", time.Since(start)).
 			Str("ip", c.ClientIP()).
 			Str("user_id", c.GetString("user_id")).
+			Str("application_id", c.GetString("application_id")).
+			Str("machine_subject", c.GetString("machine_subject")).
+			Str("oauth_client_id", c.GetString("oauth_client_id")).
 			Msg("http request completed")
 	}
 }

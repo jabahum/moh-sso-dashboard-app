@@ -112,6 +112,9 @@ jobs:
         working-directory: backend
         run: go test ./...
 
+      - name: Platform onboarding examples
+        run: python3 -m unittest discover -s examples/platform/python -p 'test_*.py' -v
+
       - name: Backend version consistency
         working-directory: backend
         run: ./scripts/check-version-consistency.sh

@@ -20,6 +20,7 @@ From `examples/platform/python`:
 
 ```sh
 python3 verify_integration.py
+python3 verify_integration.py --check-workers
 ```
 
 This is read-only: it checks issuer discovery, client credentials, platform identity and expected application binding. Tokens and secrets are never printed. To explicitly send one test message and verify worker progress:

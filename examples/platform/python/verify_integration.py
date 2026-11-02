@@ -8,6 +8,7 @@ from platform_client import PlatformClient, PlatformError, discover, machine_tok
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check-workers", action="store_true", help="also require healthy notification and email worker heartbeats")
     parser.add_argument("--recipient")
     parser.add_argument("--key", help="stable key reused for retries of this test message")
     parser.add_argument("--poll-seconds", type=int, default=0)
@@ -26,6 +27,10 @@ def main():
         if identity.get("applicationId") != expected:
             raise PlatformError("service account is bound to a different application")
         print("Identity and application binding verified for " + expected)
+        if args.check_workers:
+            if not client.readiness(token).get("ready"):
+                raise PlatformError("platform workers are not ready")
+            print("Platform workers are ready")
         if args.recipient:
             notification = client.notify(token, args.key, args.recipient,
                                          "Platform integration test", "The pilot application can use shared notifications.")

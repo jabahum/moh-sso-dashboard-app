@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/lib/pq"
+	"github.com/moh-sso-dashboard/internal/observability"
 )
 
 type PostgresRepository struct{ DB *sql.DB }
@@ -52,7 +53,7 @@ func (r *PostgresRepository) SaveIdentity(ctx context.Context, application, clie
 	if err != nil {
 		return Identity{}, err
 	}
-	details, err := json.Marshal(map[string]any{"clientId": client, "subject": input.Subject, "scopes": input.Scopes, "enabled": input.Enabled, "reason": input.Reason})
+	details, err := json.Marshal(map[string]any{"clientId": client, "subject": input.Subject, "scopes": input.Scopes, "enabled": input.Enabled, "reason": input.Reason, "requestId": observability.RequestIDFromContext(ctx), "correlationId": observability.CorrelationIDFromContext(ctx)})
 	if err != nil {
 		return Identity{}, err
 	}

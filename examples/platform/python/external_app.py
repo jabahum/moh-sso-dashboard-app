@@ -66,7 +66,9 @@ class App(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Security-Policy", "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+        issuer = urlparse(self.server.demo.issuer)
+        auth_origin = issuer.scheme + "://" + issuer.netloc
+        self.send_header("Content-Security-Policy", "default-src 'none'; form-action 'self' " + auth_origin + "; frame-ancestors 'none'; base-uri 'none'")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()

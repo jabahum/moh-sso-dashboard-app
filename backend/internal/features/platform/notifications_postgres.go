@@ -64,7 +64,7 @@ func (r *PostgresRepository) SubmitNotification(ctx context.Context, p Principal
 		return NotificationStatus{}, err
 	}
 	recipient, _ := json.Marshal(input.Recipient)
-	payload, _ := json.Marshal(map[string]string{"subject": input.Title, "text_body": input.Message})
+	payload, _ := json.Marshal(map[string]string{"subject": input.Title, "text_body": input.Message, "application_id": p.ApplicationID, "request_id": observability.RequestIDFromContext(ctx), "correlation_id": observability.CorrelationIDFromContext(ctx)})
 	_, err = tx.ExecContext(ctx, `INSERT INTO notification_deliveries (id,notification_id,channel,recipient,payload,max_attempts) VALUES ($1,$2,'email',$3::jsonb,$4::jsonb,5)`, deliveryID, notificationID, string(recipient), string(payload))
 	if err != nil {
 		return NotificationStatus{}, err
@@ -101,10 +101,13 @@ type notificationQuerier interface {
 func getNotification(ctx context.Context, db notificationQuerier, application, id string) (NotificationStatus, error) {
 	var result NotificationStatus
 	err := db.QueryRowContext(ctx, `SELECT n.id::text,n.application_client_id,'email',
- CASE WHEN d.id IS NULL THEN 'EXPIRED' WHEN d.status='SENT' THEN COALESCE(e.status,'EXPIRED') ELSE d.status END,
+ `+notificationOverallStatus+`,
  COALESCE(d.status,'EXPIRED'),COALESCE(d.attempts,0),COALESCE(e.attempts,0),n.created_at::text
- FROM ihp_application_notifications n LEFT JOIN notification_deliveries d ON d.id=n.delivery_id
- LEFT JOIN LATERAL (SELECT status,attempts FROM email_outbox WHERE metadata ? 'delivery_id' AND metadata->>'delivery_id'=d.id::text ORDER BY created_at DESC LIMIT 1) e ON TRUE
+ `+notificationStatusJoin+`
  WHERE n.application_client_id=$1 AND n.id=$2::uuid`, application, id).Scan(&result.ID, &result.ApplicationID, &result.Channel, &result.Status, &result.DispatchStatus, &result.DispatchAttempts, &result.DeliveryAttempts, &result.CreatedAt)
 	return result, err
 }
+
+const notificationOverallStatus = `CASE WHEN d.id IS NULL THEN 'EXPIRED' WHEN d.status='SENT' THEN COALESCE(e.status,'EXPIRED') ELSE d.status END`
+const notificationStatusJoin = `FROM ihp_application_notifications n LEFT JOIN notification_deliveries d ON d.id=n.delivery_id
+ LEFT JOIN LATERAL (SELECT status,attempts FROM email_outbox WHERE metadata ? 'delivery_id' AND metadata->>'delivery_id'=d.id::text ORDER BY created_at DESC LIMIT 1) e ON TRUE`

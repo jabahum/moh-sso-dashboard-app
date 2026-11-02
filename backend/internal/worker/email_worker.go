@@ -15,6 +15,7 @@ type EmailSender interface {
 }
 
 type EmailWorker struct {
+	heartbeat  func(context.Context)
 	repo       repository.EmailRepository
 	sender     EmailSender
 	pollEvery  time.Duration
@@ -105,6 +106,9 @@ func (w *EmailWorker) process(ctx context.Context) {
 		return
 	}
 
+	if w.heartbeat != nil {
+		w.heartbeat(ctx)
+	}
 	if len(items) == 0 {
 		return
 	}
@@ -115,13 +119,21 @@ func (w *EmailWorker) process(ctx context.Context) {
 	)
 
 	for _, item := range items {
+		if w.heartbeat != nil {
+			w.heartbeat(ctx)
+		}
+		itemCtx := platformMessageContext(ctx, item.Message.Metadata)
+		logPlatformAttempt(itemCtx, "email_delivery_attempt", item.ID)
 		select {
 		case <-ctx.Done():
 			return
 		default:
 		}
 
-		if err := w.sender.Send(ctx, item.Message); err != nil {
+		if err := w.sender.Send(itemCtx, item.Message); err != nil {
+			if item.Message.Metadata["application_id"] != "" {
+				err = errors.New("platform email transport failed")
+			}
 			attempts := item.Attempts + 1
 
 			if attempts >= item.MaxAttempts || attempts >= w.maxRetries {
@@ -180,3 +192,5 @@ func (w *EmailWorker) process(ctx context.Context) {
 		)
 	}
 }
+
+func (w *EmailWorker) SetHeartbeat(callback func(context.Context)) { w.heartbeat = callback }

@@ -1,8 +1,8 @@
 # MOH platform development
 
-All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–4 are implemented; phase 5 remains planned. No additional phase branches are required.
+All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–5 are implemented as separate commits. Production identity-provider/SMTP configuration and rollout remain deployment tasks. No additional phase branches are required.
 
-| Phase | Planned commit subject | Scope |
+| Phase | Commit subject | Scope |
 | --- | --- | --- |
 | 1 | `feat(platform): add governed application registry and lifecycle` | Application registry, lifecycle, validation, governance, audit |
 | 2 | `feat(platform): define application identity and authorization contracts` | External sign-in, hosted-module identity, scoped machine identities, revocation |
@@ -10,7 +10,7 @@ All phases continue on `platform/phase-1-application-registry`. Each phase is de
 | 4 | `feat(platform): add developer onboarding and integration examples` | Integration guide, external example, hosted starter, validation command |
 | 5 | `feat(platform): add application operations and rollout guidance` | Application-aware monitoring, support, compatibility, rollout and rollback |
 
-Commit messages must describe the work actually delivered and identify checks that were not run. Future phases are committed only after their implementation and relevant checks; these subjects do not represent completed work.
+Each phase commit describes the delivered implementation, compatibility and validation. Live deployment tasks remain explicitly separate from repository implementation.
 
 ## Phase 1: registry and lifecycle
 
@@ -131,7 +131,7 @@ From `frontend/`, run type checking, lint on the changed RBAC files, and the RBA
 
 Apply migration 48 before starting the new backend. On a fresh installation, a realm administrator with registry and role-management permissions must activate the initial applications after seed/sync. For an existing installation, review ownership/launch configuration and seed sources before the next sync: changes to approved configuration now require renewed onboarding.
 
-For rollback, stop the new backend, roll back migration 48, and deploy the previous backend/frontend. The down migration preserves enabled flags so suspended/retired applications stay disabled immediately after rollback. The previous release's ordinary seed/sync behavior can re-enable them later; retain operational controls during rollback. Lifecycle history remains in the existing audit table, but lifecycle and integration columns are removed.
+For a phase-1-only rollback, stop the new backend, roll back migration 48, and deploy the previous backend/frontend. For the complete platform rollout, follow the ordered rollback procedure in the [platform runbook](operations/platform-runbook.md). The down migration preserves enabled flags so suspended/retired applications stay disabled immediately after rollback. The previous release's ordinary seed/sync behavior can re-enable them later; retain operational controls during rollback. Lifecycle history remains in the existing audit table, but lifecycle and integration columns are removed.
 
 ## Phase 2: identity contracts
 
@@ -145,6 +145,10 @@ Implemented the [shared notification API](platform-notifications.md) with applic
 
 Added an [independent Python application pilot, reference client, integration verifier, and hosted-module template](../examples/platform/README.md). The onboarding guide covers registration, interactive and service clients, activation, launcher integration, test notifications, suspension/revocation, and verification commands. The examples are opt-in and are not installed in the production shell.
 
-## Remaining phases
+## Phase 5: platform operations
 
-Phases 1–4 establish registry governance, identity contracts, shared notifications and developer examples. Platform operations/observability remain phase 5. The migration, registry and platform PostgreSQL integration checks have passed locally against disposable PostgreSQL. Live identity-provider/SMTP setup remains environment-specific.
+Added authenticated worker readiness, read-only application operations metrics, successful-queue-poll worker heartbeats, bounded request IDs, async request/application correlation and platform SMTP log redaction. The [platform runbook](operations/platform-runbook.md) covers support ownership, alerting, deployment, compatibility, credential rotation, retention and rollback. Migration 51 is required before starting the updated workers.
+
+## Deployment boundary
+
+The implementation includes all five planned phases. Live Keycloak clients/audience/scope mappers, application activation, external deployments, SMTP credentials, operational alert thresholds and production rollout must be configured in the target environment. No live user grants, production deployments or real mail deliveries are created by repository tests. The reference web pilot is an integration example rather than a production OIDC/session framework.

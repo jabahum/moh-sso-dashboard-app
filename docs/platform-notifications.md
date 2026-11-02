@@ -28,7 +28,7 @@ The application request, notification, delivery queue row and audit event commit
 
 Requires `notifications:read`. Responses expose identifiers, channel, status, dispatch status, attempts and creation time, without message/recipient/provider-error details. A request owned by another application returns 404. Operators retain their existing admin delivery tooling.
 
-`status` follows the existing delivery queue until email handoff, then follows the email outbox. `dispatchStatus:SENT` means handed to the email queue; it is not a claim that SMTP sent the message. `status:SENT` reflects the email worker's completed send, not a mailbox delivery/read receipt. `dispatchAttempts` and `deliveryAttempts` report the two retry stages separately. Existing workers enforce bounded attempts (five per stage for new requests), retry scheduling and failed-state handling.
+`status` follows the existing delivery queue until email handoff, then follows the email outbox. `dispatchStatus:SENT` means handed to the email queue; it is not a claim that SMTP sent the message. `status:SENT` reflects the email worker's completed send, not a mailbox delivery/read receipt. `dispatchAttempts` and `deliveryAttempts` report the two retry stages separately. Existing workers enforce bounded attempts, retry scheduling and failed-state handling. New rows cap attempts at five, while current bootstrap workers impose a three-attempt cap; the smaller cap applies at each stage.
 
 If existing cleanup removes delivery/outbox data, status becomes `EXPIRED`. The application request/idempotency mapping remains, and replay never recreates the message. There is no automatic expiry of idempotency keys in v1; operators must preserve these mappings for the required retry lifetime.
 

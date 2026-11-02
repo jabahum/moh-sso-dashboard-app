@@ -18,6 +18,7 @@ import (
 )
 
 type NotificationEmailDeliveryWorker struct {
+	heartbeat            func(context.Context)
 	notificationDelivery notificationDeliveryRepo.NotificationDeliveryRepository
 	emailSvc             service.EmailService
 	pollDelay            time.Duration
@@ -109,11 +110,17 @@ func (w *NotificationEmailDeliveryWorker) process(ctx context.Context) error {
 		return fmt.Errorf("claim email notification deliveries: %w", err)
 	}
 
+	if w.heartbeat != nil {
+		w.heartbeat(ctx)
+	}
 	if len(items) == 0 {
 		return nil
 	}
 
 	for _, item := range items {
+		if w.heartbeat != nil {
+			w.heartbeat(ctx)
+		}
 		if err := w.processOne(ctx, item); err != nil {
 			w.logger.Error(
 				"failed to process notification email delivery",
@@ -136,6 +143,8 @@ func (w *NotificationEmailDeliveryWorker) processOne(
 		return w.failOrRetry(ctx, item, err)
 	}
 
+	ctx = platformMessageContext(ctx, msg.Metadata)
+	logPlatformAttempt(ctx, "notification_dispatch_attempt", item.ID.String())
 	if err := w.emailSvc.Queue(ctx, msg); err != nil {
 		return w.failOrRetry(ctx, item, err)
 	}
@@ -155,7 +164,6 @@ func (w *NotificationEmailDeliveryWorker) processOne(
 		"notification email delivery queued",
 		"delivery_id", item.ID,
 		"notification_id", item.NotificationID,
-		"subject", msg.Subject,
 		"to_count", len(msg.To),
 	)
 
@@ -240,11 +248,14 @@ type emailRecipient struct {
 }
 
 type emailPayload struct {
-	Subject     string             `json:"subject"`
-	TextBody    string             `json:"text_body"`
-	HTMLBody    string             `json:"html_body"`
-	Headers     map[string]string  `json:"headers"`
-	Attachments []model.Attachment `json:"attachments"`
+	ApplicationID string             `json:"application_id"`
+	RequestID     string             `json:"request_id"`
+	CorrelationID string             `json:"correlation_id"`
+	Subject       string             `json:"subject"`
+	TextBody      string             `json:"text_body"`
+	HTMLBody      string             `json:"html_body"`
+	Headers       map[string]string  `json:"headers"`
+	Attachments   []model.Attachment `json:"attachments"`
 }
 
 func notificationDeliveryToEmailMessage(
@@ -299,7 +310,8 @@ func notificationDeliveryToEmailMessage(
 		Headers:      payload.Headers,
 		Attachments:  payload.Attachments,
 		Metadata: map[string]string{
-			"source":           "notification-delivery-worker",
+			"source":         "notification-delivery-worker",
+			"application_id": payload.ApplicationID, "request_id": payload.RequestID, "correlation_id": payload.CorrelationID,
 			"notification_id":  item.NotificationID.String(),
 			"delivery_id":      item.ID.String(),
 			"delivery_channel": item.Channel,
@@ -315,4 +327,8 @@ func unmarshalNullRawMessage(value pqtype.NullRawMessage, target any) error {
 	}
 
 	return json.Unmarshal(value.RawMessage, target)
+}
+
+func (w *NotificationEmailDeliveryWorker) SetHeartbeat(callback func(context.Context)) {
+	w.heartbeat = callback
 }

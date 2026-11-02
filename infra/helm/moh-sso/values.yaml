@@ -56,7 +56,12 @@ backend:
   secrets:
     KEYCLOAK_ADMIN_CLIENT_SECRET: ""
     KEYCLOAK_WEB_CLIENT_SECRET: ""
+    PLATFORM_AUTH_CLIENT_SECRET: "" # dedicated platform introspection client; supplied securely
     HEALTH_BI_KEYCLOAK_CLIENT_SECRET: "" # dedicated Keycloak scheduler service account
+
+  platformAuth:
+    clientId: "" # optional; empty keeps platform service APIs disabled
+    audience: moh-platform-api
 
   healthBI:
     baseUrl: "" # https://dashboards.health.go.ug/report-browser; enable after configuring the Keycloak service account

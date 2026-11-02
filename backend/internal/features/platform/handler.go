@@ -3,8 +3,10 @@ package platform
 import (
 	"database/sql"
 	"errors"
+	"github.com/moh-sso-dashboard/internal/observability"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -12,8 +14,9 @@ import (
 )
 
 type Handler struct {
-	Repository Repository
-	Verifier   TokenVerifier
+	WorkerStaleAfter time.Duration
+	Repository       Repository
+	Verifier         TokenVerifier
 }
 
 func (h *Handler) AuthenticateToken() gin.HandlerFunc {
@@ -33,6 +36,7 @@ func (h *Handler) AuthenticateToken() gin.HandlerFunc {
 			return
 		}
 		c.Set("platform_token", token)
+		c.Set("oauth_client_id", token.ClientID)
 		c.Header("Cache-Control", "no-store")
 		c.Next()
 	}
@@ -51,6 +55,7 @@ func (h *Handler) AuthenticateMachine() gin.HandlerFunc {
 		}
 		c.Set("platform_principal", p)
 		c.Set("application_id", p.ApplicationID)
+		c.Request = c.Request.WithContext(observability.WithApplicationID(c.Request.Context(), p.ApplicationID))
 		c.Set("machine_subject", p.Subject)
 		c.Next()
 	}
@@ -81,6 +86,8 @@ func (h *Handler) GetUserAccess(c *gin.Context) {
 		fail(c, err)
 		return
 	}
+	c.Set("application_id", result.ApplicationID)
+	c.Set("user_id", result.Subject)
 	response.OK(c, http.StatusOK, result)
 }
 func (h *Handler) SaveIdentity(c *gin.Context) {

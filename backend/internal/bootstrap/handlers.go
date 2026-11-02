@@ -132,7 +132,8 @@ func buildHandlers(deps handlerDependencies) handlers {
 	return handlers{
 		Router: router.HandlerSet{
 			Platform: &platformfeature.Handler{
-				Repository: &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
+				WorkerStaleAfter: 3 * deps.Config.NotificationDelivery.WorkerInterval,
+				Repository:       &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
 				Verifier: &platformfeature.Introspector{
 					Endpoint: strings.TrimRight(deps.Config.KeycloakTokenBaseURL(), "/") + "/realms/" + deps.Config.KeycloakRealm + "/protocol/openid-connect/token/introspect",
 					Issuer:   strings.TrimRight(deps.Config.KeycloakExternalURL, "/") + "/realms/" + deps.Config.KeycloakRealm,

@@ -10,6 +10,7 @@ const (
 type contextKey string
 
 const (
+	applicationIDKey contextKey = "application_id"
 	requestIDKey     contextKey = "request_id"
 	correlationIDKey contextKey = "correlation_id"
 )
@@ -40,4 +41,15 @@ func CorrelationIDFromContext(ctx context.Context) string {
 		return correlationID
 	}
 	return ""
+}
+
+func WithApplicationID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, applicationIDKey, id)
+}
+func ApplicationIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	id, _ := ctx.Value(applicationIDKey).(string)
+	return id
 }

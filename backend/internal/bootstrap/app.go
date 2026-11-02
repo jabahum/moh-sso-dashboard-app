@@ -168,6 +168,7 @@ func Run() {
 	})
 
 	startBackgroundWorkers(ctx, workerDependencies{
+		PrimaryDB:                      dbs.Primary,
 		Config:                         cfg,
 		ProcessRepository:              repos.Processes,
 		ImportService:                  services.Import,
@@ -180,9 +181,9 @@ func Run() {
 		AuditService:                   services.Audit,
 		Logger:                         appLogger,
 		DQADB:                          dbs.DQA,
-			DWHDB:                          dbs.DWH,
-			ReportScheduler:                 services.ReportScheduler,
-		})
+		DWHDB:                          dbs.DWH,
+		ReportScheduler:                services.ReportScheduler,
+	})
 
 	services.Notifications.NotifySystemStartup(ctx, cfg.Environment)
 

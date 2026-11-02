@@ -3291,6 +3291,35 @@ components:
           nullable: true
           type: boolean
       type: object
+    platform.ApplicationOperations:
+      properties:
+        applicationId:
+          type: string
+        enabled:
+          type: boolean
+        enabledIdentities:
+          format: int64
+          type: integer
+        identityCount:
+          format: int64
+          type: integer
+        lifecycleStatus:
+          type: string
+        oldestPendingAt:
+          type: string
+        requests24Hours:
+          format: int64
+          type: integer
+        statusCounts24Hours:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        workers:
+          items:
+            $ref: '#/components/schemas/platform.WorkerHealth'
+          type: array
+      type: object
     platform.Identity:
       properties:
         applicationId:
@@ -3378,6 +3407,15 @@ components:
         subject:
           type: string
       type: object
+    platform.Readiness:
+      properties:
+        ready:
+          type: boolean
+        workers:
+          items:
+            $ref: '#/components/schemas/platform.WorkerHealth'
+          type: array
+      type: object
     platform.UserAccess:
       properties:
         applicationId:
@@ -3391,6 +3429,15 @@ components:
             type: string
           type: array
         subject:
+          type: string
+      type: object
+    platform.WorkerHealth:
+      properties:
+        healthy:
+          type: boolean
+        lastSeen:
+          type: string
+        name:
           type: string
       type: object
     rbac.AccessRequest:
@@ -10407,6 +10454,68 @@ paths:
       tags:
         - admin-platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).SaveIdentity
+  /api/v1/admin/platform/applications/{clientId}/operations:
+    get:
+      description: 'Explicit route permission: rbac:read. Additional group/system access checks may apply.'
+      operationId: get_api_v1_admin_platform_applications_clientId_operations
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.ApplicationOperations'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Operations
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetOperations
+      x-route-permissions:
+        - rbac:read
   /api/v1/admin/rbac/access-requests:
     get:
       description: 'Explicit route permission: rbac:roles:write. Additional group/system access checks may apply.'
@@ -25330,6 +25439,80 @@ paths:
       tags:
         - platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetNotification
+  /api/v1/platform/readiness:
+    get:
+      operationId: get_api_v1_platform_readiness
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.Readiness'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "503":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.Readiness'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Service Unavailable
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Readiness
+      tags:
+        - platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetReadiness
   /api/v1/report-scheduler:
     get:
       description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'

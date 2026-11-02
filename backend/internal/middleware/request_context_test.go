@@ -37,3 +37,21 @@ func TestRequestContextPropagatesRequestID(t *testing.T) {
 		t.Fatalf("expected response meta request id, got %s", body)
 	}
 }
+
+func TestRequestContextBoundsUntrustedTraceHeaders(t *testing.T) {
+	router := gin.New()
+	router.Use(RequestContext())
+	router.GET("/ping", func(c *gin.Context) { c.Status(http.StatusOK) })
+	request := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	request.Header.Set(observability.RequestIDHeader, strings.Repeat("x", 129))
+	request.Header.Set(observability.CorrelationIDHeader, "bad id\nwith newline")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	id := recorder.Header().Get(observability.RequestIDHeader)
+	if id == "" || len(id) > 128 || strings.ContainsAny(id, " \r\n") {
+		t.Fatal("untrusted request ID was reflected")
+	}
+	if recorder.Header().Get(observability.CorrelationIDHeader) != id {
+		t.Fatal("invalid correlation ID did not fall back to request ID")
+	}
+}

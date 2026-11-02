@@ -3,12 +3,14 @@ package platform
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -46,7 +48,7 @@ func TestPlatformPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	for _, name := range []string{"000002_create_notifications_schema.up.sql", "000020_create_email_outbox_schema.up.sql", "000024_create_schema_notification_deliveries.up.sql", "000026_create_system_rbac_schema.up.sql", "000027_extend_rbac_governance.up.sql", "000030_add_realm_role_system_roles.up.sql", "000033_extend_system_launch_behavior.up.sql", "000048_application_registry_lifecycle.up.sql", "000049_application_identities.up.sql", "000050_application_notifications.up.sql"} {
+	for _, name := range []string{"000002_create_notifications_schema.up.sql", "000020_create_email_outbox_schema.up.sql", "000024_create_schema_notification_deliveries.up.sql", "000026_create_system_rbac_schema.up.sql", "000027_extend_rbac_governance.up.sql", "000030_add_realm_role_system_roles.up.sql", "000033_extend_system_launch_behavior.up.sql", "000048_application_registry_lifecycle.up.sql", "000049_application_identities.up.sql", "000050_application_notifications.up.sql", "000051_platform_worker_health.up.sql"} {
 		data, err := os.ReadFile(filepath.Join("..", "..", "db", "migrations", name))
 		if err != nil {
 			t.Fatal(err)
@@ -186,6 +188,59 @@ func TestPlatformPostgres(t *testing.T) {
 	replay, err = repo.SubmitNotification(ctx, p, "same-key", validNotification())
 	if err != nil || replay.Status != "EXPIRED" || !replay.Replayed {
 		t.Fatalf("cleanup recreated delivery: %+v %v", replay, err)
+	}
+	// Operational metrics and worker health are real database projections, not synthetic uptime.
+	health, err := repo.WorkerHealth(ctx, 2*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(health) != 2 || health[0].Healthy || health[1].Healthy {
+		t.Fatal("missing workers reported healthy")
+	}
+	for _, name := range []string{"notification-email", "email-outbox"} {
+		if err := repo.RecordWorkerHeartbeat(ctx, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	health, err = repo.WorkerHealth(ctx, 2*time.Minute)
+	if err != nil || !health[0].Healthy || !health[1].Healthy {
+		t.Fatal(health, err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE ihp_platform_worker_heartbeats SET last_seen=now()-interval '1 hour' WHERE worker_name='email-outbox'`); err != nil {
+		t.Fatal(err)
+	}
+	health, err = repo.WorkerHealth(ctx, 2*time.Minute)
+	if err != nil || health[0].Healthy {
+		t.Fatal("stalled worker reported healthy", err)
+	}
+	metrics, err := repo.Operations(ctx, "pilot")
+	if err != nil || metrics.Requests24Hours != 60 || metrics.StatusCounts24Hours["EXPIRED"] != 60 {
+		t.Fatal(metrics, err)
+	}
+	otherMetrics, err := repo.Operations(ctx, "other")
+	if err != nil || otherMetrics.Requests24Hours != 0 {
+		t.Fatal("operations leaked another application", err)
+	}
+	// External users receive only their application's roles/permissions, and lose access on suspension.
+	if _, err := db.ExecContext(ctx, `INSERT INTO ihp_system_roles(system_id,role_name) SELECT id,'viewer' FROM ihp_systems WHERE client_id='pilot'; INSERT INTO ihp_system_access_roles(system_id,role_name) SELECT id,'viewer' FROM ihp_systems WHERE client_id='pilot'; INSERT INTO ihp_permissions(permission_key) VALUES ('pilot:read'); INSERT INTO ihp_system_role_permissions(system_role_id,permission_id) SELECT r.id,p.id FROM ihp_system_roles r CROSS JOIN ihp_permissions p WHERE r.role_name='viewer' AND p.permission_key='pilot:read'`); err != nil {
+		t.Fatal(err)
+	}
+	user := Token{ClientID: "pilot", Subject: uuid.NewString()}
+	if err := json.Unmarshal([]byte(`{"resource_access":{"pilot":{"roles":["viewer"]}}}`), &user); err != nil {
+		t.Fatal(err)
+	}
+	access, err := repo.UserAccess(ctx, "pilot", user)
+	if err != nil || len(access.Permissions) != 1 || access.Permissions[0] != "pilot:read" {
+		t.Fatal(access, err)
+	}
+	if _, err := repo.UserAccess(ctx, "other", user); !errors.Is(err, ErrForbidden) {
+		t.Fatal("cross-application user decision accepted", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE ihp_systems SET lifecycle_status='suspended' WHERE client_id='pilot'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.UserAccess(ctx, "pilot", user); !errors.Is(err, ErrForbidden) {
+		t.Fatal("suspended application's user access persisted", err)
 	}
 	// Queue inserts roll back if their required audit cannot be written.
 	blocked := token

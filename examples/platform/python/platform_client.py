@@ -64,6 +64,9 @@ class PlatformClient:
             raise PlatformError("platform request did not return success")
         return result["data"]
 
+    def readiness(self, token):
+        return self.call("/platform/readiness", token)
+
     def identity(self, token):
         return self.call("/platform/identity", token)
 

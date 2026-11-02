@@ -66,6 +66,9 @@ func (v *Introspector) Verify(ctx context.Context, raw string) (Token, error) {
 	}
 	// Do not forward tokens or credentials across redirects, including same-host redirects.
 	copyClient := *client
+	if copyClient.Timeout <= 0 || copyClient.Timeout > 5*time.Second {
+		copyClient.Timeout = 5 * time.Second
+	}
 	copyClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, v.Endpoint, strings.NewReader(url.Values{"token": {raw}, "token_type_hint": {"access_token"}}.Encode()))
 	if err != nil {

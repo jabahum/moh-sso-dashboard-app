@@ -1,0 +1,1 @@
+DROP TABLE ihp_platform_worker_heartbeats;
