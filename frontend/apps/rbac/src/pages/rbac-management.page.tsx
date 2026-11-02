@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Button,
   Checkbox,
+  ComboBox,
   DataTable,
   Dropdown,
   InlineLoading,
+  Search,
   InlineNotification,
   Tag,
   Table,
@@ -67,6 +69,59 @@ import { EffectiveAccessPanel } from "../components/EffectiveAccessPanel";
 import { GovernanceToolsPanel } from "../components/GovernanceToolsPanel";
 import { SyncDriftPanel } from "../components/SyncDriftPanel";
 import "./rbac-management.page.scss";
+
+const workspaceSections = [
+  {
+    id: "applications",
+    label: "Application settings",
+    description: "Configure application identity, ownership, integration, and launch settings.",
+  },
+  {
+    id: "lifecycle",
+    label: "Application lifecycle",
+    description: "Validate, approve, activate, or suspend the selected application.",
+  },
+  {
+    id: "access-roles",
+    label: "Access roles",
+    description: "Manage the roles that grant access to the selected application.",
+  },
+  {
+    id: "system-roles",
+    label: "System roles",
+    description: "Map application roles to permissions.",
+  },
+  {
+    id: "realm-roles",
+    label: "Realm permissions",
+    description: "Manage permissions granted by realm roles.",
+  },
+  { id: "groups", label: "Groups", description: "Manage group membership and inherited access." },
+  {
+    id: "effective-access",
+    label: "Effective access",
+    description: "Explain a user's permissions and how they were granted.",
+  },
+  {
+    id: "sync",
+    label: "Sync & drift",
+    description: "Review differences between Keycloak and portal access mappings.",
+  },
+  {
+    id: "governance",
+    label: "Governance tools",
+    description: "Review requests, audit changes, and manage authorization policy.",
+  },
+] as const;
+type WorkspaceSection = (typeof workspaceSections)[number]["id"];
+const applicationSections = [
+  { id: "basics", label: "Basics" },
+  { id: "ownership", label: "Ownership & support" },
+  { id: "integration", label: "Integration & environment" },
+  { id: "launch", label: "Launch & visibility" },
+  { id: "navigation", label: "Navigation" },
+] as const;
+type ApplicationSection = (typeof applicationSections)[number]["id"];
 
 const lifecycleActions: Record<ApplicationLifecycleStatus, ApplicationLifecycleStatus[]> = {
   registered: ["configured", "retired"],
@@ -220,6 +275,13 @@ function toDraft(system?: RbacSystem): SystemDraft {
 }
 
 export default function RbacManagementPage() {
+  const workspaceRef = useRef<HTMLElement>(null);
+  const [activeSection, setActiveSection] = useState<WorkspaceSection>("applications");
+  const [applicationSection, setApplicationSection] = useState<ApplicationSection>("basics");
+  const currentSection = workspaceSections.find((section) => section.id === activeSection)!;
+  useEffect(() => {
+    if (workspaceRef.current) workspaceRef.current.scrollTop = 0;
+  }, [activeSection, applicationSection]);
   const { can } = useAuthorization();
   const { openModal, closeModal } = useModal();
   const toast = useToast();
@@ -233,18 +295,25 @@ export default function RbacManagementPage() {
   const activeClientId = registeringApplication
     ? ""
     : selectedClientId || systems[0]?.clientId || "";
-  const { data: systemDetail, isFetching: systemLoading } = useGetRbacSystemQuery(activeClientId, {
-    skip: !activeClientId,
-  });
+  const { currentData: systemDetail, isFetching: systemLoading } = useGetRbacSystemQuery(
+    activeClientId,
+    {
+      skip: !activeClientId,
+    },
+  );
 
   const [draft, setDraft] = useState<SystemDraft>(() => toDraft());
   const [draftClientId, setDraftClientId] = useState<string>("");
+  const systemReady =
+    registeringApplication || Boolean(systemDetail && draftClientId === activeClientId);
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDisplayName, setNewRoleDisplayName] = useState("");
   const [newAccessRole, setNewAccessRole] = useState("");
   const [realmRoleName, setRealmRoleName] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedRealmRole, setSelectedRealmRole] = useState<string>("");
+  const [groupSection, setGroupSection] = useState("Members");
+  const [groupSearch, setGroupSearch] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [newGroupPath, setNewGroupPath] = useState("");
   const [newGroupDisplayName, setNewGroupDisplayName] = useState("");
@@ -371,6 +440,8 @@ export default function RbacManagementPage() {
     const clientId = draftClientId || activeClientId;
     if (!clientId) return;
     if (navigationPreview.error) {
+      setActiveSection("applications");
+      setApplicationSection("navigation");
       setError(navigationPreview.error);
       return;
     }
@@ -689,7 +760,7 @@ export default function RbacManagementPage() {
       <header className="rbac-page__header">
         <div>
           <h1>RBAC Management</h1>
-          <p>Manage portal systems, system roles, access roles, and permission mappings.</p>
+          <p>Manage applications and access from one focused workspace.</p>
         </div>
       </header>
 
@@ -703,52 +774,97 @@ export default function RbacManagementPage() {
         />
       )}
 
-      <SyncDriftPanel />
-      <EffectiveAccessPanel />
-      <GovernanceToolsPanel activeClientId={activeClientId} />
-
+      <div className="rbac-workspace-context">
+        <ComboBox
+          id="rbac-selected-application"
+          titleText="Selected application"
+          placeholder="Find an application"
+          items={systems}
+          itemToString={(system) => (system ? `${system.displayName} (${system.clientId})` : "")}
+          selectedItem={
+            registeringApplication
+              ? null
+              : (systems.find((system) => system.clientId === activeClientId) ?? null)
+          }
+          onChange={({ selectedItem }) => selectedItem && handleSelectSystem(selectedItem.clientId)}
+          shouldFilterItem={({ item, inputValue }) =>
+            `${item.displayName} ${item.clientId}`
+              .toLowerCase()
+              .includes((inputValue ?? "").toLowerCase())
+          }
+        />
+        <Tag type={registeringApplication ? "gray" : "blue"}>
+          {registeringApplication
+            ? "New application"
+            : (systemDetail?.lifecycleStatus ?? "Loading")}
+        </Tag>
+        {canWriteSystems && (
+          <Button
+            size="sm"
+            kind="tertiary"
+            renderIcon={Add}
+            onClick={() => {
+              setRegisteringApplication(true);
+              setDraftClientId("");
+              setDraft({ ...toDraft(), enabled: false });
+              setLifecycleReason("");
+              setError(null);
+              setActiveSection("applications");
+              setApplicationSection("basics");
+            }}
+          >
+            Register application
+          </Button>
+        )}
+      </div>
+      <div className="rbac-workspace-mobile-navigation">
+        <Dropdown
+          id="rbac-workspace-section"
+          titleText="Workspace section"
+          label="Choose a section"
+          items={[...workspaceSections]}
+          itemToString={(item) => item?.label ?? ""}
+          selectedItem={currentSection}
+          onChange={({ selectedItem }) => selectedItem && setActiveSection(selectedItem.id)}
+        />
+      </div>
       <section className="rbac-page__layout">
-        <aside className="rbac-page__systems">
-          <div className="rbac-page__panel-header">
-            <h2>Systems</h2>
-            <Tag type="blue">{systems.length}</Tag>
-            {canWriteSystems && (
-              <Button
-                size="sm"
-                kind="tertiary"
-                renderIcon={Add}
-                onClick={() => {
-                  setRegisteringApplication(true);
-                  setDraftClientId("");
-                  setDraft({ ...toDraft(), enabled: false });
-                  setLifecycleReason("");
-                  setError(null);
-                }}
-              >
-                Register application
-              </Button>
-            )}
+        <nav className="rbac-workspace-navigation" aria-label="RBAC workspace">
+          {workspaceSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              aria-current={section.id === activeSection ? "page" : undefined}
+              onClick={() => setActiveSection(section.id)}
+            >
+              {section.label}
+            </button>
+          ))}
+        </nav>
+        <main
+          ref={workspaceRef}
+          className="rbac-page__main"
+          aria-label={currentSection.label}
+          tabIndex={0}
+        >
+          <p className="rbac-workspace-description">{currentSection.description}</p>
+          <div hidden={activeSection !== "sync"}>
+            <SyncDriftPanel />
           </div>
-          <div className="rbac-system-list">
-            {systems.map((system) => (
-              <button
-                className={`rbac-system-list__item ${system.clientId === activeClientId ? "is-active" : ""}`}
-                key={system.clientId}
-                onClick={() => handleSelectSystem(system.clientId)}
-                type="button"
-              >
-                <span>{system.displayName}</span>
-                <small>{system.clientId}</small>
-              </button>
-            ))}
+          <div hidden={activeSection !== "effective-access"}>
+            <EffectiveAccessPanel />
           </div>
-        </aside>
-
-        <main className="rbac-page__main">
+          <div hidden={activeSection !== "governance"}>
+            <GovernanceToolsPanel activeClientId={activeClientId} />
+          </div>
           {systemLoading && <InlineLoading description="Loading system details..." />}
 
           {!registeringApplication && systemDetail && (
-            <section className="rbac-card" aria-label="Application lifecycle">
+            <section
+              className="rbac-card"
+              hidden={activeSection !== "lifecycle"}
+              aria-label="Application lifecycle"
+            >
               <div className="rbac-page__panel-header">
                 <h2>Application lifecycle</h2>
                 <Tag type="blue">{systemDetail.lifecycleStatus}</Tag>
@@ -797,7 +913,7 @@ export default function RbacManagementPage() {
               </div>
             </section>
           )}
-          <section className="rbac-card">
+          <section className="rbac-card" hidden={activeSection !== "applications" || !systemReady}>
             <div className="rbac-page__panel-header">
               <h2>Application registry</h2>
               <PermissionGuard permission={PERMISSIONS.rbacWrite}>
@@ -811,225 +927,249 @@ export default function RbacManagementPage() {
                 </Button>
               </PermissionGuard>
             </div>
-            <div className="rbac-form-grid">
+            <div className="rbac-config-navigation">
               <Dropdown
-                id="application-integration-type"
-                titleText="Integration type"
-                label="Select integration type"
-                items={["external", "hosted_module"] as const}
-                selectedItem={draft.integrationType}
-                disabled={!canWriteSystems}
+                id="rbac-configuration-section"
+                titleText="Configuration section"
+                label="Choose settings"
+                items={[...applicationSections]}
+                itemToString={(item) => item?.label ?? ""}
+                selectedItem={applicationSections.find((item) => item.id === applicationSection)}
                 onChange={({ selectedItem }) =>
-                  selectedItem && setDraft({ ...draft, integrationType: selectedItem })
+                  selectedItem && setApplicationSection(selectedItem.id)
                 }
               />
-              <TextInput
-                id="application-contract-version"
-                labelText="Contract version"
-                value={draft.contractVersion}
-                helperText="Supported version: 1"
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, contractVersion: event.target.value })}
-              />
-              <TextInput
-                id="rbac-client-id"
-                labelText="Client ID"
-                value={draftClientId || activeClientId}
-                disabled={!canWriteSystems || !registeringApplication}
-                onChange={(event) => setDraftClientId(event.target.value)}
-              />
-              <TextInput
-                id="rbac-display-name"
-                labelText="Display name"
-                value={draft.displayName || systemDetail?.displayName || ""}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, displayName: event.target.value })}
-              />
-              <TextInput
-                id="rbac-category"
-                labelText="Category"
-                value={draft.category}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, category: event.target.value })}
-              />
-              <TextInput
-                id="rbac-launch-url"
-                labelText="Launch URL"
-                value={draft.launchUrl}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, launchUrl: event.target.value })}
-              />
-              <TextInput
-                id="rbac-authenticated-launch-url"
-                labelText="Authenticated launch URL"
-                helperText="Optional backend login URL used for cross-application SSO."
-                value={draft.authenticatedLaunchUrl}
-                disabled={!canWriteSystems}
-                onChange={(event) =>
-                  setDraft({ ...draft, authenticatedLaunchUrl: event.target.value })
-                }
-              />
-              <TextInput
-                id="rbac-icon"
-                labelText="Icon"
-                value={draft.icon}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, icon: event.target.value })}
-              />
-              <TextInput
-                id="rbac-sort-order"
-                labelText="Sort order"
-                type="number"
-                value={String(draft.sortOrder)}
-                disabled={!canWriteSystems}
-                onChange={(event) =>
-                  setDraft({ ...draft, sortOrder: Number(event.target.value) || 0 })
-                }
-              />
-              <TextInput
-                id="rbac-description"
-                labelText="Description"
-                value={draft.description}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-              />
-              <TextInput
-                id="rbac-owner-team"
-                labelText="Owner team"
-                value={draft.ownerTeam}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, ownerTeam: event.target.value })}
-              />
-              <TextInput
-                id="rbac-owner-name"
-                labelText="Owner name"
-                value={draft.ownerName}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, ownerName: event.target.value })}
-              />
-              <TextInput
-                id="rbac-owner-email"
-                labelText="Owner email"
-                value={draft.ownerEmail}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, ownerEmail: event.target.value })}
-              />
-              <TextInput
-                id="rbac-support-url"
-                labelText="Support URL"
-                value={draft.supportUrl}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, supportUrl: event.target.value })}
-              />
-              <TextInput
-                id="rbac-documentation-url"
-                labelText="Documentation URL"
-                value={draft.documentationUrl}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, documentationUrl: event.target.value })}
-              />
-              <TextInput
-                id="rbac-environment"
-                labelText="Environment"
-                value={draft.environment}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, environment: event.target.value })}
-              />
-              <TextInput
-                id="rbac-criticality"
-                labelText="Criticality"
-                value={draft.criticality}
-                disabled={!canWriteSystems}
-                onChange={(event) => setDraft({ ...draft, criticality: event.target.value })}
-              />
-              <Dropdown
-                id="rbac-system-type"
-                titleText="System type"
-                label="Select system type"
-                items={["platform", "external"] as const}
-                selectedItem={draft.systemType}
-                disabled={!canWriteSystems}
-                onChange={({ selectedItem }) =>
-                  selectedItem && setDraft({ ...draft, systemType: selectedItem })
-                }
-              />
-              <Dropdown
-                id="rbac-launch-mode"
-                titleText="Launch mode"
-                label="Select launch mode"
-                items={["internal", "new_tab", "same_tab"] as const}
-                selectedItem={draft.launchMode}
-                disabled={!canWriteSystems}
-                onChange={({ selectedItem }) =>
-                  selectedItem && setDraft({ ...draft, launchMode: selectedItem })
-                }
-              />
-              <Toggle
-                id="rbac-display-in-launcher"
-                labelText="Show system in launcher"
-                toggled={draft.displayInLauncher}
-                disabled={!canWriteSystems}
-                onToggle={(displayInLauncher) => setDraft({ ...draft, displayInLauncher })}
-              />
-              <Toggle
-                id="rbac-display-in-side-nav"
-                labelText="Show system side navigation"
-                toggled={draft.displayInSideNav}
-                disabled={!canWriteSystems}
-                onToggle={(displayInSideNav) => setDraft({ ...draft, displayInSideNav })}
-              />
-              <div className="rbac-form-grid__wide">
-                <TextArea
-                  id="rbac-navigation"
-                  labelText="Navigation JSON"
-                  helperText="Module entries may independently set displayInLauncher and displayInSideNav."
-                  rows={10}
-                  value={draft.navigation}
-                  invalid={Boolean(navigationPreview.error)}
-                  invalidText={navigationPreview.error}
-                  disabled={!canWriteSystems}
-                  onChange={(event) => setDraft({ ...draft, navigation: event.target.value })}
+              <span>Changes across all configuration sections are saved together.</span>
+            </div>
+            <div className="rbac-config-sections">
+              <div className="rbac-form-grid" hidden={applicationSection !== "basics"}>
+                <TextInput
+                  id="rbac-client-id"
+                  labelText="Client ID"
+                  value={draftClientId || activeClientId}
+                  disabled={!canWriteSystems || !registeringApplication}
+                  onChange={(event) => setDraftClientId(event.target.value)}
                 />
-                {!navigationPreview.error && draft.navigation.trim() ? (
-                  <div className="rbac-navigation-preview" aria-live="polite">
-                    <span>Launcher preview</span>
-                    <div className="rbac-tag-list">
-                      {navigationPreview.launcherItems.length ? (
-                        navigationPreview.launcherItems.map((item) => (
-                          <Tag key={`launcher-${item.id}`} type="blue">
-                            {item.label}
-                          </Tag>
-                        ))
-                      ) : (
-                        <small>No module launcher entries.</small>
-                      )}
-                    </div>
-                    <span>Side navigation preview</span>
-                    <div className="rbac-tag-list">
-                      {navigationPreview.sideNavItems.length ? (
-                        navigationPreview.sideNavItems.map((item) => (
-                          <Tag key={`sidenav-${item.id}`} type="gray">
-                            {item.label}
-                          </Tag>
-                        ))
-                      ) : (
-                        <small>No visible side-navigation entries.</small>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
+                <TextInput
+                  id="rbac-display-name"
+                  labelText="Display name"
+                  value={draft.displayName || systemDetail?.displayName || ""}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, displayName: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-category"
+                  labelText="Category"
+                  value={draft.category}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, category: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-icon"
+                  labelText="Icon"
+                  value={draft.icon}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, icon: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-description"
+                  labelText="Description"
+                  value={draft.description}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+                />
               </div>
-              <Toggle
-                id="rbac-enabled"
-                labelText="Enabled (active applications only)"
-                toggled={draft.enabled}
-                disabled={!canWriteSystems || systemDetail?.lifecycleStatus !== "active"}
-                onToggle={(enabled) => setDraft({ ...draft, enabled })}
-              />
+              <div className="rbac-form-grid" hidden={applicationSection !== "ownership"}>
+                <TextInput
+                  id="rbac-owner-team"
+                  labelText="Owner team"
+                  value={draft.ownerTeam}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, ownerTeam: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-owner-name"
+                  labelText="Owner name"
+                  value={draft.ownerName}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, ownerName: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-owner-email"
+                  labelText="Owner email"
+                  value={draft.ownerEmail}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, ownerEmail: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-support-url"
+                  labelText="Support URL"
+                  value={draft.supportUrl}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, supportUrl: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-documentation-url"
+                  labelText="Documentation URL"
+                  value={draft.documentationUrl}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, documentationUrl: event.target.value })}
+                />
+              </div>
+              <div className="rbac-form-grid" hidden={applicationSection !== "integration"}>
+                <Dropdown
+                  id="application-integration-type"
+                  titleText="Integration type"
+                  label="Select integration type"
+                  items={["external", "hosted_module"] as const}
+                  selectedItem={draft.integrationType}
+                  disabled={!canWriteSystems}
+                  onChange={({ selectedItem }) =>
+                    selectedItem && setDraft({ ...draft, integrationType: selectedItem })
+                  }
+                />
+                <TextInput
+                  id="application-contract-version"
+                  labelText="Contract version"
+                  value={draft.contractVersion}
+                  helperText="Supported version: 1"
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, contractVersion: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-environment"
+                  labelText="Environment"
+                  value={draft.environment}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, environment: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-criticality"
+                  labelText="Criticality"
+                  value={draft.criticality}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, criticality: event.target.value })}
+                />
+                <Dropdown
+                  id="rbac-system-type"
+                  titleText="System type"
+                  label="Select system type"
+                  items={["platform", "external"] as const}
+                  selectedItem={draft.systemType}
+                  disabled={!canWriteSystems}
+                  onChange={({ selectedItem }) =>
+                    selectedItem && setDraft({ ...draft, systemType: selectedItem })
+                  }
+                />
+              </div>
+              <div className="rbac-form-grid" hidden={applicationSection !== "launch"}>
+                <TextInput
+                  id="rbac-launch-url"
+                  labelText="Launch URL"
+                  value={draft.launchUrl}
+                  disabled={!canWriteSystems}
+                  onChange={(event) => setDraft({ ...draft, launchUrl: event.target.value })}
+                />
+                <TextInput
+                  id="rbac-authenticated-launch-url"
+                  labelText="Authenticated launch URL"
+                  helperText="Optional backend login URL used for cross-application SSO."
+                  value={draft.authenticatedLaunchUrl}
+                  disabled={!canWriteSystems}
+                  onChange={(event) =>
+                    setDraft({ ...draft, authenticatedLaunchUrl: event.target.value })
+                  }
+                />
+                <TextInput
+                  id="rbac-sort-order"
+                  labelText="Sort order"
+                  type="number"
+                  value={String(draft.sortOrder)}
+                  disabled={!canWriteSystems}
+                  onChange={(event) =>
+                    setDraft({ ...draft, sortOrder: Number(event.target.value) || 0 })
+                  }
+                />
+                <Dropdown
+                  id="rbac-launch-mode"
+                  titleText="Launch mode"
+                  label="Select launch mode"
+                  items={["internal", "new_tab", "same_tab"] as const}
+                  selectedItem={draft.launchMode}
+                  disabled={!canWriteSystems}
+                  onChange={({ selectedItem }) =>
+                    selectedItem && setDraft({ ...draft, launchMode: selectedItem })
+                  }
+                />
+                <Toggle
+                  id="rbac-display-in-launcher"
+                  labelText="Show system in launcher"
+                  toggled={draft.displayInLauncher}
+                  disabled={!canWriteSystems}
+                  onToggle={(displayInLauncher) => setDraft({ ...draft, displayInLauncher })}
+                />
+                <Toggle
+                  id="rbac-display-in-side-nav"
+                  labelText="Show system side navigation"
+                  toggled={draft.displayInSideNav}
+                  disabled={!canWriteSystems}
+                  onToggle={(displayInSideNav) => setDraft({ ...draft, displayInSideNav })}
+                />
+                <Toggle
+                  id="rbac-enabled"
+                  labelText="Enabled (active applications only)"
+                  toggled={draft.enabled}
+                  disabled={!canWriteSystems || systemDetail?.lifecycleStatus !== "active"}
+                  onToggle={(enabled) => setDraft({ ...draft, enabled })}
+                />
+              </div>
+              <div className="rbac-form-grid" hidden={applicationSection !== "navigation"}>
+                <div className="rbac-form-grid__wide">
+                  <TextArea
+                    id="rbac-navigation"
+                    labelText="Navigation JSON"
+                    helperText="Module entries may independently set displayInLauncher and displayInSideNav."
+                    rows={10}
+                    value={draft.navigation}
+                    invalid={Boolean(navigationPreview.error)}
+                    invalidText={navigationPreview.error}
+                    disabled={!canWriteSystems}
+                    onChange={(event) => setDraft({ ...draft, navigation: event.target.value })}
+                  />
+                  {!navigationPreview.error && draft.navigation.trim() ? (
+                    <div className="rbac-navigation-preview" aria-live="polite">
+                      <span>Launcher preview</span>
+                      <div className="rbac-tag-list">
+                        {navigationPreview.launcherItems.length ? (
+                          navigationPreview.launcherItems.map((item) => (
+                            <Tag key={`launcher-${item.id}`} type="blue">
+                              {item.label}
+                            </Tag>
+                          ))
+                        ) : (
+                          <small>No module launcher entries.</small>
+                        )}
+                      </div>
+                      <span>Side navigation preview</span>
+                      <div className="rbac-tag-list">
+                        {navigationPreview.sideNavItems.length ? (
+                          navigationPreview.sideNavItems.map((item) => (
+                            <Tag key={`sidenav-${item.id}`} type="gray">
+                              {item.label}
+                            </Tag>
+                          ))
+                        ) : (
+                          <small>No visible side-navigation entries.</small>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </section>
 
-          <section className="rbac-card">
+          <section className="rbac-card" hidden={activeSection !== "access-roles" || !systemReady}>
             <div className="rbac-page__panel-header">
               <h2>Access Roles</h2>
               <div className="rbac-inline-form">
@@ -1070,7 +1210,7 @@ export default function RbacManagementPage() {
             </div>
           </section>
 
-          <section className="rbac-card">
+          <section className="rbac-card" hidden={activeSection !== "system-roles" || !systemReady}>
             <div className="rbac-page__panel-header">
               <h2>System Roles</h2>
               <div className="rbac-inline-form">
@@ -1108,14 +1248,19 @@ export default function RbacManagementPage() {
             <div className="rbac-role-grid">
               <div className="rbac-role-list">
                 {(systemDetail?.roles ?? []).map((role) => (
-                  <button
+                  <div
                     className={`rbac-role-list__item ${role.id === selectedRole?.id ? "is-active" : ""}`}
                     key={role.id}
-                    onClick={() => setSelectedRoleId(role.id)}
-                    type="button"
                   >
-                    <span>{role.displayName || role.name}</span>
-                    <small>{role.permissions.length} permissions</small>
+                    <button
+                      type="button"
+                      className="rbac-role-list__select"
+                      aria-pressed={role.id === selectedRole?.id}
+                      onClick={() => setSelectedRoleId(role.id)}
+                    >
+                      <span>{role.displayName || role.name}</span>
+                      <small>{role.permissions.length} permissions</small>
+                    </button>
                     <PermissionGuard permission={PERMISSIONS.rbacRolesWrite}>
                       <Button
                         hasIconOnly
@@ -1129,7 +1274,7 @@ export default function RbacManagementPage() {
                         }}
                       />
                     </PermissionGuard>
-                  </button>
+                  </div>
                 ))}
               </div>
               <PermissionMatrix
@@ -1141,7 +1286,7 @@ export default function RbacManagementPage() {
             </div>
           </section>
 
-          <section className="rbac-card">
+          <section className="rbac-card" hidden={activeSection !== "realm-roles"}>
             <div className="rbac-page__panel-header">
               <h2>Realm Role Permissions</h2>
               <div className="rbac-inline-form">
@@ -1182,7 +1327,7 @@ export default function RbacManagementPage() {
             </div>
           </section>
 
-          <section className="rbac-card">
+          <section className="rbac-card" hidden={activeSection !== "groups"}>
             <div className="rbac-page__panel-header">
               <div>
                 <h2>Groups</h2>
@@ -1222,19 +1367,35 @@ export default function RbacManagementPage() {
 
             <div className="rbac-realm-layout">
               <div className="rbac-role-list">
-                {groups.map((group) => (
-                  <button
-                    className={`rbac-role-list__item ${group.id === selectedGroup?.id ? "is-active" : ""}`}
-                    key={group.id}
-                    onClick={() => setSelectedGroupId(group.id)}
-                    type="button"
-                  >
-                    <span>{group.displayName || group.name}</span>
-                    <small>
-                      {group.path} · {group.memberCount} members
-                    </small>
-                  </button>
-                ))}
+                <div className="rbac-group-search">
+                  <Search
+                    size="sm"
+                    labelText="Find groups"
+                    placeholder="Find a group"
+                    closeButtonLabelText="Clear group search"
+                    value={groupSearch}
+                    onChange={(event) => setGroupSearch(event.target.value)}
+                  />
+                </div>
+                {groups
+                  .filter((group) =>
+                    `${group.displayName} ${group.name} ${group.path}`
+                      .toLowerCase()
+                      .includes(groupSearch.trim().toLowerCase()),
+                  )
+                  .map((group) => (
+                    <button
+                      className={`rbac-role-list__item ${group.id === selectedGroup?.id ? "is-active" : ""}`}
+                      key={group.id}
+                      onClick={() => setSelectedGroupId(group.id)}
+                      type="button"
+                    >
+                      <span>{group.displayName || group.name}</span>
+                      <small>
+                        {group.path} · {group.memberCount} members
+                      </small>
+                    </button>
+                  ))}
               </div>
 
               <div className="rbac-group-detail">
@@ -1250,7 +1411,19 @@ export default function RbacManagementPage() {
                       </Tag>
                     </div>
 
-                    <div className="rbac-group-detail__section">
+                    <div className="rbac-group-section-navigation">
+                      <Dropdown
+                        id="rbac-group-section"
+                        titleText="Group section"
+                        label="Choose group details"
+                        items={["Members", "Role mappings", "Direct permissions"]}
+                        selectedItem={groupSection}
+                        onChange={({ selectedItem }) =>
+                          selectedItem && setGroupSection(selectedItem)
+                        }
+                      />
+                    </div>
+                    <div className="rbac-group-detail__section" hidden={groupSection !== "Members"}>
                       <div className="rbac-group-detail__section-header">
                         <div>
                           <h4>Members</h4>
@@ -1391,7 +1564,10 @@ export default function RbacManagementPage() {
                       </DataTable>
                     </div>
 
-                    <div className="rbac-group-detail__section">
+                    <div
+                      className="rbac-group-detail__section"
+                      hidden={groupSection !== "Role mappings"}
+                    >
                       <h4>Realm roles</h4>
                       <div className="rbac-inline-form">
                         <TextInput
@@ -1430,7 +1606,10 @@ export default function RbacManagementPage() {
                       </div>
                     </div>
 
-                    <div className="rbac-group-detail__section">
+                    <div
+                      className="rbac-group-detail__section"
+                      hidden={groupSection !== "Role mappings"}
+                    >
                       <h4>System roles</h4>
                       <div className="rbac-inline-form">
                         <TextInput
@@ -1482,7 +1661,10 @@ export default function RbacManagementPage() {
                       </div>
                     </div>
 
-                    <div className="rbac-group-detail__section">
+                    <div
+                      className="rbac-group-detail__section"
+                      hidden={groupSection !== "Direct permissions"}
+                    >
                       <h4>Direct permissions</h4>
                       <PermissionMatrix
                         groupedPermissions={groupedPermissions}
@@ -1517,25 +1699,53 @@ function PermissionMatrix({
   disabled = false,
   onToggle,
 }: PermissionMatrixProps) {
+  const matrixId = useId();
+  const [search, setSearch] = useState("");
+  const visibleGroups = Object.entries(groupedPermissions)
+    .map(
+      ([category, permissions]) =>
+        [
+          category,
+          permissions.filter((permission) =>
+            `${category} ${permission.key} ${permissionLabel(permission)}`
+              .toLowerCase()
+              .includes(search.trim().toLowerCase()),
+          ),
+        ] as const,
+    )
+    .filter(([, permissions]) => permissions.length > 0);
   return (
-    <div className="rbac-permission-matrix">
-      {Object.entries(groupedPermissions).map(([category, permissions]) => (
-        <div className="rbac-permission-group" key={category}>
-          <h3>{category}</h3>
-          {permissions.map((permission) => (
-            <Checkbox
-              id={`${category}-${permission.key}`}
-              key={permission.key}
-              labelText={permissionLabel(permission)}
-              checked={selectedKeys.has(permission.key)}
-              disabled={disabled}
-              onChange={(_, { checked }) => {
-                void onToggle(permission, checked);
-              }}
-            />
-          ))}
-        </div>
-      ))}
+    <div>
+      <div className="rbac-permission-search">
+        <Search
+          size="sm"
+          labelText="Find permissions"
+          placeholder="Find a permission or category"
+          closeButtonLabelText="Clear permission search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
+      {visibleGroups.length === 0 && <p className="rbac-tag-list">No matching permissions.</p>}
+      <div className="rbac-permission-matrix">
+        {visibleGroups.map(([category, permissions]) => (
+          <div className="rbac-permission-group" key={category}>
+            <h3>{category}</h3>
+            {permissions.map((permission) => (
+              <Checkbox
+                id={`${matrixId}-${category}-${permission.key}`}
+                key={permission.key}
+                labelText={permissionLabel(permission)}
+                checked={selectedKeys.has(permission.key)}
+                disabled={disabled}
+                onChange={(_, { checked }) => {
+                  void onToggle(permission, checked);
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

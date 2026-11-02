@@ -508,7 +508,6 @@
 }
 
 @media (max-width: 900px) {
-
   .rbac-page__layout,
   .rbac-role-grid,
   .rbac-realm-layout,
@@ -639,4 +638,263 @@
   .rbac-summary-tile strong {
     font-size: 1.25rem;
   }
+}
+
+/* Keep task navigation and application context in view; only results scroll. */
+.rbac-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: calc(100dvh - 13rem);
+  min-height: 0;
+  padding: 0;
+}
+
+.rbac-page [hidden] {
+  display: none !important;
+}
+
+.rbac-page__header {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.rbac-workspace-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.rbac-workspace-context > .cds--list-box__wrapper {
+  flex: 1;
+  min-width: 12rem;
+  max-width: 32rem;
+}
+
+.rbac-page__layout {
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.rbac-workspace-navigation {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.rbac-workspace-navigation button {
+  flex-shrink: 0;
+  min-height: 2.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  border-left: 3px solid transparent;
+  color: var(--cds-text-secondary, #525252);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover-01, #e8e8e8);
+  }
+
+  &[aria-current="page"] {
+    border-left-color: var(--cds-link-primary, #0f62fe);
+    color: var(--cds-text-primary, #161616);
+    font-weight: 600;
+    background: var(--cds-layer-selected-01, #e0e0e0);
+  }
+}
+
+.rbac-workspace-navigation button:focus-visible,
+.rbac-page__main:focus-visible,
+.rbac-role-list__select:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: -2px;
+}
+
+.rbac-workspace-mobile-navigation {
+  display: none;
+}
+
+.rbac-page__main {
+  display: block;
+  position: relative;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0 0.25rem 0.25rem;
+}
+
+.rbac-workspace-description {
+  margin: 0 0 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.rbac-page__main .rbac-card {
+  overflow: visible;
+}
+
+.rbac-page__main .rbac-card > .rbac-page__panel-header:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-wrap: wrap;
+  background: var(--cds-layer, #fff);
+}
+
+.rbac-config-navigation {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.rbac-config-navigation .cds--dropdown__wrapper {
+  min-width: min(16rem, 100%);
+}
+
+.rbac-config-navigation > span {
+  flex: 1;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+}
+
+.rbac-page .rbac-form-grid {
+  gap: 0.75rem 1rem;
+}
+
+.rbac-page .rbac-role-grid,
+.rbac-page .rbac-realm-layout {
+  grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
+}
+
+.rbac-page .rbac-inline-form {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.rbac-role-list__select {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rbac-page .rbac-permission-matrix {
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+}
+
+.rbac-permission-search {
+  padding: 0.75rem 1rem 0;
+}
+
+@media (max-width: 900px) {
+  .rbac-page__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rbac-workspace-navigation {
+    display: none;
+  }
+
+  .rbac-workspace-mobile-navigation {
+    display: block;
+  }
+
+  .rbac-page .rbac-role-grid,
+  .rbac-page .rbac-realm-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 672px) {
+  .rbac-page {
+    height: calc(100dvh - 11rem);
+    gap: 0.5rem;
+  }
+
+  .rbac-page__header p,
+  .rbac-config-navigation > span {
+    display: none;
+  }
+
+  .rbac-workspace-context {
+    gap: 0.5rem;
+  }
+
+  .rbac-workspace-context > .cds--list-box__wrapper {
+    max-width: none;
+    flex-basis: 100%;
+  }
+
+  .rbac-config-navigation {
+    padding: 0.75rem;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 800px) {
+  .rbac-page {
+    height: calc(100dvh - 12rem);
+    gap: 0.5rem;
+  }
+
+  .rbac-page__header h1 {
+    font-size: 1.5rem;
+  }
+
+  .rbac-page__header p {
+    display: none;
+  }
+
+  .rbac-workspace-navigation button {
+    min-height: 2.25rem;
+    padding-block: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .rbac-page .rbac-form-grid,
+  .rbac-page__main .rbac-page__panel-header,
+  .rbac-config-navigation {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .rbac-config-navigation > span {
+    display: none;
+  }
+
+  .rbac-config-sections .cds--text-input {
+    height: 2rem;
+  }
+
+  .rbac-config-sections .cds--label {
+    margin-bottom: 0.25rem;
+  }
+}
+
+.rbac-group-section-navigation,
+.rbac-governance-navigation {
+  max-width: 24rem;
+  padding: 0.75rem 1rem;
+}
+
+.rbac-group-search {
+  padding: 0.75rem;
 }

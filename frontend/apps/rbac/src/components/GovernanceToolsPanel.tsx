@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ContentSwitcher, InlineNotification, Switch } from "@carbon/react";
+import { Dropdown, InlineNotification } from "@carbon/react";
 
 import {
   useApplyRbacImportMutation,
@@ -99,7 +99,11 @@ export function GovernanceToolsPanel({ activeClientId }: GovernanceToolsPanelPro
   };
 
   const handleApplyImport = async () => {
-    if (!confirm("Apply this RBAC seed import? This will create/update mappings but will not prune stale records.")) {
+    if (
+      !confirm(
+        "Apply this RBAC seed import? This will create/update mappings but will not prune stale records.",
+      )
+    ) {
       return;
     }
     await applyImport({ payload: parseSeedPayload() }).unwrap();
@@ -128,9 +132,9 @@ export function GovernanceToolsPanel({ activeClientId }: GovernanceToolsPanelPro
   const handleSimulate = async () => {
     const toList = (value: string) =>
       value
-      .split(",")
-      .map((role) => role.trim())
-      .filter(Boolean);
+        .split(",")
+        .map((role) => role.trim())
+        .filter(Boolean);
 
     const toClientRoles = (value: string) =>
       toList(value).reduce<Record<string, string[]>>((acc, entry) => {
@@ -184,20 +188,36 @@ export function GovernanceToolsPanel({ activeClientId }: GovernanceToolsPanelPro
         />
       )}
 
-      <div className="rbac-governance-tabs">
-        <ContentSwitcher
-          onChange={(item) => setActiveSection((item?.name as GovernanceSection) || "permissions")}
-          selectedIndex={0}
-          size="md"
-        >
-          <Switch name="permissions" text="Permissions" />
-          <Switch name="import-export" text="Import / Export" />
-          <Switch name="templates" text="Templates" />
-          <Switch name="changes" text="Changes" />
-          <Switch name="access" text="Access" />
-          <Switch name="audit" text="Audit" />
-          <Switch name="simulator" text="Simulator" />
-        </ContentSwitcher>
+      <div className="rbac-governance-navigation">
+        <Dropdown
+          id="rbac-governance-section"
+          titleText="Governance task"
+          label="Choose a task"
+          items={
+            [
+              "permissions",
+              "import-export",
+              "templates",
+              "changes",
+              "access",
+              "audit",
+              "simulator",
+            ] as GovernanceSection[]
+          }
+          itemToString={(item) =>
+            ({
+              permissions: "Permission catalog",
+              "import-export": "Import / Export",
+              templates: "Role templates",
+              changes: "Change requests",
+              access: "Access requests",
+              audit: "Audit trail",
+              simulator: "Policy simulator",
+            })[item ?? "permissions"]
+          }
+          selectedItem={activeSection}
+          onChange={({ selectedItem }) => selectedItem && setActiveSection(selectedItem)}
+        />
       </div>
 
       <div className="rbac-governance-grid">
