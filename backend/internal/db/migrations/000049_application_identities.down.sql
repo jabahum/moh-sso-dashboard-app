@@ -1,0 +1,1 @@
+DROP TABLE ihp_application_identities;

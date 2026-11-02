@@ -26,6 +26,7 @@ import (
 	geojsonfeature "github.com/moh-sso-dashboard/internal/features/geojson"
 	metricsfeature "github.com/moh-sso-dashboard/internal/features/metrics"
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
+	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	reportschedulerfeature "github.com/moh-sso-dashboard/internal/features/report_scheduler"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
@@ -51,6 +52,7 @@ type RouterDependencies struct {
 }
 
 type HandlerSet struct {
+	Platform                *platformfeature.Handler
 	Auth                    *authfeature.Handler
 	Clients                 *clientfeature.Handler
 	Users                   *userfeature.Handler
@@ -144,6 +146,7 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 		ratelimit.AuthenticatedDefaultPolicy(routeDeps.AuthenticatedRateLimitPerMin),
 	))
 
+	platformfeature.RegisterRoutes(api, protected, deps.Handlers.Platform, deps.Limiter)
 	routes.RegisterProtectedRoutes(protected, routeDeps)
 	routes.RegisterAdminRoutes(protected, routeDeps)
 	docs.Register(r)

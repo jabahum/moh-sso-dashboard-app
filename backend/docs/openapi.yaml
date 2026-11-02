@@ -3291,6 +3291,65 @@ components:
           nullable: true
           type: boolean
       type: object
+    platform.Identity:
+      properties:
+        applicationId:
+          type: string
+        clientId:
+          type: string
+        enabled:
+          type: boolean
+        scopes:
+          items:
+            type: string
+          type: array
+        subject:
+          type: string
+      type: object
+    platform.IdentityInput:
+      properties:
+        enabled:
+          type: boolean
+        reason:
+          type: string
+        scopes:
+          items:
+            type: string
+          type: array
+        subject:
+          type: string
+      required:
+        - subject
+        - reason
+      type: object
+    platform.Principal:
+      properties:
+        applicationId:
+          type: string
+        clientId:
+          type: string
+        scopes:
+          items:
+            type: string
+          type: array
+        subject:
+          type: string
+      type: object
+    platform.UserAccess:
+      properties:
+        applicationId:
+          type: string
+        permissions:
+          items:
+            type: string
+          type: array
+        roles:
+          items:
+            type: string
+          type: array
+        subject:
+          type: string
+      type: object
     rbac.AccessRequest:
       properties:
         createdAt:
@@ -10235,6 +10294,76 @@ paths:
       x-go-handler: github.com/moh-sso-dashboard/internal/features/notifications.(*Handler).TestSMS
       x-route-permissions:
         - notifications:write
+  /api/v1/admin/platform/applications/{clientId}/identities/{oauthClientId}:
+    put:
+      operationId: put_api_v1_admin_platform_applications_clientId_identities_oauthClientId
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: oauthClientId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform.IdentityInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.Identity'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Save Identity
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).SaveIdentity
   /api/v1/admin/rbac/access-requests:
     get:
       description: 'Explicit route permission: rbac:roles:write. Additional group/system access checks may apply.'
@@ -24941,6 +25070,118 @@ paths:
       tags:
         - notifications
       x-go-handler: github.com/moh-sso-dashboard/internal/features/notifications.(*Handler).UpdateNotificationPreferences
+  /api/v1/platform/applications/{clientId}/access:
+    get:
+      operationId: get_api_v1_platform_applications_clientId_access
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.UserAccess'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get User Access
+      tags:
+        - platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetUserAccess
+  /api/v1/platform/identity:
+    get:
+      operationId: get_api_v1_platform_identity
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.Principal'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Identity
+      tags:
+        - platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetIdentity
   /api/v1/report-scheduler:
     get:
       description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
@@ -30375,6 +30616,7 @@ tags:
   - name: admin-clients
   - name: admin-metrics
   - name: admin-notifications
+  - name: admin-platform
   - name: admin-rbac
   - name: admin-units
   - name: admin-users

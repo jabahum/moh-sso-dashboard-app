@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"strings"
 
 	router "github.com/moh-sso-dashboard/internal/api"
 	"github.com/moh-sso-dashboard/internal/api/handler"
@@ -22,6 +23,7 @@ import (
 	geojsonfeature "github.com/moh-sso-dashboard/internal/features/geojson"
 	metricsfeature "github.com/moh-sso-dashboard/internal/features/metrics"
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
+	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	reportschedulerfeature "github.com/moh-sso-dashboard/internal/features/report_scheduler"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
@@ -129,6 +131,14 @@ func buildHandlers(deps handlerDependencies) handlers {
 
 	return handlers{
 		Router: router.HandlerSet{
+			Platform: &platformfeature.Handler{
+				Repository: &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
+				Verifier: &platformfeature.Introspector{
+					Endpoint: strings.TrimRight(deps.Config.KeycloakTokenBaseURL(), "/") + "/realms/" + deps.Config.KeycloakRealm + "/protocol/openid-connect/token/introspect",
+					Issuer:   strings.TrimRight(deps.Config.KeycloakExternalURL, "/") + "/realms/" + deps.Config.KeycloakRealm,
+					Audience: deps.Config.PlatformAuthAudience, ClientID: deps.Config.PlatformAuthClientID, Secret: deps.Config.PlatformAuthClientSecret,
+				},
+			},
 			Auth:                    authHandler,
 			Clients:                 clientHandler,
 			Users:                   userHandler,
@@ -149,7 +159,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			GeoJSON:                 geoJSONHandler,
 			Email:                   emailHandler,
 			RBAC:                    rbacHandler,
-				ReportScheduler:         reportschedulerfeature.NewHandler(deps.Services.ReportScheduler),
+			ReportScheduler:         reportschedulerfeature.NewHandler(deps.Services.ReportScheduler),
 		},
 		Health: healthHandler,
 	}

@@ -1,6 +1,6 @@
 # MOH platform development
 
-All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phase 1 is implemented; phases 2–5 remain planned. No additional phase branches are required.
+All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–2 are implemented; phases 3–5 remain planned. No additional phase branches are required.
 
 | Phase | Planned commit subject | Scope |
 | --- | --- | --- |
@@ -133,6 +133,10 @@ Apply migration 48 before starting the new backend. On a fresh installation, a r
 
 For rollback, stop the new backend, roll back migration 48, and deploy the previous backend/frontend. The down migration preserves enabled flags so suspended/retired applications stay disabled immediately after rollback. The previous release's ordinary seed/sync behavior can re-enable them later; retain operational controls during rollback. Lifecycle history remains in the existing audit table, but lifecycle and integration columns are removed.
 
+## Phase 2: identity contracts
+
+Implemented the [application identity contract](platform-identity.md), authenticated Keycloak introspection, application-specific user access decisions, scoped machine bindings, and audited grant revocation. Migration 49 is required before enabling platform endpoints.
+
 ## Remaining phases
 
-Phase 1 establishes registry governance. Machine identity scopes, external token validation/revocation, shared-service application isolation, notification idempotency, example applications, and platform observability remain phases 2–5. Do not treat registry activation as proof that these integrations are implemented.
+Phases 1–2 establish registry governance and identity contracts. Shared-service application isolation, notification idempotency, example applications, and platform observability remain phases 3–5. Do not treat registry activation as proof that these integrations are implemented.
