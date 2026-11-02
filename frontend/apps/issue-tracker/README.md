@@ -11,6 +11,22 @@ It is a standalone React microfrontend exposed as `@moh-sso/issue-tracker` and m
 - Integrate with shared API, UI, and type packages.
 - Expose single-spa lifecycle functions for shell orchestration.
 
+## Navigation and layout
+
+Issue Tracker is one launcher entry. Its internal navigation exposes **Issue Summary**
+(`/apps/dwh/issue-tracker/dashboard`) and **Registered Issues**
+(`/apps/dwh/issue-tracker/issues`). The module root still opens Registered Issues;
+existing issue-code query parameters and detail URLs remain supported.
+
+Both pages use the shared `PageShell`, consistent action sizes, and responsive
+spacing. On narrow screens, the registered-issues table scrolls horizontally in a
+keyboard-focusable region instead of compressing its columns.
+
+Registry migration 52 updates existing navigation without changing permissions,
+activation, or suspended state. Rollback restores the saved Issue Tracker item
+and retains unrelated navigation entries. Seed and Keycloak navigation metadata
+use the same single-entry structure for new installations.
+
 ## Entry Points
 
 - `src/index.ts`

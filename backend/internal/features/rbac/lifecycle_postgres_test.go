@@ -231,6 +231,42 @@ func TestApplicationRegistryPostgres(t *testing.T) {
 	if unchanged.LifecycleStatus != "registered" {
 		t.Fatal("audit failure changed application")
 	}
+
+	// Cosmetic navigation migrations preserve access and unrelated configuration.
+	t.Run("issue tracker navigation alignment", func(t *testing.T) {
+		const navigation = `[{"id":"other","path":"/other","displayInLauncher":true},{"id":"issue-tracking","label":"Issue Tracking","path":"/apps/dwh/issue-tracker","permission":"issue_tracker:read","children":[{"path":"/apps/dwh/issue-tracker/dashboard","displayInLauncher":true},{"path":"/apps/dwh/issue-tracker/issues","displayInLauncher":true}]}]`
+		for _, fixture := range []struct {
+			client, status string
+			enabled        bool
+		}{
+			{"navigation-active", "active", true}, {"navigation-suspended", "suspended", false},
+		} {
+			if _, err := db.ExecContext(ctx, `INSERT INTO ihp_systems (client_id, display_name, lifecycle_status, enabled, metadata) VALUES ($1, $1, $2, $3, jsonb_build_object('navigation', $4::text, 'custom', 'preserved'))`, fixture.client, fixture.status, fixture.enabled, navigation); err != nil {
+				t.Fatal(err)
+			}
+		}
+		migration("000052_align_issue_tracker_navigation.up.sql")
+		var valid bool
+		if err := db.QueryRowContext(ctx, `SELECT bool_and(
+			(metadata->>'navigation')::jsonb->1->>'label' = 'Issue Tracker'
+			AND (metadata->>'navigation')::jsonb->1->>'permission' = 'issue_tracker:read'
+			AND (metadata->>'navigation')::jsonb->1->'children'->0->>'displayInLauncher' = 'false'
+			AND (metadata->>'navigation')::jsonb->1->'children'->1->>'displayInLauncher' = 'false'
+			AND (metadata->>'navigation')::jsonb->0->>'displayInLauncher' = 'true'
+			AND metadata->>'custom' = 'preserved'
+			AND ((client_id = 'navigation-active' AND lifecycle_status = 'active' AND enabled)
+			OR (client_id = 'navigation-suspended' AND lifecycle_status = 'suspended' AND NOT enabled)))
+			FROM ihp_systems WHERE client_id LIKE 'navigation-%'`).Scan(&valid); err != nil || !valid {
+			t.Fatalf("navigation/access alignment: valid=%v err=%v", valid, err)
+		}
+		migration("000052_align_issue_tracker_navigation.down.sql")
+		if err := db.QueryRowContext(ctx, `SELECT bool_and((metadata->>'navigation')::jsonb = $1::jsonb AND NOT metadata ? 'issueTrackerNavigationBeforeAlignment'
+			AND ((client_id = 'navigation-active' AND lifecycle_status = 'active' AND enabled)
+			OR (client_id = 'navigation-suspended' AND lifecycle_status = 'suspended' AND NOT enabled)))
+			FROM ihp_systems WHERE client_id LIKE 'navigation-%'`, navigation).Scan(&valid); err != nil || !valid {
+			t.Fatalf("navigation rollback: valid=%v err=%v", valid, err)
+		}
+	})
 	migration("000048_application_registry_lifecycle.down.sql")
 	var enabled bool
 	if err := db.QueryRowContext(ctx, `SELECT enabled FROM ihp_systems WHERE client_id = 'pilot'`).Scan(&enabled); err != nil {

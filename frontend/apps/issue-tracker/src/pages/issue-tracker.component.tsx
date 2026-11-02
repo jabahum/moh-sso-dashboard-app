@@ -11,10 +11,9 @@ import {
   TabList,
   Tab,
 } from "@carbon/react";
-import { Add, ChevronDown, Dashboard, Download, Filter, Upload, User, List } from "@carbon/react/icons";
+import { Add, ChevronDown, Download, Filter, Upload, User, List } from "@carbon/react/icons";
 import * as XLSX from "xlsx";
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
 
 import {
   useGetIssuesQuery,
@@ -69,7 +68,10 @@ import { headers, IMPORT_TEMPLATE_HEADERS } from "../lib/constants.ts";
 import IssueDetail from "./issue-detail/issue-detail.component.tsx";
 
 import { formatReportingPeriod } from "../lib/periodUtils.ts";
-export { formatReportingPeriod, formatReportingPeriod as convertReportingPeriod } from "../lib/periodUtils.ts";
+export {
+  formatReportingPeriod,
+  formatReportingPeriod as convertReportingPeriod,
+} from "../lib/periodUtils.ts";
 
 import "./issue-tracker.scss";
 
@@ -137,7 +139,6 @@ const PROGRAM_COLORS = [
 ];
 
 const IssueTracker = () => {
-  const navigate = useNavigate();
   const user = useSelector(selectUser);
   const currentYear = new Date().getFullYear();
 
@@ -190,7 +191,11 @@ const IssueTracker = () => {
 
   const [triggerGetIssues] = useLazyGetIssuesQuery();
 
-  const { data: summaryData, isLoading: isLoadingSummary, error: summaryError } = useGetIssuesSummaryByProgramQuery();
+  const {
+    data: summaryData,
+    isLoading: isLoadingSummary,
+    error: summaryError,
+  } = useGetIssuesSummaryByProgramQuery();
 
   const summaryRows = useMemo(() => {
     return (summaryData ?? []).map((item, index) => ({
@@ -417,9 +422,11 @@ const IssueTracker = () => {
       const dataRows = issuesToDownload.map((issue) =>
         EXPORT_COLUMNS.map((col) => {
           if (col.key === "time_period") {
-            return (issue as Record<string, unknown>)["time_period"] ??
+            return (
+              (issue as Record<string, unknown>)["time_period"] ??
               (issue as Record<string, unknown>)["time_Period"] ??
-              "";
+              ""
+            );
           }
           return (issue as Record<string, unknown>)[col.key] ?? "";
         }),
@@ -504,13 +511,13 @@ const IssueTracker = () => {
   );
 
   const selectedIssueObjects = useMemo(() => {
-    return tabFilteredIssues.filter((item) => selectedRowIds.includes(String(item.id ?? item.issue_id)));
+    return tabFilteredIssues.filter((item) =>
+      selectedRowIds.includes(String(item.id ?? item.issue_id)),
+    );
   }, [tabFilteredIssues, selectedRowIds]);
 
   const selectedIssueCodes = useMemo(() => {
-    return selectedIssueObjects
-      .map((item) => item.issue_code)
-      .filter(Boolean);
+    return selectedIssueObjects.map((item) => item.issue_code).filter(Boolean);
   }, [selectedIssueObjects]);
 
   const areAllSelectedAssigned = useMemo(() => {
@@ -721,18 +728,66 @@ const IssueTracker = () => {
   if (isViewIssueDetail && selectedIssue) {
     return (
       <PermissionGuard permission={PERMISSIONS.issueTrackerRead}>
-        <IssueDetail
-          selectedIssue={selectedIssue}
-          goToBack={handleBackFromDetail}
-        />
+        <IssueDetail selectedIssue={selectedIssue} goToBack={handleBackFromDetail} />
       </PermissionGuard>
     );
   }
 
   return (
     <PermissionGuard permission={PERMISSIONS.issueTrackerRead}>
-      <>
-        <div style={{ marginBottom: "1rem" }}>
+      <div className="issue-tracker-page">
+        <div className="issue-label-container">
+          <div>
+            <h4 className="issue-label">Registered Issues</h4>
+            <p className="issue-subtitle">
+              Review, filter, assign, and resolve reported data quality issues.
+            </p>
+          </div>
+
+          <div className="issue-toolbar-actions">
+            <PermissionGuard permission={PERMISSIONS.issueTrackerAssign}>
+              <Button
+                size="sm"
+                kind="tertiary"
+                disabled={selectedIssueCodes.length === 0}
+                onClick={() => setShowAssignModal(true)}
+              >
+                {areAllSelectedAssigned ? "Re-assign Selected" : "Assign Selected"}{" "}
+                {selectedIssueCodes.length > 0 ? `(${selectedIssueCodes.length})` : ""}
+              </Button>
+            </PermissionGuard>
+
+            <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
+              <Button size="sm" kind="ghost" renderIcon={Download} onClick={downloadTemplate}>
+                Template
+              </Button>
+            </PermissionGuard>
+
+            <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
+              <Button
+                size="sm"
+                kind="secondary"
+                renderIcon={Upload}
+                onClick={() => setShowImportModal(true)}
+              >
+                Import Issues
+              </Button>
+            </PermissionGuard>
+
+            <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
+              <Button
+                size="sm"
+                kind="primary"
+                renderIcon={Add}
+                className="dwh-btn-width"
+                onClick={() => setShowModal(true)}
+              >
+                New Issue
+              </Button>
+            </PermissionGuard>
+          </div>
+        </div>
+        <div className="issue-tracker-assignments">
           <Tabs
             selectedIndex={activeTab === "assigned_to_me" ? 0 : 1}
             onChange={({ selectedIndex }) => {
@@ -741,12 +796,8 @@ const IssueTracker = () => {
             }}
           >
             <TabList aria-label="Issue tracker view options" contained>
-              <Tab renderIcon={User}>
-                Assigned to me ({assignedToMeCount})
-              </Tab>
-              <Tab renderIcon={List}>
-                All Issues ({allIssuesCount})
-              </Tab>
+              <Tab renderIcon={User}>Assigned to me ({assignedToMeCount})</Tab>
+              <Tab renderIcon={List}>All Issues ({allIssuesCount})</Tab>
             </TabList>
           </Tabs>
         </div>
@@ -765,7 +816,8 @@ const IssueTracker = () => {
             ) : (
               <div className="summary-tiles-grid">
                 {summaryRows.map((tile, index) => {
-                  const isActive = selectedProgram === (tile.program === "Unspecified" ? "" : tile.program);
+                  const isActive =
+                    selectedProgram === (tile.program === "Unspecified" ? "" : tile.program);
                   const tileColor = PROGRAM_COLORS[index % PROGRAM_COLORS.length];
                   return (
                     <button
@@ -792,7 +844,8 @@ const IssueTracker = () => {
                         </span>
                         <span className="summary-substat resolved">
                           <span className="dot resolved-dot" />
-                          <span className="label">Resolved:</span> <strong>{tile.resolved_count}</strong>
+                          <span className="label">Resolved:</span>{" "}
+                          <strong>{tile.resolved_count}</strong>
                         </span>
                       </div>
                     </button>
@@ -802,64 +855,6 @@ const IssueTracker = () => {
             )}
           </div>
         )}
-
-        <div className="dv-toolbar issue-label-container">
-          <div>
-            <span className="issue-label">Registered Issues</span>
-          </div>
-
-          <div className="issue-toolbar-actions">
-            <PermissionGuard permission={PERMISSIONS.issueTrackerAssign}>
-              <Button
-                size="md"
-                kind="tertiary"
-                disabled={selectedIssueCodes.length === 0}
-                onClick={() => setShowAssignModal(true)}
-              >
-                {areAllSelectedAssigned ? "Re-assign Selected" : "Assign Selected"}{" "}
-                {selectedIssueCodes.length > 0 ? `(${selectedIssueCodes.length})` : ""}
-              </Button>
-            </PermissionGuard>
-
-            <Button
-              size="md"
-              kind="ghost"
-              renderIcon={Dashboard}
-              onClick={() => navigate("/dashboard")}
-            >
-              Summary Dashboard
-            </Button>
-
-            <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
-              <Button size="md" kind="ghost" renderIcon={Download} onClick={downloadTemplate}>
-                Template
-              </Button>
-            </PermissionGuard>
-
-            <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
-              <Button
-                size="md"
-                kind="secondary"
-                renderIcon={Upload}
-                onClick={() => setShowImportModal(true)}
-              >
-                Import Issues
-              </Button>
-            </PermissionGuard>
-
-            <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
-              <Button
-                size="md"
-                kind="primary"
-                renderIcon={Add}
-                className="dwh-btn-width"
-                onClick={() => setShowModal(true)}
-              >
-                New Issue
-              </Button>
-            </PermissionGuard>
-          </div>
-        </div>
 
         {selectedProgram !== undefined && (
           <div
@@ -1129,29 +1124,37 @@ const IssueTracker = () => {
               fontSize: "0.875rem",
             }}
           >
-            <strong>No issues currently assigned to you.</strong> Switch to the <em>All Issues</em> tab to view all registered issues.
+            <strong>No issues currently assigned to you.</strong> Switch to the <em>All Issues</em>{" "}
+            tab to view all registered issues.
           </div>
         )}
 
-        <DataList
-          columns={headers}
-          data={tabFilteredIssues}
-          totalItems={data?.totalCount ?? 0}
-          currentPage={page}
-          currentPageSize={pageSize}
-          onPageChange={(newPage, newPageSize) => {
-            setPage(newPage);
-            setPageSize(newPageSize);
-          }}
-          handleIssueClick={handleIssueClick}
-          closeView={() => {
-            setSelectedIssue(undefined);
-            setIsViewIssueDetail(false);
-          }}
-          selectedRowIds={selectedRowIds}
-          onSelectRow={handleSelectRow}
-          onSelectAll={handleSelectAll}
-        />
+        <div
+          className="issue-tracker-table"
+          role="region"
+          aria-label="Registered issues table"
+          tabIndex={0}
+        >
+          <DataList
+            columns={headers}
+            data={tabFilteredIssues}
+            totalItems={data?.totalCount ?? 0}
+            currentPage={page}
+            currentPageSize={pageSize}
+            onPageChange={(newPage, newPageSize) => {
+              setPage(newPage);
+              setPageSize(newPageSize);
+            }}
+            handleIssueClick={handleIssueClick}
+            closeView={() => {
+              setSelectedIssue(undefined);
+              setIsViewIssueDetail(false);
+            }}
+            selectedRowIds={selectedRowIds}
+            onSelectRow={handleSelectRow}
+            onSelectAll={handleSelectAll}
+          />
+        </div>
 
         {showModal && (
           <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
@@ -1175,7 +1178,7 @@ const IssueTracker = () => {
             />
           </PermissionGuard>
         )}
-      </>
+      </div>
     </PermissionGuard>
   );
 };
