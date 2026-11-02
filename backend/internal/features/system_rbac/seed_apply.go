@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -216,9 +217,13 @@ func upsertSystem(ctx context.Context, tx *sql.Tx, system SeedSystem) (string, e
 				ELSE COALESCE(ihp_systems.metadata, '{}'::jsonb) || EXCLUDED.metadata
 			END,
 			updated_at = now()
+        WHERE NOT $21::boolean
 		RETURNING id::text
-	`, system.ClientID, system.DisplayName, system.Description, system.Icon, system.LaunchURL, system.Category, system.OwnerTeam, system.OwnerName, system.OwnerEmail, system.SupportURL, system.DocumentationURL, system.Environment, system.Criticality, system.SystemType, *system.DisplayInLauncher, *system.DisplayInSideNav, system.LaunchMode, enabled, system.SortOrder, metadata).Scan(&id)
+	`, system.ClientID, system.DisplayName, system.Description, system.Icon, system.LaunchURL, system.Category, system.OwnerTeam, system.OwnerName, system.OwnerEmail, system.SupportURL, system.DocumentationURL, system.Environment, system.Criticality, system.SystemType, *system.DisplayInLauncher, *system.DisplayInSideNav, system.LaunchMode, enabled, system.SortOrder, metadata, IsStartupDiscovery(ctx)).Scan(&id)
 
+	if errors.Is(err, sql.ErrNoRows) && IsStartupDiscovery(ctx) {
+		err = tx.QueryRowContext(ctx, `SELECT id::text FROM ihp_systems WHERE client_id=$1`, system.ClientID).Scan(&id)
+	}
 	return id, err
 }
 

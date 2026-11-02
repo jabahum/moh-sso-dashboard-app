@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	systemrbac "github.com/moh-sso-dashboard/internal/features/system_rbac"
 	"strings"
 )
 
@@ -149,14 +150,14 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 				ELSE COALESCE(ihp_systems.metadata, '{}'::jsonb) || EXCLUDED.metadata
 			END,
 			updated_at = now()
-        WHERE NOT $23::boolean
+        WHERE NOT $23::boolean AND NOT $24::boolean
 		RETURNING id::text, client_id, display_name, COALESCE(description, ''), COALESCE(icon, ''),
 		          COALESCE(launch_url, ''), COALESCE(category, ''), COALESCE(owner_team, ''),
 		          COALESCE(owner_name, ''), COALESCE(owner_email, ''), COALESCE(support_url, ''),
 		          COALESCE(documentation_url, ''), COALESCE(environment, ''), COALESCE(criticality, ''),
 		          COALESCE(metadata->>'navigation', ''), COALESCE(metadata->>'authenticatedLaunchUrl', ''), system_type, display_in_launcher,
 		          display_in_sidenav, launch_mode, enabled, sort_order, lifecycle_status, integration_type, contract_version
-	`, input.ClientID, input.DisplayName, input.Description, input.Icon, input.LaunchURL, input.Category, input.OwnerTeam, input.OwnerName, input.OwnerEmail, input.SupportURL, input.DocumentationURL, input.Environment, input.Criticality, input.SystemType, *input.DisplayInLauncher, *input.DisplayInSideNav, input.LaunchMode, enabled, input.SortOrder, metadata, input.IntegrationType, input.ContractVersion, input.RegisterOnly).Scan(
+	`, input.ClientID, input.DisplayName, input.Description, input.Icon, input.LaunchURL, input.Category, input.OwnerTeam, input.OwnerName, input.OwnerEmail, input.SupportURL, input.DocumentationURL, input.Environment, input.Criticality, input.SystemType, *input.DisplayInLauncher, *input.DisplayInSideNav, input.LaunchMode, enabled, input.SortOrder, metadata, input.IntegrationType, input.ContractVersion, input.RegisterOnly, systemrbac.IsStartupDiscovery(ctx)).Scan(
 		&system.ID,
 		&system.ClientID,
 		&system.DisplayName,
@@ -181,6 +182,16 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 		&system.SortOrder,
 		&system.LifecycleStatus, &system.IntegrationType, &system.ContractVersion,
 	)
+	if errors.Is(err, sql.ErrNoRows) && systemrbac.IsStartupDiscovery(ctx) {
+		existing, err := loadSystem(ctx, tx, input.ClientID, false)
+		if err != nil {
+			return System{}, err
+		}
+		if err := tx.Commit(); err != nil {
+			return System{}, err
+		}
+		return existing, nil
+	}
 	if errors.Is(err, sql.ErrNoRows) && input.RegisterOnly {
 		return System{}, ErrApplicationExists
 	}

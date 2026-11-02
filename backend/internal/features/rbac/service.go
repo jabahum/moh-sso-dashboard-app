@@ -76,6 +76,15 @@ func (s *Service) GetSystem(ctx context.Context, clientID string) (SystemDetail,
 
 func (s *Service) UpsertSystem(ctx context.Context, input UpsertSystemInput) (System, error) {
 	input.ClientID = strings.TrimSpace(input.ClientID)
+	if systemrbac.IsStartupDiscovery(ctx) {
+		current, err := s.repository.GetSystem(ctx, input.ClientID)
+		if err == nil {
+			return current.System, nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return System{}, err
+		}
+	}
 	input.DisplayName = strings.TrimSpace(input.DisplayName)
 	input.Description = strings.TrimSpace(input.Description)
 	input.Icon = strings.TrimSpace(input.Icon)

@@ -48,6 +48,22 @@ func runStartupRBACSync(
 		)
 	}
 
+	ctx = systemrbac.WithStartupDiscovery(ctx)
+
+	// Establish canonical defaults before discovering previously unknown clients.
+	if cfg.RBACStartupSeedEnabled && db != nil {
+		seed, source, err := loadStartupRBACSeed(cfg.RBACStartupSeedPath)
+		if err != nil {
+			return err
+		}
+		if err := systemrbac.ApplySeed(ctx, db, seed); err != nil {
+			return err
+		}
+		if appLogger != nil {
+			appLogger.Info("RBAC startup seed applied", "source", source)
+		}
+	}
+
 	if cfg.RBACStartupSyncRealmExport {
 		response, err := services.RBAC.ApplyRealmExportFileSync(ctx, cfg.RBACStartupSyncRealmExportPath)
 		if err != nil {
@@ -78,19 +94,6 @@ func runStartupRBACSync(
 				"access_roles_synced", response.AccessRoles,
 				"warnings", response.Preview.Report.Warnings,
 			)
-		}
-	}
-
-	if cfg.RBACStartupSeedEnabled && db != nil {
-		seed, source, err := loadStartupRBACSeed(cfg.RBACStartupSeedPath)
-		if err != nil {
-			return err
-		}
-		if err := systemrbac.ApplySeed(ctx, db, seed); err != nil {
-			return err
-		}
-		if appLogger != nil {
-			appLogger.Info("RBAC startup seed applied", "source", source)
 		}
 	}
 

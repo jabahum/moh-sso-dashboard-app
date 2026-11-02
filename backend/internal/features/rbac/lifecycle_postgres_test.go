@@ -119,6 +119,40 @@ func TestApplicationRegistryPostgres(t *testing.T) {
 		}
 	}
 	assertAccess(true)
+	// Automatic startup discovery must not overwrite active configuration, including
+	// a concurrent insert that reaches the repository's ON CONFLICT guard.
+	startup := systemrbac.WithStartupDiscovery(ctx)
+	changedStartup := input
+	changedStartup.OwnerTeam = "Discovered owner"
+	changedStartup.LaunchURL = "https://startup.example.org"
+	changedStartup.IntegrationType = "external"
+	changedStartup.ContractVersion = "1"
+	preserved, err := service.UpsertSystem(startup, changedStartup)
+	if err != nil || preserved.OwnerTeam != input.OwnerTeam || preserved.LaunchURL != input.LaunchURL || preserved.LifecycleStatus != "active" || !preserved.Enabled {
+		t.Fatalf("service startup overwrote configuration: %+v %v", preserved, err)
+	}
+	preserved, err = repo.UpsertSystem(startup, changedStartup)
+	if err != nil || preserved.OwnerTeam != input.OwnerTeam || preserved.LifecycleStatus != "active" || !preserved.Enabled {
+		t.Fatalf("repository startup conflict overwrote configuration: %+v %v", preserved, err)
+	}
+	startupSeed := systemrbac.SeedFile{Systems: []systemrbac.SeedSystem{{ClientID: "pilot", DisplayName: "Discovered title", OwnerTeam: "Seed owner", LaunchURL: "https://seed.example.org", SystemType: "external", LaunchMode: "new_tab", Enabled: &truth, DisplayInLauncher: &truth, DisplayInSideNav: &falsity}}}
+	for i := 0; i < 2; i++ {
+		if err := systemrbac.ApplySeed(startup, db, startupSeed); err != nil {
+			t.Fatal(err)
+		}
+		preserved, err := repo.GetSystem(ctx, "pilot")
+		if err != nil || preserved.OwnerTeam != input.OwnerTeam || preserved.LaunchURL != input.LaunchURL || preserved.LifecycleStatus != "active" || !preserved.Enabled {
+			t.Fatalf("seed startup overwrote configuration: %+v %v", preserved, err)
+		}
+	}
+	newInput := changedStartup
+	newInput.ClientID = "startup-discovered"
+	newInput.RegisterOnly = false
+	created, err := service.UpsertSystem(startup, newInput)
+	if err != nil || created.LifecycleStatus != "registered" || created.Enabled {
+		t.Fatalf("new discovery skipped onboarding: %+v %v", created, err)
+	}
+	assertAccess(true)
 	// Unchanged upserts must preserve active status despite BEFORE INSERT / ON CONFLICT interaction.
 	system, err = service.UpsertSystem(ctx, input)
 	if err != nil {
