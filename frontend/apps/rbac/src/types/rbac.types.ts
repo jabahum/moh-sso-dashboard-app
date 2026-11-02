@@ -9,7 +9,19 @@ export type RbacPermission = {
   realmRoleUsageCount?: number;
 };
 
+export type ApplicationLifecycleStatus =
+  | "registered"
+  | "configured"
+  | "validated"
+  | "approved"
+  | "active"
+  | "suspended"
+  | "retired";
+
 export type RbacSystem = {
+  lifecycleStatus: ApplicationLifecycleStatus;
+  integrationType: "external" | "hosted_module";
+  contractVersion: string;
   id: string;
   clientId: string;
   displayName: string;
@@ -124,6 +136,8 @@ export type RbacGroupSystemRolePayload = {
 };
 
 export type UpsertRbacSystemPayload = {
+  integrationType?: "external" | "hosted_module";
+  contractVersion?: string;
   displayName: string;
   description?: string;
   icon?: string;

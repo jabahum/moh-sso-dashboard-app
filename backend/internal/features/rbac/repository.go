@@ -4,6 +4,7 @@ import "context"
 
 type Repository interface {
 	ListSystems(ctx context.Context) ([]System, error)
+	TransitionSystem(ctx context.Context, clientID string, input LifecycleTransitionInput, actor string, validate func(System, int) error) (System, error)
 	GetSystem(ctx context.Context, clientID string) (SystemDetail, error)
 	UpsertSystem(ctx context.Context, input UpsertSystemInput) (System, error)
 	ListPermissions(ctx context.Context) ([]Permission, error)

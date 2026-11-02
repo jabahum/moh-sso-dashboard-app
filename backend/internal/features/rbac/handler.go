@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/moh-sso-dashboard/internal/authz"
 	"github.com/moh-sso-dashboard/internal/http/response"
 )
 
@@ -39,6 +40,22 @@ func (h *Handler) GetSystem(c *gin.Context) {
 	response.OK(c, http.StatusOK, system)
 }
 
+func (h *Handler) RegisterSystem(c *gin.Context) {
+	var input UpsertSystemInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid payload")
+		return
+	}
+	input.ActorUserID = c.GetString("user_id")
+	input.RegisterOnly = true
+	system, err := h.service.UpsertSystem(c.Request.Context(), input)
+	if err != nil {
+		writeError(c, err, "REGISTER_SYSTEM_FAILED")
+		return
+	}
+	response.OK(c, http.StatusCreated, system)
+}
+
 func (h *Handler) UpdateSystem(c *gin.Context) {
 	var input UpsertSystemInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -46,10 +63,26 @@ func (h *Handler) UpdateSystem(c *gin.Context) {
 		return
 	}
 	input.ClientID = c.Param("clientId")
+	input.ActorUserID = c.GetString("user_id")
 
 	system, err := h.service.UpsertSystem(c.Request.Context(), input)
 	if err != nil {
 		writeError(c, err, "UPDATE_SYSTEM_FAILED")
+		return
+	}
+	response.OK(c, http.StatusOK, system)
+}
+
+func (h *Handler) TransitionSystem(c *gin.Context) {
+	var input LifecycleTransitionInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "status and reason are required")
+		return
+	}
+	actor, _ := authz.FromGin(c)
+	system, err := h.service.TransitionSystem(c.Request.Context(), c.Param("clientId"), input, actor)
+	if err != nil {
+		writeError(c, err, "LIFECYCLE_TRANSITION_FAILED")
 		return
 	}
 	response.OK(c, http.StatusOK, system)
@@ -707,6 +740,12 @@ func bindRealmExportPayload(c *gin.Context) ([]byte, bool) {
 
 func writeError(c *gin.Context, err error, code string) {
 	switch {
+	case errors.Is(err, ErrApplicationExists):
+		response.Fail(c, http.StatusConflict, "APPLICATION_EXISTS", "application is already registered")
+	case errors.Is(err, ErrLifecycleForbidden):
+		response.Fail(c, http.StatusForbidden, "LIFECYCLE_FORBIDDEN", "application lifecycle permission required")
+	case errors.Is(err, ErrLifecycleConflict):
+		response.Fail(c, http.StatusConflict, "LIFECYCLE_CONFLICT", "invalid application lifecycle transition; reload the application")
 	case errors.Is(err, ErrInvalidInput):
 		response.Fail(c, http.StatusBadRequest, "INVALID_INPUT", safeInvalidInputMessage(err))
 	case errors.Is(err, ErrPermissionMissing):

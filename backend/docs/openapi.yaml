@@ -3773,6 +3773,16 @@ components:
             type: string
           type: array
       type: object
+    rbac.LifecycleTransitionInput:
+      properties:
+        reason:
+          type: string
+        status:
+          type: string
+      required:
+        - status
+        - reason
+      type: object
     rbac.OperationResultResponse:
       properties:
         added:
@@ -4132,6 +4142,8 @@ components:
           type: string
         clientId:
           type: string
+        contractVersion:
+          type: string
         criticality:
           type: string
         description:
@@ -4152,9 +4164,13 @@ components:
           type: string
         id:
           type: string
+        integrationType:
+          type: string
         launchMode:
           type: string
         launchUrl:
+          type: string
+        lifecycleStatus:
           type: string
         navigation:
           type: string
@@ -4214,6 +4230,8 @@ components:
           type: string
         clientId:
           type: string
+        contractVersion:
+          type: string
         criticality:
           type: string
         description:
@@ -4234,9 +4252,13 @@ components:
           type: string
         id:
           type: string
+        integrationType:
+          type: string
         launchMode:
           type: string
         launchUrl:
+          type: string
+        lifecycleStatus:
           type: string
         navigation:
           type: string
@@ -4304,6 +4326,8 @@ components:
           type: string
         clientId:
           type: string
+        contractVersion:
+          type: string
         criticality:
           type: string
         description:
@@ -4324,6 +4348,8 @@ components:
         environment:
           type: string
         icon:
+          type: string
+        integrationType:
           type: string
         launchMode:
           type: string
@@ -14279,6 +14305,91 @@ paths:
       x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).ListSystems
       x-route-permissions:
         - rbac:read
+    post:
+      description: 'Explicit route permission: rbac:write. Additional group/system access checks may apply.'
+      operationId: post_api_v1_admin_rbac_systems
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/rbac.UpsertSystemInput'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/rbac.System'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Created
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Register System
+      tags:
+        - admin-rbac
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).RegisterSystem
+      x-route-permissions:
+        - rbac:write
   /api/v1/admin/rbac/systems/{clientId}:
     get:
       description: 'Explicit route permission: rbac:read. Additional group/system access checks may apply.'
@@ -14644,6 +14755,95 @@ paths:
       x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).RemoveSystemAccessRole
       x-route-permissions:
         - rbac:roles:write
+  /api/v1/admin/rbac/systems/{clientId}/lifecycle:
+    post:
+      operationId: post_api_v1_admin_rbac_systems_clientId_lifecycle
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/rbac.LifecycleTransitionInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/rbac.System'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Transition System
+      tags:
+        - admin-rbac
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).TransitionSystem
   /api/v1/admin/rbac/systems/{clientId}/roles:
     get:
       description: 'Explicit route permission: rbac:read. Additional group/system access checks may apply.'

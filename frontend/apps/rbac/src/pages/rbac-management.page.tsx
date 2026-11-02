@@ -46,20 +46,41 @@ import {
   useRemoveSystemRolePermissionMutation,
   useSyncRbacGroupMembersMutation,
   useUpdateRbacSystemMutation,
+  useRegisterRbacSystemMutation,
+  useTransitionRbacSystemMutation,
   useUpsertRbacGroupMutation,
 } from "../api";
 import { PERMISSIONS, PermissionGuard, useAuthorization } from "@moh-sso/auth";
 import { useListUsersQuery, type User } from "@moh-sso/users";
 import { useModal, useToast } from "@moh-sso/ui";
 import type { SystemNavigationItem } from "@moh-sso/types";
-import type { RbacGroup, RbacGroupMember, RbacPermission, RbacSystem, RbacSystemRole } from "../types";
+import type {
+  ApplicationLifecycleStatus,
+  RbacGroup,
+  RbacGroupMember,
+  RbacPermission,
+  RbacSystem,
+  RbacSystemRole,
+} from "../types";
 
 import { EffectiveAccessPanel } from "../components/EffectiveAccessPanel";
 import { GovernanceToolsPanel } from "../components/GovernanceToolsPanel";
 import { SyncDriftPanel } from "../components/SyncDriftPanel";
 import "./rbac-management.page.scss";
 
+const lifecycleActions: Record<ApplicationLifecycleStatus, ApplicationLifecycleStatus[]> = {
+  registered: ["configured", "retired"],
+  configured: ["validated", "retired"],
+  validated: ["approved", "configured", "retired"],
+  approved: ["active", "configured", "retired"],
+  active: ["suspended", "retired"],
+  suspended: ["configured", "retired"],
+  retired: [],
+};
+
 type SystemDraft = {
+  integrationType: "external" | "hosted_module";
+  contractVersion: string;
   displayName: string;
   description: string;
   icon: string;
@@ -173,6 +194,8 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
 
 function toDraft(system?: RbacSystem): SystemDraft {
   return {
+    integrationType: system?.integrationType ?? "hosted_module",
+    contractVersion: system?.contractVersion ?? "1",
     displayName: system?.displayName ?? "",
     description: system?.description ?? "",
     icon: system?.icon ?? "",
@@ -206,7 +229,10 @@ export default function RbacManagementPage() {
   const { data: groups = [] } = useListRbacGroupsQuery();
   const { data: users = [] } = useListUsersQuery();
   const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const activeClientId = selectedClientId || systems[0]?.clientId || "";
+  const [registeringApplication, setRegisteringApplication] = useState(false);
+  const activeClientId = registeringApplication
+    ? ""
+    : selectedClientId || systems[0]?.clientId || "";
   const { data: systemDetail, isFetching: systemLoading } = useGetRbacSystemQuery(activeClientId, {
     skip: !activeClientId,
   });
@@ -228,6 +254,9 @@ export default function RbacManagementPage() {
   const [selectedGroupMemberUserId, setSelectedGroupMemberUserId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const [registerSystem, { isLoading: registeringSystem }] = useRegisterRbacSystemMutation();
+  const [transitionSystem, { isLoading: transitioningSystem }] = useTransitionRbacSystemMutation();
+  const [lifecycleReason, setLifecycleReason] = useState("");
   const [updateSystem, { isLoading: savingSystem }] = useUpdateRbacSystemMutation();
   const [createRole, { isLoading: creatingRole }] = useCreateSystemRoleMutation();
   const [deleteRole] = useDeleteSystemRoleMutation();
@@ -259,13 +288,13 @@ export default function RbacManagementPage() {
   );
 
   useEffect(() => {
-    if (!systemDetail || draftClientId === systemDetail.clientId) {
+    if (registeringApplication || !systemDetail || draftClientId === systemDetail.clientId) {
       return;
     }
 
     setDraftClientId(systemDetail.clientId);
     setDraft(toDraft(systemDetail));
-  }, [draftClientId, systemDetail]);
+  }, [draftClientId, systemDetail, registeringApplication]);
 
   const selectedRole = useMemo(
     () => systemDetail?.roles.find((role) => role.id === selectedRoleId) ?? systemDetail?.roles[0],
@@ -330,7 +359,9 @@ export default function RbacManagementPage() {
 
   const handleSelectSystem = (clientId: string) => {
     const system = systems.find((item) => item.clientId === clientId);
+    setRegisteringApplication(false);
     setSelectedClientId(clientId);
+    setLifecycleReason("");
     setSelectedRoleId("");
     setDraftClientId(clientId);
     setDraft(toDraft(system));
@@ -345,9 +376,36 @@ export default function RbacManagementPage() {
     }
     try {
       setError(null);
-      await updateSystem({ clientId, data: draft }).unwrap();
+      const result = registeringApplication
+        ? await registerSystem({ clientId, ...draft }).unwrap()
+        : await updateSystem({ clientId, data: draft }).unwrap();
+      setRegisteringApplication(false);
+      setSelectedClientId(result.clientId);
+      setDraftClientId(result.clientId);
+      setDraft(toDraft(result));
     } catch {
       setError("Unable to save system metadata.");
+    }
+  };
+
+  const handleTransitionSystem = async (status: ApplicationLifecycleStatus) => {
+    if (!activeClientId || !lifecycleReason.trim()) return;
+    try {
+      setError(null);
+      const result = await transitionSystem({
+        clientId: activeClientId,
+        status,
+        reason: lifecycleReason.trim(),
+      }).unwrap();
+      setDraft(toDraft(result));
+      setLifecycleReason("");
+    } catch (failure) {
+      const message = (failure as { data?: { error?: { message?: string } } })?.data?.error
+        ?.message;
+      setError(
+        message ||
+          "Unable to change application status. Check saved metadata, access roles, and permissions.",
+      );
     }
   };
 
@@ -654,6 +712,22 @@ export default function RbacManagementPage() {
           <div className="rbac-page__panel-header">
             <h2>Systems</h2>
             <Tag type="blue">{systems.length}</Tag>
+            {canWriteSystems && (
+              <Button
+                size="sm"
+                kind="tertiary"
+                renderIcon={Add}
+                onClick={() => {
+                  setRegisteringApplication(true);
+                  setDraftClientId("");
+                  setDraft({ ...toDraft(), enabled: false });
+                  setLifecycleReason("");
+                  setError(null);
+                }}
+              >
+                Register application
+              </Button>
+            )}
           </div>
           <div className="rbac-system-list">
             {systems.map((system) => (
@@ -673,26 +747,95 @@ export default function RbacManagementPage() {
         <main className="rbac-page__main">
           {systemLoading && <InlineLoading description="Loading system details..." />}
 
+          {!registeringApplication && systemDetail && (
+            <section className="rbac-card" aria-label="Application lifecycle">
+              <div className="rbac-page__panel-header">
+                <h2>Application lifecycle</h2>
+                <Tag type="blue">{systemDetail.lifecycleStatus}</Tag>
+              </div>
+              <p>
+                Save configuration before changing status. Validation checks ownership, support,
+                launch settings, integration contract, and enabled access roles. Changes to
+                ownership, launch settings, environment, navigation, or integration require
+                validation and approval again.
+              </p>
+              <TextInput
+                id="application-lifecycle-reason"
+                labelText="Reason for status change"
+                value={lifecycleReason}
+                maxLength={2000}
+                disabled={!canWriteSystems || transitioningSystem}
+                onChange={(event) => setLifecycleReason(event.target.value)}
+              />
+              <div className="rbac-page__panel-header">
+                {(lifecycleActions[systemDetail.lifecycleStatus] ?? []).map((status) => (
+                  <Button
+                    key={status}
+                    kind={status === "retired" ? "danger--tertiary" : "tertiary"}
+                    size="sm"
+                    disabled={
+                      !canWriteSystems ||
+                      transitioningSystem ||
+                      !lifecycleReason.trim() ||
+                      ((status === "approved" || status === "active") && !canWriteRoles)
+                    }
+                    onClick={() => handleTransitionSystem(status)}
+                  >
+                    {status === "configured"
+                      ? "Configure"
+                      : status === "validated"
+                        ? "Validate"
+                        : status === "approved"
+                          ? "Approve"
+                          : status === "active"
+                            ? "Activate"
+                            : status === "suspended"
+                              ? "Suspend"
+                              : "Retire"}
+                  </Button>
+                ))}
+              </div>
+            </section>
+          )}
           <section className="rbac-card">
             <div className="rbac-page__panel-header">
-              <h2>System Metadata</h2>
+              <h2>Application registry</h2>
               <PermissionGuard permission={PERMISSIONS.rbacWrite}>
                 <Button
                   renderIcon={Save}
                   size="sm"
-                  disabled={!activeClientId || savingSystem}
+                  disabled={!(draftClientId || activeClientId) || savingSystem || registeringSystem}
                   onClick={handleSaveSystem}
                 >
-                  Save system
+                  {registeringApplication ? "Register application" : "Save system"}
                 </Button>
               </PermissionGuard>
             </div>
             <div className="rbac-form-grid">
+              <Dropdown
+                id="application-integration-type"
+                titleText="Integration type"
+                label="Select integration type"
+                items={["external", "hosted_module"] as const}
+                selectedItem={draft.integrationType}
+                disabled={!canWriteSystems}
+                onChange={({ selectedItem }) =>
+                  selectedItem && setDraft({ ...draft, integrationType: selectedItem })
+                }
+              />
+              <TextInput
+                id="application-contract-version"
+                labelText="Contract version"
+                value={draft.contractVersion}
+                helperText="Supported version: 1"
+                disabled={!canWriteSystems}
+                onChange={(event) => setDraft({ ...draft, contractVersion: event.target.value })}
+              />
               <TextInput
                 id="rbac-client-id"
                 labelText="Client ID"
                 value={draftClientId || activeClientId}
-                disabled={!canWriteSystems}
+                disabled={!canWriteSystems || !registeringApplication}
                 onChange={(event) => setDraftClientId(event.target.value)}
               />
               <TextInput
@@ -878,9 +1021,9 @@ export default function RbacManagementPage() {
               </div>
               <Toggle
                 id="rbac-enabled"
-                labelText="Enabled"
+                labelText="Enabled (active applications only)"
                 toggled={draft.enabled}
-                disabled={!canWriteSystems}
+                disabled={!canWriteSystems || systemDetail?.lifecycleStatus !== "active"}
                 onToggle={(enabled) => setDraft({ ...draft, enabled })}
               />
             </div>

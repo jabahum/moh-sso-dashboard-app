@@ -4,6 +4,10 @@ Use this flow when a new Keycloak client/system is added to the Integrated Healt
 
 For the full RBAC and Keycloak sync operating model, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
 
+## Application lifecycle
+
+New systems now enter the registry as `registered` and disabled, including systems discovered by Keycloak sync or imported from a seed. Configure metadata and access roles, then validate, approve, and activate the application in `/admin/rbac`. Existing records retain their access when migration 48 is applied. See [Platform development](platform-development.md) for transitions, permissions, API examples, rollout, and rollback.
+
 ## Launch And Navigation Model
 
 Portal systems explicitly declare `systemType` (`platform` or `external`), `displayInLauncher`, `displayInSideNav`, and `launchMode` (`internal`, `new_tab`, or `same_tab`). Platform systems use an internal `/portal` or `/apps` path and may provide navigation. External systems require an absolute HTTP or HTTPS URL and never provide portal side navigation.

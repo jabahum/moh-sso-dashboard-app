@@ -70,9 +70,10 @@ func (r CompositeResolver) Resolve(
 ) (ResolvedAccess, error) {
 	if r.Primary != nil {
 		access, err := r.Primary.Resolve(ctx, realmRoles, clientRoles)
-		if err == nil && (len(access.Permissions) > 0 || len(access.Systems) > 0) {
+		if err == nil {
 			return access, nil
 		}
+		return ResolvedAccess{}, err
 	}
 
 	if r.Fallback == nil {
@@ -94,12 +95,7 @@ func ResolveAccess(
 
 	access, err := resolver.Resolve(ctx, realmRoles, clientRoles)
 	if err != nil {
-		return ResolvedAccess{
-			Permissions: PermissionsForContext(realmRoles, clientRoles),
-			Systems: AccessibleSystemDetailsForContext(
-				clientRolesWithRealmDefaults(realmRoles, clientRoles),
-			),
-		}
+		return ResolvedAccess{}
 	}
 
 	return access

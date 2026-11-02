@@ -1,4 +1,5 @@
 import type {
+  ApplicationLifecycleStatus,
   RbacAccessRolePayload,
   RbacAccessRequest,
   RbacAccessRequestPayload,
@@ -58,6 +59,14 @@ const base = "/admin/rbac";
 
 export const rbacApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    registerRbacSystem: builder.mutation<
+      RbacSystem,
+      UpsertRbacSystemPayload & { clientId: string }
+    >({
+      query: (body) => ({ url: `${base}/systems`, method: "POST", body }),
+      transformResponse: (res: ApiEnvelope<RbacSystem>) => res.data,
+      invalidatesTags: [{ type: "RbacSystem", id: "LIST" }],
+    }),
     listRbacSystems: builder.query<RbacSystem[], void>({
       query: () => `${base}/systems`,
       transformResponse: (res: ApiEnvelope<RbacSystem[]>) => res.data,
@@ -83,6 +92,22 @@ export const rbacApi = baseApi.injectEndpoints({
         { type: "RbacSystem", id: clientId },
       ],
     }),
+    transitionRbacSystem: builder.mutation<
+      RbacSystem,
+      { clientId: string; status: ApplicationLifecycleStatus; reason: string }
+    >({
+      query: ({ clientId, ...body }) => ({
+        url: `${base}/systems/${encodeURIComponent(clientId)}/lifecycle`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: ApiEnvelope<RbacSystem>) => res.data,
+      invalidatesTags: (_result, _error, { clientId }) => [
+        { type: "RbacSystem", id: "LIST" },
+        { type: "RbacSystem", id: clientId },
+        { type: "RbacAudit", id: "LIST" },
+      ],
+    }),
     listRbacPermissions: builder.query<RbacPermission[], void>({
       query: () => `${base}/permissions`,
       transformResponse: (res: ApiEnvelope<RbacPermission[]>) => res.data,
@@ -105,18 +130,17 @@ export const rbacApi = baseApi.injectEndpoints({
       transformResponse: (res: ApiEnvelope<RbacSystemRole[]>) => res.data,
       providesTags: (_result, _error, clientId) => [{ type: "RbacSystem", id: clientId }],
     }),
-    createSystemRole: builder.mutation<
-      RbacSystemRole,
-      { clientId: string; data: RbacRolePayload }
-    >({
-      query: ({ clientId, data }) => ({
-        url: `${base}/systems/${encodeURIComponent(clientId)}/roles`,
-        method: "POST",
-        body: data,
-      }),
-      transformResponse: (res: ApiEnvelope<RbacSystemRole>) => res.data,
-      invalidatesTags: (_result, _error, { clientId }) => [{ type: "RbacSystem", id: clientId }],
-    }),
+    createSystemRole: builder.mutation<RbacSystemRole, { clientId: string; data: RbacRolePayload }>(
+      {
+        query: ({ clientId, data }) => ({
+          url: `${base}/systems/${encodeURIComponent(clientId)}/roles`,
+          method: "POST",
+          body: data,
+        }),
+        transformResponse: (res: ApiEnvelope<RbacSystemRole>) => res.data,
+        invalidatesTags: (_result, _error, { clientId }) => [{ type: "RbacSystem", id: clientId }],
+      },
+    ),
     updateSystemRole: builder.mutation<
       RbacSystemRole,
       { roleId: string; clientId: string; data: RbacRolePayload }
@@ -253,7 +277,10 @@ export const rbacApi = baseApi.injectEndpoints({
         { type: "RbacAudit", id: "LIST" },
       ],
     }),
-    replaceRbacGroupMembers: builder.mutation<void, { groupId: string; data: RbacGroupMembersPayload }>({
+    replaceRbacGroupMembers: builder.mutation<
+      void,
+      { groupId: string; data: RbacGroupMembersPayload }
+    >({
       query: ({ groupId, data }) => ({
         url: `${base}/groups/${encodeURIComponent(groupId)}/members`,
         method: "PUT",
@@ -265,17 +292,19 @@ export const rbacApi = baseApi.injectEndpoints({
         { type: "RbacAudit", id: "LIST" },
       ],
     }),
-    assignGroupPermission: builder.mutation<void, { groupId: string; data: RbacPermissionPayload }>({
-      query: ({ groupId, data }) => ({
-        url: `${base}/groups/${encodeURIComponent(groupId)}/permissions`,
-        method: "POST",
-        body: data,
-      }),
-      invalidatesTags: (_result, _error, { groupId }) => [
-        { type: "RbacGroup", id: groupId },
-        { type: "RbacGroup", id: "LIST" },
-      ],
-    }),
+    assignGroupPermission: builder.mutation<void, { groupId: string; data: RbacPermissionPayload }>(
+      {
+        query: ({ groupId, data }) => ({
+          url: `${base}/groups/${encodeURIComponent(groupId)}/permissions`,
+          method: "POST",
+          body: data,
+        }),
+        invalidatesTags: (_result, _error, { groupId }) => [
+          { type: "RbacGroup", id: groupId },
+          { type: "RbacGroup", id: "LIST" },
+        ],
+      },
+    ),
     removeGroupPermission: builder.mutation<void, { groupId: string; permissionKey: string }>({
       query: ({ groupId, permissionKey }) => ({
         url: `${base}/groups/${encodeURIComponent(groupId)}/permissions/${encodeURIComponent(permissionKey)}`,
@@ -286,7 +315,10 @@ export const rbacApi = baseApi.injectEndpoints({
         { type: "RbacGroup", id: "LIST" },
       ],
     }),
-    assignGroupRealmRole: builder.mutation<void, { groupId: string; data: RbacGroupRealmRolePayload }>({
+    assignGroupRealmRole: builder.mutation<
+      void,
+      { groupId: string; data: RbacGroupRealmRolePayload }
+    >({
       query: ({ groupId, data }) => ({
         url: `${base}/groups/${encodeURIComponent(groupId)}/realm-roles`,
         method: "POST",
@@ -307,7 +339,10 @@ export const rbacApi = baseApi.injectEndpoints({
         { type: "RbacGroup", id: "LIST" },
       ],
     }),
-    assignGroupSystemRole: builder.mutation<void, { groupId: string; data: RbacGroupSystemRolePayload }>({
+    assignGroupSystemRole: builder.mutation<
+      void,
+      { groupId: string; data: RbacGroupSystemRolePayload }
+    >({
       query: ({ groupId, data }) => ({
         url: `${base}/groups/${encodeURIComponent(groupId)}/system-roles`,
         method: "POST",
@@ -318,7 +353,10 @@ export const rbacApi = baseApi.injectEndpoints({
         { type: "RbacGroup", id: "LIST" },
       ],
     }),
-    removeGroupSystemRole: builder.mutation<void, { groupId: string; clientId: string; roleName: string }>({
+    removeGroupSystemRole: builder.mutation<
+      void,
+      { groupId: string; clientId: string; roleName: string }
+    >({
       query: ({ groupId, clientId, roleName }) => ({
         url: `${base}/groups/${encodeURIComponent(groupId)}/system-roles/${encodeURIComponent(clientId)}/${encodeURIComponent(roleName)}`,
         method: "DELETE",
@@ -343,20 +381,16 @@ export const rbacApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: "RbacRealmRole", id: "LIST" }],
     }),
-    removeRealmRolePermission: builder.mutation<
-      void,
-      { realmRole: string; permissionKey: string }
-    >({
-      query: ({ realmRole, permissionKey }) => ({
-        url: `${base}/realm-roles/${encodeURIComponent(realmRole)}/permissions/${encodeURIComponent(permissionKey)}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: [{ type: "RbacRealmRole", id: "LIST" }],
-    }),
-    addSystemAccessRole: builder.mutation<
-      void,
-      { clientId: string; data: RbacAccessRolePayload }
-    >({
+    removeRealmRolePermission: builder.mutation<void, { realmRole: string; permissionKey: string }>(
+      {
+        query: ({ realmRole, permissionKey }) => ({
+          url: `${base}/realm-roles/${encodeURIComponent(realmRole)}/permissions/${encodeURIComponent(permissionKey)}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: [{ type: "RbacRealmRole", id: "LIST" }],
+      },
+    ),
+    addSystemAccessRole: builder.mutation<void, { clientId: string; data: RbacAccessRolePayload }>({
       query: ({ clientId, data }) => ({
         url: `${base}/systems/${encodeURIComponent(clientId)}/access-roles`,
         method: "POST",
@@ -622,6 +656,8 @@ export const {
   useUpdateUserAccessMutation,
   useUpdateRbacPermissionMetadataMutation,
   useUpdateRbacSystemMutation,
+  useRegisterRbacSystemMutation,
+  useTransitionRbacSystemMutation,
   useUpdateSystemRoleMutation,
   useUpsertRbacGroupMutation,
   useReplaceRbacGroupMembersMutation,

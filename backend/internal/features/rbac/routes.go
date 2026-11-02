@@ -12,9 +12,11 @@ func RegisterAdminRoutes(admin *gin.RouterGroup, handler *Handler, limiter *rate
 	sensitiveWriteLimit := ratelimit.MiddlewareForPolicy(limiter, ratelimit.RBACSensitiveWritePolicy())
 	bulkWriteLimit := ratelimit.MiddlewareForPolicy(limiter, ratelimit.RBACBulkWritePolicy())
 	{
+		rbac.POST("/systems", middleware.RequirePermission(authz.PermissionRBACWrite), sensitiveWriteLimit, handler.RegisterSystem)
 		rbac.GET("/systems", middleware.RequirePermission(authz.PermissionRBACRead), handler.ListSystems)
 		rbac.GET("/systems/:clientId", middleware.RequirePermission(authz.PermissionRBACRead), handler.GetSystem)
 		rbac.PUT("/systems/:clientId", middleware.RequirePermission(authz.PermissionRBACWrite), sensitiveWriteLimit, handler.UpdateSystem)
+		rbac.POST("/systems/:clientId/lifecycle", sensitiveWriteLimit, handler.TransitionSystem)
 		rbac.GET("/permissions", middleware.RequirePermission(authz.PermissionRBACRead), handler.ListPermissions)
 		rbac.PUT("/permissions/:permissionKey", middleware.RequirePermission(authz.PermissionRBACPermissionsWrite), sensitiveWriteLimit, handler.UpdatePermissionMetadata)
 		rbac.GET("/drift", middleware.RequirePermission(authz.PermissionRBACRead), handler.GetDrift)

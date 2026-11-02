@@ -318,6 +318,9 @@ func (r *testRBACRepository) GetSystem(_ context.Context, clientID string) (Syst
 	}, nil
 }
 
+func (r *testRBACRepository) TransitionSystem(context.Context, string, LifecycleTransitionInput, string, func(System, int) error) (System, error) {
+	return System{}, nil
+}
 func (r *testRBACRepository) UpsertSystem(context.Context, UpsertSystemInput) (System, error) {
 	return System{}, nil
 }

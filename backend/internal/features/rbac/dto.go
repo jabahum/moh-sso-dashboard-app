@@ -25,6 +25,9 @@ type System struct {
 	LaunchMode             string `json:"launchMode"`
 	Enabled                bool   `json:"enabled"`
 	SortOrder              int32  `json:"sortOrder"`
+	LifecycleStatus        string `json:"lifecycleStatus"`
+	IntegrationType        string `json:"integrationType"`
+	ContractVersion        string `json:"contractVersion"`
 }
 
 type SystemDetail struct {
@@ -134,7 +137,16 @@ type GroupSystemRoleInput struct {
 	RoleName string `json:"roleName" binding:"required"`
 }
 
+type LifecycleTransitionInput struct {
+	Status string `json:"status" binding:"required"`
+	Reason string `json:"reason" binding:"required"`
+}
+
 type UpsertSystemInput struct {
+	RegisterOnly           bool   `json:"-"`
+	ActorUserID            string `json:"-"`
+	IntegrationType        string `json:"integrationType"`
+	ContractVersion        string `json:"contractVersion"`
 	ClientID               string `json:"clientId"`
 	DisplayName            string `json:"displayName"`
 	Description            string `json:"description"`

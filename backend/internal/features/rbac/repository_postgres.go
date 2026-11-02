@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -25,7 +26,7 @@ func (r *postgresRepository) ListSystems(ctx context.Context) ([]System, error) 
 		       COALESCE(metadata->>'navigation', ''),
 		       COALESCE(metadata->>'authenticatedLaunchUrl', ''),
 		       system_type, display_in_launcher, display_in_sidenav, launch_mode,
-		       enabled, sort_order
+		       enabled, sort_order, lifecycle_status, integration_type, contract_version
 		FROM ihp_systems
 		ORDER BY sort_order, display_name, client_id
 	`)
@@ -60,6 +61,7 @@ func (r *postgresRepository) ListSystems(ctx context.Context) ([]System, error) 
 			&system.LaunchMode,
 			&system.Enabled,
 			&system.SortOrder,
+			&system.LifecycleStatus, &system.IntegrationType, &system.ContractVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -69,45 +71,11 @@ func (r *postgresRepository) ListSystems(ctx context.Context) ([]System, error) 
 }
 
 func (r *postgresRepository) GetSystem(ctx context.Context, clientID string) (SystemDetail, error) {
-	var detail SystemDetail
-	err := r.db.QueryRowContext(ctx, `
-		SELECT id::text, client_id, display_name, COALESCE(description, ''), COALESCE(icon, ''),
-		       COALESCE(launch_url, ''), COALESCE(category, ''), COALESCE(owner_team, ''),
-		       COALESCE(owner_name, ''), COALESCE(owner_email, ''), COALESCE(support_url, ''),
-		       COALESCE(documentation_url, ''), COALESCE(environment, ''), COALESCE(criticality, ''),
-		       COALESCE(metadata->>'navigation', ''),
-		       COALESCE(metadata->>'authenticatedLaunchUrl', ''),
-		       system_type, display_in_launcher, display_in_sidenav, launch_mode,
-		       enabled, sort_order
-		FROM ihp_systems
-		WHERE client_id = $1
-	`, clientID).Scan(
-		&detail.ID,
-		&detail.ClientID,
-		&detail.DisplayName,
-		&detail.Description,
-		&detail.Icon,
-		&detail.LaunchURL,
-		&detail.Category,
-		&detail.OwnerTeam,
-		&detail.OwnerName,
-		&detail.OwnerEmail,
-		&detail.SupportURL,
-		&detail.DocumentationURL,
-		&detail.Environment,
-		&detail.Criticality,
-		&detail.Navigation,
-		&detail.AuthenticatedLaunchURL,
-		&detail.SystemType,
-		&detail.DisplayInLauncher,
-		&detail.DisplayInSideNav,
-		&detail.LaunchMode,
-		&detail.Enabled,
-		&detail.SortOrder,
-	)
+	record, err := loadSystem(ctx, r.db, clientID, false)
 	if err != nil {
 		return SystemDetail{}, err
 	}
+	detail := SystemDetail{System: record}
 
 	accessRoles, err := r.listSystemAccessRoles(ctx, clientID)
 	if err != nil {
@@ -123,6 +91,14 @@ func (r *postgresRepository) GetSystem(ctx context.Context, clientID string) (Sy
 }
 
 func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSystemInput) (System, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return System{}, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `SELECT set_config('ihp.actor_user_id', $1, true)`, input.ActorUserID); err != nil {
+		return System{}, err
+	}
 	enabled := true
 	if input.Enabled != nil {
 		enabled = *input.Enabled
@@ -136,15 +112,15 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 	}
 
 	var system System
-	err = r.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		INSERT INTO ihp_systems (
 			client_id, display_name, description, icon, launch_url, category, owner_team, owner_name,
 			owner_email, support_url, documentation_url, environment, criticality,
-			system_type, display_in_launcher, display_in_sidenav, launch_mode, enabled, sort_order, metadata
+			system_type, display_in_launcher, display_in_sidenav, launch_mode, enabled, sort_order, metadata, integration_type, contract_version
 		) VALUES (
 			$1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''),
 			NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''),
-			NULLIF($13, ''), $14, $15, $16, $17, $18, $19, $20
+			NULLIF($13, ''), $14, $15, $16, $17, $18, $19, $20, $21, $22
 		)
 		ON CONFLICT (client_id) DO UPDATE SET
 			display_name = EXCLUDED.display_name,
@@ -163,7 +139,9 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 			display_in_launcher = EXCLUDED.display_in_launcher,
 			display_in_sidenav = EXCLUDED.display_in_sidenav,
 			launch_mode = EXCLUDED.launch_mode,
-			enabled = EXCLUDED.enabled,
+			integration_type = EXCLUDED.integration_type,
+			contract_version = EXCLUDED.contract_version,
+			enabled = $18,
 			sort_order = EXCLUDED.sort_order,
 			metadata = CASE
 				WHEN NULLIF(EXCLUDED.metadata->>'navigation', '') IS NULL
@@ -171,13 +149,14 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 				ELSE COALESCE(ihp_systems.metadata, '{}'::jsonb) || EXCLUDED.metadata
 			END,
 			updated_at = now()
+        WHERE NOT $23::boolean
 		RETURNING id::text, client_id, display_name, COALESCE(description, ''), COALESCE(icon, ''),
 		          COALESCE(launch_url, ''), COALESCE(category, ''), COALESCE(owner_team, ''),
 		          COALESCE(owner_name, ''), COALESCE(owner_email, ''), COALESCE(support_url, ''),
 		          COALESCE(documentation_url, ''), COALESCE(environment, ''), COALESCE(criticality, ''),
 		          COALESCE(metadata->>'navigation', ''), COALESCE(metadata->>'authenticatedLaunchUrl', ''), system_type, display_in_launcher,
-		          display_in_sidenav, launch_mode, enabled, sort_order
-	`, input.ClientID, input.DisplayName, input.Description, input.Icon, input.LaunchURL, input.Category, input.OwnerTeam, input.OwnerName, input.OwnerEmail, input.SupportURL, input.DocumentationURL, input.Environment, input.Criticality, input.SystemType, *input.DisplayInLauncher, *input.DisplayInSideNav, input.LaunchMode, enabled, input.SortOrder, metadata).Scan(
+		          display_in_sidenav, launch_mode, enabled, sort_order, lifecycle_status, integration_type, contract_version
+	`, input.ClientID, input.DisplayName, input.Description, input.Icon, input.LaunchURL, input.Category, input.OwnerTeam, input.OwnerName, input.OwnerEmail, input.SupportURL, input.DocumentationURL, input.Environment, input.Criticality, input.SystemType, *input.DisplayInLauncher, *input.DisplayInSideNav, input.LaunchMode, enabled, input.SortOrder, metadata, input.IntegrationType, input.ContractVersion, input.RegisterOnly).Scan(
 		&system.ID,
 		&system.ClientID,
 		&system.DisplayName,
@@ -200,8 +179,28 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 		&system.LaunchMode,
 		&system.Enabled,
 		&system.SortOrder,
+		&system.LifecycleStatus, &system.IntegrationType, &system.ContractVersion,
 	)
-	return system, err
+	if errors.Is(err, sql.ErrNoRows) && input.RegisterOnly {
+		return System{}, ErrApplicationExists
+	}
+	if err != nil {
+		return System{}, err
+	}
+	details, err := json.Marshal(system)
+	if err != nil {
+		return System{}, err
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO ihp_rbac_audit_events
+ (actor_user_id, action, resource_type, resource_id, system_client_id, details)
+ VALUES (NULLIF($1, ''), 'system.upserted', 'system', $2, $3, $4::jsonb)`, input.ActorUserID, system.ID, system.ClientID, string(details))
+	if err != nil {
+		return System{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return System{}, err
+	}
+	return system, nil
 }
 
 func (r *postgresRepository) ListPermissions(ctx context.Context) ([]Permission, error) {
@@ -1295,4 +1294,53 @@ func normalizeRoleName(role string) string {
 
 func notFoundError(entity string) error {
 	return fmt.Errorf("%s not found: %w", entity, sql.ErrNoRows)
+}
+
+type systemRowQuerier interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func loadSystem(ctx context.Context, db systemRowQuerier, clientID string, lock bool) (System, error) {
+	query := `
+		SELECT id::text, client_id, display_name, COALESCE(description, ''), COALESCE(icon, ''),
+		       COALESCE(launch_url, ''), COALESCE(category, ''), COALESCE(owner_team, ''),
+		       COALESCE(owner_name, ''), COALESCE(owner_email, ''), COALESCE(support_url, ''),
+		       COALESCE(documentation_url, ''), COALESCE(environment, ''), COALESCE(criticality, ''),
+		       COALESCE(metadata->>'navigation', ''),
+		       COALESCE(metadata->>'authenticatedLaunchUrl', ''),
+		       system_type, display_in_launcher, display_in_sidenav, launch_mode,
+		       enabled, sort_order, lifecycle_status, integration_type, contract_version
+		FROM ihp_systems
+		WHERE client_id = $1
+	`
+	if lock {
+		query += " FOR UPDATE"
+	}
+	var system System
+	err := db.QueryRowContext(ctx, query, clientID).Scan(
+		&system.ID,
+		&system.ClientID,
+		&system.DisplayName,
+		&system.Description,
+		&system.Icon,
+		&system.LaunchURL,
+		&system.Category,
+		&system.OwnerTeam,
+		&system.OwnerName,
+		&system.OwnerEmail,
+		&system.SupportURL,
+		&system.DocumentationURL,
+		&system.Environment,
+		&system.Criticality,
+		&system.Navigation,
+		&system.AuthenticatedLaunchURL,
+		&system.SystemType,
+		&system.DisplayInLauncher,
+		&system.DisplayInSideNav,
+		&system.LaunchMode,
+		&system.Enabled,
+		&system.SortOrder,
+		&system.LifecycleStatus, &system.IntegrationType, &system.ContractVersion,
+	)
+	return system, err
 }

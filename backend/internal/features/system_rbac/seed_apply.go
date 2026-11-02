@@ -185,11 +185,11 @@ func upsertSystem(ctx context.Context, tx *sql.Tx, system SeedSystem) (string, e
 		INSERT INTO ihp_systems (
 			client_id, display_name, description, icon, launch_url, category, owner_team, owner_name,
 			owner_email, support_url, documentation_url, environment, criticality,
-			system_type, display_in_launcher, display_in_sidenav, launch_mode, enabled, sort_order, metadata
+			system_type, display_in_launcher, display_in_sidenav, launch_mode, enabled, sort_order, metadata, integration_type
 		) VALUES (
 			$1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''),
 			NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''),
-			NULLIF($13, ''), $14, $15, $16, $17, $18, $19, $20
+			NULLIF($13, ''), $14, $15, $16, $17, $18, $19, $20, CASE WHEN $14 = 'platform' THEN 'hosted_module' ELSE 'external' END
 		)
 		ON CONFLICT (client_id) DO UPDATE SET
 			display_name = EXCLUDED.display_name,
@@ -208,7 +208,7 @@ func upsertSystem(ctx context.Context, tx *sql.Tx, system SeedSystem) (string, e
 			display_in_launcher = EXCLUDED.display_in_launcher,
 			display_in_sidenav = EXCLUDED.display_in_sidenav,
 			launch_mode = EXCLUDED.launch_mode,
-			enabled = EXCLUDED.enabled,
+			enabled = $18,
 			sort_order = EXCLUDED.sort_order,
 			metadata = CASE
 				WHEN NULLIF(EXCLUDED.metadata->>'navigation', '') IS NULL
