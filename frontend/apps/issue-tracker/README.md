@@ -13,10 +13,12 @@ It is a standalone React microfrontend exposed as `@moh-sso/issue-tracker` and m
 
 ## Navigation and layout
 
-Issue Tracker is one launcher entry. Its internal navigation exposes **Issue Summary**
+Issue Tracker is one launcher entry. The workspace side navigation exposes **Issue Summary**
 (`/apps/dwh/issue-tracker/dashboard`) and **Registered Issues**
 (`/apps/dwh/issue-tracker/issues`). The module root still opens Registered Issues;
-existing issue-code query parameters and detail URLs remain supported.
+existing issue-code query parameters and detail URLs remain supported. Page switching
+uses the sidebar without a duplicate tab bar inside the module. Nested sidebar
+headings and links align with the other application entries.
 
 Both pages use the shared `PageShell`, consistent action sizes, and responsive
 spacing. On narrow screens, the registered-issues table scrolls horizontally in a

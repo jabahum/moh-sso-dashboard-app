@@ -1,34 +1,4 @@
 .issue-tracker-module {
-  .issue-tracker-navigation {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
-
-    a {
-      padding: 0.875rem 1rem;
-      color: var(--cds-text-secondary, #525252);
-      text-decoration: none;
-      border-bottom: 3px solid transparent;
-
-      &:hover {
-        background: var(--cds-layer-hover, #e8e8e8);
-      }
-
-      &[aria-current="page"] {
-        color: var(--cds-text-primary, #161616);
-        border-bottom-color: var(--cds-link-primary, #0f62fe);
-        font-weight: 600;
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--cds-focus, #0f62fe);
-        outline-offset: -2px;
-      }
-    }
-  }
-
   .issue-label-container,
   .dashboard-header {
     margin: 0;
