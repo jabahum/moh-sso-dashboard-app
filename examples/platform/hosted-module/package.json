@@ -1,0 +1,17 @@
+{
+  "name": "@moh-sso/platform-pilot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./single-spa": "./dist/single-spa.js",
+    "./routes": "./dist/routes.js"
+  },
+  "scripts": {"build": "vite build --config vite.config.ts"},
+  "dependencies": {"@moh-sso/auth": "^1.0.0", "@moh-sso/microfrontend": "^1.0.0"},
+  "peerDependencies": {"react": "^19.2.0", "react-dom": "^19.2.0", "react-redux": "^9.2.0", "single-spa": "^6.0.3"}
+}

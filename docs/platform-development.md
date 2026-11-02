@@ -1,6 +1,6 @@
 # MOH platform development
 
-All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–3 are implemented; phases 4–5 remain planned. No additional phase branches are required.
+All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–4 are implemented; phase 5 remains planned. No additional phase branches are required.
 
 | Phase | Planned commit subject | Scope |
 | --- | --- | --- |
@@ -141,6 +141,10 @@ Implemented the [application identity contract](platform-identity.md), authentic
 
 Implemented the [shared notification API](platform-notifications.md) with application ownership, scoped access, atomic queue/audit insertion, idempotency, rolling database quotas and delivery-state tracking through the existing workers. Migration 50 is required. The first adapter supports plain-text email.
 
+## Phase 4: developer onboarding
+
+Added an [independent Python application pilot, reference client, integration verifier, and hosted-module template](../examples/platform/README.md). The onboarding guide covers registration, interactive and service clients, activation, launcher integration, test notifications, suspension/revocation, and verification commands. The examples are opt-in and are not installed in the production shell.
+
 ## Remaining phases
 
-Phases 1–3 establish registry governance, identity contracts and shared notifications. Developer examples and platform observability remain phases 4–5. Live identity-provider/SMTP setup and database verification require the integration environment.
+Phases 1–4 establish registry governance, identity contracts, shared notifications and developer examples. Platform operations/observability remain phase 5. The migration, registry and platform PostgreSQL integration checks have passed locally against disposable PostgreSQL. Live identity-provider/SMTP setup remains environment-specific.
