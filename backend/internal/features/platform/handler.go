@@ -124,6 +124,11 @@ func contains(values []string, target string) bool {
 func fail(c *gin.Context, err error) {
 	status, code, message := http.StatusInternalServerError, "PLATFORM_ERROR", "platform request failed"
 	switch {
+	case errors.Is(err, ErrIdempotencyConflict):
+		status, code, message = http.StatusConflict, "IDEMPOTENCY_CONFLICT", "idempotency key already used with a different request"
+	case errors.Is(err, ErrQuota):
+		status, code, message = http.StatusTooManyRequests, "APPLICATION_QUOTA_EXCEEDED", "application notification quota exceeded"
+		c.Header("Retry-After", "60")
 	case errors.Is(err, ErrUnauthorized):
 		status, code, message = http.StatusUnauthorized, "INVALID_IDENTITY", "valid bearer token required"
 		c.Header("WWW-Authenticate", `Bearer realm="moh-platform"`)

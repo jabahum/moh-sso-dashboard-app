@@ -3322,6 +3322,49 @@ components:
         - subject
         - reason
       type: object
+    platform.NotificationInput:
+      properties:
+        message:
+          type: string
+        recipient:
+          properties:
+            email:
+              type: string
+            name:
+              type: string
+          required:
+            - email
+          type: object
+        title:
+          type: string
+      required:
+        - title
+        - message
+        - recipient
+      type: object
+    platform.NotificationStatus:
+      properties:
+        applicationId:
+          type: string
+        channel:
+          type: string
+        createdAt:
+          type: string
+        deliveryAttempts:
+          format: int64
+          type: integer
+        dispatchAttempts:
+          format: int64
+          type: integer
+        dispatchStatus:
+          type: string
+        id:
+          type: string
+        replayed:
+          type: boolean
+        status:
+          type: string
+      type: object
     platform.Principal:
       properties:
         applicationId:
@@ -25182,6 +25225,111 @@ paths:
       tags:
         - platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetIdentity
+  /api/v1/platform/notifications:
+    post:
+      operationId: post_api_v1_platform_notifications
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform.NotificationInput'
+        required: true
+      responses:
+        "200":
+          description: Successful response. Payload is dynamically produced by this handler.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Submit Notification
+      tags:
+        - platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).SubmitNotification
+  /api/v1/platform/notifications/{id}:
+    get:
+      operationId: get_api_v1_platform_notifications_id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.NotificationStatus'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Notification
+      tags:
+        - platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetNotification
   /api/v1/report-scheduler:
     get:
       description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'

@@ -1,6 +1,6 @@
 # MOH platform development
 
-All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–2 are implemented; phases 3–5 remain planned. No additional phase branches are required.
+All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–3 are implemented; phases 4–5 remain planned. No additional phase branches are required.
 
 | Phase | Planned commit subject | Scope |
 | --- | --- | --- |
@@ -137,6 +137,10 @@ For rollback, stop the new backend, roll back migration 48, and deploy the previ
 
 Implemented the [application identity contract](platform-identity.md), authenticated Keycloak introspection, application-specific user access decisions, scoped machine bindings, and audited grant revocation. Migration 49 is required before enabling platform endpoints.
 
+## Phase 3: shared notifications
+
+Implemented the [shared notification API](platform-notifications.md) with application ownership, scoped access, atomic queue/audit insertion, idempotency, rolling database quotas and delivery-state tracking through the existing workers. Migration 50 is required. The first adapter supports plain-text email.
+
 ## Remaining phases
 
-Phases 1–2 establish registry governance and identity contracts. Shared-service application isolation, notification idempotency, example applications, and platform observability remain phases 3–5. Do not treat registry activation as proof that these integrations are implemented.
+Phases 1–3 establish registry governance, identity contracts and shared notifications. Developer examples and platform observability remain phases 4–5. Live identity-provider/SMTP setup and database verification require the integration environment.

@@ -18,6 +18,8 @@ func RegisterRoutes(api, protected *gin.RouterGroup, h *Handler, limiter *rateli
 	machine := platform.Group("")
 	machine.Use(h.AuthenticateMachine())
 	machine.GET("/identity", requireScope(IdentityRead), h.GetIdentity)
+	machine.POST("/notifications", requireScope(NotificationsWrite), h.SubmitNotification)
+	machine.GET("/notifications/:id", requireScope(NotificationsRead), h.GetNotification)
 	admin := protected.Group("/admin/platform")
 	admin.Use(middleware.RequireAllPermissions(authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite))
 	admin.PUT("/applications/:clientId/identities/:oauthClientId", ratelimit.MiddlewareForPolicy(limiter, ratelimit.RBACSensitiveWritePolicy()), h.SaveIdentity)
