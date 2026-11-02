@@ -1,0 +1,118 @@
+.moh-client-sidenav {
+  .moh-portal-folder-icon--open {
+    display: none;
+  }
+
+  .moh-portal-nav-folder > button.cds--side-nav__submenu,
+  .moh-portal-nav-folder > ul.cds--side-nav__menu > li > a.moh-portal-nav-page.cds--side-nav__link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.125rem;
+    height: auto;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0;
+  }
+
+  .moh-portal-nav-folder > button.cds--side-nav__submenu[aria-expanded="true"] {
+    background: transparent;
+    font-weight: 400;
+
+    .moh-portal-folder-icon--open {
+      display: block;
+    }
+
+    .moh-portal-folder-icon--closed {
+      display: none;
+    }
+  }
+
+  .moh-portal-nav-folder > button.cds--side-nav__submenu > .cds--side-nav__icon,
+  a.moh-portal-nav-page > .cds--side-nav__icon {
+    flex: 0 0 1rem;
+    width: 1rem;
+    min-width: 1rem;
+    height: 1rem;
+    margin: 0;
+  }
+
+  .moh-portal-nav-folder
+    > button.cds--side-nav__submenu
+    > .cds--side-nav__icon:not(.cds--side-nav__submenu-chevron)
+    svg {
+    fill: #a67c00;
+  }
+
+  // Draw a decorative plus/minus without adding text to the button's name.
+  .moh-portal-nav-folder > button.cds--side-nav__submenu > .cds--side-nav__submenu-chevron {
+    position: relative;
+    order: -1;
+    flex-basis: 0.875rem;
+    width: 0.875rem;
+    min-width: 0.875rem;
+    height: 0.875rem;
+    border: 1px solid var(--cds-border-strong-01, #8d8d8d);
+    transform: none;
+
+    svg {
+      display: none;
+    }
+
+    &::before,
+    &::after {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0.4375rem;
+      height: 1px;
+      background: var(--cds-icon-primary, #161616);
+      transform: translate(-50%, -50%);
+      content: "";
+    }
+
+    &::after {
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+  }
+
+  .moh-portal-nav-folder
+    > button.cds--side-nav__submenu[aria-expanded="true"]
+    > .cds--side-nav__submenu-chevron::after {
+    display: none;
+  }
+
+  .moh-portal-nav-folder > ul.cds--side-nav__menu {
+    margin: 0 0 0.375rem 1rem;
+    padding: 0;
+    border-left: 1px dotted var(--cds-border-strong-01, #8d8d8d);
+  }
+
+  .moh-portal-nav-folder > ul.cds--side-nav__menu > li {
+    position: relative;
+
+    &::after {
+      position: absolute;
+      top: 1.0625rem;
+      left: 0;
+      width: 0.375rem;
+      border-top: 1px dotted var(--cds-border-strong-01, #8d8d8d);
+      pointer-events: none;
+      content: "";
+    }
+  }
+
+  .moh-portal-nav-folder .cds--side-nav__submenu-title,
+  a.moh-portal-nav-page .cds--side-nav__link-text {
+    flex: 1;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 0.875rem;
+    line-height: 1.35;
+  }
+
+  .moh-portal-nav-folder.cds--side-nav__item--active > button .cds--side-nav__submenu-title {
+    color: var(--cds-text-primary, #161616);
+    font-weight: 600;
+  }
+}

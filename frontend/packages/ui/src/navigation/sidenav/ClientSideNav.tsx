@@ -1,11 +1,26 @@
 import { useMemo, useRef } from "react";
 import { SideNav, SideNavItems, SideNavLink, SideNavMenu } from "@carbon/react";
-import { ChevronLeft, ChevronRight } from "@carbon/react/icons";
+import { ChevronLeft, ChevronRight, Document, Folder, FolderOpen } from "@carbon/react/icons";
 
 import type { Client, SystemNavigationItem } from "@moh-sso/types";
 import { useFocusTrap } from "../../accessibility";
 
+import "./client-side-nav.scss";
+
 type SideNavItem = SystemNavigationItem;
+
+function PortalFolderIcon() {
+  return (
+    <>
+      <Folder size={20} className="moh-portal-folder-icon--closed" aria-hidden="true" />
+      <FolderOpen size={20} className="moh-portal-folder-icon--open" aria-hidden="true" />
+    </>
+  );
+}
+
+function PortalPageIcon() {
+  return <Document size={16} aria-hidden="true" />;
+}
 
 /* --------------------------------
  * Helpers
@@ -43,7 +58,10 @@ function isActivePath(currentPath: string, itemPath?: string): boolean {
     return currentPath === normalizedItemPath;
   }
 
-  return currentWithoutQuery === itemWithoutQuery || currentWithoutQuery.startsWith(`${itemWithoutQuery}/`);
+  return (
+    currentWithoutQuery === itemWithoutQuery ||
+    currentWithoutQuery.startsWith(`${itemWithoutQuery}/`)
+  );
 }
 
 function sortItems(items: SideNavItem[]): SideNavItem[] {
@@ -127,10 +145,7 @@ function normalizeLegacySideNavItems(items: SideNavItem[]): SideNavItem[] {
         };
       }
 
-      if (
-        itemPath === "/apps/dwh/issue-tracker?view=issues" ||
-        item.id === "registered-issues"
-      ) {
+      if (itemPath === "/apps/dwh/issue-tracker?view=issues" || item.id === "registered-issues") {
         return {
           ...item,
           id: "registered-issues",
@@ -139,26 +154,33 @@ function normalizeLegacySideNavItems(items: SideNavItem[]): SideNavItem[] {
         };
       }
 
-      if (itemPath === "/apps/dwh/issue-tracker" || item.id === "issue-tracker" || item.id === "issue-tracking") {
+      if (
+        itemPath === "/apps/dwh/issue-tracker" ||
+        item.id === "issue-tracker" ||
+        item.id === "issue-tracking"
+      ) {
         return {
           ...item,
           id: "issue-tracking",
           label: "Issue Tracking",
           path: undefined,
-          children: children && children.length > 0 ? children : [
-            {
-              id: "issue-summary",
-              label: "Issue Summary",
-              path: "/apps/dwh/issue-tracker/dashboard",
-              permission: item.permission ?? "issue_tracker:read",
-            },
-            {
-              id: "registered-issues",
-              label: "Registered Issues",
-              path: "/apps/dwh/issue-tracker/issues",
-              permission: item.permission ?? "issue_tracker:read",
-            },
-          ],
+          children:
+            children && children.length > 0
+              ? children
+              : [
+                  {
+                    id: "issue-summary",
+                    label: "Issue Summary",
+                    path: "/apps/dwh/issue-tracker/dashboard",
+                    permission: item.permission ?? "issue_tracker:read",
+                  },
+                  {
+                    id: "registered-issues",
+                    label: "Registered Issues",
+                    path: "/apps/dwh/issue-tracker/issues",
+                    permission: item.permission ?? "issue_tracker:read",
+                  },
+                ],
         };
       }
 
@@ -301,6 +323,8 @@ function RenderSideNavItem({ item, currentPath, onNavigate }: RenderSideNavItemP
     return (
       <SideNavMenu
         key={item.id}
+        className="moh-portal-nav-folder"
+        renderIcon={PortalFolderIcon}
         title={item.label}
         defaultExpanded={childActive}
         isActive={childActive}
@@ -324,6 +348,8 @@ function RenderSideNavItem({ item, currentPath, onNavigate }: RenderSideNavItemP
   return (
     <SideNavLink
       key={item.id}
+      className="moh-portal-nav-page"
+      renderIcon={PortalPageIcon}
       isActive={active}
       aria-current={active ? "page" : undefined}
       onClick={() => onNavigate(itemPath)}
@@ -458,6 +484,8 @@ export function ClientSideNav({
             return (
               <SideNavMenu
                 key={client.clientId}
+                className="moh-portal-nav-folder"
+                renderIcon={PortalFolderIcon}
                 title={getClientLabel(client)}
                 defaultExpanded={clientActive}
                 isActive={clientActive}

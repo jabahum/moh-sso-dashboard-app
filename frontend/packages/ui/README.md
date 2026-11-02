@@ -36,3 +36,12 @@ Keep feature-specific behavior in the feature app:
 - row action menus
 - bulk action business logic
 - drawers, modals, and feature-specific panels
+
+## Portal side navigation
+
+`ClientSideNav` presents application groups and nested menus as expandable
+folders with open/closed icons, plus/minus controls, and dotted connectors.
+Leaf links have document icons and retain the selected-page highlight.
+Its scoped stylesheet travels with the component; the shell controls placement
+and drawer sizing. Existing permission filtering, menu ordering, URL handling,
+keyboard expansion, and mobile focus trapping remain in the component.
