@@ -21,7 +21,7 @@ from platform_client import PlatformClient, PlatformError, discover, machine_tok
 
 class Demo:
     def __init__(self):
-        self.public = safe_url(os.environ.get("APP_PUBLIC_URL", "http://127.0.0.1:8081"))
+        self.public = safe_url(os.environ.get("APP_PUBLIC_URL", "http://127.0.0.1:8082"))
         if urlparse(self.public).path not in ("", "/"):
             raise PlatformError("sample APP_PUBLIC_URL must be an origin")
         self.issuer = safe_url(os.environ["OIDC_ISSUER"])
@@ -165,7 +165,7 @@ class App(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     try:
         demo = Demo()
-        server = HTTPServer(("127.0.0.1", int(os.environ.get("APP_PORT", "8081"))), App)
+        server = HTTPServer(("127.0.0.1", int(os.environ.get("APP_PORT", "8082"))), App)
         server.demo = demo
         print("Pilot listening on loopback; public URL: " + demo.public)
         server.serve_forever()

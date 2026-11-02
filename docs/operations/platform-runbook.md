@@ -39,7 +39,7 @@ For CI/local database verification run `make migrations-check`; it provisions di
 
 | Symptom | Check and action |
 | --- | --- |
-| 401 | Token type, issuer, platform audience, expiry/not-before and active state. Obtain a fresh access token. Never bypass validation. |
+| 401 | Token type, issuer, platform audience, nonempty subject (`sub`), expiry/not-before and active state. An older/custom realm may need its subject mapper restored even when other claims are valid. Obtain a fresh access token. Never bypass validation. |
 | 403 | Application active/enabled, bound service client/subject, token/registry scope intersection, or user application access role. Inspect governance audit. |
 | 409 on submission | Key was used with another normalized payload. Reuse the original payload, or use a new key for a genuinely new operation. |
 | 429 | Stop creating new requests until Retry-After. Safe retries retain the original key; do not evade the application quota using more clients. |
