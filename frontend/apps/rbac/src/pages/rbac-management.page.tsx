@@ -20,7 +20,7 @@ import {
   TextInput,
   Toggle,
 } from "@carbon/react";
-import { Add, Renew, Save, TrashCan } from "@carbon/react/icons";
+import { Add, Document, Folder, FolderOpen, Renew, Save, TrashCan } from "@carbon/react/icons";
 
 import {
   useAddRbacGroupMemberMutation,
@@ -114,6 +114,17 @@ const workspaceSections = [
   },
 ] as const;
 type WorkspaceSection = (typeof workspaceSections)[number]["id"];
+const workspaceFolders: { id: string; label: string; sections: WorkspaceSection[] }[] = [
+  { id: "applications-folder", label: "Applications", sections: ["applications", "lifecycle"] },
+  {
+    id: "roles-folder",
+    label: "Roles & permissions",
+    sections: ["access-roles", "system-roles", "realm-roles"],
+  },
+  { id: "access-folder", label: "Groups & access", sections: ["groups", "effective-access"] },
+  { id: "operations-folder", label: "Operations", sections: ["sync", "governance"] },
+];
+
 const applicationSections = [
   { id: "basics", label: "Basics" },
   { id: "ownership", label: "Ownership & support" },
@@ -277,8 +288,16 @@ function toDraft(system?: RbacSystem): SystemDraft {
 export default function RbacManagementPage() {
   const workspaceRef = useRef<HTMLElement>(null);
   const [activeSection, setActiveSection] = useState<WorkspaceSection>("applications");
+  const [expandedFolders, setExpandedFolders] = useState<string[]>(["applications-folder"]);
   const [applicationSection, setApplicationSection] = useState<ApplicationSection>("basics");
   const currentSection = workspaceSections.find((section) => section.id === activeSection)!;
+  useEffect(() => {
+    const folder = workspaceFolders.find((item) => item.sections.includes(activeSection));
+    if (folder)
+      setExpandedFolders((current) =>
+        current.includes(folder.id) ? current : [...current, folder.id],
+      );
+  }, [activeSection]);
   useEffect(() => {
     if (workspaceRef.current) workspaceRef.current.scrollTop = 0;
   }, [activeSection, applicationSection]);
@@ -830,16 +849,53 @@ export default function RbacManagementPage() {
       </div>
       <section className="rbac-page__layout">
         <nav className="rbac-workspace-navigation" aria-label="RBAC workspace">
-          {workspaceSections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              aria-current={section.id === activeSection ? "page" : undefined}
-              onClick={() => setActiveSection(section.id)}
-            >
-              {section.label}
-            </button>
-          ))}
+          <span className="rbac-folder-heading">Workspace</span>
+          {workspaceFolders.map((folder) => {
+            const expanded = expandedFolders.includes(folder.id);
+            const containsActive = folder.sections.includes(activeSection);
+            const FolderIcon = expanded ? FolderOpen : Folder;
+            return (
+              <div className="rbac-folder" key={folder.id}>
+                <button
+                  className="rbac-folder-toggle"
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-controls={`rbac-${folder.id}`}
+                  onClick={() =>
+                    setExpandedFolders((current) =>
+                      expanded ? current.filter((id) => id !== folder.id) : [...current, folder.id],
+                    )
+                  }
+                >
+                  <span className="rbac-folder-expander" aria-hidden="true">
+                    {expanded ? "−" : "+"}
+                  </span>
+                  <FolderIcon size={20} className="rbac-folder-icon" aria-hidden="true" />
+                  <span className={containsActive ? "rbac-folder-label--active" : undefined}>
+                    {folder.label}
+                  </span>
+                </button>
+                <ul id={`rbac-${folder.id}`} className="rbac-folder-pages" hidden={!expanded}>
+                  {folder.sections.map((id) => {
+                    const section = workspaceSections.find((item) => item.id === id)!;
+                    return (
+                      <li key={section.id}>
+                        <button
+                          className="rbac-folder-page"
+                          type="button"
+                          aria-current={section.id === activeSection ? "page" : undefined}
+                          onClick={() => setActiveSection(section.id)}
+                        >
+                          <Document size={16} aria-hidden="true" />
+                          <span>{section.label}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
         <main
           ref={workspaceRef}

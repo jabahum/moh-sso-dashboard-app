@@ -677,7 +677,7 @@
 .rbac-page__layout {
   flex: 1;
   min-height: 0;
-  grid-template-columns: 11rem minmax(0, 1fr);
+  grid-template-columns: 15rem minmax(0, 1fr);
   align-items: stretch;
 }
 
@@ -897,4 +897,96 @@
 
 .rbac-group-search {
   padding: 0.75rem;
+}
+
+.rbac-folder-heading {
+  padding: 0.5rem 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.rbac-folder {
+  flex-shrink: 0;
+}
+
+.rbac-workspace-navigation .rbac-folder-toggle,
+.rbac-workspace-navigation .rbac-folder-page {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.125rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+.rbac-folder-toggle > span:last-child,
+.rbac-folder-page > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rbac-folder-expander {
+  display: inline-flex;
+  flex: 0 0 0.875rem;
+  justify-content: center;
+  align-items: center;
+  height: 0.875rem;
+  border: 1px solid var(--cds-border-strong-01, #8d8d8d);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.rbac-folder-icon {
+  flex-shrink: 0;
+  color: #a67c00;
+}
+
+.rbac-folder-label--active {
+  color: var(--cds-text-primary, #161616);
+  font-weight: 600;
+}
+
+.rbac-folder-pages {
+  margin: 0 0 0.375rem 1.5rem;
+  padding: 0;
+  list-style: none;
+  border-left: 1px dotted var(--cds-border-strong-01, #8d8d8d);
+}
+
+.rbac-folder-pages li {
+  position: relative;
+
+  &::before {
+    position: absolute;
+    top: 1rem;
+    left: 0;
+    width: 0.5rem;
+    border-top: 1px dotted var(--cds-border-strong-01, #8d8d8d);
+    content: "";
+  }
+}
+
+.rbac-folder-page svg {
+  flex-shrink: 0;
+  color: var(--cds-icon-secondary, #525252);
+}
+
+@media (min-width: 901px) and (max-height: 800px) {
+  .rbac-folder-heading {
+    padding-block: 0.25rem;
+  }
+
+  .rbac-workspace-navigation .rbac-folder-toggle,
+  .rbac-workspace-navigation .rbac-folder-page {
+    min-height: 1.75rem;
+    padding-block: 0.25rem;
+  }
+
+  .rbac-folder-pages {
+    margin-bottom: 0;
+  }
 }

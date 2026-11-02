@@ -15,7 +15,10 @@ It is a standalone React microfrontend exposed as `@moh-sso/rbac` and mounted by
 ## Workspace layout
 
 The console opens Application settings and keeps the application selector and task
-navigation in view. Switch directly between settings, lifecycle, access roles,
+navigation in view. Expand folder groups for Applications, Roles & permissions,
+Groups & access, and Operations. Folder icons and dotted connectors show the
+hierarchy; a selected page is highlighted and its folder opens automatically.
+Switch directly between settings, lifecycle, access roles,
 system roles, realm permissions, groups, effective access, sync/drift, and
 governance. The outer page stays within the viewport; long results scroll inside
 the active workspace. On narrow screens, a section dropdown replaces the task
