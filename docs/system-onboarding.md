@@ -2,6 +2,13 @@
 
 Use this flow when a new Keycloak client/system is added to the Integrated Health Portal.
 
+For the complete UI walkthrough with screenshots, field values, Keycloak setup,
+role mapping, activation, and acceptance tests, start with the
+[Application and system onboarding handbook](platform-onboarding.md).
+This page retains the CLI/seed and navigation reference. Registering a system
+does not create its OAuth client, deploy an external application, or install a
+hosted frontend module.
+
 For the full RBAC and Keycloak sync operating model, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
 
 ## Application lifecycle

@@ -2,6 +2,11 @@
 
 Use this checklist when adding a new frontend app.
 
+For the complete governed onboarding flow, screenshots, and the distinction
+between a parent system and a frontend module, see the
+[onboarding handbook](../../docs/platform-onboarding.md#8-add-a-hosted-single-spa-module).
+Adding registry/navigation metadata alone does not install or mount a new app.
+
 ## Create Files
 
 ```text
@@ -70,8 +75,11 @@ Update:
 
 - `frontend/package.json` build/dev scripts
 - `frontend/scripts/generate-import-map.mjs`
+- `frontend/scripts/stage-microfrontends.mjs` (and npm-module staging when used)
 - `frontend/scripts/dev-microfrontends.mjs`
 - shell microfrontend registry files
+- shell lifecycle loader/orchestrator lookup and guarded user/admin routes
+- shell `package.json` dependency when importing the new app
 - `tsconfig.base.json` only if a new public path alias is needed
 
 ## Package Metadata

@@ -1,5 +1,9 @@
 # Independent application pilot
 
+Start with the illustrated [onboarding handbook](../../docs/platform-onboarding.md)
+for portal registration, roles, activation, hosted-module wiring, and acceptance
+tests. This page focuses on running the reference integrations after that setup.
+
 These examples use only supported HTTP contracts or published frontend packages. They never import backend internals or read platform tables. The Python client and pilot require Python 3.10+ and its standard library; no React adoption is required for an external application.
 
 ## Prepare one pilot

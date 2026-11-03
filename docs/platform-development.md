@@ -1,5 +1,10 @@
 # MOH platform development
 
+For administrator/developer onboarding, use the illustrated
+[Application and system onboarding handbook](platform-onboarding.md) and its
+[acceptance record](templates/application-onboarding-record.md). This document
+describes the implementation and contracts rather than the click-by-click flow.
+
 All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–5 are implemented as separate commits. Production identity-provider/SMTP configuration and rollout remain deployment tasks. No additional phase branches are required.
 
 | Phase | Commit subject | Scope |
