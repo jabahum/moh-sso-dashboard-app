@@ -350,6 +350,13 @@ attempt to bypass the lifecycle by toggling enabled on an inactive system.
 
 ## 7. Verify an external application
 
+External React apps can also display the portal's shared MOH header with their
+own application name, app switcher, profile and logout actions. Follow
+[Shared MOH header for external applications](external-app-header.md) to integrate
+it in the external frontend. This requires an application code change and a UI
+package version containing the new component; registry activation alone does not
+add the header.
+
 An external application may use any supported language/framework. It retains its
 own deployment, backend, domain data, login callback, and session. It does not
 have to become a single-spa module to appear in the portal launcher.

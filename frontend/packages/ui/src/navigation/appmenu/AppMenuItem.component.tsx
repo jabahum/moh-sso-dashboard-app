@@ -45,7 +45,10 @@ const AppTile: React.FC<AppTileProps> = ({
   const external = isValidHref(href) && isExternalUrl(href);
   const opensNewTab = external && launchMode === "new_tab";
 
-  const handleClick = () => {
+  const handleClick = (event: React.SyntheticEvent<HTMLElement>) => {
+    if (onOpen || disabled) {
+      event.preventDefault();
+    }
     if (disabled) {
       return;
     }
@@ -57,6 +60,7 @@ const AppTile: React.FC<AppTileProps> = ({
 
   return (
     <ClickableTile
+      href={disabled ? undefined : href}
       id={getTileId(name)}
       className={["app-menu-tile", disabled ? "app-menu-tile--disabled" : ""]
         .filter(Boolean)
