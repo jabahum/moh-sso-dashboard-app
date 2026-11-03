@@ -7,6 +7,7 @@ export type Issue = {
   org_unit: string;
   region?: string;
   district?: string;
+  level_of_care?: string;
   issue: string;
   date_reported: string;
   reported_by: string;
@@ -27,6 +28,7 @@ export type IssuePayload = {
   org_unit: string;
   region?: string;
   district?: string;
+  level_of_care?: string;
   issue: string;
   issue_type: string;
   reported_by?: string;

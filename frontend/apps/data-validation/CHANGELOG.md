@@ -1,5 +1,37 @@
 # @moh-sso/data-validation
 
+## 1.1.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Initial release; includes available source history.
+
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- Apply the run scope to raw\_sql rules and drop the date picker from the modal (#242) (`5925284a`)
+- Add the DQA changes to existing files that the previous commit omitted (`2a8c90c9`)
+- feat(data\_quality): implement run scope management and scheduling for data quality scans (`f7ab5228`)
+- Remove legacy Validation Rules feature (DQA engine = Data Validation) (`3c1c199e`)
+- feat(dqa): implement DQA engine components and API integration (`dcc74c9c`)
+- add mobile responsivenes (#200) (`c6613ef0`)
+- load permissions gaurds (#199) (`8e038864`)
+- add data validation foundation (#190) (`d02b4f7e`)
+- Extract apis to features (#166) (`50f1700d`)
+- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+
 ## 1.0.0
 
 ### Major Changes
@@ -17,19 +49,19 @@
   - @moh-sso/ui@1.0.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
-- Apply the run scope to raw\_sql rules and drop the date picker from the modal (#242) (`5925284a`)
+- chore : fix frontend modules and packages versioning gaps (`936e7178`)
+- Apply the run scope to raw_sql rules and drop the date picker from the modal (#242) (`5925284a`)
 - Add the DQA changes to existing files that the previous commit omitted (`2a8c90c9`)
-- feat(data\_quality): implement run scope management and scheduling for data quality scans (`f7ab5228`)
+- feat(data_quality): implement run scope management and scheduling for data quality scans (`f7ab5228`)
 - Remove legacy Validation Rules feature (DQA engine = Data Validation) (`3c1c199e`)
 - feat(dqa): implement DQA engine components and API integration (`dcc74c9c`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - load permissions gaurds (#199) (`8e038864`)
 - add data validation foundation (#190) (`d02b4f7e`)
 - Extract apis to features (#166) (`50f1700d`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
-
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)

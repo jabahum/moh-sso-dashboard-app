@@ -1,30 +1,29 @@
-# Frontend 1.0.0
+# Frontend 1.1.0
 
-## @moh-sso/announcements 1.0.0
+## @moh-sso/announcements 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/rbac@1.0.0
-  - @moh-sso/users@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
-  - @moh-sso/utils@1.0.0
+  - @moh-sso/rbac@1.1.0
+  - @moh-sso/users@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
+  - @moh-sso/utils@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Feat keycloak authorization groups (#203) (`622dbd94`)
 - Clean inline styles (#202) (`1e501c12`)
 - Document UI alignment (#201) (`d2f40df4`)
@@ -42,28 +41,27 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/audit 1.0.0
+## @moh-sso/audit 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/api@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Clean inline styles (#202) (`1e501c12`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - Extract apis to features (#166) (`50f1700d`)
@@ -77,30 +75,29 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/clients 1.0.0
+## @moh-sso/clients 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/rbac@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/types@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/rbac@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/types@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Clean inline styles (#202) (`1e501c12`)
 - Document UI alignment (#201) (`d2f40df4`)
 - add mobile responsivenes (#200) (`c6613ef0`)
@@ -114,28 +111,27 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/data-validation 1.0.0
+## @moh-sso/data-validation 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/api@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Apply the run scope to raw\_sql rules and drop the date picker from the modal (#242) (`5925284a`)
 - Add the DQA changes to existing files that the previous commit omitted (`2a8c90c9`)
 - feat(data\_quality): implement run scope management and scheduling for data quality scans (`f7ab5228`)
@@ -147,28 +143,28 @@ Initial release; includes available source history.
 - Extract apis to features (#166) (`50f1700d`)
 - Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
 
-## @moh-sso/data-visualizer 1.0.0
+## @moh-sso/data-visualizer 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/api@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Issue details changes (#248) (`58893bc7`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - Add disaggregation by facility (#240) (`e157a564`)
 - Feature assigning an issue to a user (#231) (`d69cecf1`)
@@ -198,30 +194,29 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/documents 1.0.0
+## @moh-sso/documents 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/users@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
-  - @moh-sso/utils@1.0.0
+  - @moh-sso/users@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
+  - @moh-sso/utils@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Fix series upload (#229) (`ad200e37`)
 - Refactored the file upload to work with the custom tables in the landing zone instead of the template tables  (#224) (`386d42a5`)
 - Clean inline styles (#202) (`1e501c12`)
@@ -245,25 +240,25 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/e-services 1.0.0
+## @moh-sso/e-services 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Clean inline styles (#202) (`1e501c12`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
@@ -276,28 +271,27 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/email 1.0.0
+## @moh-sso/email 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/rbac@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/rbac@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Feat keycloak authorization groups (#203) (`622dbd94`)
 - Clean inline styles (#202) (`1e501c12`)
 - Document UI alignment (#201) (`d2f40df4`)
@@ -315,29 +309,30 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/issue-tracker 1.0.0
+## @moh-sso/issue-tracker 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/data-visualizer@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
+  - @moh-sso/data-visualizer@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Feature Issue Summary Charts (#253) (`83df0c04`)
+- Issue details changes (#248) (`58893bc7`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Fixing Issue Tracker issues (#244) (`ce47fa20`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - Changes on transactions history & links on emails (#232) (`259f68d3`)
@@ -364,30 +359,29 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/rbac 1.0.0
+## @moh-sso/rbac 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/users@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/types@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/users@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/types@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - add authenticated launch url (`d1a1423f`)
 - add modules to the app menu (`c85d0a8f`)
 - Feat keycloak authorization groups (#203) (`622dbd94`)
@@ -396,24 +390,25 @@ Initial release; includes available source history.
 - Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
 - Feat rbac (#128) (`a0420950`)
 
-## @moh-sso/report-browser 1.0.0
+## @moh-sso/report-browser 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-  - @moh-sso/microfrontend@1.0.0
+  - @moh-sso/microfrontend@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Feat/report scheduler v1 (#239) (`340ceb3b`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Clean inline styles (#202) (`1e501c12`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - Fix sidenav bug (#186) (`4779a85a`)
@@ -424,45 +419,69 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/shell 1.0.0
+## @moh-sso/report-scheduler 0.2.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/announcements@1.0.0
-  - @moh-sso/audit@1.0.0
-  - @moh-sso/clients@1.0.0
-  - @moh-sso/data-validation@1.0.0
-  - @moh-sso/data-visualizer@1.0.0
-  - @moh-sso/documents@1.0.0
-  - @moh-sso/e-services@1.0.0
-  - @moh-sso/email@1.0.0
-  - @moh-sso/issue-tracker@1.0.0
-  - @moh-sso/rbac@1.0.0
-  - @moh-sso/report-browser@1.0.0
-  - @moh-sso/surveillance@1.0.0
-  - @moh-sso/users@1.0.0
-  - @moh-sso/utilities@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/state@1.0.0
-  - @moh-sso/types@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Feat/report scheduler v1 (#239) (`340ceb3b`)
+
+## @moh-sso/shell 1.1.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/announcements@1.1.0
+  - @moh-sso/audit@1.1.0
+  - @moh-sso/clients@1.1.0
+  - @moh-sso/data-validation@1.1.0
+  - @moh-sso/data-visualizer@1.1.0
+  - @moh-sso/documents@1.1.0
+  - @moh-sso/e-services@1.1.0
+  - @moh-sso/email@1.1.0
+  - @moh-sso/issue-tracker@1.1.0
+  - @moh-sso/rbac@1.1.0
+  - @moh-sso/report-browser@1.1.0
+  - @moh-sso/report-scheduler@0.2.0
+  - @moh-sso/surveillance@1.1.0
+  - @moh-sso/users@1.1.0
+  - @moh-sso/utilities@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/state@1.1.0
+  - @moh-sso/types@1.1.0
+  - @moh-sso/ui@1.1.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Initial release; includes available source history.
+
+- fix base url (`5458b6ae`)
+- add more tests (`ee60e24d`)
+- Feat/report scheduler v1 (#239) (`340ceb3b`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - remove breadcrumb icon and also change the sidenav icon from menu to forward and backward arrows (#237) (`7015d4a5`)
 - feat(dqa): implement DQA engine components and API integration (#233) (`f1f8d9ab`)
@@ -521,29 +540,30 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/surveillance 1.0.0
+## @moh-sso/surveillance 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/documents@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/documents@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- fix build errors (`df3981fc`)
+- move all deploy files and scripts to infro folder (`14cc00f8`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Feat rbac surveillance (#204) (`c94cd466`)
 - Clean inline styles (#202) (`1e501c12`)
 - Document UI alignment (#201) (`d2f40df4`)
@@ -564,30 +584,29 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/users 1.0.0
+## @moh-sso/users 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/clients@1.0.0
-  - @moh-sso/rbac@1.0.0
-  - @moh-sso/api@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/clients@1.1.0
+  - @moh-sso/rbac@1.1.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Feat keycloak authorization groups (#203) (`622dbd94`)
 - Clean inline styles (#202) (`1e501c12`)
 - add mobile responsivenes (#200) (`c6613ef0`)
@@ -602,26 +621,25 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/utilities 1.0.0
+## @moh-sso/utilities 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-  - @moh-sso/microfrontend@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/microfrontend@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- Fix utilities RBAC metadata and production runtime release validation (`55f6cb0e`)
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - load permissions gaurds (#199) (`8e038864`)
 - Fix self service routing (#182) (`e2bf3966`)
@@ -635,26 +653,26 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/api 1.0.0
+## @moh-sso/api 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/config@1.0.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/config@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- Logout on 401 (#245) (`73081201`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Add the DQA changes to existing files that the previous commit omitted (`2a8c90c9`)
 - Remove legacy Validation Rules feature (DQA engine = Data Validation) (`3c1c199e`)
 - feat(dqa): implement DQA engine components and API integration (`dcc74c9c`)
@@ -674,26 +692,27 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/auth 1.0.0
+## @moh-sso/auth 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/api@1.0.0
-  - @moh-sso/config@1.0.0
-  - @moh-sso/state@1.0.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/config@1.1.0
+  - @moh-sso/state@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Feat/report scheduler v1 (#239) (`340ceb3b`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - add authenticated launch url (`d1a1423f`)
 - Improve settings (#188) (`fa9d9387`)
 - Extract apis to features (#166) (`50f1700d`)
@@ -706,24 +725,24 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/config 1.0.0
+## @moh-sso/config 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
-- 936e717: Use the shell version in frontend runtime build metadata, keep internal dependency ranges compatible, and clear expired authentication when an API retry remains unauthorized.
 - Updated dependencies
-  - @moh-sso/types@1.0.0
+  - @moh-sso/types@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Add the DQA changes to existing files that the previous commit omitted (`2a8c90c9`)
 - fix(config): remove duplicate dataValidation.dqa key left by merge conflict (`91836667`)
 - Merge branch 'main' of https://github.com/mohuganda/moh-sso-dashboard into feat-dqa (`25ddcd52`)
@@ -747,25 +766,26 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/microfrontend 1.0.0
+## @moh-sso/microfrontend 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
 - Updated dependencies
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/state@1.0.0
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/state@1.1.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Refactored the file upload to work with the custom tables in the landing zone instead of the template tables  (#224) (`386d42a5`)
 - load permissions gaurds (#199) (`8e038864`)
 - Fix self service routing (#182) (`e2bf3966`)
@@ -777,26 +797,26 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/state 1.0.0
+## @moh-sso/state 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
 - Updated dependencies
-- Updated dependencies [936e717]
-  - @moh-sso/api@1.0.0
-  - @moh-sso/auth@1.0.0
-  - @moh-sso/types@1.0.0
+  - @moh-sso/api@1.1.0
+  - @moh-sso/auth@1.1.0
+  - @moh-sso/types@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Extract apis to features (#166) (`50f1700d`)
 - Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
 - Feat rbac (#128) (`a0420950`)
@@ -805,23 +825,24 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/types 1.0.0
+## @moh-sso/types 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
 - Updated dependencies
-  - @moh-sso/ui@1.0.0
+  - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - add modules to the app menu (`c85d0a8f`)
 - add sms foundation (#185) (`3aee2595`)
 - Extract apis to features (#166) (`50f1700d`)
@@ -837,23 +858,24 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/ui 1.0.0
+## @moh-sso/ui 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
 - Updated dependencies
-  - @moh-sso/types@1.0.0
+  - @moh-sso/types@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - remove breadcrumb icon and also change the sidenav icon from menu to forward and backward arrows (#237) (`7015d4a5`)
 - add modules to the app menu (`c85d0a8f`)
@@ -880,23 +902,24 @@ Initial release; includes available source history.
 - fix docker build error (#89) (`15472b87`)
 - Feat email notification dispatch (#87) (`79e072cd`)
 
-## @moh-sso/utils 1.0.0
+## @moh-sso/utils 1.1.0
 
-### Major Changes
+### Minor Changes
 
-- Automatic major release of all frontend apps and shared packages.
+- Automatic minor release of all frontend apps and shared packages.
 
 ### Patch Changes
 
 - Updated dependencies
-  - @moh-sso/types@1.0.0
+  - @moh-sso/types@1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Initial release; includes available source history.
 
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- Unpush commits (#247) (`362f5f97`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Extract apis to features (#166) (`50f1700d`)
 - Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
 - Frontend docker prod deployment (#93) (`757cb3de`)

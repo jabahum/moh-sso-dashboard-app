@@ -70,7 +70,7 @@ func (r *postgresRepository) CreateIssue(ctx context.Context, input createIssueI
 			'HMIS-' || LPAD(n.issue_id::text, 4, '0'),
 			$1, $2, $3, $4, $5, CURRENT_DATE, $6, 'OPEN', $7
 		FROM next_issue n
-		RETURNING issue_id, issue_code, dataset, data_element, ''::text AS region, ''::text AS district, org_unit, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, assigned_to`,
+		RETURNING issue_id, issue_code, dataset, data_element, ''::text AS region, ''::text AS district, org_unit, ''::text AS level_of_care, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, assigned_to`,
 		input.Dataset,
 		input.DataElement,
 		input.OrgUnit,
@@ -175,10 +175,10 @@ func (r *postgresRepository) ListIssues(ctx context.Context, filter listIssuesFi
 
 	limitIdx := len(args) + 1
 	offsetIdx := len(args) + 2
-	query := fmt.Sprintf(`SELECT issue_id, issue_code, dataset, data_element, COALESCE(org.region, ''), COALESCE(org.district, ''), org_unit, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, hiv.issue.assigned_to
+	query := fmt.Sprintf(`SELECT issue_id, issue_code, dataset, data_element, COALESCE(org.region, ''), COALESCE(org.district, ''), org_unit, COALESCE(org.level_of_care, ''), issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, hiv.issue.assigned_to
 		FROM hiv.issue
 		LEFT JOIN (
-			SELECT DISTINCT ON (org_unit_name) org_unit_name, region, district
+			SELECT DISTINCT ON (org_unit_name) org_unit_name, region, district, level_of_care
 			FROM hiv.organisation_unit
 			ORDER BY org_unit_name, organisation_unit ASC
 		) org ON org.org_unit_name = hiv.issue.org_unit
@@ -210,10 +210,10 @@ func (r *postgresRepository) GetIssuesByCodes(ctx context.Context, issueCodes []
 	}
 	rows, err := r.dwhDB.QueryContext(
 		ctx,
-		`SELECT issue_id, issue_code, dataset, data_element, COALESCE(org.region, ''), COALESCE(org.district, ''), org_unit, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, hiv.issue.assigned_to
+		`SELECT issue_id, issue_code, dataset, data_element, COALESCE(org.region, ''), COALESCE(org.district, ''), org_unit, COALESCE(org.level_of_care, ''), issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, hiv.issue.assigned_to
 		FROM hiv.issue
 		LEFT JOIN (
-			SELECT DISTINCT ON (org_unit_name) org_unit_name, region, district
+			SELECT DISTINCT ON (org_unit_name) org_unit_name, region, district, level_of_care
 			FROM hiv.organisation_unit
 			ORDER BY org_unit_name, organisation_unit ASC
 		) org ON org.org_unit_name = hiv.issue.org_unit
@@ -287,7 +287,7 @@ func (r *postgresRepository) UpdateIssue(ctx context.Context, input updateIssueI
 			issue_type = COALESCE($12, issue_type),
 			time_period = COALESCE($13, time_period)
 		WHERE issue_code = $1
-		RETURNING issue_id, issue_code, dataset, data_element, ''::text AS region, ''::text AS district, org_unit, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, assigned_to`,
+		RETURNING issue_id, issue_code, dataset, data_element, ''::text AS region, ''::text AS district, org_unit, ''::text AS level_of_care, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, assigned_to`,
 		input.IssueCode,
 		input.Dataset,
 		input.DataElement,

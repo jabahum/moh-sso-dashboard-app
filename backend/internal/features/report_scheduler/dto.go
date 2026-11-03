@@ -3,10 +3,10 @@ package report_scheduler
 import "time"
 
 type ModuleResponse struct {
-	Name              string `json:"name"`
-	Status            string `json:"status"`
-	SchedulingEnabled bool   `json:"schedulingEnabled"`
-	HealthBIEnabled   bool   `json:"healthBiEnabled"`
+	Name              string        `json:"name"`
+	Status            string        `json:"status"`
+	SchedulingEnabled bool          `json:"schedulingEnabled"`
+	HealthBIEnabled   bool          `json:"healthBiEnabled"`
 	HealthContext     HealthContext `json:"healthContext"`
 }
 
@@ -51,8 +51,8 @@ type RecipientPreview struct {
 }
 
 type RecipientOption struct {
-	ID string `json:"id"`
-	Type string `json:"type"`
+	ID    string `json:"id"`
+	Type  string `json:"type"`
 	Value string `json:"value"`
 	Label string `json:"label"`
 }
@@ -90,43 +90,43 @@ type HealthBIJob struct {
 }
 
 type Schedule struct {
-	ID               string         `json:"id"`
-	HealthBIReportID string         `json:"healthBiReportId"`
-	ReportName       string         `json:"reportName"`
-	Description      string         `json:"description,omitempty"`
-	Frequency        string         `json:"frequency"`
-	CronExpression   string         `json:"cronExpression,omitempty"`
-	Timezone         string         `json:"timezone"`
-	PeriodStrategy   string         `json:"periodStrategy"`
-	Parameters       map[string]any `json:"parameters"`
-	OutputFormat     string         `json:"outputFormat"`
-	OutputConfig     OutputConfig   `json:"outputConfig"`
-	Timing           ScheduleTiming `json:"timing"`
-	HealthContext    HealthContext  `json:"healthContext"`
+	ID               string              `json:"id"`
+	HealthBIReportID string              `json:"healthBiReportId"`
+	ReportName       string              `json:"reportName"`
+	Description      string              `json:"description,omitempty"`
+	Frequency        string              `json:"frequency"`
+	CronExpression   string              `json:"cronExpression,omitempty"`
+	Timezone         string              `json:"timezone"`
+	PeriodStrategy   string              `json:"periodStrategy"`
+	Parameters       map[string]any      `json:"parameters"`
+	OutputFormat     string              `json:"outputFormat"`
+	OutputConfig     OutputConfig        `json:"outputConfig"`
+	Timing           ScheduleTiming      `json:"timing"`
+	HealthContext    HealthContext       `json:"healthContext"`
 	Recipients       []ScheduleRecipient `json:"recipients"`
-	Enabled          bool           `json:"enabled"`
-	CreatedBy        string         `json:"createdBy"`
-	CreatedAt        time.Time      `json:"createdAt"`
-	UpdatedAt        time.Time      `json:"updatedAt"`
-	LastRunAt        *time.Time     `json:"lastRunAt,omitempty"`
-	NextRunAt        *time.Time     `json:"nextRunAt,omitempty"`
+	Enabled          bool                `json:"enabled"`
+	CreatedBy        string              `json:"createdBy"`
+	CreatedAt        time.Time           `json:"createdAt"`
+	UpdatedAt        time.Time           `json:"updatedAt"`
+	LastRunAt        *time.Time          `json:"lastRunAt,omitempty"`
+	NextRunAt        *time.Time          `json:"nextRunAt,omitempty"`
 }
 
 type CreateScheduleRequest struct {
-	HealthBIReportID string         `json:"healthBiReportId" binding:"required"`
-	ReportName       string         `json:"reportName" binding:"required"`
-	Description      string         `json:"description"`
-	Frequency        string         `json:"frequency" binding:"required"`
-	CronExpression   string         `json:"cronExpression"`
-	Timezone         string         `json:"timezone" binding:"required"`
-	PeriodStrategy   string         `json:"periodStrategy" binding:"required"`
-	Parameters       map[string]any `json:"parameters"`
-	OutputFormat     string         `json:"outputFormat" binding:"required"`
-	OutputConfig     OutputConfig   `json:"outputConfig"`
-	Timing           ScheduleTiming `json:"timing"`
-	HealthContext    HealthContext  `json:"healthContext"`
+	HealthBIReportID string              `json:"healthBiReportId" binding:"required"`
+	ReportName       string              `json:"reportName" binding:"required"`
+	Description      string              `json:"description"`
+	Frequency        string              `json:"frequency" binding:"required"`
+	CronExpression   string              `json:"cronExpression"`
+	Timezone         string              `json:"timezone" binding:"required"`
+	PeriodStrategy   string              `json:"periodStrategy" binding:"required"`
+	Parameters       map[string]any      `json:"parameters"`
+	OutputFormat     string              `json:"outputFormat" binding:"required"`
+	OutputConfig     OutputConfig        `json:"outputConfig"`
+	Timing           ScheduleTiming      `json:"timing"`
+	HealthContext    HealthContext       `json:"healthContext"`
 	Recipients       []ScheduleRecipient `json:"recipients"`
-	Enabled          *bool          `json:"enabled"`
+	Enabled          *bool               `json:"enabled"`
 }
 
 type UpdateScheduleRequest = CreateScheduleRequest
@@ -139,25 +139,25 @@ type ListOptions struct {
 }
 
 type Execution struct {
-	ID            string         `json:"id"`
-	ScheduleID    *string        `json:"scheduleId,omitempty"`
-	HealthBIJobID string         `json:"healthBiJobId,omitempty"`
-	ReportID      string         `json:"reportId"`
-	Status        string         `json:"status"`
-	Parameters    map[string]any `json:"parameters"`
-	OutputFormat  string         `json:"outputFormat"`
-	TriggerType   string         `json:"triggerType"`
-	TriggeredBy   string         `json:"triggeredBy,omitempty"`
-	ErrorMessage  string         `json:"errorMessage,omitempty"`
-	StartedAt     *time.Time     `json:"startedAt,omitempty"`
-	FinishedAt    *time.Time     `json:"finishedAt,omitempty"`
-	ScheduledFor  *time.Time     `json:"scheduledFor,omitempty"`
-	ResolvedPeriod *ResolvedPeriod `json:"resolvedPeriod,omitempty"`
-	GenerationAttempts int         `json:"generationAttempts"`
-	MaxGenerationAttempts int      `json:"maxGenerationAttempts"`
-	NextRetryAt    *time.Time      `json:"nextRetryAt,omitempty"`
-	LastAttemptAt  *time.Time      `json:"lastAttemptAt,omitempty"`
-	CreatedAt     time.Time      `json:"createdAt"`
+	ID                    string          `json:"id"`
+	ScheduleID            *string         `json:"scheduleId,omitempty"`
+	HealthBIJobID         string          `json:"healthBiJobId,omitempty"`
+	ReportID              string          `json:"reportId"`
+	Status                string          `json:"status"`
+	Parameters            map[string]any  `json:"parameters"`
+	OutputFormat          string          `json:"outputFormat"`
+	TriggerType           string          `json:"triggerType"`
+	TriggeredBy           string          `json:"triggeredBy,omitempty"`
+	ErrorMessage          string          `json:"errorMessage,omitempty"`
+	StartedAt             *time.Time      `json:"startedAt,omitempty"`
+	FinishedAt            *time.Time      `json:"finishedAt,omitempty"`
+	ScheduledFor          *time.Time      `json:"scheduledFor,omitempty"`
+	ResolvedPeriod        *ResolvedPeriod `json:"resolvedPeriod,omitempty"`
+	GenerationAttempts    int             `json:"generationAttempts"`
+	MaxGenerationAttempts int             `json:"maxGenerationAttempts"`
+	NextRetryAt           *time.Time      `json:"nextRetryAt,omitempty"`
+	LastAttemptAt         *time.Time      `json:"lastAttemptAt,omitempty"`
+	CreatedAt             time.Time       `json:"createdAt"`
 }
 
 type Delivery struct {
@@ -203,28 +203,28 @@ type SchedulerStatusCount struct {
 }
 
 type SchedulerOverview struct {
-	TotalSchedules       int64                  `json:"totalSchedules"`
-	EnabledSchedules     int64                  `json:"enabledSchedules"`
-	Executions24h        int64                  `json:"executions24h"`
-	Completed24h         int64                  `json:"completed24h"`
-	Failed24h            int64                  `json:"failed24h"`
-	RetryingNow          int64                  `json:"retryingNow"`
-	DeliveryFailures24h  int64                  `json:"deliveryFailures24h"`
-	SuccessRate24h       float64                `json:"successRate24h"`
-	ExecutionStatuses    []SchedulerStatusCount `json:"executionStatuses"`
-	DeliveryStatuses     []SchedulerStatusCount `json:"deliveryStatuses"`
-	RecentFailures       []Execution            `json:"recentFailures"`
+	TotalSchedules        int64                  `json:"totalSchedules"`
+	EnabledSchedules      int64                  `json:"enabledSchedules"`
+	Executions24h         int64                  `json:"executions24h"`
+	Completed24h          int64                  `json:"completed24h"`
+	Failed24h             int64                  `json:"failed24h"`
+	RetryingNow           int64                  `json:"retryingNow"`
+	DeliveryFailures24h   int64                  `json:"deliveryFailures24h"`
+	SuccessRate24h        float64                `json:"successRate24h"`
+	ExecutionStatuses     []SchedulerStatusCount `json:"executionStatuses"`
+	DeliveryStatuses      []SchedulerStatusCount `json:"deliveryStatuses"`
+	RecentFailures        []Execution            `json:"recentFailures"`
 	WorkerLastHeartbeatAt *time.Time             `json:"workerLastHeartbeatAt,omitempty"`
 	WorkerLastCycleError  string                 `json:"workerLastCycleError,omitempty"`
 	WorkerHealthy         bool                   `json:"workerHealthy"`
-	GeneratedAt          time.Time              `json:"generatedAt"`
+	GeneratedAt           time.Time              `json:"generatedAt"`
 }
 
 type PortalReport struct {
-	DeliveryID string    `json:"deliveryId"`
-	ExecutionID string   `json:"executionId"`
-	ReportID    string   `json:"reportId"`
-	ReportName  string   `json:"reportName"`
+	DeliveryID  string    `json:"deliveryId"`
+	ExecutionID string    `json:"executionId"`
+	ReportID    string    `json:"reportId"`
+	ReportName  string    `json:"reportName"`
 	Artifact    Artifact  `json:"artifact"`
 	DeliveredAt time.Time `json:"deliveredAt"`
 }

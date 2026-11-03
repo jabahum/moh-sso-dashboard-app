@@ -30,6 +30,7 @@ if (
             "--test",
             "scripts/test-versioning.mjs",
             "scripts/test-runtime-config.mjs",
+            "scripts/runtime-config-path.test.mjs",
           ],
           {
             cwd: frontend,

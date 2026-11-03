@@ -111,6 +111,7 @@ func scanIssue(scanner interface {
 		region       sql.NullString
 		district     sql.NullString
 		orgUnit      sql.NullString
+		levelOfCare  sql.NullString
 		issueText    sql.NullString
 		dateReported time.Time
 		reportedBy   sql.NullString
@@ -132,6 +133,7 @@ func scanIssue(scanner interface {
 		&region,
 		&district,
 		&orgUnit,
+		&levelOfCare,
 		&issueText,
 		&dateReported,
 		&reportedBy,
@@ -155,6 +157,7 @@ func scanIssue(scanner interface {
 		Region:       dqNullStringPtr(region),
 		District:     dqNullStringPtr(district),
 		OrgUnit:      dqNullStringPtr(orgUnit),
+		LevelOfCare:  dqNullStringPtr(levelOfCare),
 		Issue:        dqNullStringPtr(issueText),
 		IssueType:    dqNullStringPtr(issueType),
 		DateReported: dateReported.Format("2006-01-02"),

@@ -53,7 +53,7 @@ func CalculateNextRun(frequency, timezone string, timing ScheduleTiming, after t
 		lastDay := time.Date(year, month+1, 0, hour, minute, 0, 0, location).Day()
 		if day > lastDay {
 			day = lastDay
-	}
+		}
 		return time.Date(year, month, day, hour, minute, 0, 0, location)
 	}
 
@@ -66,8 +66,12 @@ func CalculateNextRun(frequency, timezone string, timing ScheduleTiming, after t
 		return candidate.UTC(), nil
 	case "weekly":
 		weekday := timing.Weekday
-		if weekday == 0 { weekday = 1 }
-		if weekday == 7 { weekday = int(time.Sunday) }
+		if weekday == 0 {
+			weekday = 1
+		}
+		if weekday == 7 {
+			weekday = int(time.Sunday)
+		}
 		delta := (weekday - int(localAfter.Weekday()) + 7) % 7
 		candidate := makeCandidate(localAfter.Year(), localAfter.Month(), localAfter.Day()).AddDate(0, 0, delta)
 		if !candidate.After(localAfter) {
@@ -137,23 +141,32 @@ func ResolveReportingPeriod(strategy, timezone string, reference time.Time) (Res
 	case "current_day":
 		start, end = dayStart(now), dayEnd(now)
 	case "previous_day":
-		previous := now.AddDate(0, 0, -1); start, end = dayStart(previous), dayEnd(previous)
+		previous := now.AddDate(0, 0, -1)
+		start, end = dayStart(previous), dayEnd(previous)
 	case "current_week", "current_epi_week":
-		start = weekStart(now); end = start.AddDate(0, 0, 7).Add(-time.Nanosecond)
+		start = weekStart(now)
+		end = start.AddDate(0, 0, 7).Add(-time.Nanosecond)
 	case "previous_week", "previous_epi_week":
-		start = weekStart(now).AddDate(0, 0, -7); end = start.AddDate(0, 0, 7).Add(-time.Nanosecond)
+		start = weekStart(now).AddDate(0, 0, -7)
+		end = start.AddDate(0, 0, 7).Add(-time.Nanosecond)
 	case "current_month":
-		start = monthStart(now); end = start.AddDate(0, 1, 0).Add(-time.Nanosecond)
+		start = monthStart(now)
+		end = start.AddDate(0, 1, 0).Add(-time.Nanosecond)
 	case "previous_month":
-		start = monthStart(now).AddDate(0, -1, 0); end = start.AddDate(0, 1, 0).Add(-time.Nanosecond)
+		start = monthStart(now).AddDate(0, -1, 0)
+		end = start.AddDate(0, 1, 0).Add(-time.Nanosecond)
 	case "current_quarter":
-		start = quarterStart(now); end = start.AddDate(0, 3, 0).Add(-time.Nanosecond)
+		start = quarterStart(now)
+		end = start.AddDate(0, 3, 0).Add(-time.Nanosecond)
 	case "previous_quarter":
-		start = quarterStart(now).AddDate(0, -3, 0); end = start.AddDate(0, 3, 0).Add(-time.Nanosecond)
+		start = quarterStart(now).AddDate(0, -3, 0)
+		end = start.AddDate(0, 3, 0).Add(-time.Nanosecond)
 	case "current_year":
-		start = yearStart(now); end = start.AddDate(1, 0, 0).Add(-time.Nanosecond)
+		start = yearStart(now)
+		end = start.AddDate(1, 0, 0).Add(-time.Nanosecond)
 	case "previous_year":
-		start = yearStart(now).AddDate(-1, 0, 0); end = start.AddDate(1, 0, 0).Add(-time.Nanosecond)
+		start = yearStart(now).AddDate(-1, 0, 0)
+		end = start.AddDate(1, 0, 0).Add(-time.Nanosecond)
 	default:
 		return ResolvedPeriod{}, fmt.Errorf("unsupported reporting period strategy %q", strategy)
 	}

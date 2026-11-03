@@ -12,8 +12,8 @@ import (
 	documenttemplatefeature "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
-	reportschedulerfeature "github.com/moh-sso-dashboard/internal/features/report_scheduler"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
+	reportschedulerfeature "github.com/moh-sso-dashboard/internal/features/report_scheduler"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
 	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
@@ -118,7 +118,7 @@ func buildServices(deps serviceDependencies) services {
 		reportschedulerfeature.NewRepository(deps.Databases.Primary),
 		reportschedulerfeature.NewKeycloakHealthBIClient(
 			deps.Config.HealthBIBaseURL,
-			strings.TrimRight(deps.Config.KeycloakBaseURL, "/") + "/realms/" + url.PathEscape(deps.Config.KeycloakRealm) + "/protocol/openid-connect/token",
+			strings.TrimRight(deps.Config.KeycloakBaseURL, "/")+"/realms/"+url.PathEscape(deps.Config.KeycloakRealm)+"/protocol/openid-connect/token",
 			deps.Config.HealthBIKeycloakClientID,
 			deps.Config.HealthBIKeycloakClientSecret,
 			deps.Config.HealthBITimeout,

@@ -1,13 +1,24 @@
-# Backend 1.0.0
+# Backend 1.1.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
 Changes since `backend/v0.0.1`.
 
-- add auto release of both frontend and backend for traceability (`634f0363`)
-- update project and folder make files to provide release scripts (`d4a655ab`)
-- chore : fix frontend modules and packages  versioning gaps (`936e7178`)
+- fix(ci): refresh data quality OpenAPI contract (`515dbe7f`)
+- Merge remote-tracking branch 'upstream/main' into improve-nginx-config (`70ffe3c3`)
+- Feature Issue Summary Charts (#253) (`83df0c04`)
+- add scheduler  env generation (`64801d72`)
+- add more tests (`ee60e24d`)
+- move all deploy files and scripts to infro folder (`c4dd12b6`)
+- move all deploy files and scripts to infro folder (`14cc00f8`)
+- add align stacks (`751bffe7`)
+- align compose files and separate prod from dev (`a55fe11e`)
+- Feat/report scheduler v1 (#239) (`340ceb3b`)
+- Add swagger documentation to backend endpoints (#250) (`99fd059b`)
+- Unpush commits (#247) (`362f5f97`)
+- Logout on 401 (#245) (`73081201`)
+- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
 - Fixing Issue Tracker issues (#244) (`ce47fa20`)
 - Apply the run scope to raw\_sql rules and drop the date picker from the modal (#242) (`5925284a`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
