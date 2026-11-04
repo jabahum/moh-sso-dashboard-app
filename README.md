@@ -6,6 +6,8 @@ The project is now organized as a feature-first backend and a monorepo-style mic
 
 Platform development is tracked in [Platform development](docs/platform-development.md), with a separate, fully described commit for each phase on the current platform branch. The platform includes governed registration, identity contracts, shared notification APIs, [developer onboarding examples](examples/platform/README.md), and [platform operations](docs/operations/platform-runbook.md).
 
+For practical onboarding, start with the illustrated [Application and system onboarding handbook](docs/platform-onboarding.md). It covers external applications, hosted single-spa modules, parent-system navigation, roles, activation, integration tests, and troubleshooting. Use the [onboarding record](docs/templates/application-onboarding-record.md) to capture ownership, approval, and verification evidence.
+
 The system registry explicitly supports portal-owned modules and external launcher-only applications. Keycloak clients opt in with `portal.system=true`; registry metadata controls launcher visibility, side-navigation visibility, and internal, new-tab, or same-tab launch behavior. See [System onboarding](docs/system-onboarding.md).
 
 ## Contents
@@ -1439,6 +1441,8 @@ RBAC and onboarding docs:
 | [`docs/rbac-governance.md`](docs/rbac-governance.md) | RBAC governance center behavior and workflows. |
 | [`docs/rbac-usage.md`](docs/rbac-usage.md) | How RBAC permissions are used by backend and frontend. |
 | [`docs/system-onboarding.md`](docs/system-onboarding.md) | How to onboard a new Keycloak client/system. |
+| [`docs/platform-onboarding.md`](docs/platform-onboarding.md) | Illustrated end-to-end onboarding for external apps, hosted single-spa modules, and existing-system modules. |
+| [`docs/templates/application-onboarding-record.md`](docs/templates/application-onboarding-record.md) | Reusable onboarding, acceptance, and handover record. |
 | [`docs/tooling.md`](docs/tooling.md) | Project-wide doctor/audit/tooling commands. |
 
 Frontend docs:

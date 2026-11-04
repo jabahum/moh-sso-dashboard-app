@@ -2,7 +2,18 @@
   height: 30px;
   width: 30px;
   margin-left: 10px;
+  flex-shrink: 0;
 }
 .moh-header-name {
   cursor: pointer;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moh-portal-link {
+  display: block;
+  margin: 1rem;
 }

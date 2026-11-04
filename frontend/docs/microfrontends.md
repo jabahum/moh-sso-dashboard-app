@@ -1,12 +1,21 @@
 # Microfrontends
 
-The frontend is single-spa-ready. The default path is hybrid local mode, where the shell builds normally and apps resolve through workspace imports. Remote/import-map mode is prepared for independent deployment.
+The frontend retains single-spa lifecycles. Local development defaults to hybrid
+mode, where apps resolve through workspace imports. The checked-in production
+configuration selects remote/import-map loading with single-spa orchestration.
+See the [onboarding handbook](../../docs/platform-onboarding.md#8-add-a-hosted-single-spa-module)
+for the complete integration and verification checklist.
 
 ## Current Modes
 
 - Hybrid local mode: default. Shell uses local workspace app lifecycles.
 - Remote mode: enabled by runtime/env config. Shell can load app bundles through import maps.
-- Orchestrated mode: explicitly gated and experimental until shell routes fully stop mounting `SingleSpaApp` wrappers.
+- Orchestrated mode: explicitly gated by runtime configuration and enabled in
+  `public/config.production.js`. React Router retains shell route guards/layout;
+  `SingleSpaApp` coordinates with the orchestrator instead of mounting locally
+  when orchestration starts successfully. Failure to load single-spa permits the
+  local lifecycle fallback; investigate that state rather than treating a visible
+  screen alone as proof that orchestration ran.
 
 Hybrid mode is the safe default. In hybrid mode, React Router renders `SingleSpaApp` wrappers and `startMicrofrontendOrchestration()` does not call `registerApplication`.
 
@@ -14,6 +23,7 @@ Full orchestration requires:
 
 ```text
 VITE_SINGLE_SPA_ORCHESTRATION=true
+VITE_MICROFRONTEND_MODE=remote
 VITE_MICROFRONTEND_MOUNT_MODE=orchestrated
 ```
 
@@ -21,6 +31,7 @@ or equivalent runtime config:
 
 ```js
 window.__APP_CONFIG__.singleSpaOrchestration = true;
+window.__APP_CONFIG__.microfrontendMode = "remote";
 window.__APP_CONFIG__.microfrontendMountMode = "orchestrated";
 ```
 

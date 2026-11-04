@@ -18,6 +18,7 @@
     "ladle:preview": "ladle preview --host 0.0.0.0"
   },
   "exports": {
+    "./styles.css": "./dist/ui.css",
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
@@ -36,6 +37,7 @@
   },
   "private": false,
   "devDependencies": {
+    "@carbon/styles": "^1.94.0",
     "@ladle/react": "^5.1.1"
   }
 }

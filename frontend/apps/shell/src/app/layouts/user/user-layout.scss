@@ -181,6 +181,12 @@
   min-height: 2.25rem;
 }
 
+// Align nested group headings and links with their sibling application entries.
+.user-layout .moh-client-sidenav .cds--side-nav__menu .cds--side-nav__submenu,
+.user-layout .moh-client-sidenav .cds--side-nav__menu .cds--side-nav__link {
+  padding-inline-start: 2rem;
+}
+
 .user-layout .cds--side-nav__link[aria-current="page"],
 .user-layout .cds--side-nav__link--current,
 .user-layout .cds--side-nav__submenu[aria-expanded="true"] {

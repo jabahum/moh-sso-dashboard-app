@@ -14,26 +14,30 @@ import "./public-header.scss";
 
 import imagePath from "../assets/logo.png";
 
-type UserHeaderProps = {
+export type UserHeaderProps = {
+  appName?: string;
   username?: string | null;
   appMenu?: ReactNode;
   onNavigateHome?: () => void;
   onLogout?: () => void;
+  onProfile?: () => void;
 };
 
 const UserHeader: React.FC<UserHeaderProps> = ({
+  appName = "Integrated Health Portal",
   username,
   appMenu,
   onNavigateHome,
   onLogout,
+  onProfile,
 }) => {
   return (
-    <Header aria-label="MOH Integrated Health Portal">
+    <Header aria-label={`MOH ${appName}`}>
       <SkipToContent />
 
-      <img src={imagePath} className={`moh-image-style`} />
-      <HeaderName prefix="MOH" onClick={onNavigateHome} className="moh-header-name">
-        Integrated Health Portal
+      <img src={imagePath} className="moh-image-style" alt="Uganda coat of arms" />
+      <HeaderName prefix="MOH" onClick={onNavigateHome} className="moh-header-name" title={appName}>
+        {appName}
       </HeaderName>
 
       <HeaderGlobalBar>
@@ -41,14 +45,11 @@ const UserHeader: React.FC<UserHeaderProps> = ({
         <HeaderGlobalAction
           aria-label={`Signed in as ${username ?? "user"}`}
           tooltipAlignment="end"
+          onClick={onProfile}
         >
           <UserAvatarFilled size={20} />
         </HeaderGlobalAction>
-        <HeaderGlobalAction
-          aria-label="Logout"
-          tooltipAlignment="end"
-          onClick={onLogout}
-        >
+        <HeaderGlobalAction aria-label="Logout" tooltipAlignment="end" onClick={onLogout}>
           <Logout size={20} />
         </HeaderGlobalAction>
       </HeaderGlobalBar>
