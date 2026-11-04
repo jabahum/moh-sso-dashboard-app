@@ -111,6 +111,42 @@ NFS requires an explicit bind mount of the host's mounted filesystem at
 `NFS_BASE_PATH`; setting a provider name alone does not mount NFS. S3/MinIO
 endpoints and credentials remain runtime settings.
 
+### Temporary private HTTP access
+
+The backend serves HTTP internally even when the browser-facing URLs use HTTPS.
+To run without a TLS endpoint temporarily, use a backend image that supports
+`ALLOW_INSECURE_HTTP=true` and set that value in the private production env file.
+This permits HTTP frontend/login URLs and the Keycloak callback in production.
+The external Keycloak URL still requires HTTPS, and authentication remains enabled.
+Cookies omit `Secure` when the frontend URL is HTTP with this opt-in; they remain
+secure for HTTPS frontend URLs.
+
+For SSH-tunnel access to gateway mode, use:
+
+```env
+ALLOW_INSECURE_HTTP=true
+NGINX_BIND_ADDRESS=127.0.0.1
+NGINX_HTTP_PORT=8080
+FRONTEND_BASE_URL=http://localhost:8080/portal
+FRONTEND_REDIRECT_URI=http://localhost:8080/portal
+AUTH_RETURN_URL_ALLOWED_ORIGINS=http://localhost:8080
+LOGIN_URL=http://localhost:8080/ssobackend/api/v1/auth/login
+KEYCLOAK_REDIRECT_URI=http://localhost:8080/ssobackend/api/v1/auth/callback
+APP_BASE_URL=http://localhost:8080/ssobackend
+API_BASE_URL=/ssobackend
+COOKIE_DOMAIN=
+```
+
+Set `mode=gateway`, `verify_public_edge=false`, and `public_base_url=""` in
+`/etc/moh-sso/deploy.json`. Register the exact HTTP callback and frontend origin
+in Keycloak. Connect from your workstation with
+`ssh -L 8080:127.0.0.1:8080 USER@APP_SERVER`, then open
+`http://localhost:8080/portal/`. HTTP carries cookies and tokens unencrypted;
+keep access behind the SSH tunnel or a trusted private network.
+
+When the domain and trusted certificate are ready, restore HTTPS URLs, set
+`ALLOW_INSECURE_HTTP=false`, and re-enable public-edge verification.
+
 ### Development quick start
 
 ```bash

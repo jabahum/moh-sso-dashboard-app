@@ -45,7 +45,7 @@ The Go backend is one module: its API server, management CLI, and internal featu
 
 All 15 apps (including the private shell) and eight shared packages have semantic versions in their `package.json`. Shared packages use a fixed Changesets release group; apps release independently. Internal shared dependencies use compatible caret ranges, and app dependencies use tilde ranges. See [frontend versioning](../frontend/docs/versioning.md).
 
-The shell version identifies the frontend service. Its runtime metadata and module manifest use that version by default. CI supplies a development version and commit/build timestamp on branch builds. A `frontend/v<version>` tag must match `frontend/apps/shell/package.json` and builds a semantic frontend image tag. Backend and frontend release tags build only their own image.
+The shell version identifies the frontend service. Its runtime metadata and module manifest use that version by default. The production image workflow uses the numeric shell version on `main`, with no development or commit suffix. A `frontend/v<version>` tag must match `frontend/apps/shell/package.json` and builds a semantic frontend image tag. Backend and frontend release tags build only their own image.
 
 Run the consistency checks before release:
 
@@ -59,6 +59,21 @@ cd ../backend
 ```
 
 The frontend audit checks the shell, module versions, dependency compatibility, shared release group, lockfile, and generated manifest. `make release` automatically bumps every frontend module and the backend, commits the prepared versions, verifies both components, and pushes component tags. `BUMP=patch|minor|major` selects the default change level; stronger pending frontend Changesets are honored. `backend/VERSION` stores the prepared backend version and `.release/plan.json` records the generated versions. See [release commands](releasing.md).
+
+## Production image versions
+
+The paired image build on `main` reads the backend version from `backend/VERSION`
+and the frontend version from `frontend/apps/shell/package.json`. Both must be
+numeric `MAJOR.MINOR.PATCH` versions. Production runtime metadata, image version
+labels, and the footer use those versions directly, for example
+`Frontend v1.1.0 · Backend v1.1.0`. Component release tags must match the prepared
+versions. Development, prerelease, and build-metadata suffixes are rejected by
+this publishing workflow.
+
+Commit IDs remain separate metadata fields and immutable image identifiers for
+verification and rollback; they are not appended to production version numbers.
+Source-only development builds retain their existing version behavior. A newly
+built image pair must be deployed for this change to appear on the server.
 
 ## Image Tags
 

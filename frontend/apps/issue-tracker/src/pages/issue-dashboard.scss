@@ -7,6 +7,7 @@
   gap: 1.5rem;
   width: 100%;
   min-width: 0;
+  padding-bottom: 3rem;
 }
 
 /* =========================================================
@@ -581,6 +582,82 @@
 }
 
 /* =========================================================
+   Column Charts Section
+   ========================================================= */
+.dashboard-charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  padding-bottom: 2rem;
+}
+
+.dashboard-charts-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.dashboard-charts-title {
+  @include type.type-style("heading-03");
+  margin: 0;
+  color: #161616;
+  font-weight: 600;
+}
+
+.dashboard-charts-subtitle {
+  @include type.type-style("body-compact-01");
+  margin: 0.25rem 0 0;
+  color: #525252;
+}
+
+.dashboard-charts-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chart-region-filter {
+  min-width: 13rem;
+}
+
+.chart-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.dashboard-chart-card {
+  padding: 1.5rem 1.5rem 2.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  min-width: 0;
+  overflow: visible;
+}
+
+.dashboard-chart-card--full {
+  grid-column: 1 / -1;
+}
+
+/* =========================================================
    Loading & Empty States
    ========================================================= */
 .dashboard-empty-state {
@@ -653,6 +730,10 @@
   .expanded-panel-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .dashboard-charts-grid {
+    grid-template-columns: 1fr;
   }
 }
 

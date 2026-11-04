@@ -9,10 +9,12 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cd_bundle as bundle
 from cd_server import Server, atomic_json
+from image_version import image_version
 
 COMMIT = 'a' * 40
 
@@ -23,6 +25,38 @@ def manifest(run='1'):
                                   'digest': 'sha256:' + ('b' if component == 'backend' else 'c') * 64,
                                   'tag': 'sha-' + COMMIT[:7], 'version': '1.2.3', 'commit': COMMIT}
                        for component in ('backend', 'frontend')}}
+
+
+class ImageVersions(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / 'backend').mkdir()
+        (self.root / 'frontend/apps/shell').mkdir(parents=True)
+        self.write_versions('1.2.3', '4.5.6')
+
+    def write_versions(self, backend, frontend):
+        (self.root / 'backend/VERSION').write_text(backend + '\n')
+        (self.root / 'frontend/apps/shell/package.json').write_text(json.dumps({'version': frontend}))
+
+    def test_main_images_use_each_components_prepared_numeric_version(self):
+        self.assertEqual(image_version('backend', 'refs/heads/main', self.root), '1.2.3')
+        self.assertEqual(image_version('frontend', 'refs/heads/main', self.root), '4.5.6')
+
+    def test_component_tags_must_match_the_prepared_versions(self):
+        for component, version in [('backend', '1.2.3'), ('frontend', '4.5.6')]:
+            self.assertEqual(image_version(component, f'refs/tags/{component}/v{version}', self.root), version)
+            with self.assertRaisesRegex(ValueError, 'does not match'):
+                image_version(component, f'refs/tags/{component}/v9.9.9', self.root)
+
+    def test_production_rejects_development_prerelease_and_build_suffixes(self):
+        for version in ('dev', '1.2.3-dev.abc1234', '1.2.3-rc.1', '1.2.3+abc1234', 'v1.2.3', '01.2.3'):
+            with self.subTest(version=version):
+                self.write_versions(version, version)
+                for component in ('backend', 'frontend'):
+                    with self.assertRaisesRegex(ValueError, 'numeric'):
+                        image_version(component, 'refs/heads/main', self.root)
 
 
 class BundleTests(unittest.TestCase):
@@ -69,6 +103,70 @@ class BundleTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bundle.extract(archive, checksum, tmp / 'dest')
             self.assertFalse((tmp / 'escape').exists())
+
+
+class RuntimeVerification(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        config = Path(self.tmp.name) / 'config.json'
+        config.write_text(json.dumps({'schema_version': 1, 'mode': 'prod',
+                                     'deploy_root': self.tmp.name,
+                                     'env_file': str(Path(self.tmp.name) / 'prod.env'),
+                                     'verify_public_edge': False, 'secret_files': {}}))
+        self.expected = manifest()['images']['backend']
+        self.payload = {'success': True, 'data': {'version': self.expected['version'],
+                                                'commit': self.expected['commit']},
+                        'meta': {'requestId': 'fixture'}}
+        self.server = Server(config, runner=self.run_command)
+        self.record = {'manifest': manifest(), 'mode': 'prod',
+                       'release_dir': str(Path(__file__).resolve().parents[2]),
+                       'env_file': str(Path(self.tmp.name) / 'prod.env'),
+                       'override_file': str(Path(self.tmp.name) / 'override.json')}
+
+    def run_command(self, args, **kwargs):
+        if args[-1] == 'http://127.0.0.1:9000/version':
+            return json.dumps(self.payload)
+        if args[-1] == 'http://127.0.0.1:3000/portal/version-manifest.json':
+            return json.dumps({'service': self.expected})
+        if args[-3:] == ['ps', '-q', 'frontend']:
+            return 'fixture-frontend'
+        return ''
+
+    def test_actual_backend_envelope_passes_runtime_verification(self):
+        self.server.verify(self.record)
+
+    def test_failed_or_malformed_version_responses_are_rejected(self):
+        for payload in ({'success': False, 'data': self.payload['data']},
+                        {'success': True, 'data': []}, self.payload['data'], []):
+            with self.subTest(payload=payload):
+                self.payload = payload
+                with self.assertRaisesRegex(ValueError, 'Invalid backend version response'):
+                    self.server.verify(self.record)
+
+    def test_enveloped_identity_must_match_both_version_and_commit(self):
+        for key in ('version', 'commit'):
+            with self.subTest(key=key):
+                self.payload['data'][key] = 'wrong'
+                with self.assertRaisesRegex(ValueError, 'Backend runtime version/commit mismatch'):
+                    self.server.verify(self.record)
+                self.payload['data'][key] = self.expected[key]
+
+    def test_public_edge_checks_the_enveloped_identity(self):
+        origin = 'https://dashboard.example.org'
+        self.server.config.update(verify_public_edge=True, public_base_url=origin)
+        edge_payload = dict(self.payload, data=dict(self.payload['data']))
+
+        def response(url, **kwargs):
+            stream = io.BytesIO(json.dumps(edge_payload).encode())
+            stream.status, stream.url = 200, url
+            return stream
+
+        with patch('cd_server.urllib.request.urlopen', side_effect=response):
+            self.server.verify(self.record)
+            edge_payload['data']['commit'] = 'wrong'
+            with self.assertRaisesRegex(ValueError, 'Public API runtime metadata mismatch'):
+                self.server.verify(self.record)
 
 
 class Transactions(unittest.TestCase):

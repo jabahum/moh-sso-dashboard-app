@@ -66,7 +66,7 @@ const version = process.env.FIXTURE_VERSION;
 const commit = process.env.FIXTURE_COMMIT;
 if (process.env.ROLE === 'backend' && !fs.existsSync('/data/marker')) fs.writeFileSync('/data/marker', 'preserved');
 http.createServer((req,res) => {
-  if (req.url === '/version') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({version:process.env.BROKEN_VERSION==='1'?'0.0.0':version,commit})); }
+  if (req.url === '/version') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({success:true,data:{version:process.env.BROKEN_VERSION==='1'?'0.0.0':version,commit}})); }
   if (req.url === '/portal/version-manifest.json') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({service:{version,commit}})); }
   if (req.url === '/setting') return res.end(process.env.FIXTURE_SETTING);
   if (req.url === '/portal/import-map.json') {res.setHeader('Content-Type','application/json'); return res.end(fs.readFileSync('/fixture/imports.json'));}

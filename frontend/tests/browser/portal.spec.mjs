@@ -50,18 +50,28 @@ test("public portal starts without browser errors", async ({ page }) => {
   expect(failures).toEqual([]);
 });
 
+async function expectModuleInShell(page, title) {
+  const main = page.locator("#main-content");
+  const heading = main.getByRole("heading", { name: title, exact: true });
+  await expect(heading).toBeVisible();
+  await expect(page.locator("#microfrontend-orchestrated-root")).toHaveCount(0);
+  const mainBounds = await main.boundingBox();
+  const headingBounds = await heading.boundingBox();
+  expect(headingBounds.y - mainBounds.y).toBeLessThan(256);
+}
+
 test("admin can mount users, navigate to clients and reload a module route", async ({ page }) => {
   const failures = await fixture(page, admin);
   await page.goto("/portal/admin/users");
-  await expect(page.getByRole("heading", { name: "Users", exact: true })).toBeVisible();
+  await expectModuleInShell(page, "Users");
   await page
     .getByRole("navigation", { name: "Admin navigation" })
     .getByText("Clients", { exact: true })
     .click();
   await expect(page).toHaveURL(/\/portal\/admin\/clients/);
-  await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+  await expectModuleInShell(page, "Clients");
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+  await expectModuleInShell(page, "Clients");
   await page.waitForLoadState("networkidle");
   expect(failures).toEqual([]);
 });

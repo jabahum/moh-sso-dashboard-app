@@ -22,6 +22,14 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended, // plugin:@typescript-eslint/recommended
 
+  // Generated runtime config executes in the browser without a globals header.
+  {
+    files: ["public/config.js"],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
+
   {
     files: ["**/*.{ts,tsx}"],
     plugins: {

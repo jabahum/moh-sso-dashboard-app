@@ -54,11 +54,7 @@ jobs:
         id: backend-meta
         shell: bash
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
-          VERSION="0.0.0-dev.${SHORT_SHA}"
-          if [[ "$GITHUB_REF" == refs/tags/backend/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/backend/v}"
-          fi
+          VERSION="$(python3 infra/scripts/image_version.py backend --ref "$GITHUB_REF")"
           {
             echo "version=$VERSION"
             echo "commit=$GITHUB_SHA"
@@ -69,15 +65,7 @@ jobs:
         id: frontend-meta
         shell: bash
         run: |
-          SHELL_VERSION="$(node -p "require('./frontend/apps/shell/package.json').version")"
-          VERSION="${SHELL_VERSION%%[-+]*}-dev.${GITHUB_SHA::7}"
-          if [[ "$GITHUB_REF" == refs/tags/frontend/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/frontend/v}"
-            if [[ "$VERSION" != "$SHELL_VERSION" ]]; then
-              echo "Frontend tag $VERSION does not match shell version $SHELL_VERSION"
-              exit 1
-            fi
-          fi
+          VERSION="$(python3 infra/scripts/image_version.py frontend --ref "$GITHUB_REF")"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
 

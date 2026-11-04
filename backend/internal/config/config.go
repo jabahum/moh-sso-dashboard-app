@@ -22,6 +22,9 @@ type Config struct {
 
 	DevAuthBypass bool `mapstructure:"DEV_AUTH_BYPASS"`
 
+	// Explicit private-network opt-in for HTTP application URLs.
+	AllowInsecureHTTP bool `mapstructure:"ALLOW_INSECURE_HTTP"`
+
 	// ==================================================
 	// Frontend
 	// ==================================================
@@ -288,6 +291,7 @@ func setDefaults() {
 	viper.SetDefault("ENVIRONMENT", "development")
 	viper.SetDefault("GIN_MODE", "debug")
 	viper.SetDefault("DEV_AUTH_BYPASS", false)
+	viper.SetDefault("ALLOW_INSECURE_HTTP", false)
 
 	// ==================================================
 	// Frontend defaults
@@ -379,6 +383,7 @@ func envBindings() map[string]string {
 		"ENVIRONMENT":                           "ENVIRONMENT",
 		"GIN_MODE":                              "GIN_MODE",
 		"DEV_AUTH_BYPASS":                       "DEV_AUTH_BYPASS",
+		"ALLOW_INSECURE_HTTP":                   "ALLOW_INSECURE_HTTP",
 		"FRONTEND_BASE_URL":                     "FRONTEND_BASE_URL",
 		"FRONTEND_REDIRECT_URI":                 "FRONTEND_REDIRECT_URI",
 		"COOKIE_DOMAIN":                         "COOKIE_DOMAIN",
@@ -706,6 +711,11 @@ func (c *Config) IsDevelopment() bool {
 }
 
 func (c *Config) CookieSecure() bool {
+	// HTTP private deployments cannot send Secure cookies. Keep them secure
+	// when HTTPS URLs are restored, even if the opt-in is still enabled.
+	if c.AllowInsecureHTTP && strings.HasPrefix(c.FrontendBaseURL, "http://") {
+		return false
+	}
 	return c.IsProduction() || c.IsStaging()
 }
 
@@ -938,7 +948,7 @@ func validateFrontendConfig(c *Config) error {
 		}
 	}
 
-	if c.IsProduction() {
+	if c.IsProduction() && !c.AllowInsecureHTTP {
 		if !strings.HasPrefix(c.FrontendBaseURL, "https://") {
 			return errors.New("FRONTEND_BASE_URL must use https:// in production")
 		}
@@ -989,7 +999,7 @@ func validateKeycloakConfig(c *Config) error {
 		if !strings.HasPrefix(c.KeycloakExternalURL, "https://") {
 			return errors.New("KEYCLOAK_EXTERNAL_URL must use https:// in production")
 		}
-		if !strings.HasPrefix(c.KeycloakRedirectURI, "https://") {
+		if !c.AllowInsecureHTTP && !strings.HasPrefix(c.KeycloakRedirectURI, "https://") {
 			return errors.New("KEYCLOAK_REDIRECT_URI must use https:// in production")
 		}
 	}

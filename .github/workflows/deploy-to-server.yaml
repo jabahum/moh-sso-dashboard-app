@@ -105,6 +105,13 @@ jobs:
         with:
           name: deployment-ready
           path: deployment
+      - name: Connect to deployment tailnet
+        if: vars.DEPLOY_TAILSCALE == 'true'
+        uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:moh-deploy
       - name: Configure pinned deployment SSH identity
         uses: ./infra/actions/ssh
         with:

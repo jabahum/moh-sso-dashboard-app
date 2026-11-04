@@ -11,14 +11,14 @@ export async function verifyFrontend(baseURL, fetchImpl = fetch) {
   const base = new URL(baseURL);
   if (!base.pathname.endsWith("/")) base.pathname += "/";
   const checked = new Set();
-  async function get(path, kind) {
+  async function get(path, kind, allowEmpty = false) {
     const url = new URL(path, base);
     if (url.origin !== base.origin) throw new Error("Expected a same-origin deployment asset: " + url);
     const response = await fetchImpl(url, { signal: AbortSignal.timeout(10000), redirect: "error" });
     if (!response.ok) throw new Error("HTTP " + response.status + " for " + url.pathname);
     const type = response.headers.get("content-type") ?? "";
     const body = await response.text();
-    if (!body.trim()) throw new Error("Empty " + kind + " response: " + url.pathname);
+    if (!body.trim() && !allowEmpty) throw new Error("Empty " + kind + " response: " + url.pathname);
     const expected = {
       html: /text\/html/i,
       json: /application\/json/i,
@@ -41,7 +41,8 @@ export async function verifyFrontend(baseURL, fetchImpl = fetch) {
   for (const name of [...requiredApps, ...requiredPackages]) {
     const specifier = "@moh-sso/" + name;
     if (typeof imports[specifier] !== "string") throw new Error("Missing import: " + specifier);
-    await get(imports[specifier], "js");
+    // The types-only package has no runtime exports and builds to an empty module.
+    await get(imports[specifier], "js", specifier === "@moh-sso/types");
   }
 
   const scripts = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)];

@@ -22,16 +22,16 @@ import (
 )
 
 type Service struct {
-	repo        Repository
-	healthBI    HealthBIClient
-	email       EmailDelivery
-	users       UserLookup
-	fileStorage storage.Storage
-	dwh         *sql.DB
-	notifications sharedservice.NotificationsService
-	audit         *sharedservice.AuditService
-	publicBaseURL string
-	deliveryLinkTTL time.Duration
+	repo                 Repository
+	healthBI             HealthBIClient
+	email                EmailDelivery
+	users                UserLookup
+	fileStorage          storage.Storage
+	dwh                  *sql.DB
+	notifications        sharedservice.NotificationsService
+	audit                *sharedservice.AuditService
+	publicBaseURL        string
+	deliveryLinkTTL      time.Duration
 	emailAttachmentLimit int64
 }
 
@@ -46,11 +46,23 @@ func NewService(
 	return &Service{repo: repo, healthBI: healthBI, email: email, users: users, fileStorage: fileStorage, dwh: dwh, deliveryLinkTTL: 24 * time.Hour, emailAttachmentLimit: 10 << 20}
 }
 
-func (s *Service) SetNotifications(notifications sharedservice.NotificationsService) { s.notifications = notifications }
+func (s *Service) SetNotifications(notifications sharedservice.NotificationsService) {
+	s.notifications = notifications
+}
 func (s *Service) SetAudit(audit *sharedservice.AuditService) { s.audit = audit }
-func (s *Service) SetPublicBaseURL(value string) { s.publicBaseURL = strings.TrimRight(strings.TrimSpace(value), "/") }
-func (s *Service) SetEmailAttachmentLimit(value int64) { if value > 0 { s.emailAttachmentLimit = value } }
-func (s *Service) SetDeliveryLinkTTL(value time.Duration) { if value > 0 { s.deliveryLinkTTL = value } }
+func (s *Service) SetPublicBaseURL(value string) {
+	s.publicBaseURL = strings.TrimRight(strings.TrimSpace(value), "/")
+}
+func (s *Service) SetEmailAttachmentLimit(value int64) {
+	if value > 0 {
+		s.emailAttachmentLimit = value
+	}
+}
+func (s *Service) SetDeliveryLinkTTL(value time.Duration) {
+	if value > 0 {
+		s.deliveryLinkTTL = value
+	}
+}
 
 func (s *Service) Module() ModuleResponse {
 	healthBIEnabled := s != nil && s.healthBI != nil && s.healthBI.Enabled()
@@ -93,7 +105,9 @@ func (s *Service) CreateSchedule(
 		return Schedule{}, err
 	}
 	item, err := s.repo.CreateSchedule(ctx, normalized, userID)
-	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_created", map[string]any{"schedule_id": item.ID, "report_id": item.HealthBIReportID, "health_context": item.HealthContext}) }
+	if err == nil {
+		s.auditEvent(ctx, userID, "report_scheduler.schedule_created", map[string]any{"schedule_id": item.ID, "report_id": item.HealthBIReportID, "health_context": item.HealthContext})
+	}
 	return item, err
 }
 
@@ -103,8 +117,12 @@ func (s *Service) ListSchedules(ctx context.Context, userID string, all bool, us
 
 func (s *Service) GetSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
 	item, err := s.repo.GetSchedule(ctx, id, userID, all)
-	if err != nil { return Schedule{}, err }
-	if all && !scheduleWithinHealthScope(item, userHealth) { return Schedule{}, ErrScheduleNotFound }
+	if err != nil {
+		return Schedule{}, err
+	}
+	if all && !scheduleWithinHealthScope(item, userHealth) {
+		return Schedule{}, ErrScheduleNotFound
+	}
 	return item, nil
 }
 
@@ -116,40 +134,58 @@ func (s *Service) UpdateSchedule(
 	all bool,
 	userHealth HealthContext,
 ) (Schedule, error) {
-	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return Schedule{}, err }
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil {
+		return Schedule{}, err
+	}
 	normalized, err := s.validateSchedule(ctx, input, userHealth)
 	if err != nil {
 		return Schedule{}, err
 	}
 	item, err := s.repo.UpdateSchedule(ctx, id, normalized, userID, all)
-	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_updated", map[string]any{"schedule_id": item.ID, "report_id": item.HealthBIReportID, "health_context": item.HealthContext}) }
+	if err == nil {
+		s.auditEvent(ctx, userID, "report_scheduler.schedule_updated", map[string]any{"schedule_id": item.ID, "report_id": item.HealthBIReportID, "health_context": item.HealthContext})
+	}
 	return item, err
 }
 
 func (s *Service) DeleteSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) error {
-	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return err }
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil {
+		return err
+	}
 	err := s.repo.DeleteSchedule(ctx, id, userID, all)
-	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_deleted", map[string]any{"schedule_id": id}) }
+	if err == nil {
+		s.auditEvent(ctx, userID, "report_scheduler.schedule_deleted", map[string]any{"schedule_id": id})
+	}
 	return err
 }
 
 func (s *Service) PauseSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
-	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return Schedule{}, err }
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil {
+		return Schedule{}, err
+	}
 	item, err := s.repo.SetScheduleEnabled(ctx, id, userID, all, false)
-	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_paused", map[string]any{"schedule_id": id}) }
+	if err == nil {
+		s.auditEvent(ctx, userID, "report_scheduler.schedule_paused", map[string]any{"schedule_id": id})
+	}
 	return item, err
 }
 
 func (s *Service) ResumeSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
-	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil { return Schedule{}, err }
+	if _, err := s.GetSchedule(ctx, id, userID, all, userHealth); err != nil {
+		return Schedule{}, err
+	}
 	item, err := s.repo.SetScheduleEnabled(ctx, id, userID, all, true)
-	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_resumed", map[string]any{"schedule_id": id, "next_run_at": item.NextRunAt}) }
+	if err == nil {
+		s.auditEvent(ctx, userID, "report_scheduler.schedule_resumed", map[string]any{"schedule_id": id, "next_run_at": item.NextRunAt})
+	}
 	return item, err
 }
 
 func (s *Service) DuplicateSchedule(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Schedule, error) {
 	source, err := s.GetSchedule(ctx, id, userID, all, userHealth)
-	if err != nil { return Schedule{}, err }
+	if err != nil {
+		return Schedule{}, err
+	}
 	disabled := false
 	input := CreateScheduleRequest{
 		HealthBIReportID: source.HealthBIReportID,
@@ -168,21 +204,29 @@ func (s *Service) DuplicateSchedule(ctx context.Context, id, userID string, all 
 		Enabled:          &disabled,
 	}
 	item, err := s.repo.CreateSchedule(ctx, input, userID)
-	if err == nil { s.auditEvent(ctx, userID, "report_scheduler.schedule_duplicated", map[string]any{"source_schedule_id": id, "new_schedule_id": item.ID}) }
+	if err == nil {
+		s.auditEvent(ctx, userID, "report_scheduler.schedule_duplicated", map[string]any{"source_schedule_id": id, "new_schedule_id": item.ID})
+	}
 	return item, err
 }
 
 func (s *Service) RunNow(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Execution, error) {
 	schedule, err := s.GetSchedule(ctx, id, userID, all, userHealth)
-	if err != nil { return Execution{}, err }
+	if err != nil {
+		return Execution{}, err
+	}
 	reference := time.Now()
 	period, err := ResolveReportingPeriod(schedule.PeriodStrategy, schedule.Timezone, reference)
-	if err != nil { return Execution{}, err }
+	if err != nil {
+		return Execution{}, err
+	}
 	execution, err := s.repo.CreateExecution(ctx, schedule, "manual", userID, reference.UTC(), period, buildExecutionParameters(schedule, period))
-	if err != nil { return Execution{}, err }
+	if err != nil {
+		return Execution{}, err
+	}
 	s.auditEvent(ctx, userID, "report_scheduler.execution_started", map[string]any{
 		"execution_id": execution.ID,
-		"schedule_id": schedule.ID,
+		"schedule_id":  schedule.ID,
 		"trigger_type": "manual",
 	})
 	if err := s.submitExecution(ctx, schedule, execution); err != nil {
@@ -200,15 +244,21 @@ func (s *Service) Overview(ctx context.Context, userID string, all bool, userHea
 }
 
 func (s *Service) UpdateWorkerHeartbeat(ctx context.Context, workerID string, interval time.Duration, heartbeat time.Time, cycleStarted, cycleFinished *time.Time, cycleErr string) error {
-	if s == nil || s.repo == nil { return nil }
+	if s == nil || s.repo == nil {
+		return nil
+	}
 	return s.repo.UpdateWorkerHeartbeat(ctx, workerID, interval, heartbeat, cycleStarted, cycleFinished, cycleErr)
 }
 
 func (s *Service) GetExecutionDetail(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (ExecutionDetail, error) {
 	detail, err := s.repo.GetExecutionDetail(ctx, id, userID, all)
-	if err != nil { return ExecutionDetail{}, err }
+	if err != nil {
+		return ExecutionDetail{}, err
+	}
 	if all && !healthContextEmpty(userHealth) {
-		if detail.Schedule == nil || !scheduleWithinHealthScope(*detail.Schedule, userHealth) { return ExecutionDetail{}, ErrScheduleNotFound }
+		if detail.Schedule == nil || !scheduleWithinHealthScope(*detail.Schedule, userHealth) {
+			return ExecutionDetail{}, ErrScheduleNotFound
+		}
 	}
 	for i := range detail.Artifacts {
 		detail.Artifacts[i].DownloadURL = "/api/v1/report-scheduler/artifacts/" + detail.Artifacts[i].ID + "/download"
@@ -218,54 +268,74 @@ func (s *Service) GetExecutionDetail(ctx context.Context, id, userID string, all
 
 func (s *Service) ArtifactDownloadURL(ctx context.Context, artifactID, userID string, all bool, userHealth HealthContext) (Artifact, string, error) {
 	artifact, execution, err := s.repo.GetArtifactForUser(ctx, artifactID, userID, all)
-	if err != nil { return Artifact{}, "", err }
+	if err != nil {
+		return Artifact{}, "", err
+	}
 	if all && !healthContextEmpty(userHealth) {
-		if execution.ScheduleID == nil { return Artifact{}, "", ErrScheduleNotFound }
+		if execution.ScheduleID == nil {
+			return Artifact{}, "", ErrScheduleNotFound
+		}
 		schedule, scheduleErr := s.repo.GetSchedule(ctx, *execution.ScheduleID, "", true)
-		if scheduleErr != nil || !scheduleWithinHealthScope(schedule, userHealth) { return Artifact{}, "", ErrScheduleNotFound }
+		if scheduleErr != nil || !scheduleWithinHealthScope(schedule, userHealth) {
+			return Artifact{}, "", ErrScheduleNotFound
+		}
 	}
 	var downloadURL string
 	if strings.TrimSpace(artifact.ObjectKey) != "" {
-		if s.fileStorage == nil { return Artifact{}, "", errors.New("file storage is not configured") }
+		if s.fileStorage == nil {
+			return Artifact{}, "", errors.New("file storage is not configured")
+		}
 		downloadURL, err = s.fileStorage.GetDownloadURL(ctx, artifact.ObjectKey, artifact.FileName)
 	} else if strings.TrimSpace(artifact.ExternalURL) != "" {
 		downloadURL = artifact.ExternalURL
 	} else {
 		err = errors.New("artifact has no downloadable source")
 	}
-	if err != nil { return Artifact{}, "", err }
+	if err != nil {
+		return Artifact{}, "", err
+	}
 	s.auditEvent(ctx, userID, "report_scheduler.artifact_download", map[string]any{"artifact_id": artifact.ID, "execution_id": execution.ID, "report_id": execution.ReportID})
 	return artifact, downloadURL, nil
 }
 
 func (s *Service) PublicDeliveryDownloadURL(ctx context.Context, token string) (Artifact, string, error) {
 	token = strings.TrimSpace(token)
-	if token == "" { return Artifact{}, "", ErrScheduleNotFound }
+	if token == "" {
+		return Artifact{}, "", ErrScheduleNotFound
+	}
 	delivery, artifact, execution, err := s.repo.GetDeliveryByAccessToken(ctx, hashDeliveryToken(token))
-	if err != nil { return Artifact{}, "", err }
+	if err != nil {
+		return Artifact{}, "", err
+	}
 	var downloadURL string
 	if strings.TrimSpace(artifact.ObjectKey) != "" {
-		if s.fileStorage == nil { return Artifact{}, "", errors.New("file storage is not configured") }
+		if s.fileStorage == nil {
+			return Artifact{}, "", errors.New("file storage is not configured")
+		}
 		downloadURL, err = s.fileStorage.GetDownloadURL(ctx, artifact.ObjectKey, artifact.FileName)
 	} else if strings.TrimSpace(artifact.ExternalURL) != "" {
 		downloadURL = artifact.ExternalURL
 	} else {
 		err = errors.New("artifact has no downloadable source")
 	}
-	if err != nil { return Artifact{}, "", err }
+	if err != nil {
+		return Artifact{}, "", err
+	}
 	_ = s.repo.MarkDeliveryAccessTokenUsed(ctx, delivery.ID)
 	s.auditEvent(ctx, "", "report_scheduler.delivery_link_download", map[string]any{
-		"delivery_id": delivery.ID,
-		"artifact_id": artifact.ID,
+		"delivery_id":  delivery.ID,
+		"artifact_id":  artifact.ID,
 		"execution_id": execution.ID,
-		"report_id": execution.ReportID,
+		"report_id":    execution.ReportID,
 	})
 	return artifact, downloadURL, nil
 }
 
 func (s *Service) RetryExecution(ctx context.Context, id, userID string, all bool, userHealth HealthContext) (Execution, error) {
 	detail, err := s.GetExecutionDetail(ctx, id, userID, all, userHealth)
-	if err != nil { return Execution{}, err }
+	if err != nil {
+		return Execution{}, err
+	}
 	execution := detail.Execution
 	if execution.Status != "failed" {
 		return execution, errors.New("only failed report executions can be retried manually")
@@ -277,7 +347,9 @@ func (s *Service) RetryExecution(ctx context.Context, id, userID string, all boo
 
 	if len(detail.Artifacts) > 0 {
 		reset, resetErr := s.repo.ResetFailedDeliveries(ctx, execution.ID)
-		if resetErr != nil { return execution, resetErr }
+		if resetErr != nil {
+			return execution, resetErr
+		}
 		if reset == 0 {
 			if err := s.repo.UpdateExecutionJob(ctx, execution.ID, execution.HealthBIJobID, "delivering", ""); err != nil {
 				return execution, err
@@ -287,17 +359,21 @@ func (s *Service) RetryExecution(ctx context.Context, id, userID string, all boo
 			}
 		}
 		s.auditEvent(ctx, userID, "report_scheduler.delivery_retry_manual", map[string]any{
-			"execution_id": execution.ID,
-			"schedule_id": schedule.ID,
+			"execution_id":       execution.ID,
+			"schedule_id":        schedule.ID,
 			"rearmed_deliveries": reset,
 		})
 		return s.repo.GetExecution(ctx, execution.ID)
 	}
 
 	execution, err = s.repo.ResetExecutionForManualRetry(ctx, id, userID, all)
-	if err != nil { return Execution{}, err }
+	if err != nil {
+		return Execution{}, err
+	}
 	s.auditEvent(ctx, userID, "report_scheduler.execution_retry_manual", map[string]any{"execution_id": execution.ID, "schedule_id": schedule.ID})
-	if err := s.submitExecution(ctx, schedule, execution); err != nil { return execution, err }
+	if err := s.submitExecution(ctx, schedule, execution); err != nil {
+		return execution, err
+	}
 	return s.repo.GetExecution(ctx, execution.ID)
 }
 
@@ -639,10 +715,12 @@ func (s *Service) ListPortalReports(ctx context.Context, userID string, limit in
 
 func (s *Service) ProcessOneDue(ctx context.Context) (bool, error) {
 	schedule, execution, found, err := s.repo.ClaimDueExecution(ctx, time.Now())
-	if err != nil || !found { return found, err }
+	if err != nil || !found {
+		return found, err
+	}
 	s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.execution_started", map[string]any{
 		"execution_id": execution.ID,
-		"schedule_id": schedule.ID,
+		"schedule_id":  schedule.ID,
 		"trigger_type": execution.TriggerType,
 	})
 	if err := s.submitExecution(ctx, schedule, execution); err != nil {
@@ -653,7 +731,9 @@ func (s *Service) ProcessOneDue(ctx context.Context) (bool, error) {
 
 func (s *Service) ProcessOneRetry(ctx context.Context) (bool, error) {
 	execution, found, err := s.repo.ClaimRetryExecution(ctx, time.Now())
-	if err != nil || !found { return found, err }
+	if err != nil || !found {
+		return found, err
+	}
 	if execution.ScheduleID == nil {
 		_ = s.repo.UpdateExecutionJob(ctx, execution.ID, execution.HealthBIJobID, "cancelled", "Report schedule was deleted")
 		return true, nil
@@ -665,8 +745,8 @@ func (s *Service) ProcessOneRetry(ctx context.Context) (bool, error) {
 	}
 	s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.execution_retry_started", map[string]any{
 		"execution_id": execution.ID,
-		"schedule_id": schedule.ID,
-		"attempt": execution.GenerationAttempts + 1,
+		"schedule_id":  schedule.ID,
+		"attempt":      execution.GenerationAttempts + 1,
 	})
 	return true, s.submitExecution(ctx, schedule, execution)
 }
@@ -706,7 +786,9 @@ func (s *Service) PollGenerating(ctx context.Context, limit int) error {
 
 func (s *Service) ProcessOneDelivery(ctx context.Context) (bool, error) {
 	delivery, found, err := s.repo.ClaimDueDelivery(ctx, time.Now())
-	if err != nil || !found { return found, err }
+	if err != nil || !found {
+		return found, err
+	}
 
 	execution, err := s.repo.GetExecution(ctx, delivery.ExecutionID)
 	if err != nil {
@@ -728,9 +810,9 @@ func (s *Service) ProcessOneDelivery(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
- if delivery.DeliveryChannel == "email" {
-  err = s.queueReportEmail(ctx, schedule, execution, delivery, artifact)
- }
+	if delivery.DeliveryChannel == "email" {
+		err = s.queueReportEmail(ctx, schedule, execution, delivery, artifact)
+	}
 
 	// Portal delivery is represented by the delivery record itself. Once it is
 	// marked sent it becomes visible from /portal-reports.
@@ -738,7 +820,9 @@ func (s *Service) ProcessOneDelivery(ctx context.Context) (bool, error) {
 		_ = s.failOrRetryDelivery(ctx, delivery, err)
 		return true, nil
 	}
-	if err := s.repo.MarkDeliverySent(ctx, delivery.ID); err != nil { return true, err }
+	if err := s.repo.MarkDeliverySent(ctx, delivery.ID); err != nil {
+		return true, err
+	}
 	return true, s.finalizeDeliveryExecution(ctx, schedule, execution)
 }
 
@@ -770,7 +854,9 @@ func (s *Service) applyJobResult(ctx context.Context, schedule Schedule, executi
 			err := errors.New("Health BI job completed without an artifact URL")
 			return s.handleGenerationFailure(ctx, schedule, execution, job.ID, err.Error())
 		}
-		if err := s.repo.UpdateExecutionJob(ctx, execution.ID, job.ID, "delivering", ""); err != nil { return err }
+		if err := s.repo.UpdateExecutionJob(ctx, execution.ID, job.ID, "delivering", ""); err != nil {
+			return err
+		}
 		fileName := reportArtifactFileName(schedule)
 		_, err := s.DeliverArtifact(ctx, execution.ID, schedule.ReportName, Artifact{
 			ExecutionID: execution.ID,
@@ -781,25 +867,30 @@ func (s *Service) applyJobResult(ctx context.Context, schedule Schedule, executi
 			_ = s.repo.UpdateExecutionJob(ctx, execution.ID, job.ID, "failed", err.Error())
 			s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.execution_failed", map[string]any{
 				"execution_id": execution.ID,
-				"schedule_id": schedule.ID,
-				"stage": "delivery_setup",
-				"error": err.Error(),
+				"schedule_id":  schedule.ID,
+				"stage":        "delivery_setup",
+				"error":        err.Error(),
 			})
 			s.notifyExecutionFailure(ctx, schedule, execution, err.Error())
 			return nil
 		}
 		status, changed, err := s.repo.FinalizeExecutionDeliveryState(ctx, execution.ID)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if changed && status == "completed" {
 			s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.execution_completed", map[string]any{
-				"execution_id": execution.ID,
-				"schedule_id": schedule.ID,
+				"execution_id":        execution.ID,
+				"schedule_id":         schedule.ID,
 				"generation_attempts": execution.GenerationAttempts,
 			})
 		}
 		return nil
 	case "failed", "error", "cancelled", "canceled":
-		message := strings.TrimSpace(job.Error); if message == "" { message = "Health BI report generation failed" }
+		message := strings.TrimSpace(job.Error)
+		if message == "" {
+			message = "Health BI report generation failed"
+		}
 		return s.handleGenerationFailure(ctx, schedule, execution, job.ID, message)
 	default:
 		return s.repo.UpdateExecutionJob(ctx, execution.ID, job.ID, "generating", "")
@@ -847,13 +938,21 @@ func (s *Service) handleGenerationFailureWithRetry(ctx context.Context, schedule
 func (s *Service) failOrRetryDelivery(ctx context.Context, delivery Delivery, cause error) error {
 	nextAttempts := delivery.Attempts + 1
 	maxAttempts := delivery.MaxAttempts
-	if maxAttempts <= 0 { maxAttempts = 3 }
+	if maxAttempts <= 0 {
+		maxAttempts = 3
+	}
 	if nextAttempts >= maxAttempts {
-		if err := s.repo.MarkDeliveryFailed(ctx, delivery.ID, cause.Error()); err != nil { return err }
+		if err := s.repo.MarkDeliveryFailed(ctx, delivery.ID, cause.Error()); err != nil {
+			return err
+		}
 		execution, execErr := s.repo.GetExecution(ctx, delivery.ExecutionID)
-		if execErr != nil || execution.ScheduleID == nil { return execErr }
+		if execErr != nil || execution.ScheduleID == nil {
+			return execErr
+		}
 		schedule, scheduleErr := s.repo.GetSchedule(ctx, *execution.ScheduleID, "", true)
-		if scheduleErr != nil { return scheduleErr }
+		if scheduleErr != nil {
+			return scheduleErr
+		}
 		return s.finalizeDeliveryExecution(ctx, schedule, execution)
 	}
 	next := time.Now().Add(reportRetryDelay(nextAttempts))
@@ -862,21 +961,23 @@ func (s *Service) failOrRetryDelivery(ctx context.Context, delivery Delivery, ca
 
 func (s *Service) finalizeDeliveryExecution(ctx context.Context, schedule Schedule, execution Execution) error {
 	status, changed, err := s.repo.FinalizeExecutionDeliveryState(ctx, execution.ID)
-	if err != nil || !changed { return err }
+	if err != nil || !changed {
+		return err
+	}
 	if status == "failed" {
 		message := "one or more report deliveries failed permanently"
 		s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.execution_failed", map[string]any{
 			"execution_id": execution.ID,
-			"schedule_id": schedule.ID,
-			"stage": "delivery",
-			"error": message,
+			"schedule_id":  schedule.ID,
+			"stage":        "delivery",
+			"error":        message,
 		})
 		s.notifyExecutionFailure(ctx, schedule, execution, message)
 		return nil
 	}
 	s.auditEvent(ctx, schedule.CreatedBy, "report_scheduler.execution_completed", map[string]any{
-		"execution_id": execution.ID,
-		"schedule_id": schedule.ID,
+		"execution_id":        execution.ID,
+		"schedule_id":         schedule.ID,
 		"generation_attempts": execution.GenerationAttempts,
 	})
 	return nil
@@ -895,7 +996,9 @@ func reportRetryDelay(attempts int) time.Duration {
 
 func newDeliveryToken() (string, error) {
 	value := make([]byte, 32)
-	if _, err := rand.Read(value); err != nil { return "", fmt.Errorf("generate delivery token: %w", err) }
+	if _, err := rand.Read(value); err != nil {
+		return "", fmt.Errorf("generate delivery token: %w", err)
+	}
 	return hex.EncodeToString(value), nil
 }
 
@@ -905,26 +1008,34 @@ func hashDeliveryToken(token string) string {
 }
 
 func healthContextEmpty(value HealthContext) bool {
-	return strings.TrimSpace(value.District)=="" && strings.TrimSpace(value.Facility)==""
+	return strings.TrimSpace(value.District) == "" && strings.TrimSpace(value.Facility) == ""
 }
 
 func scheduleWithinHealthScope(schedule Schedule, scope HealthContext) bool {
-	if healthContextEmpty(scope) { return true }
-	if facility:=strings.TrimSpace(scope.Facility); facility!="" { return strings.EqualFold(strings.TrimSpace(schedule.HealthContext.Facility),facility) }
-	if district:=strings.TrimSpace(scope.District); district!="" { return strings.EqualFold(strings.TrimSpace(schedule.HealthContext.District),district) }
+	if healthContextEmpty(scope) {
+		return true
+	}
+	if facility := strings.TrimSpace(scope.Facility); facility != "" {
+		return strings.EqualFold(strings.TrimSpace(schedule.HealthContext.Facility), facility)
+	}
+	if district := strings.TrimSpace(scope.District); district != "" {
+		return strings.EqualFold(strings.TrimSpace(schedule.HealthContext.District), district)
+	}
 	return true
 }
 
 func (s *Service) notifyExecutionFailure(ctx context.Context, schedule Schedule, execution Execution, message string) {
 	claimed, err := s.repo.ClaimFailureNotification(ctx, execution.ID)
-	if err != nil || !claimed { return }
+	if err != nil || !claimed {
+		return
+	}
 
 	metadata, _ := json.Marshal(map[string]any{
 		"execution_id": execution.ID,
-		"schedule_id": schedule.ID,
-		"report_id": schedule.HealthBIReportID,
-		"owner_id": schedule.CreatedBy,
-		"error": message,
+		"schedule_id":  schedule.ID,
+		"report_id":    schedule.HealthBIReportID,
+		"owner_id":     schedule.CreatedBy,
+		"error":        message,
 	})
 	if s.notifications != nil {
 		_, _ = s.notifications.Notify(ctx, model.Notification{
@@ -938,9 +1049,13 @@ func (s *Service) notifyExecutionFailure(ctx context.Context, schedule Schedule,
 	}
 
 	ownerID, parseErr := uuid.Parse(strings.TrimSpace(schedule.CreatedBy))
-	if parseErr != nil || s.users == nil || s.email == nil { return }
+	if parseErr != nil || s.users == nil || s.email == nil {
+		return
+	}
 	owner, userErr := s.users.GetUserByID(ownerID)
-	if userErr != nil || owner == nil || strings.TrimSpace(owner.Email) == "" { return }
+	if userErr != nil || owner == nil || strings.TrimSpace(owner.Email) == "" {
+		return
+	}
 	_ = s.email.Queue(ctx, model.Message{
 		To:       []model.Address{{Name: owner.FullName, Email: owner.Email}},
 		Subject:  fmt.Sprintf("Scheduled report failed: %s", schedule.ReportName),
@@ -951,7 +1066,9 @@ func (s *Service) notifyExecutionFailure(ctx context.Context, schedule Schedule,
 }
 
 func (s *Service) auditEvent(ctx context.Context, userID, action string, metadata map[string]any) {
-	if s == nil || s.audit == nil { return }
+	if s == nil || s.audit == nil {
+		return
+	}
 	var actor uuid.NullUUID
 	if parsed, err := uuid.Parse(strings.TrimSpace(userID)); err == nil {
 		actor = uuid.NullUUID{UUID: parsed, Valid: true}
@@ -961,13 +1078,24 @@ func (s *Service) auditEvent(ctx context.Context, userID, action string, metadat
 
 func reportArtifactFileName(schedule Schedule) string {
 	prefix := strings.TrimSpace(schedule.OutputConfig.FileNamePrefix)
-	if prefix == "" { prefix = schedule.ReportName }
+	if prefix == "" {
+		prefix = schedule.ReportName
+	}
 	prefix = strings.TrimSpace(strings.Map(func(r rune) rune {
-		switch r { case '/', '\\', ':', '*', '?', '"', '<', '>', '|': return '-'; default: return r }
+		switch r {
+		case '/', '\\', ':', '*', '?', '"', '<', '>', '|':
+			return '-'
+		default:
+			return r
+		}
 	}, prefix))
-	if prefix == "" { prefix = "report" }
+	if prefix == "" {
+		prefix = "report"
+	}
 	ext := strings.TrimPrefix(filepath.Ext(prefix), ".")
-	if ext != "" { prefix = strings.TrimSuffix(prefix, filepath.Ext(prefix)) }
+	if ext != "" {
+		prefix = strings.TrimSuffix(prefix, filepath.Ext(prefix))
+	}
 	return prefix + "." + strings.ToLower(schedule.OutputFormat)
 }
 

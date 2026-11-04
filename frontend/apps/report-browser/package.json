@@ -17,7 +17,7 @@
       "import": "./dist/routes.js"
     }
   },
-  "version": "1.0.0",
+  "version": "1.1.1",
   "license": "UNLICENSED",
   "module": "./dist/index.js",
   "files": [
@@ -34,7 +34,7 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/microfrontend": "^1.0.0"
+    "@moh-sso/microfrontend": "^1.1.1"
   },
   "private": false,
   "peerDependencies": {

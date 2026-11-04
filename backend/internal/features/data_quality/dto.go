@@ -8,6 +8,7 @@ type issueResponse struct {
 	Region       *string `json:"region,omitempty"`
 	District     *string `json:"district,omitempty"`
 	OrgUnit      *string `json:"org_unit,omitempty"`
+	LevelOfCare  *string `json:"level_of_care,omitempty"`
 	Issue        *string `json:"issue,omitempty"`
 	IssueType    *string `json:"issue_type,omitempty"`
 	DateReported string  `json:"date_reported"`
