@@ -1,5 +1,20 @@
 # @moh-sso/types
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/ui@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -12,18 +27,19 @@
   - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - add modules to the app menu (`c85d0a8f`)
 - add sms foundation (#185) (`3aee2595`)
 - Extract apis to features (#166) (`50f1700d`)
 - fix production css (#161) (`99607986`)
 - add permission on new issue button (#137) (`c930dd9f`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Fix merge (#130) (`9b5192ad`)
 - Feat rbac (#128) (`a0420950`)
 - Feat announcement should create email (#97) (`fc646bce`)

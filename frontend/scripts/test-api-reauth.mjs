@@ -26,7 +26,7 @@ const auth = loadSource("../packages/auth/src/auth/auth.slice.ts");
 const unauthorized = { error: { status: 401, data: { message: "Unauthorized" } } };
 const success = { data: { success: true } };
 
-function setup(responses) {
+function setup(responses, apiBase = "http://localhost/api/v1") {
   const calls = [];
   let state = auth.default(undefined, auth.loginSuccess({ user: { id: "user-1" } }));
   const { baseApi } = loadSource("../packages/api/src/api/baseApi.ts", {
@@ -39,7 +39,7 @@ function setup(responses) {
         return typeof response === "function" ? response() : response;
       },
     },
-    "@moh-sso/config": { API: { base: "http://localhost/api/v1" } },
+    "@moh-sso/config": { API: { base: apiBase } },
     "../../../auth/src/auth/auth.slice": auth,
   });
   return {
@@ -102,4 +102,82 @@ test("concurrent 401 responses share one refresh request", async () => {
   await Promise.all(results);
   assert.equal(app.calls.filter((args) => args.url === "/auth/refresh").length, 1);
   assert.equal(app.state().isAuthenticated, false);
+});
+
+test("root-relative API constants are joined exactly once by the real RTK transport", async (t) => {
+  const { fetchBaseQuery } = require("@reduxjs/toolkit/query/react");
+  const OriginalRequest = globalThis.Request;
+  globalThis.Request = class BrowserRequest extends OriginalRequest {
+    constructor(input, init) {
+      super(
+        typeof input === "string" ? new URL(input, "http://100.83.41.39:8080").href : input,
+        init,
+      );
+    }
+  };
+  t.after(() => {
+    globalThis.Request = OriginalRequest;
+  });
+
+  const requests = [];
+  const { baseApi } = loadSource("../packages/api/src/api/baseApi.ts", {
+    "@reduxjs/toolkit/query/react": {
+      createApi: (config) => config,
+      fetchBaseQuery: (options) =>
+        fetchBaseQuery({
+          ...options,
+          fetchFn: async (request) => {
+            requests.push({
+              url: request.url,
+              method: request.method,
+              credentials: request.credentials,
+            });
+            return new globalThis.Response(JSON.stringify({ success: true, data: {} }), {
+              headers: { "content-type": "application/json" },
+            });
+          },
+        }),
+    },
+    "@moh-sso/config": { API: { base: "/ssobackend/api/v1" } },
+    "../../../auth/src/auth/auth.slice": auth,
+  });
+  const api = {
+    dispatch() {},
+    getState: () => ({}),
+    signal: new globalThis.AbortController().signal,
+  };
+  for (const args of [
+    "/ssobackend/api/v1/auth/me",
+    { url: "/ssobackend/api/v1/auth/refresh", method: "POST" },
+    "/documents",
+    "users?search=test",
+    "https://other.example.org/endpoint",
+    "/ssobackend/api/v1?limit=1",
+  ]) {
+    const result = await baseApi.baseQuery(args, api, {});
+    assert.equal(result.error, undefined);
+  }
+  assert.deepEqual(
+    requests.map((request) => request.url),
+    [
+      "http://100.83.41.39:8080/ssobackend/api/v1/auth/me",
+      "http://100.83.41.39:8080/ssobackend/api/v1/auth/refresh",
+      "http://100.83.41.39:8080/ssobackend/api/v1/documents",
+      "http://100.83.41.39:8080/ssobackend/api/v1/users?search=test",
+      "https://other.example.org/endpoint",
+      "http://100.83.41.39:8080/ssobackend/api/v1?limit=1",
+    ],
+  );
+  assert.equal(requests[1].method, "POST");
+  assert.ok(requests.every((request) => request.credentials === "include"));
+});
+
+test("relative API constants preserve single-flight refresh and retry", async () => {
+  const app = setup([unauthorized, success, success], "/ssobackend/api/v1");
+  await app.query({ url: "/ssobackend/api/v1/auth/me", method: "GET" });
+  assert.deepEqual(
+    app.calls.map((args) => args.url),
+    ["/auth/me", "/auth/refresh", "/auth/me"],
+  );
+  assert.equal(app.state().isAuthenticated, true);
 });

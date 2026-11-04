@@ -1,5 +1,25 @@
 # @moh-sso/documents
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/users@1.1.1
+  - @moh-sso/api@1.1.1
+  - @moh-sso/auth@1.1.1
+  - @moh-sso/microfrontend@1.1.1
+  - @moh-sso/ui@1.1.1
+  - @moh-sso/utils@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -17,23 +37,24 @@
   - @moh-sso/utils@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Fix series upload (#229) (`ad200e37`)
-- Refactored the file upload to work with the custom tables in the landing zone instead of the template tables  (#224) (`386d42a5`)
+- Refactored the file upload to work with the custom tables in the landing zone instead of the template tables (#224) (`386d42a5`)
 - Clean inline styles (#202) (`1e501c12`)
 - Document UI alignment (#201) (`d2f40df4`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - load permissions gaurds (#199) (`8e038864`)
-- Template upload clean branch with main as a fresh clone and migrated the template upload  (#194) (`2ed0b645`)
+- Template upload clean branch with main as a fresh clone and migrated the template upload (#194) (`2ed0b645`)
 - Fix sidenav bug (#186) (`4779a85a`)
 - Extract apis to features (#166) (`50f1700d`)
 - add documents rbac (#139) (`e5e8e429`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Feat rbac (#128) (`a0420950`)
 - Fix forgot password (#124) (`8b4dfc3d`)
 - Fix forgot password (#122) (`df457dd0`)

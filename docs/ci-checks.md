@@ -11,7 +11,7 @@ not suppress backend, migration, workflow or deployment recovery results.
 | Fast Quality Gate | Combined frontend/backend result; retains the existing required-check name while the jobs run independently. |
 | Production Frontend Runtime | Complete production build, CSS/import-map/runtime/bundle checks, then Chromium smoke tests. |
 | Production Nginx contracts | Compose/environment/CD unit contracts, real Nginx routing and production runtime fixture tests. |
-| Workflow and Shell Lint | Pinned actionlint with ShellCheck integration; deployment `.sh` scripts and the backup-hook example. The commented legacy `ci.yaml` is excluded. |
+| Workflow and Shell Lint | Pinned actionlint with ShellCheck integration; deployment `.sh` scripts and the backup-hook example. The retired Kubernetes workflow is archived at `docs/archive/kubernetes-ci.yaml.example`, outside the active workflow directory. |
 | Database Migration Paths | Fresh primary/remote schemas, upgrade from each stream's penultimate migration, clean version tracking, repeat-apply no-op and preservation of existing data. |
 | Container Deployment Recovery | Actual deployment transaction against local fixture images/containers; rejected version, automatic/manual rollback, image identity, private env restoration and persistent data. |
 

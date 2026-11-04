@@ -3,7 +3,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "license": "UNLICENSED",
   "module": "./dist/index.js",
   "files": [
@@ -28,7 +28,7 @@
     "access": "restricted"
   },
   "dependencies": {
-    "@moh-sso/types": "^1.1.0"
+    "@moh-sso/types": "^1.1.1"
   },
   "peerDependencies": {
     "@carbon/react": "^1.95.0",
@@ -37,6 +37,7 @@
   },
   "private": false,
   "devDependencies": {
+    "@carbon/styles": "^1.94.0",
     "@ladle/react": "^5.1.1"
   }
 }

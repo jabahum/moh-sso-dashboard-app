@@ -1,5 +1,21 @@
 # @moh-sso/e-services
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/microfrontend@1.1.1
+  - @moh-sso/ui@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -13,15 +29,16 @@
   - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Clean inline styles (#202) (`1e501c12`)
 - add mobile responsivenes (#200) (`c6613ef0`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Feat rbac (#128) (`a0420950`)
 - Fix forgot password (#122) (`df457dd0`)
 - Improve newfeeds (#99) (`11c780ea`)

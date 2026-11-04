@@ -1,5 +1,24 @@
 # @moh-sso/issue-tracker
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/data-visualizer@1.1.1
+  - @moh-sso/api@1.1.1
+  - @moh-sso/auth@1.1.1
+  - @moh-sso/config@1.1.1
+  - @moh-sso/microfrontend@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -16,6 +35,7 @@
   - @moh-sso/microfrontend@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
@@ -23,7 +43,7 @@ Initial release; includes available source history.
 - Feature Issue Summary Charts (#253) (`83df0c04`)
 - Issue details changes (#248) (`58893bc7`)
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Fixing Issue Tracker issues (#244) (`ce47fa20`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - Changes on transactions history & links on emails (#232) (`259f68d3`)
@@ -39,7 +59,7 @@ Initial release; includes available source history.
 - Feature add pagination & Export to excel (#141) (`5b5e6e67`)
 - add permission on new issue button (#137) (`c930dd9f`)
 - Feature upload excel sheet to create issues (#138) (`fea99e89`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Update Api Usage for Issues and Visualizer (#136) (`b7223506`)
 - Feature issue filtering (#134) (`63d51c50`)
 - Added table expansion to issues (#129) (`19d5c42a`)

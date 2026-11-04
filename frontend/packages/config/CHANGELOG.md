@@ -1,5 +1,20 @@
 # @moh-sso/config
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/types@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -12,12 +27,13 @@
   - @moh-sso/types@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Add the DQA changes to existing files that the previous commit omitted (`2a8c90c9`)
 - fix(config): remove duplicate dataValidation.dqa key left by merge conflict (`91836667`)
 - Merge branch 'main' of https://github.com/mohuganda/moh-sso-dashboard into feat-dqa (`25ddcd52`)
@@ -30,7 +46,7 @@ Initial release; includes available source history.
 - add sms foundation (#185) (`3aee2595`)
 - fix version 404 (#184) (`92b8f761`)
 - Extract apis to features (#166) (`50f1700d`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Update Api Usage for Issues and Visualizer (#136) (`b7223506`)
 - Fix merge (#130) (`9b5192ad`)
 - UI improvement (#103) (`0fc21858`)

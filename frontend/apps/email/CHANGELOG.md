@@ -1,5 +1,23 @@
 # @moh-sso/email
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/rbac@1.1.1
+  - @moh-sso/api@1.1.1
+  - @moh-sso/microfrontend@1.1.1
+  - @moh-sso/ui@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -15,12 +33,13 @@
   - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Feat keycloak authorization groups (#203) (`622dbd94`)
 - Clean inline styles (#202) (`1e501c12`)
 - Document UI alignment (#201) (`d2f40df4`)
@@ -28,7 +47,7 @@ Initial release; includes available source history.
 - add audience selection (#180) (`4aa8adea`)
 - fix email mapper bug (#167) (`d9ca1571`)
 - Extract apis to features (#166) (`50f1700d`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Feat rbac (#128) (`a0420950`)
 - change basename to / from /portal (#116) (`ab0518cc`)
 - fix login route (#114) (`4f1b69a9`)

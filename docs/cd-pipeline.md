@@ -46,7 +46,7 @@ Use a supported Linux server, for example Ubuntu 24.04 amd64, with:
 - Python 3.9+, OpenSSH server/client, CA certificates and outbound HTTPS/DNS.
 - Disk space for old/new images, PostgreSQL/uploads and deployment snapshots.
 - Access to external Keycloak, upload-management DB, warehouse, SMTP and other enabled providers.
-- An SSH route from the deployment runner. For private-only hosts, configure a dedicated network-connected runner using `DEPLOY_RUNNER_LABELS`; hosted GitHub runners cannot route directly to a private IP.
+- An SSH route from the deployment runner. For private-only hosts, connect hosted runners through Tailscale (see below), or configure a dedicated network-connected runner using `DEPLOY_RUNNER_LABELS`. Hosted runners cannot route directly to a private IP without network setup.
 
 On Ubuntu, after installing Docker from its documented repository:
 
@@ -171,6 +171,8 @@ Per-environment secrets:
 | --- | --- |
 | `SSH_PRIVATE_KEY` | Private key paired with the deploy account's authorized public key. |
 | `SSH_KNOWN_HOSTS` | Verified known-host lines for the actual host/port, including the port bracket form for nonstandard SSH ports. |
+| `TS_OAUTH_CLIENT_ID` | Tailscale OAuth client ID; required only when `DEPLOY_TAILSCALE=true`. |
+| `TS_OAUTH_SECRET` | Matching Tailscale OAuth client secret; required only when `DEPLOY_TAILSCALE=true`. |
 
 Per-environment variables:
 
@@ -181,6 +183,7 @@ Per-environment variables:
 | `DEPLOY_PORT` | `22` |
 | `DEPLOY_ROOT` | `/opt/moh-sso` |
 | `DEPLOY_CONFIG` | `/etc/moh-sso/deploy.json` |
+| `DEPLOY_TAILSCALE` | Set literal `true` to connect deploy/rollback runners to Tailscale before SSH. Disabled by default. |
 
 Repository variables:
 
@@ -195,6 +198,49 @@ these settings and the verified manifest. Application credentials stay on the
 server. The build uses `GITHUB_TOKEN` with `packages:write`; enable repository
 package publication and give the registry reader access to both image packages.
 No deployment SSH secrets are needed by build or prepare jobs.
+
+### Private servers through Tailscale
+
+Use this option with the default GitHub-hosted runner when `DEPLOY_HOST` is a
+Tailscale address. Both deployment and rollback connect before SSH; build and
+prepare jobs do not join the tailnet. Leave `DEPLOY_RUNNER_LABELS` unset unless
+you intentionally use a different runner.
+
+1. On the server, verify `tailscale status` and `tailscale ip -4`. Set the
+   environment's `DEPLOY_HOST` to that address.
+2. In the Tailscale access policy, define `tag:moh-deploy` and grant it TCP access
+   only to the intended deployment hosts' SSH ports. Merge with existing policy
+   entries; existing broader access rules remain effective. For example, replace
+   `100.101.102.103` with the environment's real server address:
+
+   ```json
+   {
+     "tagOwners": {"tag:moh-deploy": []},
+     "grants": [
+       {"src": ["tag:moh-deploy"], "dst": ["100.101.102.103"], "ip": ["tcp:22"]}
+     ]
+   }
+   ```
+
+3. Create a Tailscale OAuth credential with **Devices > Core > Write** and
+   **Keys > Auth Keys > Write**, scoped to `tag:moh-deploy`. Store its ID and
+   secret in the target GitHub environment as `TS_OAUTH_CLIENT_ID` and
+   `TS_OAUTH_SECRET`. Approve runner devices if required by your tailnet policy.
+4. Set `DEPLOY_TAILSCALE=true` in that environment. Keep `SSH_PRIVATE_KEY` and
+   `SSH_KNOWN_HOSTS`: Tailscale supplies network connectivity, while ordinary
+   OpenSSH still authenticates the deploy account and verifies the server key.
+   The server's SSH listener and host firewall must allow the connection.
+5. Merge the workflow changes and dispatch a new deployment from `main` with
+   the desired verified build run ID. Rerunning a failed job from an older run
+   does not load the updated workflow.
+
+The Tailscale action creates an ephemeral runner node and cleans it up after the
+job. A connection failure blocks the job before any server-side release changes.
+For a self-hosted runner that already has private connectivity, leave
+`DEPLOY_TAILSCALE` unset and configure `DEPLOY_RUNNER_LABELS` instead.
+
+References: [Tailscale GitHub Action](https://tailscale.com/docs/integrations/github/github-action)
+and [CI/CD access setup](https://tailscale.com/docs/solutions/connect-github-cicd-workflows-to-private-infrastructure-without-public-exposure).
 
 ## 5. Perform deployment actions
 

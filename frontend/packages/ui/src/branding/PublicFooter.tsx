@@ -20,19 +20,17 @@ export function PublicFooter({
   backendVersion,
   backendUnavailable = false,
 }: FooterVersionInfo = {}) {
-  const frontendLabel = formatVersion(frontendVersion);
-  const backendLabel = backendUnavailable ? "unavailable" : formatVersion(backendVersion);
-  const hasVersionInfo = frontendLabel || backendLabel;
+  const versionLabel = formatVersion(
+    frontendVersion || (backendUnavailable ? undefined : backendVersion),
+  );
 
   return (
     <footer className="public-footer">
       <div className="footer-bottom">
         <span>© {new Date().getFullYear()} Ministry of Health – Uganda</span>
-        {hasVersionInfo && (
-          <span className="footer-version" aria-label="Application version information">
-            {frontendLabel && <span>Frontend {frontendLabel}</span>}
-            {frontendLabel && backendLabel && <span aria-hidden="true">·</span>}
-            {backendLabel && <span>Backend {backendLabel}</span>}
+        {versionLabel && (
+          <span className="footer-version" aria-label="Application version">
+            {versionLabel}
           </span>
         )}
       </div>

@@ -1,5 +1,20 @@
 # @moh-sso/ui
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/types@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -12,12 +27,13 @@
   - @moh-sso/types@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - remove breadcrumb icon and also change the sidenav icon from menu to forward and backward arrows (#237) (`7015d4a5`)
 - add modules to the app menu (`c85d0a8f`)
@@ -29,7 +45,7 @@ Initial release; includes available source history.
 - add version on footer (#181) (`f8c12018`)
 - Sidenav improve (#177) (`693b6b77`)
 - fix production css (#161) (`99607986`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Fix forgot password (#122) (`df457dd0`)
 - fix state invalid (#111) (`e61bcf9f`)
 - UI improvement (#105) (`8001d0ff`)

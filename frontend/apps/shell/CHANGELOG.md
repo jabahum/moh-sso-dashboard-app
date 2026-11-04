@@ -1,5 +1,41 @@
 # @moh-sso/shell
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/announcements@1.1.1
+  - @moh-sso/audit@1.1.1
+  - @moh-sso/clients@1.1.1
+  - @moh-sso/data-validation@1.1.1
+  - @moh-sso/data-visualizer@1.1.1
+  - @moh-sso/documents@1.1.1
+  - @moh-sso/e-services@1.1.1
+  - @moh-sso/email@1.1.1
+  - @moh-sso/issue-tracker@1.1.1
+  - @moh-sso/rbac@1.1.1
+  - @moh-sso/report-browser@1.1.1
+  - @moh-sso/report-scheduler@0.2.1
+  - @moh-sso/surveillance@1.1.1
+  - @moh-sso/users@1.1.1
+  - @moh-sso/utilities@1.1.1
+  - @moh-sso/api@1.1.1
+  - @moh-sso/auth@1.1.1
+  - @moh-sso/config@1.1.1
+  - @moh-sso/microfrontend@1.1.1
+  - @moh-sso/state@1.1.1
+  - @moh-sso/types@1.1.1
+  - @moh-sso/ui@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- Keep orchestrated modules inside shell layout during route changes (#262) (`bc0e6b0c`)
+
 ## 1.1.0
 
 ### Minor Changes
@@ -33,6 +69,7 @@
   - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
@@ -41,7 +78,7 @@ Initial release; includes available source history.
 - add more tests (`ee60e24d`)
 - Feat/report scheduler v1 (#239) (`340ceb3b`)
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - remove breadcrumb icon and also change the sidenav icon from menu to forward and backward arrows (#237) (`7015d4a5`)
 - feat(dqa): implement DQA engine components and API integration (#233) (`f1f8d9ab`)
@@ -53,7 +90,7 @@ Initial release; includes available source history.
 - Clean inline styles (#202) (`1e501c12`)
 - add mobile responsivenes (#200) (`c6613ef0`)
 - load permissions gaurds (#199) (`8e038864`)
-- Template upload clean branch with main as a fresh clone and migrated the template upload  (#194) (`2ed0b645`)
+- Template upload clean branch with main as a fresh clone and migrated the template upload (#194) (`2ed0b645`)
 - Improve settings (#188) (`fa9d9387`)
 - Fix sidenav bug (#186) (`4779a85a`)
 - add sms foundation (#185) (`3aee2595`)
@@ -74,7 +111,7 @@ Initial release; includes available source history.
 - add global (#145) (`85c33f6a`)
 - Fix spa (#143) (`96f2bc85`)
 - add a global fix (#142) (`0920a80c`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Fix announcement file template view (#133) (`c9883209`)
 - fix blank pages specially spa apps (#131) (`86f025db`)
 - Fix merge (#130) (`9b5192ad`)

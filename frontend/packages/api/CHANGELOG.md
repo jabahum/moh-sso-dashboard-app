@@ -1,5 +1,21 @@
 # @moh-sso/api
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/auth@1.1.1
+  - @moh-sso/config@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- Avoid duplicating root-relative API paths in RTK requests (#260) (`98b4e472`)
+
 ## 1.1.0
 
 ### Minor Changes
@@ -13,13 +29,14 @@
   - @moh-sso/config@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Unpush commits (#247) (`362f5f97`)
 - Logout on 401 (#245) (`73081201`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Add the DQA changes to existing files that the previous commit omitted (`2a8c90c9`)
 - Remove legacy Validation Rules feature (DQA engine = Data Validation) (`3c1c199e`)
 - feat(dqa): implement DQA engine components and API integration (`dcc74c9c`)
@@ -28,7 +45,7 @@ Initial release; includes available source history.
 - Extract apis to features (#166) (`50f1700d`)
 - add permission on new issue button (#137) (`c930dd9f`)
 - Feature upload excel sheet to create issues (#138) (`fea99e89`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Update Api Usage for Issues and Visualizer (#136) (`b7223506`)
 - Added table expansion to issues (#129) (`19d5c42a`)
 - Fix merge (#130) (`9b5192ad`)

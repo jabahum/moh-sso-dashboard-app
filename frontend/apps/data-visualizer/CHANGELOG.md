@@ -1,5 +1,23 @@
 # @moh-sso/data-visualizer
 
+## 1.1.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/api@1.1.1
+  - @moh-sso/config@1.1.1
+  - @moh-sso/microfrontend@1.1.1
+  - @moh-sso/ui@1.1.1
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.1.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.1.0
 
 ### Minor Changes
@@ -15,13 +33,14 @@
   - @moh-sso/ui@1.1.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Initial release; includes available source history.
 
 - Issue details changes (#248) (`58893bc7`)
 - Unpush commits (#247) (`362f5f97`)
-- chore : fix frontend modules and packages  versioning gaps (#246) (`b334746d`)
+- chore : fix frontend modules and packages versioning gaps (#246) (`b334746d`)
 - Add Issue Summary Table to Issue Tracking Dropdown (#243) (`889be7f0`)
 - Add disaggregation by facility (#240) (`e157a564`)
 - Feature assigning an issue to a user (#231) (`d69cecf1`)
@@ -29,7 +48,7 @@ Initial release; includes available source history.
 - Remove Average & Count aggregators (`4c4ca666`)
 - Show clear button even when there is no data (`f9819ca3`)
 - Add Issue summary & all issues tabs (`8bed1ec7`)
-- Update Facility Details & Changes from data-values retrieval  (#220) (`4ca31292`)
+- Update Facility Details & Changes from data-values retrieval (#220) (`4ca31292`)
 - Add level of care & ownership to pivot table (`f5a66f56`)
 - Merge branch 'main' of https://github.com/akileng56/moh-sso-dashboard into enhancement/visualizer-period (`e0c7078d`)
 - Modify the onchange for modal & update of data values (`c7355df6`)
@@ -42,7 +61,7 @@ Initial release; includes available source history.
 - Fix rendering of visualizer (`00729369`)
 - Feature add pagination & Export to excel (#141) (`5b5e6e67`)
 - Feature upload excel sheet to create issues (#138) (`fea99e89`)
-- Add data quality checks and validation rules  (#132) (`4bb5c8e6`)
+- Add data quality checks and validation rules (#132) (`4bb5c8e6`)
 - Update Api Usage for Issues and Visualizer (#136) (`b7223506`)
 - Added table expansion to issues (#129) (`19d5c42a`)
 - Feat rbac (#128) (`a0420950`)

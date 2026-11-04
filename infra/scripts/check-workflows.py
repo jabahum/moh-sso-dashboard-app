@@ -12,7 +12,7 @@ def main():
         if not shutil.which(command):
             raise SystemExit(f'{command} is required; see docs/ci-checks.md')
     workflows = sorted(path for path in (ROOT / '.github/workflows').glob('*')
-                       if path.suffix in ('.yml', '.yaml') and any(line.strip() and not line.lstrip().startswith('#') for line in path.read_text().splitlines()))
+                       if path.suffix in ('.yml', '.yaml'))
     subprocess.run(['actionlint', '-pyflakes=', *map(str, workflows)], cwd=ROOT, check=True)
     scripts = sorted([*(ROOT / 'infra').rglob('*.sh'), *(ROOT / 'infra/server/hooks').glob('*.sh.example')])
     subprocess.run(['shellcheck', '--severity=warning', *map(str, scripts)], cwd=ROOT, check=True)

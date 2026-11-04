@@ -18,7 +18,13 @@ function fixture(failure) {
     if (url.pathname.endsWith("import-map.json")) {
       return new Response(JSON.stringify({ imports }), { headers: { "content-type": "application/json" } });
     }
+    if (url.pathname.endsWith("/types.js")) {
+      if (failure === "empty types") return new Response("", { headers: { "content-type": "application/javascript" } });
+      if (failure === "missing types") return new Response("", { status: 404 });
+      if (failure === "invalid types MIME") return new Response("", { headers: { "content-type": "text/html" } });
+    }
     if (url.pathname.endsWith("/users.js")) {
+      if (failure === "empty runtime module") return new Response("", { headers: { "content-type": "application/javascript" } });
       if (failure === "404") return new Response("missing", { status: 404 });
       if (failure === "SPA fallback") return new Response("<!doctype html><html></html>", { headers: { "content-type": "text/html" } });
       if (failure === "disguised HTML") return new Response("<html></html>", { headers: { "content-type": "application/javascript" } });
@@ -34,7 +40,10 @@ function fixture(failure) {
 test("accepts a complete staged frontend", async () => {
   assert.equal(await verifyFrontend("http://localhost:3000/portal/", fixture()), 28);
 });
-for (const failure of ["404", "SPA fallback", "disguised HTML", "missing import", "missing scheduler"]) {
+test("accepts an empty types-only JavaScript module", async () => {
+  assert.equal(await verifyFrontend("http://localhost:3000/portal/", fixture("empty types")), 28);
+});
+for (const failure of ["empty runtime module", "missing types", "invalid types MIME", "404", "SPA fallback", "disguised HTML", "missing import", "missing scheduler"]) {
   test("rejects " + failure, async () => {
     await assert.rejects(verifyFrontend("http://localhost:3000/portal/", fixture(failure)));
   });

@@ -27,13 +27,8 @@ export default function AboutSettingsPage() {
         <dl className="settings-about-list">
           <dt>Platform</dt>
           <dd>{PLATFORM_NAME}</dd>
-          <dt>Frontend</dt>
+          <dt>Version</dt>
           <dd>{versionInfo.frontend.version || "dev"}</dd>
-          <dt>Backend</dt>
-          <dd>
-            {versionInfo.backend?.version ??
-              (versionInfo.isLoading ? "Checking..." : "Backend unavailable")}
-          </dd>
           <dt>Frontend build time</dt>
           <dd>{versionInfo.frontend.buildTime ?? "Not available"}</dd>
           <dt>Backend build time</dt>
@@ -45,7 +40,7 @@ export default function AboutSettingsPage() {
             kind="warning"
             lowContrast
             hideCloseButton
-            title="Backend version unavailable"
+            title="Backend build details unavailable"
             subtitle="The portal is still usable, but backend build details could not be loaded."
           />
         ) : null}
