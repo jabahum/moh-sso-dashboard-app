@@ -1,25 +1,27 @@
+# syntax=docker/dockerfile:1
 # ======================
 # Stage 1: Build
 # ======================
 FROM --platform=$BUILDPLATFORM golang:1.25.4-alpine AS builder
 
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG TARGETOS
+ARG TARGETARCH
 ARG VERSION=dev
 ARG COMMIT=none
 ARG BUILD_TIME=unknown
 ARG DIRTY=false
 
-ENV CGO_ENABLED=0
+ENV CGO_ENABLED=0 GOWORK=off
 
 WORKDIR /app
 
 COPY backend/go.mod backend/go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
 
 COPY backend/ .
 
-RUN GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build \
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+  GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build \
   -trimpath \
   -ldflags="-s -w \
     -X 'github.com/moh-sso-dashboard/internal/version.Version=${VERSION}' \

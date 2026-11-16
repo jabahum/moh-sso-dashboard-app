@@ -8,9 +8,10 @@ if [ "$#" -gt 0 ]; then shift; fi
 case "$mode" in
   prod|remote) file=infra/compose/docker-compose.prod.yml; default_env=infra/env/prod.env ;;
   gateway) file=infra/compose/docker-compose-nginx.yml; default_env=infra/env/prod.env ;;
+  distribution) file=infra/compose/docker-compose.distribution.yml; default_env=infra/env/prod.env ;;
   dev) file=infra/compose/docker-compose.dev.yml; default_env=infra/env/dev.env ;;
   external) file=infra/compose/docker-compose-without-keycloak.yml; default_env=infra/env/external-dev.env ;;
-  *) echo "Usage: $0 prod|dev|gateway|remote|external <compose arguments>" >&2; exit 2 ;;
+  *) echo "Usage: $0 prod|dev|gateway|remote|external|distribution <compose arguments>" >&2; exit 2 ;;
 esac
 env_file=${ENV_FILE:-$default_env}
 if [ "$mode" = dev ] && [ ! -f "$env_file" ] && [ -z "${ENV_FILE:-}" ]; then
@@ -25,6 +26,12 @@ case "$mode" in
   dev|external) export DEV_ENV_FILE="$env_file" ;;
   *) export APP_ENV_FILE="$env_file" ;;
 esac
+if [ "$mode" = distribution ]; then
+  # The shared production base interpolates these before its image fields are
+  # replaced by distribution build tags. They do not select distribution images.
+  export BACKEND_TAG=${BACKEND_TAG:-distribution-build}
+  export FRONTEND_TAG=${FRONTEND_TAG:-distribution-build}
+fi
 if [ "$mode" = remote ]; then
   remote_env=${REMOTE_ENV_FILE:-infra/env/remote-proxy.env}
   if [ ! -f "$remote_env" ]; then

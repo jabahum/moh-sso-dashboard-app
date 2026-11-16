@@ -1,23 +1,85 @@
 /* global console, process */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { frontendRoot, installedModules, moduleSelection } from "./module-source.mjs";
 
 const npm = process.env.NPM || "npm";
 const run = (args, env) => execFileSync(npm, args, { cwd: frontendRoot, stdio: "inherit", env });
-export function prepareModules(selection) {
-  if (selection.source === "workspace") return;
-  const manifest = {
+export function moduleManifest(selection) {
+  return {
     name: "moh-installed-frontend-modules",
     private: true,
     dependencies: selection.versions,
   };
+}
+export function validatedModuleLock(selection) {
+  if (!selection.lockfile) return undefined;
+  const contents = readFileSync(selection.lockfile, "utf8");
+  const lock = JSON.parse(contents);
+  const expected = moduleManifest(selection);
+  const root = lock.packages?.[""];
+  const samePins = (pins) =>
+    pins &&
+    JSON.stringify(Object.entries(pins).sort()) ===
+      JSON.stringify(Object.entries(expected.dependencies).sort());
+  if (lock.lockfileVersion !== 3 || root?.name !== expected.name || !samePins(root.dependencies))
+    throw new Error("Frontend module lock does not match selected pins; run npm run modules:lock");
+  for (const [name, version] of Object.entries(expected.dependencies)) {
+    const entry = lock.packages[`node_modules/${name}`];
+    if (
+      entry?.version !== version ||
+      !entry.integrity ||
+      entry.link ||
+      !entry.resolved?.startsWith("https://")
+    )
+      throw new Error(`Missing registry integrity for ${name} in frontend module lock`);
+  }
+  return contents;
+}
+function lockModules(selection) {
+  if (selection.source !== "npm" || !selection.lockfile)
+    throw new Error("Select npm modules and configure a lockfile before updating pins");
+  const directory = dirname(selection.lockfile);
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(
+    join(directory, "package.json"),
+    `${JSON.stringify(moduleManifest(selection), null, 2)}\n`,
+  );
+  run(
+    [
+      "install",
+      "--package-lock-only",
+      "--prefix",
+      directory,
+      "--workspaces=false",
+      "--ignore-scripts",
+      "--legacy-peer-deps",
+      "--no-audit",
+      "--no-fund",
+    ],
+    process.env,
+  );
+  validatedModuleLock(selection);
+}
+export function prepareModules(selection) {
+  if (selection.source === "workspace") return;
+  const manifest = moduleManifest(selection);
+  const locked = validatedModuleLock(selection);
   const path = join(selection.directory, "package.json");
+  const installedLock = join(selection.directory, "package-lock.json");
   const unchanged =
     existsSync(path) &&
-    JSON.stringify(JSON.parse(readFileSync(path, "utf8"))) === JSON.stringify(manifest);
+    JSON.stringify(JSON.parse(readFileSync(path, "utf8"))) === JSON.stringify(manifest) &&
+    (!locked || (existsSync(installedLock) && readFileSync(installedLock, "utf8") === locked));
   if (unchanged) {
     try {
       installedModules(selection);
@@ -30,9 +92,10 @@ export function prepareModules(selection) {
   mkdirSync(selection.directory, { recursive: true });
   // Use a separate npm project; npm workspace links are never overwritten.
   writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+  if (locked) copyFileSync(selection.lockfile, installedLock);
   run(
     [
-      unchanged && existsSync(join(selection.directory, "package-lock.json")) ? "ci" : "install",
+      locked || (unchanged && existsSync(installedLock)) ? "ci" : "install",
       "--prefix",
       selection.directory,
       "--workspaces=false",
@@ -48,9 +111,10 @@ export function prepareModules(selection) {
 function main() {
   const [action, environment = action === "dev" ? "development" : "production"] =
     process.argv.slice(2);
-  if (!["prepare", "dev", "build"].includes(action))
-    throw new Error("Usage: frontend-modules.mjs prepare|dev|build [development|production]");
+  if (!["prepare", "lock", "dev", "build"].includes(action))
+    throw new Error("Usage: frontend-modules.mjs prepare|lock|dev|build [development|production]");
   const selection = moduleSelection(environment);
+  if (action === "lock") return lockModules(selection);
   prepareModules(selection);
   if (action === "prepare") return;
   const env = {

@@ -4,6 +4,7 @@ export interface ModuleSelection {
   source: "workspace" | "npm";
   versions: Record<string, string>;
   directory: string;
+  lockfile?: string;
   modules: Array<{ group: string; name: string; pkg: { name: string; version: string } }>;
 }
 export function moduleSelection(

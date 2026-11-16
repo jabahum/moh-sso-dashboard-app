@@ -1,0 +1,71 @@
+x-distribution-service: &distribution-service
+  restart: unless-stopped
+  networks: [sso]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "5"}
+
+volumes:
+  observatory_data:
+secrets:
+  observatory_db_password:
+    file: ${OBSERVATORY_DB_PASSWORD_SECRET_FILE:-../secrets/observatory_db_password.txt}
+
+services:
+  nginx:
+    container_name: !reset null
+  redis:
+    container_name: !reset null
+  backend-db:
+    container_name: !reset null
+  backend:
+    container_name: !reset null
+    image: ${DISTRIBUTION_IMAGE_PREFIX:-moh-sso-distribution}-backend:${DISTRIBUTION_TAG:?Set an immutable DISTRIBUTION_TAG before building}
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend/Dockerfile
+      args:
+        VERSION: ${DISTRIBUTION_TAG}
+        COMMIT: ${DISTRIBUTION_COMMIT:-none}
+        BUILD_TIME: ${DISTRIBUTION_BUILD_TIME:-unknown}
+    init: true
+    stop_grace_period: 60s
+    environment:
+      OBSERVATORY_DB_HOST: observatory-db
+      OBSERVATORY_DB_PORT: "5432"
+      OBSERVATORY_DB_USER: ${OBSERVATORY_DB_USER:-surveillance}
+      OBSERVATORY_DB_NAME: ${OBSERVATORY_DB_NAME:-observatory}
+      OBSERVATORY_DB_ENABLE_SSL: "false"
+      OBSERVATORY_DB_PASSWORD_FILE: /run/secrets/observatory_db_password
+      DISABLED_MODULES: ${DISABLED_MODULES:-}
+    secrets:
+      - observatory_db_password
+    depends_on:
+      observatory-db: {condition: service_healthy}
+  frontend:
+    container_name: !reset null
+    image: ${DISTRIBUTION_IMAGE_PREFIX:-moh-sso-distribution}-frontend:${DISTRIBUTION_TAG:?Set an immutable DISTRIBUTION_TAG before building}
+    build:
+      context: ../..
+      dockerfile: infra/docker/frontend/Dockerfile.npm-modules
+      args:
+        VERSION: ${DISTRIBUTION_TAG}
+        COMMIT: ${DISTRIBUTION_COMMIT:-none}
+        BUILD_TIME: ${DISTRIBUTION_BUILD_TIME:-unknown}
+  observatory-db:
+    <<: *distribution-service
+    image: postgres:15-alpine
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: ${OBSERVATORY_DB_USER:-surveillance}
+      POSTGRES_DB: ${OBSERVATORY_DB_NAME:-observatory}
+      POSTGRES_PASSWORD_FILE: /run/secrets/observatory_db_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets: [observatory_db_password]
+    volumes: [observatory_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 15

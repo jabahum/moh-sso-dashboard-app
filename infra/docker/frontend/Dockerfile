@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ======================
 # Stage 1: Build
 # ======================
@@ -19,7 +20,7 @@ ENV FRONTEND_BASE_PATH=/portal
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 COPY frontend/ .
-RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000
 RUN npm run version:audit
 RUN node scripts/use-runtime-config.mjs production
 RUN npm run build:docker

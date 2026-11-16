@@ -1,0 +1,8 @@
+# Build the versioned distribution locally. Images contain the selected modules;
+# runtime containers do not download source or resolve package versions.
+# This is an explicit entry point; existing production deployments are unchanged.
+name: moh-sso-distribution
+include:
+  - path:
+      - docker-compose-nginx.yml
+      - docker-compose.distribution.override.yml

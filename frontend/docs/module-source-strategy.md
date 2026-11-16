@@ -1,6 +1,6 @@
 # Selecting frontend module versions
 
-Development and production independently choose workspace modules or published npm modules in [`module-sources.json`](../module-sources.json). The shell is always built from this checkout. Both environments default to `"source": "workspace"`.
+Development and production independently choose workspace modules or published npm modules in [`module-sources.json`](../module-sources.json). The shell is always built from this checkout. Development defaults to workspace modules. Production defaults to published npm modules with exact pins and a committed dependency lock.
 
 To use npm in either environment, change that environment's `source` to `"npm"` and set its `versions` map to the exact published version of every app and shared package. The file includes all 23 modules, so development can test new package versions while production keeps older pins. Ranges, tags such as `latest`, missing modules and incompatible internal dependencies are rejected.
 
@@ -57,7 +57,16 @@ docker build -f infra/docker/frontend/Dockerfile --build-arg FRONTEND_MODULE_SOU
 
 ## Installation and overrides
 
-Npm modules live in independent projects under `.npm-modules/development` and `.npm-modules/production`. They never replace the monorepo's workspace links. Their npm lockfiles record transitive resolutions locally. Existing validated installations are reused; changing pins reconciles the installation. Standard npm registry/authentication settings apply, and install lifecycle scripts are disabled.
+Npm modules live in independent projects under `.npm-modules/development` and `.npm-modules/production`. They never replace the monorepo's workspace links. Production uses the reviewed `module-locks/production/package-lock.json`, including registry URLs and integrity hashes, with `npm ci`. A missing or stale configured lock fails the build. Existing installations are reused only when the manifest, lock and installed module contracts match. Configurations without a `lockfile` retain the local development installation behavior. Standard npm registry/authentication settings apply, and install lifecycle scripts are disabled.
+
+After selecting newly published production versions, deliberately regenerate and review the lock:
+
+```bash
+npm run modules:lock
+npm run modules:prepare
+```
+
+Commit `module-sources.json` and both files in `module-locks/production/` together. Normal builds never update this committed lock. `Dockerfile.npm-modules` caches the shell toolchain and published module installation in separate layers before copying source. Its preinstalled layer uses the default production lock location; custom selections are still validated by the normal preparation step.
 
 ```bash
 npm run modules:prepare -- development

@@ -105,6 +105,7 @@
     "release:verify-npm": "node scripts/verify-npm-release.mjs",
     "test:npm-release": "node --test scripts/verify-npm-release.test.mjs",
     "modules:prepare": "node scripts/frontend-modules.mjs prepare",
+    "modules:lock": "node scripts/frontend-modules.mjs lock",
     "build:docker:source": "npm run build:all && npm run generate:versions && npm run stage:mf && MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css",
     "build:docker:npm-prepared": "npm run generate:import-map && npm run generate:versions && npm run build:shell && npm run stage:mf:npm && MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css && npm run audit:import-map",
     "test:module-sources": "node --test scripts/module-source.test.mjs scripts/vite-test-server.test.mjs scripts/microfrontend-packaging.test.mjs",

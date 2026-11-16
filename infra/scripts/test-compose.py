@@ -79,7 +79,7 @@ class ComposeTests(unittest.TestCase):
             remote_env.write_text('APP_BIND_ADDRESS=10.0.0.20\n')
             env = {**os.environ, 'PATH': str(tmp) + os.pathsep + os.environ['PATH'],
                    'ENV_FILE': str(private_env), 'REMOTE_ENV_FILE': str(remote_env)}
-            for mode in ('prod', 'dev', 'gateway', 'remote', 'external'):
+            for mode in ('prod', 'dev', 'gateway', 'remote', 'external', 'distribution'):
                 result = subprocess.run(['sh', str(ROOT / 'infra/scripts/compose.sh'), mode, 'config', '--quiet'],
                                         cwd=tmp, env=env, text=True, capture_output=True, check=True)
                 call = json.loads(result.stdout)
@@ -108,6 +108,34 @@ class ComposeTests(unittest.TestCase):
         default, prod = config('infra/compose/docker-compose.yml'), config('infra/compose/docker-compose.prod.yml')
         for field in ('name', 'services', 'networks', 'volumes', 'secrets'):
             self.assertEqual(default[field], prod[field], field)
+
+    def test_distribution_builds_pinned_images_and_preserves_runtime_contracts(self):
+        model = config('infra/compose/docker-compose.distribution.yml',
+                       DISTRIBUTION_TAG='0.1.0-fixture', DISTRIBUTION_COMMIT='a' * 40)
+        self.assertEqual(model['name'], 'moh-sso-distribution')
+        services = model['services']
+        for name, dockerfile in [('backend', 'backend/Dockerfile'),
+                                 ('frontend', 'frontend/Dockerfile.npm-modules')]:
+            service = services[name]
+            self.assertEqual(service['image'], f'moh-sso-distribution-{name}:0.1.0-fixture')
+            self.assertEqual(Path(service['build']['context']), ROOT)
+            self.assertEqual(service['build']['dockerfile'], 'infra/docker/' + dockerfile)
+            self.assertEqual(service['build']['args']['COMMIT'], 'a' * 40)
+            self.assertFalse(service.get('ports'))
+        for service in services.values():
+            self.assertNotIn('container_name', service)
+            self.assertIn('healthcheck', service)
+        api, database = services['backend'], services['observatory-db']
+        self.assertEqual(api['environment']['OBSERVATORY_DB_HOST'], 'observatory-db')
+        self.assertEqual(api['environment']['OBSERVATORY_DB_NAME'], database['environment']['POSTGRES_DB'])
+        self.assertEqual(api['environment']['OBSERVATORY_DB_PASSWORD_FILE'], database['environment']['POSTGRES_PASSWORD_FILE'])
+        self.assertEqual(api['depends_on']['observatory-db']['condition'], 'service_healthy')
+        self.assertEqual(len(api['secrets']), 4)
+        self.assertEqual(database['volumes'][0]['source'], 'observatory_data')
+        self.assertEqual(api['stop_grace_period'], '1m0s')
+        self.assertTrue(api['init'])
+        self.assertNotIn('ports', database)
+        self.assertNotIn('keycloak', services)
 
     def test_all_application_envs_reach_backend_and_frontend_is_public_only(self):
         for filename, example in [('infra/compose/docker-compose.yml', 'infra/env/prod.env.example'),

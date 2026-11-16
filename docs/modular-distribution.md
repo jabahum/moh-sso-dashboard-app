@@ -173,3 +173,30 @@ The published-npm production build could not resolve the existing pinned
 `@moh-sso/announcements@1.3.1` package. Workspace builds were used for runtime
 verification; published-npm deployment verification requires that release to be
 available. Live Keycloak provisioning and production deployment were not run.
+
+## Phase 4 distribution packaging
+
+Production now consumes released npm modules (`1.3.2`, with report-scheduler
+`0.4.2`) using a committed npm lock and integrity-checked `npm ci` installation.
+This resolves the unavailable `1.3.1` pins found in Phase 3. Development continues
+to use workspace modules. Backend builds use the published metrics dependency
+with `GOWORK=off`, checksum verification and Go build/download caches.
+
+The specialized frontend Dockerfile caches toolchain and published module
+installation before copying source. BuildKit keeps the Go and npm download
+caches across builds. The distribution Compose entry point reuses the production
+gateway and services, builds versioned application images, persists core,
+Observatory, Redis and upload data, and supports the existing external Keycloak.
+Startup migration behavior remains owned by the existing backend lifecycle.
+See `infra/distribution.md` for prerequisites, commands and upgrade guidance.
+
+Phase 4 verification passed registry-backed frontend builds, the production npm
+shell type check, lint, architecture checks, 19 module-source tests and 54 browser
+tests. Both Docker images built successfully; the server version command and
+the frontend production runtime checks passed. A repeated dependency-stage build
+reused the toolchain and published-module layers. All 14 Compose/environment
+contracts and the existing disposable Postgres migration/registry checks passed.
+The new isolated Compose smoke test verified the real frontend image, secret
+mounts, database/Redis readiness, module versions and core database persistence
+across container recreation. It cleaned up its own containers and volumes.
+Authenticated external Keycloak and production deployment were not exercised.

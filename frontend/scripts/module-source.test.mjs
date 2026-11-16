@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { installedModules, moduleSelection, npmModulePlugin } from "./module-source.mjs";
+import { moduleManifest, validatedModuleLock } from "./frontend-modules.mjs";
 
 function fixture(run) {
   const root = mkdtempSync(join(tmpdir(), "moh-module-selection-"));
@@ -45,6 +46,47 @@ function fixture(run) {
     rmSync(root, { recursive: true, force: true });
   }
 }
+test("committed npm lock matches pins and requires registry integrity", () =>
+  fixture(({ root, write, config }) => {
+    config.development.lockfile = "module-locks/development/package-lock.json";
+    write(join(root, "module-sources.json"), config);
+    const selection = moduleSelection("development", {}, root);
+    const manifest = moduleManifest(selection);
+    const lock = {
+      lockfileVersion: 3,
+      packages: {
+        "": manifest,
+        ...Object.fromEntries(
+          Object.entries(selection.versions).map(([name, version]) => [
+            `node_modules/${name}`,
+            {
+              version,
+              resolved: `https://registry.npmjs.org/${name}/package.tgz`,
+              integrity: "sha512-fixture",
+            },
+          ]),
+        ),
+      },
+    };
+    write(selection.lockfile, lock);
+    assert.equal(JSON.parse(validatedModuleLock(selection)).lockfileVersion, 3);
+    lock.packages[""].dependencies = { ...selection.versions, "@moh-sso/api": "4.0.0" };
+    write(selection.lockfile, lock);
+    assert.throws(() => validatedModuleLock(selection), /does not match selected pins/);
+    lock.packages[""].dependencies = selection.versions;
+    for (const change of [
+      { version: "4.0.0" },
+      { integrity: undefined },
+      { link: true },
+      { resolved: "file:../api" },
+    ]) {
+      const original = lock.packages["node_modules/@moh-sso/api"];
+      lock.packages["node_modules/@moh-sso/api"] = { ...original, ...change };
+      write(selection.lockfile, lock);
+      assert.throws(() => validatedModuleLock(selection), /Missing registry integrity/);
+      lock.packages["node_modules/@moh-sso/api"] = original;
+    }
+  }));
 test("development and production select sources independently and exclude the shell", () =>
   fixture(({ root, selection }) => {
     assert.equal(selection().source, "npm");

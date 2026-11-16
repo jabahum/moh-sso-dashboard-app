@@ -53,6 +53,7 @@ export function moduleSelection(
     source,
     versions,
     modules,
+    lockfile: source === "npm" && entry.lockfile ? resolve(root, entry.lockfile) : undefined,
     directory: resolve(root, env.FRONTEND_MODULE_DIRECTORY || join(".npm-modules", environment)),
   };
 }

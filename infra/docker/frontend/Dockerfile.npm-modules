@@ -1,9 +1,20 @@
-# ======================
-# Stage 1: Build
-# ======================
-FROM node:22-alpine AS build
-
+# syntax=docker/dockerfile:1
+# Install the shell toolchain before copying frequently changing source files.
+FROM node:22-alpine AS dependencies
 WORKDIR /app
+COPY frontend/package.json frontend/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci --workspaces=false --ignore-scripts --include=dev --no-audit --no-fund
+
+# Published app bundles and their transitive dependencies have their own lock.
+# Source changes reuse both dependency layers; pin changes invalidate only this one.
+FROM dependencies AS modules
+COPY frontend/module-locks/production/ .npm-modules/production/
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci --prefix .npm-modules/production --workspaces=false --ignore-scripts \
+  --legacy-peer-deps --no-audit --no-fund
+
+FROM modules AS build
 ARG VERSION
 ARG COMMIT=none
 ARG BUILD_TIME
@@ -11,6 +22,7 @@ ARG FRONTEND_MODULE_SOURCE=npm
 ARG FRONTEND_MODULE_CONFIG=module-sources.json
 ENV FRONTEND_MODULE_SOURCE=$FRONTEND_MODULE_SOURCE
 ENV FRONTEND_MODULE_CONFIG=$FRONTEND_MODULE_CONFIG
+ENV FRONTEND_MODULE_ENV=production
 ENV VITE_APP_VERSION=$VERSION
 ENV VITE_BUILD_TIME=$BUILD_TIME
 ENV FRONTEND_COMMIT=$COMMIT
@@ -19,7 +31,6 @@ ENV FRONTEND_BASE_PATH=/portal
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 COPY frontend/ .
-RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000
 RUN npm run version:audit
 RUN node scripts/use-runtime-config.mjs production
 RUN npm run build:docker
