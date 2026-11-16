@@ -93,9 +93,19 @@ export function installedModules(selection, directory = selection.directory) {
 // Exact public export resolution also prevents fallback to workspace symlinks.
 export function npmModulePlugin(selection) {
   const installed = new Map(installedModules(selection).map((module) => [module.pkg.name, module]));
+  let shellEntry;
   return {
     name: "moh-published-modules",
     enforce: "pre",
+    configResolved(config) {
+      shellEntry = join(config.root, "src/main.tsx");
+    },
+    transform(code, id) {
+      if (id.split("?")[0] !== shellEntry) return null;
+      // Source modules bring their SCSS imports with them. Published UI code
+      // extracts those styles into its public CSS export instead.
+      return { code: `import "@moh-sso/ui/styles.css";\n${code}`, map: null };
+    },
     resolveId(id) {
       if (!id.startsWith("@moh-sso/")) return null;
       const [scope, name, ...parts] = id.split("/");

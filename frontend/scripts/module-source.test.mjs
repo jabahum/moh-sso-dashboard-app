@@ -128,3 +128,13 @@ test("reject pins incompatible with a deployed package's internal dependencies",
     write(path, pkg);
     assert.throws(() => installedModules(selected), /incompatible with pin/);
   }));
+
+test("npm shell entry loads shared UI styles without changing other modules", () =>
+  fixture(({ install, root }) => {
+    const plugin = npmModulePlugin(install());
+    const shell = join(root, "apps/shell");
+    plugin.configResolved({ root: shell });
+    const entry = plugin.transform("export {};", join(shell, "src/main.tsx"));
+    assert.match(entry.code, /import "@moh-sso\/ui\/styles.css"/);
+    assert.equal(plugin.transform("export {};", join(shell, "src/app/App.tsx")), null);
+  }));
