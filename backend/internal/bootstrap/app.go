@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"time"
 
 	router "github.com/moh-sso-dashboard/internal/api"
 	"github.com/moh-sso-dashboard/internal/authz"
@@ -169,6 +170,22 @@ func Run() {
 		AuthzResolver:  authzResolver,
 	})
 
+	modules, err := router.NewModuleRegistry(handlers.Router, cfg.DisabledModules)
+	if err != nil {
+		panic("invalid module configuration: " + err.Error())
+	}
+	stopModules, err := modules.Initialize(ctx)
+	if err != nil {
+		panic("module initialization failed: " + err.Error())
+	}
+	defer func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer shutdownCancel()
+		if err := stopModules(shutdownCtx); err != nil {
+			appLogger.Error("Module shutdown failed: ", err)
+		}
+	}()
+
 	startBackgroundWorkers(ctx, workerDependencies{
 		PrimaryDB:                      dbs.Primary,
 		Config:                         cfg,
@@ -193,6 +210,7 @@ func Run() {
 	// ROUTER
 	// ==================================================
 	r := router.SetupRouter(router.RouterDependencies{
+		Modules:        modules,
 		Config:         cfg,
 		KeycloakClient: webKC,
 		Limiter:        rateLimiter,

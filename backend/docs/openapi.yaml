@@ -3688,6 +3688,15 @@ components:
         name:
           type: string
       type: object
+    module.Info:
+      properties:
+        enabled:
+          type: boolean
+        id:
+          type: string
+        version:
+          type: string
+      type: object
     notifications.CountResponse:
       properties:
         count:
@@ -11327,6 +11336,61 @@ paths:
       tags:
         - admin-metrics
       x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).NewUsersTrend
+  /api/v1/admin/modules:
+    get:
+      operationId: get_api_v1_admin_modules
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/module.Info'
+                    type: array
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List
+      tags:
+        - admin-handler
+      x-go-handler: github.com/moh-sso-dashboard/internal/api/handler.(*ModuleHandler).List
   /api/v1/admin/notifications:
     get:
       description: 'Explicit route permission: notifications:read. Additional group/system access checks may apply.'
@@ -33870,6 +33934,7 @@ tags:
   - name: admin-announcements
   - name: admin-audit
   - name: admin-clients
+  - name: admin-handler
   - name: admin-health-context
   - name: admin-metrics
   - name: admin-notifications

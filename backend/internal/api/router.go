@@ -39,9 +39,11 @@ import (
 	"github.com/moh-sso-dashboard/internal/middleware"
 	"github.com/moh-sso-dashboard/internal/ratelimit"
 	service "github.com/moh-sso-dashboard/internal/service"
+	"github.com/moh-sso-dashboard/module"
 )
 
 type RouterDependencies struct {
+	Modules        *module.Registry
 	Config         *config.Config
 	KeycloakClient *keycloak.Client
 	Limiter        *ratelimit.Limiter
@@ -95,6 +97,7 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 	r.Use(cors.New(corsConfig(deps.Config)))
 
 	routeDeps := routes.Dependencies{
+		Modules:                       deps.Modules,
 		Limiter:                       deps.Limiter,
 		Auth:                          deps.Handlers.Auth,
 		Clients:                       deps.Handlers.Clients,
@@ -152,6 +155,9 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 	platformfeature.RegisterRoutes(api, protected, deps.Handlers.Platform, deps.Limiter)
 	routes.RegisterProtectedRoutes(protected, routeDeps)
 	routes.RegisterAdminRoutes(protected, routeDeps)
+	if deps.Modules != nil {
+		registerModuleInventory(protected, deps.Modules)
+	}
 	docs.Register(r)
 
 	return r

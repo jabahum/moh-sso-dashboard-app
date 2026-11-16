@@ -27,7 +27,11 @@ func Routes() gin.RoutesInfo {
 			field.Set(reflect.New(field.Type().Elem()))
 		}
 	}
-	r := router.SetupRouter(router.RouterDependencies{Handlers: handlers})
+	modules, err := router.NewModuleRegistry(handlers, "")
+	if err != nil {
+		panic(err)
+	}
+	r := router.SetupRouter(router.RouterDependencies{Handlers: handlers, Modules: modules})
 	router.RegisterHealthRoutes(r, &handler.HealthHandler{})
 	var result gin.RoutesInfo
 	for _, route := range r.Routes() {

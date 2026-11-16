@@ -22,9 +22,11 @@ import (
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
 	"github.com/moh-sso-dashboard/internal/ratelimit"
+	"github.com/moh-sso-dashboard/module"
 )
 
 type Dependencies struct {
+	Modules *module.Registry
 	Limiter *ratelimit.Limiter
 
 	Auth                    *authfeature.Handler

@@ -11,6 +11,7 @@ import (
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
+	"github.com/moh-sso-dashboard/module"
 )
 
 func RegisterAdminRoutes(protected *gin.RouterGroup, deps Dependencies) {
@@ -18,7 +19,11 @@ func RegisterAdminRoutes(protected *gin.RouterGroup, deps Dependencies) {
 
 	registerAdminUserRoutes(admin, deps)
 	registerAdminClientRoleRoutes(admin, deps)
-	registerAdminMetricRoutes(admin, deps)
+	if deps.Modules != nil {
+		deps.Modules.RegisterRoutes(module.Routes{Protected: protected, Admin: admin})
+	} else {
+		registerAdminMetricRoutes(admin, deps)
+	}
 	registerAdminAuditRoutes(admin, deps)
 	registerAdminNotificationRoutes(admin, deps)
 	registerAdminAnnouncementRoutes(admin, deps)

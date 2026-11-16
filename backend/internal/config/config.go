@@ -18,8 +18,9 @@ type Config struct {
 	// ==================================================
 	// Global
 	// ==================================================
-	Environment string `mapstructure:"ENVIRONMENT"`
-	GinMode     string `mapstructure:"GIN_MODE"`
+	Environment     string `mapstructure:"ENVIRONMENT"`
+	GinMode         string `mapstructure:"GIN_MODE"`
+	DisabledModules string `mapstructure:"DISABLED_MODULES"`
 
 	DevAuthBypass bool `mapstructure:"DEV_AUTH_BYPASS"`
 
@@ -304,6 +305,7 @@ func setDefaults() {
 	// ==================================================
 	viper.SetDefault("ENVIRONMENT", "development")
 	viper.SetDefault("GIN_MODE", "debug")
+	viper.SetDefault("DISABLED_MODULES", "")
 	viper.SetDefault("DEV_AUTH_BYPASS", false)
 	viper.SetDefault("ALLOW_INSECURE_HTTP", false)
 
