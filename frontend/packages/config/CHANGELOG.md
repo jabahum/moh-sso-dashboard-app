@@ -1,5 +1,21 @@
 # @moh-sso/config
 
+## 1.3.2
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/types@1.3.2
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.3.1`.
+
+- ci(frontend): publish npm modules on release tags (#300) (`851c9bc8`)
+- Release/frontend modules npm (#298) (`fcb6d3a4`)
+
 ## 1.3.1
 
 ### Patch Changes
@@ -9,6 +25,7 @@
   - @moh-sso/types@1.3.1
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.3.0`.

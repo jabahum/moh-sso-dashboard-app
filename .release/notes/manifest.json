@@ -1,109 +1,105 @@
 {
-  "sourceCommit": "7bfb7d9384bb7fd08d1ffe9f24744608c5233d87",
+  "sourceCommit": "851c9bc8e51021bbe2443d00443a40382e76c8a7",
   "components": {
-    "backend": {
-      "version": "1.3.1",
-      "previousTag": "backend/v1.3.0"
-    },
     "frontend": {
-      "version": "1.3.1",
-      "previousTag": "frontend/v1.3.0",
+      "version": "1.3.2",
+      "previousTag": "frontend/v1.3.1",
       "modules": [
         {
           "name": "@moh-sso/announcements",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/audit",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/clients",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/data-validation",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/data-visualizer",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/documents",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/e-services",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/email",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/issue-tracker",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/rbac",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/report-browser",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/report-scheduler",
-          "version": "0.4.1"
+          "version": "0.4.2"
         },
         {
           "name": "@moh-sso/shell",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/surveillance",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/users",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/utilities",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/api",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/auth",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/config",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/microfrontend",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/state",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/types",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/ui",
-          "version": "1.3.1"
+          "version": "1.3.2"
         },
         {
           "name": "@moh-sso/utils",
-          "version": "1.3.1"
+          "version": "1.3.2"
         }
       ]
     }
