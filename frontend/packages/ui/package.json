@@ -39,5 +39,10 @@
   "devDependencies": {
     "@carbon/styles": "^1.94.0",
     "@ladle/react": "^5.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohuganda/moh-sso-dashboard.git",
+    "directory": "frontend/packages/ui"
   }
 }

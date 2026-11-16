@@ -101,7 +101,9 @@
     "check:lockfile": "node scripts/check-lockfile.mjs",
     "test:dependency-guards": "node --test scripts/check-lockfile.test.mjs scripts/audit-package-dependencies.test.mjs",
     "test:browser": "playwright test",
-    "audit:packed": "node scripts/check-packed-packages.mjs"
+    "audit:packed": "node scripts/check-packed-packages.mjs",
+    "release:verify-npm": "node scripts/verify-npm-release.mjs",
+    "test:npm-release": "node --test scripts/verify-npm-release.test.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

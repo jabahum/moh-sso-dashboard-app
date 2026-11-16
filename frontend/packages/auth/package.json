@@ -33,5 +33,10 @@
     "react": "^19.2.0",
     "react-redux": "^9.2.0"
   },
-  "private": false
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohuganda/moh-sso-dashboard.git",
+    "directory": "frontend/packages/auth"
+  }
 }

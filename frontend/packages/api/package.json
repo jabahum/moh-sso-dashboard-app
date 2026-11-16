@@ -30,5 +30,10 @@
   "peerDependencies": {
     "@reduxjs/toolkit": "^2.11.2"
   },
-  "private": false
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohuganda/moh-sso-dashboard.git",
+    "directory": "frontend/packages/api"
+  }
 }

@@ -62,7 +62,7 @@ make release-frontend
 
 These perform the same automatic process for the selected component. Frontend-only releases bump every frontend module; backend-only releases leave frontend versions unchanged. Both use `BUMP=patch|minor|major` and `RELEASE_REMOTE`.
 
-Backend tags trigger **Backend Release** for binary artifacts/checksums and **Build & Push Images** for its image. Frontend tags trigger **Build & Push Images** for the source-built frontend image and module manifest. Watch GitHub Actions for completion: a successful tag push queues CI and does not mean images have finished building. The atomic tag push does not make the two CI runs atomic.
+Backend tags trigger **Backend Release** for binary artifacts/checksums and **Build & Push Images** for its image. Frontend tags trigger **Build & Push Images** for the source-built frontend image and module manifest, plus **Frontend Release** to build, verify and publish all public modules to npm before publishing GitHub release notes. Watch GitHub Actions for completion: a successful tag push queues CI and does not mean images have finished building. The atomic tag push does not make the two CI runs atomic.
 
 Use image versions independently as `BACKEND_TAG` and `FRONTEND_TAG` in Compose or Helm.
 
@@ -83,14 +83,29 @@ Manual targets verify and tag exactly the supplied versions. `FRONTEND_VERSION` 
 ## Publish frontend npm modules
 
 ```bash
+make release-frontend
+```
+
+Pushing `frontend/v<shell-version>` automatically runs **Frontend Release** in `mohuganda/moh-sso-dashboard`. It validates the shell version against the tag, installs dependencies, builds and verifies every module, publishes eligible public apps/packages through Changesets, and confirms each exact version exists on npm. Only then does it publish the GitHub Release notes. The private shell stays unpublished. No extra `frontend-publish` command is needed for a normal CI release.
+
+Configure one authentication method before the first release:
+
+- Add the upstream repository's `NPM_TOKEN` Actions secret using an npm granular token with permission to publish the `@moh-sso` scope and bypass publishing 2FA. This can bootstrap packages that do not yet exist.
+- For existing packages, configure an npm trusted publisher for each package: organization `mohuganda`, repository `moh-sso-dashboard`, workflow filename `frontend-release.yml`, with `npm publish` allowed. The workflow grants `id-token: write` and installs npm 11 on Node 22. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) and [npm token publishing permissions](https://docs.npmjs.com/about-access-tokens/).
+
+Package repository metadata identifies the upstream repository and each workspace directory for provenance. Forks run PR validation but do not publish release packages. The source-built image workflow runs separately: check both **Build & Push Images** and **Frontend Release** before treating a release as complete.
+
+For a partially published release, rerun the failed **Frontend Release** workflow for the same tag. Changesets skips versions already on npm and publishes missing ones; the registry confirmation fails if any module is still absent. Keep the original published versions and tag.
+
+Manual publishing remains available for bootstrap or exceptional local releases:
+
+```bash
 make release-prepare
 make frontend-publish
 make release
 ```
 
-Npm publishing is a separate registry operation. `frontend-publish` verifies prepared frontend versions and runs Changesets publishing for all 23 public apps/packages; the private shell remains unpublished. The frontend image release builds modules from source and does not require npm publication. Publish npm modules before component tags if both operations are needed, since release checks reject existing component tags.
-
-Run `cd frontend && npm run release:dry-run` to verify builds, runtime artifacts, and packed packages without publishing or creating tags. The dry-run restores tracked runtime configuration, import maps, and version metadata afterward. Packed-package checks verify every exported file in npm tarballs and compile consumer imports without workspace aliases, using installed third-party dependencies offline. TypeScript emits declarations with a bundled local declaration graph, preserving inferred and authored public types.
+The manual target still requires an untagged prepared release, so use CI reruns after a component tag exists. Run `cd frontend && npm run release:dry-run` for build, runtime and packed-consumer verification without publishing or creating tags. It restores tracked runtime configuration, import maps and version metadata afterward.
 
 ## Failures and retries
 
@@ -130,4 +145,4 @@ make release-notes
 
 This writes notes/changelogs into the worktree for review. Repeated generation replaces the same version entry and keeps older changelog entries. Commit the resulting files before running commands that require a clean checkout.
 
-The **Frontend Release Notes** tag workflow publishes the combined frontend notes as the GitHub Release body and attaches a compressed archive of individual module notes. The backend release workflows publish scoped backend notes as the GitHub Release body instead of repository-wide automatic notes. Both regenerate notes from tagged source, so manual component tags also receive notes. These release-note jobs are separate from frontend image builds; inspect the image workflow before deployment.
+After npm publication is verified, the **Frontend Release** tag workflow publishes the combined frontend notes as the GitHub Release body and attaches a compressed archive of individual module notes. The backend release workflows publish scoped backend notes as the GitHub Release body instead of repository-wide automatic notes. Both regenerate notes from tagged source, so manual component tags also receive notes. These release-note jobs are separate from frontend image builds; inspect the image workflow before deployment.

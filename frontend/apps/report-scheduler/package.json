@@ -54,5 +54,10 @@
     "react-redux": "^9.2.0",
     "single-spa": "^6.0.3",
     "@carbon/react": "^1.95.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohuganda/moh-sso-dashboard.git",
+    "directory": "frontend/apps/report-scheduler"
   }
 }

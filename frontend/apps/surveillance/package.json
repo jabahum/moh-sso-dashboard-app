@@ -63,5 +63,10 @@
   "devDependencies": {
     "@types/geojson": "^7946.0.16"
   },
-  "private": false
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohuganda/moh-sso-dashboard.git",
+    "directory": "frontend/apps/surveillance"
+  }
 }

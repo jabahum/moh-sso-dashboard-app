@@ -54,5 +54,10 @@
     "react-redux": "^9.2.0",
     "single-spa": "^6.0.3"
   },
-  "private": false
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohuganda/moh-sso-dashboard.git",
+    "directory": "frontend/apps/audit"
+  }
 }

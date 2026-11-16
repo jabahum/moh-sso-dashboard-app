@@ -61,5 +61,10 @@
     "single-spa": "^6.0.3",
     "react-router-dom": "^7.9.6"
   },
-  "private": false
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohuganda/moh-sso-dashboard.git",
+    "directory": "frontend/apps/issue-tracker"
+  }
 }

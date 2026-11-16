@@ -1,6 +1,6 @@
 # Release CI Outline
 
-The repository's **Build & Push Images** workflow publishes source-built frontend images on `frontend/v<shell-version>` tags and verifies their runtime version manifest. Use the root Makefile for verified frontend-only or combined releases; see [Releasing frontend and backend](../../docs/releasing.md). The **Frontend Release Notes** tag workflow publishes per-app/package notes and a combined GitHub Release body. Npm publication remains a separate operation through `make frontend-publish`.
+The repository's **Build & Push Images** workflow publishes source-built frontend images on `frontend/v<shell-version>` tags and verifies their runtime version manifest. Use the root Makefile for verified frontend-only or combined releases; see [Releasing frontend and backend](../../docs/releasing.md). The **Frontend Release** tag workflow verifies source builds and packed packages, publishes all 23 public modules to npm, verifies exact versions in the registry, then publishes per-module notes and a combined GitHub Release body. The private shell is excluded. Configure the upstream `NPM_TOKEN` secret or trusted publishers as described in [the release guide](../../docs/releasing.md#publish-frontend-npm-modules). `make frontend-publish` remains available for manual bootstrap.
 
 ## Validate Job
 
@@ -36,10 +36,11 @@ This applies Changesets version bumps and updates internal dependency ranges.
 ## Publish Job
 
 ```bash
-npm run release:packages
+npm run release:packages -- --no-git-tag
+npm run release:verify-npm
 ```
 
-This publishes the 23 public npm apps/packages according to Changesets; the private shell is excluded. Use `npm run release:dry-run` to run release checks without registry writes or tags. Packed-consumer checks extract actual npm tarballs into an isolated temporary project, reuse installed third-party dependencies offline, verify export targets and declaration imports, and compile a consumer including a negative type assertion.
+The tagged CI workflow runs these commands after release verification to publish all 23 public npm apps/packages and confirm their versions on npm; the private shell is excluded. Rerunning the workflow skips versions already published. Use `npm run release:dry-run` to run release checks without registry writes or tags. Packed-consumer checks extract actual npm tarballs into an isolated temporary project, reuse installed third-party dependencies offline, verify export targets and declaration imports, and compile a consumer including a negative type assertion.
 
 ## Source Docker Deploy Job
 

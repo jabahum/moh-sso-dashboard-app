@@ -1,4 +1,4 @@
-name: Frontend Release Notes
+name: Frontend Release
 
 on:
   push:
@@ -6,15 +6,25 @@ on:
       - "frontend/v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: frontend-notes-${{ github.ref }}
+  group: frontend-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  notes:
+  release:
+    if: github.repository == 'mohuganda/moh-sso-dashboard'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,7 +32,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11
       - name: Validate component version
+        working-directory: .
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
@@ -32,9 +46,27 @@ jobs:
             const shell = JSON.parse(readFileSync("frontend/apps/shell/package.json", "utf8"));
             assert.equal(process.env.RELEASE_TAG, `frontend/v${shell.version}`);
           JS
+      - name: Validate lockfile
+        run: node scripts/check-lockfile.mjs
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Check npm release configuration
+        run: npm run release:verify-npm -- --check
+      - name: Test npm release verification
+        run: npm run test:npm-release
+      - name: Verify and build every frontend module
+        run: npm run release:dry-run
+      - name: Publish public frontend modules to npm
+        run: npm run release:packages -- --no-git-tag
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Confirm every frontend module version is on npm
+        run: npm run release:verify-npm
       - name: Generate notes for every frontend module
+        working-directory: .
         run: node scripts/release-notes.mjs frontend
       - name: Archive per-module release notes
+        working-directory: .
         run: tar -czf frontend-release-notes.tar.gz -C .release/notes frontend manifest.json
       - name: Publish frontend release notes
         uses: softprops/action-gh-release@v2
