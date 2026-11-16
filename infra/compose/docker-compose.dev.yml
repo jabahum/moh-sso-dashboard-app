@@ -221,7 +221,9 @@ services:
       FRONTEND_MICROFRONTEND_MODE: local
       FRONTEND_SINGLE_SPA_ORCHESTRATION: "false"
       FRONTEND_MICROFRONTEND_MOUNT_MODE: hybrid
-      FRONTEND_DEV_COMMAND: ${FRONTEND_DEV_COMMAND:-npm run dev -w @moh-sso/shell}
+      FRONTEND_DEV_COMMAND: ${FRONTEND_DEV_COMMAND:-node scripts/frontend-modules.mjs dev}
+      FRONTEND_MODULE_SOURCE: ${FRONTEND_MODULE_SOURCE:-}
+      FRONTEND_MODULE_CONFIG: ${FRONTEND_MODULE_CONFIG:-module-sources.json}
       VITE_VISUALIZER_API_BASE: /visualizer-proxy
       VITE_VISUALIZER_PROXY_TARGET: http://backend:9000
       VITE_HEALTH_BI_BASE_URL: ${VITE_HEALTH_BI_BASE_URL:-http://localhost:8080}

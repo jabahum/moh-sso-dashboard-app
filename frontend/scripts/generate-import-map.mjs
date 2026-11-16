@@ -3,12 +3,30 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { moduleSelection } from "./module-source.mjs";
+const selection = moduleSelection("production", {
+  ...process.env,
+  FRONTEND_MODULE_SOURCE: process.env.FRONTEND_MODULE_SOURCE || "workspace",
+});
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const apps = [
-"announcements", "audit", "clients", "data-validation", "data-visualizer",
-  "documents", "e-services", "email", "issue-tracker", "report-browser", "report-scheduler",
-  "rbac", "surveillance", "users", "utilities"
+  "announcements",
+  "audit",
+  "clients",
+  "data-validation",
+  "data-visualizer",
+  "documents",
+  "e-services",
+  "email",
+  "issue-tracker",
+  "report-browser",
+  "report-scheduler",
+  "rbac",
+  "surveillance",
+  "users",
+  "utilities",
 ];
 
 const packages = ["api", "auth", "config", "microfrontend", "state", "types", "ui", "utils"];
@@ -17,7 +35,7 @@ const assetBaseUrl = (process.env.FRONTEND_ASSET_BASE_URL ?? "").replace(/\/$/, 
 
 function readVersion(group, name) {
   const packageJson = JSON.parse(readFileSync(join(root, group, name, "package.json"), "utf8"));
-  return packageJson.version;
+  return selection.versions[packageJson.name] || packageJson.version;
 }
 
 function appUrl(app) {
