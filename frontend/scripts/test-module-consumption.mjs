@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "vite";
-import { closeViteTestServer, failOnOpenTestResources } from "./vite-test-server.mjs";
+import { closeViteTestServer, failOnOpenTestResources, transformOnlyViteOptions } from "./vite-test-server.mjs";
 import { frontendRoot, moduleSelection, workspaceModules } from "./module-source.mjs";
 
 const fixture = mkdtempSync(join(tmpdir(), "moh-npm-environments-"));
@@ -93,8 +93,7 @@ try {
   server = await createServer({
     configFile: join(frontendRoot, "vite.config.ts"),
     mode: "development",
-    server: { watch: null },
-    optimizeDeps: { noDiscovery: true, include: [] },
+    ...transformOnlyViteOptions(),
   });
   const result = await server.transformRequest("/src/main.tsx");
   assert.ok(
