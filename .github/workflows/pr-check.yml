@@ -196,6 +196,7 @@ jobs:
       - name: Verify packed npm modules in an isolated consumer
         run: npm run audit:publishability && npm run audit:packed
       - name: Exercise npm module selection in development and production
+        timeout-minutes: 5
         run: npm run test:module-consumption
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

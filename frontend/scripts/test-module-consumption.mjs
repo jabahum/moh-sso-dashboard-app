@@ -14,6 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "vite";
+import { closeViteTestServer, failOnOpenTestResources } from "./vite-test-server.mjs";
 import { frontendRoot, moduleSelection, workspaceModules } from "./module-source.mjs";
 
 const fixture = mkdtempSync(join(tmpdir(), "moh-npm-environments-"));
@@ -100,7 +101,7 @@ try {
     result?.code.includes("@moh-sso/auth/dist/index.js"),
     "Development shell must resolve AuthBootstrap from a packed npm export",
   );
-  await server.close();
+  await closeViteTestServer(server);
   server = undefined;
   console.log("Development shell resolves packed npm artifacts.");
   process.env.FRONTEND_MODULE_ENV = "production";
@@ -133,9 +134,14 @@ try {
   run("verify-production-runtime.mjs");
   console.log("Production shell, staged modules and manifest use the selected npm artifacts.");
 } finally {
-  await server?.close();
-  for (const [path, contents] of originals) writeFileSync(path, contents);
-  for (const key of Object.keys(process.env)) if (!(key in savedEnv)) delete process.env[key];
-  Object.assign(process.env, savedEnv);
-  rmSync(fixture, { recursive: true, force: true });
+  try {
+    await closeViteTestServer(server);
+  } finally {
+    for (const [path, contents] of originals) writeFileSync(path, contents);
+    for (const key of Object.keys(process.env)) if (!(key in savedEnv)) delete process.env[key];
+    Object.assign(process.env, savedEnv);
+    rmSync(fixture, { recursive: true, force: true });
+  }
 }
+
+failOnOpenTestResources();
