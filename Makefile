@@ -101,7 +101,7 @@ run:
 .PHONY: test
 test:
 	@echo "🧪 Running tests..."
-	cd backend && $(GO_CMD) test ./... -v
+	$(MAKE) -C backend test GO="$(GO_CMD)"
 
 .PHONY: fmt
 fmt:

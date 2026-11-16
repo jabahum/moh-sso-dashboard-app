@@ -8,6 +8,8 @@ secrets/*.txt
 backend/go.mod
 backend/go.sum
 backend/tmp/
+backend/go.work
+backend/go.work.sum
 
 # Generated local SSO/Health BI credentials, process state and logs
 .local-sso/

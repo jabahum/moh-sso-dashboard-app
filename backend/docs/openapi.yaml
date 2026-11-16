@@ -10089,7 +10089,7 @@ paths:
       summary: Active Users Per Client Today
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).ActiveUsersPerClientToday
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).ActiveUsersPerClientToday
   /api/v1/admin/metrics/clients/count:
     get:
       operationId: get_api_v1_admin_metrics_clients_count
@@ -10148,7 +10148,7 @@ paths:
       summary: Count Clients
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).CountClients
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).CountClients
   /api/v1/admin/metrics/clients/login-count:
     get:
       operationId: get_api_v1_admin_metrics_clients_login-count
@@ -10229,7 +10229,7 @@ paths:
       summary: Login Count For Client
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).LoginCountForClient
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).LoginCountForClient
   /api/v1/admin/metrics/clients/most-accessed:
     get:
       operationId: get_api_v1_admin_metrics_clients_most-accessed
@@ -10312,7 +10312,7 @@ paths:
       summary: Most Accessed Clients
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).MostAccessedClients
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).MostAccessedClients
   /api/v1/admin/metrics/overview:
     get:
       operationId: get_api_v1_admin_metrics_overview
@@ -10365,7 +10365,7 @@ paths:
       summary: Overview
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).Overview
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).Overview
   /api/v1/admin/metrics/security/failed-logins:
     get:
       operationId: get_api_v1_admin_metrics_security_failed-logins
@@ -10424,7 +10424,7 @@ paths:
       summary: Count Failed Logins
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).CountFailedLogins
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).CountFailedLogins
   /api/v1/admin/metrics/security/failed-logins-range:
     get:
       operationId: get_api_v1_admin_metrics_security_failed-logins-range
@@ -10500,7 +10500,7 @@ paths:
       summary: Count Failed Logins In Range
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).CountFailedLoginsInRange
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).CountFailedLoginsInRange
   /api/v1/admin/metrics/security/suspicious-logins:
     get:
       operationId: get_api_v1_admin_metrics_security_suspicious-logins
@@ -10583,7 +10583,7 @@ paths:
       summary: Suspicious Logins
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).SuspiciousLogins
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).SuspiciousLogins
   /api/v1/admin/metrics/system/active-this-week:
     get:
       operationId: get_api_v1_admin_metrics_system_active-this-week
@@ -10642,7 +10642,7 @@ paths:
       summary: Active Users This Week
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).ActiveUsersThisWeek
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).ActiveUsersThisWeek
   /api/v1/admin/metrics/system/active-today:
     get:
       operationId: get_api_v1_admin_metrics_system_active-today
@@ -10701,7 +10701,7 @@ paths:
       summary: Active Users Today
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).ActiveUsersToday
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).ActiveUsersToday
   /api/v1/admin/metrics/system/count-disabled-users:
     get:
       operationId: get_api_v1_admin_metrics_system_count-disabled-users
@@ -10760,7 +10760,7 @@ paths:
       summary: Count Disabled Users
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).CountDisabledUsers
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).CountDisabledUsers
   /api/v1/admin/metrics/system/count-users:
     get:
       operationId: get_api_v1_admin_metrics_system_count-users
@@ -10819,7 +10819,7 @@ paths:
       summary: Count Users
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).CountUsers
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).CountUsers
   /api/v1/admin/metrics/system/login-trend:
     get:
       operationId: get_api_v1_admin_metrics_system_login-trend
@@ -10880,7 +10880,7 @@ paths:
       summary: Login Trend
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).LoginTrend
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).LoginTrend
   /api/v1/admin/metrics/system/login-trend-range:
     get:
       operationId: get_api_v1_admin_metrics_system_login-trend-range
@@ -10958,7 +10958,7 @@ paths:
       summary: Login Trend By Day
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).LoginTrendByDay
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).LoginTrendByDay
   /api/v1/admin/metrics/users/client-usage/{userID}:
     get:
       operationId: get_api_v1_admin_metrics_users_client-usage_userID
@@ -11047,7 +11047,7 @@ paths:
       summary: User Client Usage
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).UserClientUsage
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).UserClientUsage
   /api/v1/admin/metrics/users/last-login/{userID}:
     get:
       operationId: get_api_v1_admin_metrics_users_last-login_userID
@@ -11118,7 +11118,7 @@ paths:
       summary: Last Login For User
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).LastLoginForUser
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).LastLoginForUser
   /api/v1/admin/metrics/users/never-logged-in:
     get:
       operationId: get_api_v1_admin_metrics_users_never-logged-in
@@ -11179,7 +11179,7 @@ paths:
       summary: Never Logged In Users
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).NeverLoggedInUsers
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).NeverLoggedInUsers
   /api/v1/admin/metrics/users/new-range:
     get:
       operationId: get_api_v1_admin_metrics_users_new-range
@@ -11257,7 +11257,7 @@ paths:
       summary: New Users In Range
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).NewUsersInRange
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).NewUsersInRange
   /api/v1/admin/metrics/users/new-trend:
     get:
       operationId: get_api_v1_admin_metrics_users_new-trend
@@ -11335,7 +11335,7 @@ paths:
       summary: New Users Trend
       tags:
         - admin-metrics
-      x-go-handler: github.com/moh-sso-dashboard/internal/features/metrics.(*Handler).NewUsersTrend
+      x-go-handler: github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics.(*Handler).NewUsersTrend
   /api/v1/admin/modules:
     get:
       operationId: get_api_v1_admin_modules

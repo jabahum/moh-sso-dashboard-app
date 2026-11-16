@@ -10,8 +10,8 @@ import (
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	metricsfeature "github.com/moh-sso-dashboard/internal/features/metrics"
 	"github.com/moh-sso-dashboard/internal/middleware"
-	"github.com/moh-sso-dashboard/internal/version"
 	"github.com/moh-sso-dashboard/module"
+	metricsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 )
 
 // NewModuleRegistry is the distribution's explicit composition root. Legacy
@@ -28,7 +28,7 @@ func NewModuleRegistry(handlers HandlerSet, disabled string) (*module.Registry, 
 		}
 	}
 	return module.New(module.Definition{
-		Info: module.Info{ID: "metrics", Version: version.Get().Version, Enabled: enabled},
+		Info: module.Info{ID: "metrics", Version: metricsmodule.Version(), Enabled: enabled},
 		Initialize: func(context.Context) (module.Stop, error) {
 			if handlers.Metrics == nil {
 				return nil, errors.New("metrics handler is required")

@@ -73,7 +73,7 @@ jobs:
         run: go vet ./...
 
       - name: Test backend
-        run: go test ./...
+        run: go test ./... && make modules-check
 
       - name: Check architecture boundaries
         run: go test ./internal/architecture

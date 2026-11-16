@@ -48,6 +48,7 @@ if [ -n "$unformatted" ]; then
 fi
 
 go vet ./...
+make modules-check
 go test ./...
 go test ./internal/architecture
 

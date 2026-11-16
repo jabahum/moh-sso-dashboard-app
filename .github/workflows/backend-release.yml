@@ -88,6 +88,9 @@ jobs:
       - name: Test backend
         run: go test ./...
 
+      - name: Verify independent Go modules
+        run: make modules-check
+
       - name: Check architecture boundaries
         run: go test ./internal/architecture
 

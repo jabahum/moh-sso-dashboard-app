@@ -69,7 +69,11 @@ lint: ## Run static analysis
 	@echo "Running linter..."
 	@$(GOLINT)
 
-test: ## Run all tests
+.PHONY: modules-check
+modules-check: ## Verify independently packaged Go modules
+	cd modules/metrics && GOWORK=off $(GO) vet -mod=readonly ./... && GOWORK=off $(GOTEST) -mod=readonly ./...
+
+test: modules-check ## Run all tests
 	@echo "Running tests..."
 	@$(GOTEST) ./... -v
 

@@ -8,8 +8,8 @@ the registry before starting background workers or serving HTTP traffic.
 
 Metrics is the first feature routed through the registry. Its handlers, SQL,
 existing URLs and `metrics:read` permission checks retain their existing behavior.
-Its version follows the backend build version until independent packaging in
-Phase 2. Other features still use their existing registration and worker wiring.
+Its implementation is independently packaged under `backend/modules/metrics`.
+Other features still use their existing registration and worker wiring.
 The inventory lists only features integrated with the module registry.
 
 Set `DISABLED_MODULES=metrics` in backend configuration to omit metrics routes at
@@ -53,27 +53,71 @@ permissions or administrator requirement to its endpoints.
 
 | Area | Current integration | Next work |
 | --- | --- | --- |
-| Backend dependencies | One `backend/go.mod`, currently `github.com/moh-sso-dashboard` | Establish publishable repository paths and extract a representative domain |
+| Backend dependencies | Host module plus independently versioned metrics module | Extract additional domains after their dependency boundaries are reviewed |
 | Dependency wiring | Bootstrap builds repositories, services and handlers | Move domain construction behind independent module constructors incrementally |
 | Routing | Feature registrars under `internal/features`, metrics now uses the registry | Migrate additional registrars with regression checks |
 | Workers | Existing bootstrap workers plus a cleanup contract for new modules | Integrate each extracted worker with readiness and shutdown |
-| Migrations | Existing golang-migrate runner and deployment migration directories | Preserve migration history and coordinate module ownership in Phase 2 |
+| Migrations | Existing golang-migrate runner executes core migrations before metrics initialization | Writing modules will need their own migration ownership and sequencing |
 | Frontend | npm workspaces, single-spa, package staging, import maps and Changesets | Reuse these mechanisms for pinned distribution assembly |
 | Access and navigation | Keycloak, permission middleware and existing application registry | Add validated manifests and explicit synchronization ownership in Phase 3 |
 | Deployment | Existing Docker, Compose, Helm and release scripts | Extend existing entry points for distribution releases in Phase 4 |
 
-Phase 1 adds no independently published Go module. The current module path and
-internal domain dependencies need resolution during extraction. Existing
-database migrations remain owned by their current migration streams until the
-module migration design is implemented.
+## Phase 2 packaging
+
+Metrics has the public module path
+`github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics`. It contains
+the service, handlers, route definitions, response DTOs and repository port.
+Public repository records live in its `model` package. The module imports no
+dashboard implementation packages. Internal host constructors remain available
+as compatibility adapters. The host SQL adapter maps its generated records into
+the module contract, and the host supplies the existing metrics permission
+middleware to every module route.
+
+`backend/go.mod` pins the distribution's module version. The module directory is
+separately versioned using `backend/modules/metrics/v0.1.0` style tags in the
+existing upstream repository. Go downloads the tagged module during a normal
+build, including the dependency-download stage of the existing Dockerfiles.
+Metrics inventory reports the selected Go dependency version, independently of
+the backend executable version.
+
+For local development, create a Go workspace from `backend` with
+`go work init . ./modules/metrics`. If a workspace already exists, use
+`go work use ./modules/metrics`. Local workspace files are ignored by Git.
+Workspace builds report the metrics version as `dev`. Use `GOWORK=off` to verify
+the tagged dependency. There is no production filesystem replacement in the
+distribution dependency configuration.
+
+Metrics owns no tables and ships no migrations. Its SQL adapter reads tables
+owned by the core. Existing migration files, versions and migration tracking
+tables retain their ownership. Core migrations continue to complete before
+module initialization, using the existing golang-migrate locking and dirty-state
+handling. Module packaging adds no schema upgrade or data rewrite for either a
+fresh installation or an existing database. Future modules that own tables must
+define a migration stream before they can be extracted.
+
+`make -C backend modules-check` vets and tests the independently packaged module.
+The normal backend test command and backend release/PR checks include this step
+because `go test ./...` on the host does not traverse nested Go modules.
+The API contract generator loads the module's handler source so published
+handlers retain their typed response schemas in the generated contract.
+
+To release an updated module, verify its standalone tests and dashboard
+integration using a local workspace. Commit the module changes, create the
+directory-prefixed semantic version tag and push that tag to the upstream
+repository. Verify download from a separate consumer with `GOWORK=off`, then
+update the pinned dependency with `go get`, regenerate API contracts and commit
+the distribution integration. See `backend/modules/metrics/README.md` for the
+public constructor and route contracts.
 
 ## Verification
 
 Run from `backend`.
 
 ```sh
+make modules-check
 go test ./module ./internal/api/... ./internal/bootstrap ./internal/config ./internal/architecture
 go test -race ./module ./internal/api
+(cd modules/metrics && GOWORK=off go test -race ./...)
 go run ./cmd/cli openapi generate
 go test ./internal/apidocgen
 go build ./cmd/server
@@ -83,3 +127,14 @@ Lifecycle regression tests cover composition validation, partial initialization
 rollback, cancellation, disabled callbacks and idempotent cleanup. Router tests
 cover inventory authentication and administrator access, disabled metrics routes
 and existing metrics permission checks.
+
+Phase 2 verification passed for the full backend suite, standalone module tests,
+race checks, vet, Linux amd64 compilation, temporary-workspace integration and
+dependency downloads using only `go.mod` and `go.sum`. A separate temporary Go
+project downloaded `v0.1.0`, verified its reported version and registered all 19
+guarded routes. The published dependency is recorded in the server binary's Go
+build metadata. Generated API contract changes are limited to the 19 handler
+source paths.
+
+Full Docker image and database-backed runtime checks remain pending because the
+local Docker daemon was unavailable during Phase 2 verification.

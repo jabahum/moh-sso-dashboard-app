@@ -119,6 +119,10 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
+      - name: Independent Go modules
+        working-directory: backend
+        run: make modules-check
+
       - name: API contract freshness
         run: make contracts-check
 
