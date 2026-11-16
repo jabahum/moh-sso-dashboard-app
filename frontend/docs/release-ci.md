@@ -54,12 +54,12 @@ It builds all workspace packages/apps from source, stages microfrontend artifact
 
 ## Optional NPM Module Docker Job
 
-After packages are published, build the optional npm-module image with exact package versions:
+After packages are published, set exact production pins in `module-sources.json` and build the npm-module image:
 
 ```bash
 docker build \
   -f infra/docker/frontend/Dockerfile.npm-modules \
-  --build-arg MOH_SSO_NPM_MODULES="@moh-sso/users@0.4.1 @moh-sso/api@0.2.0" \
+  --build-arg FRONTEND_MODULE_SOURCE=npm \
   .
 ```
 

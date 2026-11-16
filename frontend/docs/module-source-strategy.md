@@ -1,92 +1,80 @@
-# Module Source Strategy
+# Selecting frontend module versions
 
-The frontend supports two module-source models.
+Development and production independently choose workspace modules or published npm modules in [`module-sources.json`](../module-sources.json). The shell is always built from this checkout. Both environments default to `"source": "workspace"`.
 
-## Source Mode
+To use npm in either environment, change that environment's `source` to `"npm"` and set its `versions` map to the exact published version of every app and shared package. The file includes all 23 modules, so development can test new package versions while production keeps older pins. Ranges, tags such as `latest`, missing modules and incompatible internal dependencies are rejected.
 
-Source mode is the default production path.
+```json
+{
+  "development": {
+    "source": "npm",
+    "versions": { "@moh-sso/api": "1.3.1", "...": "..." }
+  },
+  "production": {
+    "source": "workspace",
+    "versions": { "@moh-sso/api": "1.3.1", "...": "..." }
+  }
+}
+```
 
-Docker builds everything from this monorepo:
+The example abbreviates the maps; retain every entry in the real configuration. Versions must exist in npm before switching to npm mode. Publishing modules and selecting deployed versions remain separate operations. Source version bumps do not change deployment pins; update pins intentionally after publishing.
+
+## Development
 
 ```bash
+cd frontend
 npm ci
-npm run build:docker
+npm run dev
 ```
 
-The build creates one static `dist/` folder containing:
-
-- shell assets
-- app bundles under `/mf/<app>/`
-- shared package bundles under `/packages/<package>/`
-- `import-map.json`
-- `version-manifest.json`
-
-This is the safest production mode today because the Docker image and source commit are the release unit.
-
-## NPM Package Mode
-
-NPM package mode is the supported future path for independently versioned modules.
-
-In this mode:
-
-- apps and shared packages are published as `@moh-sso/*`
-- a Docker/build pipeline installs selected package versions from npm
-- `stage:mf:npm` copies installed package `dist/` folders from `node_modules`
-- the shell still produces one static deployment artifact
-
-This lets one app or shared package be rolled forward or back by changing package versions, without requiring every app to become independently hosted on day one.
-
-## Version Control
-
-Changesets owns package versions:
+The command reads `development.source`, installs missing npm pins when needed, typechecks the shell against the selected package declarations, then starts Vite. To override the configured source for one run:
 
 ```bash
-npm run changeset
-npm run version:packages
-npm run release:packages
+FRONTEND_MODULE_SOURCE=npm npm run dev
+FRONTEND_MODULE_SOURCE=workspace npm run dev
 ```
 
-Docker image tags should identify the shell/runtime deployment. Package versions identify app/package artifacts.
+Development Compose uses the same selection. For example, `FRONTEND_MODULE_SOURCE=npm make dev` uses the pinned development modules when the normal development stack starts. A custom `FRONTEND_DEV_COMMAND` should use `node scripts/frontend-modules.mjs dev` to retain automatic preparation.
 
-Example:
+## Production
 
-```text
-Docker image: ghcr.io/mohuganda/moh-sso-dashboard-frontend:2026.06.07
-Users app:   @moh-sso/users@0.4.1
-API package: @moh-sso/api@0.2.0
+```bash
+cd frontend
+npm run config:prod
+FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
 ```
 
-## Rollback
+This reads `production.source`. Workspace mode builds all modules from source. Npm mode installs the production pins, typechecks and builds the shell against their public exports, and stages the installed app and package bundles into the static deployment. The import map and version manifest use the selected versions.
 
-Source mode rollback:
+The standard Dockerfile supports both modes:
 
-- redeploy the previous Docker image tag
-
-NPM package mode rollback:
-
-- install a previous `@moh-sso/*` package version
-- rebuild/stage the static artifact
-- redeploy the Docker image
-
-Remote import-map deployment rollback:
-
-- point `import-map.json` back to previous app/package URLs
-- redeploy or invalidate the import map
-
-## Import Maps
-
-Source mode import maps point to staged local paths:
-
-```text
-/mf/users/single-spa.js
-/packages/api/index.js
+```bash
+docker build -f infra/docker/frontend/Dockerfile .
+docker build -f infra/docker/frontend/Dockerfile --build-arg FRONTEND_MODULE_SOURCE=npm .
 ```
 
-Versioned remote import maps can point to versioned asset paths:
+`Dockerfile.npm-modules` defaults to npm mode and uses the same pipeline. Changing pins requires rebuilding and deploying the frontend image. Server runtime environment changes do not change modules inside an existing image.
 
-```text
-/mf/users/0.4.1/single-spa.js
-/packages/api/0.2.0/index.js
+## Installation and overrides
+
+Npm modules live in independent projects under `.npm-modules/development` and `.npm-modules/production`. They never replace the monorepo's workspace links. Their npm lockfiles record transitive resolutions locally. Existing validated installations are reused; changing pins reconciles the installation. Standard npm registry/authentication settings apply, and install lifecycle scripts are disabled.
+
+```bash
+npm run modules:prepare -- development
+npm run modules:prepare -- production
 ```
 
-Default production should remain source mode until npm package publishing and npm-module Docker builds are stable in CI.
+`FRONTEND_MODULE_SOURCE=workspace|npm` overrides the selected source. `FRONTEND_MODULE_CONFIG` selects another configuration file relative to `frontend/` (or an absolute path); Docker accepts it as a build argument and development Compose passes it through. `FRONTEND_MODULE_ENV=development|production` overrides which configuration entry is selected. `FRONTEND_MODULE_DIRECTORY` optionally selects a separate installation directory, for example for an isolated test fixture.
+
+`build:all` remains the source-build command used when authoring and publishing packages. Release checks explicitly use workspace modules regardless of deployment configuration. `build:docker` is the environment-configured deployment command. In npm mode, shell imports must use public package exports; private source paths fail instead of falling back to workspace files. Published apps retain dependencies bundled when those apps were released, so select compatible app and shared-package versions together.
+
+## Verification and rollback
+
+```bash
+npm run test:module-sources
+npm run test:module-consumption
+```
+
+Selection tests cover environment independence, exact pins, incompatible dependencies, missing artifacts and workspace-link rejection. The consumption test packs current built modules into a temporary npm fixture, checks Vite development resolution, builds/stages production against those artifacts, and verifies version metadata. It requires existing module builds and does not publish or contact the registry. CI runs it after the source build.
+
+To roll back npm versions, restore the previous pins, rebuild and redeploy. To roll back a complete deployment, redeploy its previous verified image. Keep the selected configuration alongside the release for review.

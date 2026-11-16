@@ -110,16 +110,16 @@ It serves on port `80`, so compose or Kubernetes service ports must match that i
 
 ## Optional NPM Module Docker Path
 
-The default Docker build remains source-based. For a future package-versioned deployment, use:
+Select workspace or npm modules independently for development and production in [module-sources.json](../module-sources.json). See [module selection](module-source-strategy.md) for exact pins and overrides. For a package-versioned deployment, use:
 
 ```bash
 docker build \
   -f infra/docker/frontend/Dockerfile.npm-modules \
-  --build-arg MOH_SSO_NPM_MODULES="@moh-sso/users@0.1.0 @moh-sso/api@0.1.0" \
+  --build-arg FRONTEND_MODULE_SOURCE=npm \
   .
 ```
 
-This optional path builds the shell from source and stages installed `@moh-sso/*` package `dist/` folders from `node_modules`.
+This path builds the shell against pinned public npm exports and stages installed module bundles from an isolated installation. See [module selection](module-source-strategy.md) for development and production configuration.
 
 ## Docker Dev
 
