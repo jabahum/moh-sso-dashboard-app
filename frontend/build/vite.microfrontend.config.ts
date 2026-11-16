@@ -138,6 +138,7 @@ export function defineMicrofrontendConfig({
             "@carbon/react/icons",
             "single-spa",
             "single-spa-react",
+            ...packages.map((pkg) => `@moh-sso/${pkg}`),
             ...extraExternal,
           ],
 

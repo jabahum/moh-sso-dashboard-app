@@ -4,5 +4,6 @@ WORKDIR /app
 COPY frontend/ .
 RUN npm ci --no-audit --no-fund
 COPY --chmod=755 infra/docker/frontend/40-runtime-config.sh /usr/local/bin/write-runtime-config
+ENV FRONTEND_RUNTIME_CONFIG_PREPARED=true
 EXPOSE 3000 4101 4102 4103 4104 4105 4106 4107 4108 4109 4110 4111 4112 4113 4114 4115
-CMD ["sh", "-ec", "/usr/local/bin/write-runtime-config /app/public/config.js; exec ${FRONTEND_DEV_COMMAND:-npm run dev -w @moh-sso/shell}"]
+CMD ["sh", "-ec", "/usr/local/bin/write-runtime-config /app/public/config.js; exec ${FRONTEND_DEV_COMMAND:-node scripts/frontend-modules.mjs dev}"]

@@ -56,6 +56,7 @@ jobs:
         run: |
           npm run test:dependency-guards
           npm run test:npm-release
+          npm run test:module-sources
           node --test scripts/runtime-config-path.test.mjs scripts/api-base-url.test.mjs scripts/client-onboarding.test.mjs
 
       - name: OpenAPI bot update regression tests
@@ -195,6 +196,9 @@ jobs:
           npm run bundle:budget
       - name: Verify packed npm modules in an isolated consumer
         run: npm run audit:publishability && npm run audit:packed
+      - name: Exercise npm module selection in development and production
+        timeout-minutes: 5
+        run: npm run test:module-consumption
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser smoke tests

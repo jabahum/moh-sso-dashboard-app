@@ -6,7 +6,7 @@ import { store } from "@moh-sso/state";
 import "leaflet/dist/leaflet.css";
 
 import "./index.scss";
-import AuthBootstrap from "@moh-sso/auth/auth/AuthBootstrap";
+import { AuthBootstrap } from "@moh-sso/auth";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <Provider store={store}>

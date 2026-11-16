@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import react from "@vitejs/plugin-react";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { moduleSelection, npmModulePlugin } from "./scripts/module-source.mjs";
 
 const pathFromRoot = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -44,15 +46,18 @@ const dynamicAliases = [
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const modules = moduleSelection(mode === "production" ? "production" : "development", { ...env, ...process.env });
   const visualizerProxyTarget = env.VITE_VISUALIZER_PROXY_TARGET?.trim();
   const visualizerProxyCookie = env.VITE_VISUALIZER_PROXY_COOKIE?.trim();
 
   return {
+    cacheDir: pathFromRoot(`./node_modules/.vite/${modules.environment}-${modules.source}-${createHash("sha256").update(JSON.stringify(modules.versions)).digest("hex").slice(0, 12)}`),
     base: "/portal/",
     root: pathFromRoot("./apps/shell"),
     publicDir: pathFromRoot("./public"),
 
   plugins: [
+    ...(modules.source === "npm" ? [npmModulePlugin(modules)] : []),
     {
       name: "portal-base-redirect",
       configureServer(server) {
@@ -149,15 +154,11 @@ export default defineConfig(({ mode }) => {
       ],
 
       alias: [
-        {
-          find: "@/config",
-          replacement: pathFromRoot("./packages/config/src"),
-        },
-        {
-          find: "@/types",
-          replacement: pathFromRoot("./packages/types/src/global"),
-        },
-        ...dynamicAliases,
+        ...(modules.source === "workspace" ? [
+          { find: "@/config", replacement: pathFromRoot("./packages/config/src") },
+          { find: "@/types", replacement: pathFromRoot("./packages/types/src/global") },
+          ...dynamicAliases,
+        ] : []),
         {
           find: "@",
           replacement: pathFromRoot("./apps/shell/src"),

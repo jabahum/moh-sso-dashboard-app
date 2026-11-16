@@ -22,3 +22,5 @@ infra/secrets
 infra/certs
 **/*.log
 .DS_Store
+
+**/.npm-modules

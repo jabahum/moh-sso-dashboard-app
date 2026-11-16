@@ -3,6 +3,15 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } fr
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { moduleSelection, installedModules } from "./module-source.mjs";
+
+const selection = moduleSelection("production");
+const installed =
+  selection.source === "npm"
+    ? new Map(installedModules(selection).map((module) => [module.name, module.path]))
+    : null;
+const modulePath = (group, name) => (installed ? installed.get(name) : join(root, group, name));
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const apps = [
@@ -15,7 +24,8 @@ const apps = [
   "e-services",
   "email",
   "issue-tracker",
-  "report-browser", "report-scheduler",
+  "report-browser",
+  "report-scheduler",
   "rbac",
   "surveillance",
   "users",
@@ -67,13 +77,13 @@ assertRequired(join(root, "apps", "shell", "dist", "index.html"));
 copyDirectory(join(root, "apps", "shell", "dist"), join(root, "dist"));
 
 for (const app of apps) {
-  assertRequired(join(root, "apps", app, "dist", "single-spa.js"));
-  copyDirectory(join(root, "apps", app, "dist"), join(root, "dist", "mf", app));
+  assertRequired(join(modulePath("apps", app), "dist", "single-spa.js"));
+  copyDirectory(join(modulePath("apps", app), "dist"), join(root, "dist", "mf", app));
 }
 
 for (const pkg of packages) {
-  assertRequired(join(root, "packages", pkg, "dist", "index.js"));
-  copyDirectory(join(root, "packages", pkg, "dist"), join(root, "dist", "packages", pkg));
+  assertRequired(join(modulePath("packages", pkg), "dist", "index.js"));
+  copyDirectory(join(modulePath("packages", pkg), "dist"), join(root, "dist", "packages", pkg));
 }
 
 copyRequired(
