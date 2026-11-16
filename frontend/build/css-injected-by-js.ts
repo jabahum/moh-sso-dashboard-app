@@ -6,7 +6,7 @@ type CssInJsOptions = {
 
 function buildInjectionRuntime(cssFiles: string[], topExecutionPriority: boolean): string {
   const entries = cssFiles
-    .map((file) => JSON.stringify(file))
+    .map((file) => `new URL(${JSON.stringify(file)}, import.meta.url).href`)
     .join(", ");
 
   return `
@@ -17,7 +17,7 @@ const __mohInjectCss = () => {
   }
 
   for (const file of __mohCssFiles) {
-    const href = new URL(file, import.meta.url).href;
+    const href = file;
     if (document.querySelector('link[data-moh-css="' + href + '"]')) {
       continue;
     }
@@ -33,9 +33,7 @@ ${topExecutionPriority ? "__mohInjectCss();\n" : "queueMicrotask(__mohInjectCss)
 `;
 }
 
-export default function cssInjectedByJsPlugin(
-  options: CssInJsOptions = {},
-): Plugin {
+export default function cssInjectedByJsPlugin(options: CssInJsOptions = {}): Plugin {
   const topExecutionPriority = options.topExecutionPriority ?? false;
 
   return {
