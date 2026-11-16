@@ -20,11 +20,17 @@ import {
 import "./microfrontends.scss";
 
 type SingleSpaAppProps = MicrofrontendRuntimeProps & {
+  orchestrate?: boolean;
   appName: string;
   lifecycles: MicrofrontendLifecycle | (() => Promise<MicrofrontendLifecycle>);
 };
 
-export function SingleSpaApp({ appName, lifecycles, ...runtimeProps }: SingleSpaAppProps) {
+export function SingleSpaApp({
+  appName,
+  lifecycles,
+  orchestrate = true,
+  ...runtimeProps
+}: SingleSpaAppProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
   const shellUser = useSelector(selectUser);
@@ -53,7 +59,7 @@ export function SingleSpaApp({ appName, lifecycles, ...runtimeProps }: SingleSpa
       shellHealthContext.selectContext,
     ],
   );
-  const orchestrationRequested = shouldUseSingleSpaOrchestration();
+  const orchestrationRequested = orchestrate && shouldUseSingleSpaOrchestration();
   const [orchestrationState, setOrchestrationState] = useState(() => ({
     started: isSingleSpaOrchestrationStarted(),
     unavailable: isSingleSpaOrchestrationUnavailable(),

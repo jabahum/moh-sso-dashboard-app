@@ -1,0 +1,27 @@
+apiVersion: portal.moh.go.ug/v1alpha1
+kind: Application
+metadata:
+  id: portal-metrics
+  name: Portal metrics
+  version: 1.0.0
+  description: Administrative metrics from the compiled metrics module
+spec:
+  environment: development
+  owner:
+    team: Portal team
+    name: Portal administrator
+    email: portal@example.org
+  supportUrl: https://portal.example.org/support
+  icon: dashboard
+  category: Administration
+  launch:
+    mode: internal
+    module: metrics
+    route: /portal/admin/home
+  access:
+    roles: [metrics_viewer]
+  navigation:
+    - id: metrics
+      label: Portal metrics
+      path: /portal/admin/home
+      requiredPermissions: [metrics:read]

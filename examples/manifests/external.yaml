@@ -1,0 +1,21 @@
+apiVersion: portal.moh.go.ug/v1alpha1
+kind: Application
+metadata:
+  id: health-bi
+  name: Health BI
+  version: 1.0.0
+  description: Independently hosted health analytics
+spec:
+  environment: development
+  owner:
+    team: Health BI team
+    name: Health BI administrator
+    email: health-bi@example.org
+  supportUrl: https://health-bi.example.org/support
+  icon: chart
+  category: Analytics
+  launch:
+    mode: external
+    url: https://health-bi.example.org/
+  access:
+    roles: [report_viewer]

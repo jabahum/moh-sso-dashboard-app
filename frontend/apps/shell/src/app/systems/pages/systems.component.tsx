@@ -23,6 +23,9 @@ import {
 } from "@carbon/react";
 import { Add, Launch, Save } from "@carbon/react/icons";
 import { useMemo, useState } from "react";
+import { useSelector } from "react-redux";
+import { selectIsAdmin, useAuthorization } from "@moh-sso/auth";
+import { ApplicationManifestPanel } from "../components/application-manifest-panel";
 
 import {
   useGetRbacSystemQuery,
@@ -85,6 +88,8 @@ function toDraft(system: RbacSystem): SystemDraft {
 }
 
 export default function SystemsPage() {
+  const isAdmin = useSelector(selectIsAdmin);
+  const { canAll } = useAuthorization();
   const { data: systems = [], isLoading, isError, error, refetch } = useListRbacSystemsQuery();
   const [search, setSearch] = useState("");
   const { openPanel, closePanel } = useHeaderPanel();
@@ -147,18 +152,32 @@ export default function SystemsPage() {
         ) : undefined
       }
       toolbarActions={
-        <Button
-          renderIcon={Add}
-          onClick={() =>
-            openPanel({
-              title: "Add system",
-              size: "lg",
-              content: <CreateSystemPanel onClose={closePanel} />,
-            })
-          }
-        >
-          Add system
-        </Button>
+        <>
+          {isAdmin && canAll(["rbac:read", "rbac:write", "rbac:roles:write"]) && (
+            <Button
+              kind="secondary"
+              onClick={() => openPanel({
+                title: "Import application manifest",
+                size: "lg",
+                content: <ApplicationManifestPanel />,
+              })}
+            >
+              Import manifest
+            </Button>
+          )}
+          <Button
+            renderIcon={Add}
+            onClick={() =>
+              openPanel({
+                title: "Add system",
+                size: "lg",
+                content: <CreateSystemPanel onClose={closePanel} />,
+              })
+            }
+          >
+            Add system
+          </Button>
+        </>
       }
       topContent={
         <div className="systems-summary">

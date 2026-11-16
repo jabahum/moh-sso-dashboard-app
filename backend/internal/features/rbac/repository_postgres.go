@@ -97,6 +97,17 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 		return System{}, err
 	}
 	defer tx.Rollback()
+	system, err := upsertSystemTx(ctx, tx, input)
+	if err != nil {
+		return System{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return System{}, err
+	}
+	return system, nil
+}
+
+func upsertSystemTx(ctx context.Context, tx *sql.Tx, input UpsertSystemInput) (System, error) {
 	if _, err := tx.ExecContext(ctx, `SELECT set_config('ihp.actor_user_id', $1, true)`, input.ActorUserID); err != nil {
 		return System{}, err
 	}
@@ -192,9 +203,6 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
 		if err != nil {
 			return System{}, err
 		}
-		if err := tx.Commit(); err != nil {
-			return System{}, err
-		}
 		return existing, nil
 	}
 	if errors.Is(err, sql.ErrNoRows) && input.RegisterOnly {
@@ -211,9 +219,6 @@ func (r *postgresRepository) UpsertSystem(ctx context.Context, input UpsertSyste
  (actor_user_id, action, resource_type, resource_id, system_client_id, details)
  VALUES (NULLIF($1, ''), 'system.upserted', 'system', $2, $3, $4::jsonb)`, input.ActorUserID, system.ID, system.ClientID, string(details))
 	if err != nil {
-		return System{}, err
-	}
-	if err := tx.Commit(); err != nil {
 		return System{}, err
 	}
 	return system, nil

@@ -1,0 +1,12 @@
+.application-manifest-panel {
+  min-width: 0;
+
+  pre {
+    max-height: 20rem;
+    overflow: auto;
+    padding: 1rem;
+    background: var(--cds-layer);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}

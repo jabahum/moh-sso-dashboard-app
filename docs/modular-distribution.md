@@ -59,7 +59,7 @@ permissions or administrator requirement to its endpoints.
 | Workers | Existing bootstrap workers plus a cleanup contract for new modules | Integrate each extracted worker with readiness and shutdown |
 | Migrations | Existing golang-migrate runner executes core migrations before metrics initialization | Writing modules will need their own migration ownership and sequencing |
 | Frontend | npm workspaces, single-spa, package staging, import maps and Changesets | Reuse these mechanisms for pinned distribution assembly |
-| Access and navigation | Keycloak, permission middleware and existing application registry | Add validated manifests and explicit synchronization ownership in Phase 3 |
+| Access and navigation | Keycloak, permission middleware and application manifests in the existing system registry | Package deployment configuration in Phase 4 |
 | Deployment | Existing Docker, Compose, Helm and release scripts | Extend existing entry points for distribution releases in Phase 4 |
 
 ## Phase 2 packaging
@@ -138,3 +138,38 @@ source paths.
 
 Full Docker image and database-backed runtime checks remain pending because the
 local Docker daemon was unavailable during Phase 2 verification.
+
+## Phase 3 manifests
+
+The Systems page now provides administrator-only manifest upload, validation,
+preview and import. The implementation uses the current Postgres system registry,
+navigation model, access-role tables and lifecycle workflow. A serializable
+transaction applies registry metadata, access-role changes and audit records.
+Stale previews require review again. Repeated imports are idempotent.
+
+External applications use their deployed URLs. Internal applications reference
+an enabled compiled module. Separately hosted single-spa applications use
+`/apps/extensions/<application-id>` routes and a browser module entry URL. The
+runtime endpoint checks application access and activation before returning that
+entry point. The existing shell host supplies the normal application props and
+handles mounting and unmounting.
+
+The implemented manifest schema uses the registry's own-client access-role model.
+Keycloak client provisioning and user role assignment use the existing explicit
+administration workflows. Startup discovery preserves manifest-managed registry
+configuration. No additional database migration is required because documents
+are stored in existing system metadata. The schema, examples, API contracts and
+configuration ownership rules are documented in `examples/manifests/README.md`.
+
+Phase 3 verification passed the full backend suite with isolated Postgres schemas,
+transaction and lifecycle race tests, vet, standalone module checks and generated
+OpenAPI validation. The backend Docker image built successfully and its version
+command ran successfully. Frontend workspace production builds, type checking,
+lint and architecture checks passed. Browser coverage includes the manifest
+review/import flow on desktop and mobile, dynamic application mount, refresh,
+unmount and denied access, plus 50 existing portal page regression checks.
+
+The published-npm production build could not resolve the existing pinned
+`@moh-sso/announcements@1.3.1` package. Workspace builds were used for runtime
+verification; published-npm deployment verification requires that release to be
+available. Live Keycloak provisioning and production deployment were not run.

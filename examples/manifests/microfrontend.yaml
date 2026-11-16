@@ -1,0 +1,27 @@
+apiVersion: portal.moh.go.ug/v1alpha1
+kind: Application
+metadata:
+  id: example-reports
+  name: Example reports
+  version: 1.0.0
+  description: A separately hosted single-spa application
+spec:
+  environment: development
+  owner:
+    team: Reporting team
+    name: Reporting administrator
+    email: reports@example.org
+  supportUrl: https://reports.example.org/support
+  icon: reporting
+  category: Analytics
+  launch:
+    mode: microfrontend
+    route: /apps/extensions/example-reports
+    appName: "@moh-extensions/example-reports"
+    entryUrl: https://reports.example.org/single-spa.js
+  access:
+    roles: [report_viewer]
+  navigation:
+    - id: reports
+      label: Example reports
+      path: /apps/extensions/example-reports

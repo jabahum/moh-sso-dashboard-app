@@ -153,6 +153,9 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 	))
 
 	platformfeature.RegisterRoutes(api, protected, deps.Handlers.Platform, deps.Limiter)
+	if deps.Handlers.RBAC != nil {
+		protected.GET("/applications/:clientId/manifest", deps.Handlers.RBAC.GetApplicationManifestRuntime)
+	}
 	routes.RegisterProtectedRoutes(protected, routeDeps)
 	routes.RegisterAdminRoutes(protected, routeDeps)
 	if deps.Modules != nil {

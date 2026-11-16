@@ -178,6 +178,7 @@ func Run() {
 	if err != nil {
 		panic("module initialization failed: " + err.Error())
 	}
+	services.RBAC.ConfigureManifests(cfg.Environment, modules.Inventory())
 	defer func() {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer shutdownCancel()

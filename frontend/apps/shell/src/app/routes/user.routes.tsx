@@ -37,6 +37,7 @@ import AppSettingsPage from "@/app/settings/pages/AppSettingsPage";
 import AboutSettingsPage from "@/app/settings/pages/AboutSettingsPage";
 
 import { SingleSpaApp } from "@/app/microfrontends/SingleSpaApp";
+import { ManifestApplication } from "@/app/microfrontends/ManifestApplication";
 
 import {
   dataVisualizerLifecycles,
@@ -120,6 +121,7 @@ export const userRoutes = (
     }
   >
     <Route index element={<Navigate to="news" replace />} />
+    <Route path="extensions/:clientId/*" element={userPage(<ManifestApplication />)} />
 
     <Route path="news" element={userPage(<NewsFeedPage />)} />
 

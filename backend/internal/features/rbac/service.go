@@ -14,6 +14,7 @@ import (
 	systemrbac "github.com/moh-sso-dashboard/internal/features/system_rbac"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	"github.com/moh-sso-dashboard/internal/model"
+	"github.com/moh-sso-dashboard/module"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -24,10 +25,12 @@ var (
 )
 
 type Service struct {
-	repository      Repository
-	users           UserLookup
-	keycloakGroups  KeycloakGroupMembershipManager
-	frontendBaseURL string
+	manifestEnvironment string
+	manifestModules     []module.Info
+	repository          Repository
+	users               UserLookup
+	keycloakGroups      KeycloakGroupMembershipManager
+	frontendBaseURL     string
 }
 
 type UserLookup interface {

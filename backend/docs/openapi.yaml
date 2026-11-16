@@ -4109,6 +4109,17 @@ components:
       required:
         - roleName
       type: object
+    rbac.ApplicationManifest:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/rbac.ManifestMetadata'
+        spec:
+          $ref: '#/components/schemas/rbac.ManifestSpec'
+      type: object
     rbac.AssignableRealmRole:
       properties:
         displayName:
@@ -4542,6 +4553,131 @@ components:
       required:
         - status
         - reason
+      type: object
+    rbac.ManifestAccess:
+      properties:
+        roles:
+          items:
+            type: string
+          type: array
+      type: object
+    rbac.ManifestLaunch:
+      properties:
+        appName:
+          type: string
+        entryUrl:
+          type: string
+        mode:
+          type: string
+        module:
+          type: string
+        route:
+          type: string
+        url:
+          type: string
+      type: object
+    rbac.ManifestMetadata:
+      properties:
+        description:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+      type: object
+    rbac.ManifestNavigation:
+      properties:
+        icon:
+          type: string
+        id:
+          type: string
+        label:
+          type: string
+        path:
+          type: string
+        requiredPermissions:
+          items:
+            type: string
+          type: array
+      type: object
+    rbac.ManifestOwner:
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        team:
+          type: string
+      type: object
+    rbac.ManifestPreview:
+      properties:
+        accessRoles:
+          items:
+            type: string
+          type: array
+        after:
+          $ref: '#/components/schemas/rbac.UpsertSystemInput'
+        before:
+          allOf:
+            - $ref: '#/components/schemas/rbac.SystemDetail'
+          nullable: true
+        manifest:
+          $ref: '#/components/schemas/rbac.ApplicationManifest'
+        operation:
+          type: string
+        reviewToken:
+          type: string
+        rolesToCreate:
+          items:
+            type: string
+          type: array
+        warnings:
+          items:
+            type: string
+          type: array
+      type: object
+    rbac.ManifestRequest:
+      properties:
+        document:
+          type: string
+        reviewToken:
+          type: string
+      required:
+        - document
+      type: object
+    rbac.ManifestRuntime:
+      properties:
+        id:
+          type: string
+        launch:
+          $ref: '#/components/schemas/rbac.ManifestLaunch'
+        name:
+          type: string
+        version:
+          type: string
+      type: object
+    rbac.ManifestSpec:
+      properties:
+        access:
+          $ref: '#/components/schemas/rbac.ManifestAccess'
+        category:
+          type: string
+        environment:
+          type: string
+        icon:
+          type: string
+        launch:
+          $ref: '#/components/schemas/rbac.ManifestLaunch'
+        navigation:
+          items:
+            $ref: '#/components/schemas/rbac.ManifestNavigation'
+          type: array
+        owner:
+          $ref: '#/components/schemas/rbac.ManifestOwner'
+        supportUrl:
+          type: string
       type: object
     rbac.OperationResultResponse:
       properties:
@@ -12715,6 +12851,267 @@ paths:
       x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).DecideAccessRequest
       x-route-permissions:
         - rbac:roles:write
+  /api/v1/admin/rbac/application-manifests/import:
+    post:
+      operationId: post_api_v1_admin_rbac_application-manifests_import
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/rbac.ManifestRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/rbac.ManifestPreview'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Import Application Manifest
+      tags:
+        - admin-rbac
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).ImportApplicationManifest
+  /api/v1/admin/rbac/application-manifests/preview:
+    post:
+      operationId: post_api_v1_admin_rbac_application-manifests_preview
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/rbac.ManifestRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/rbac.ManifestPreview'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Preview Application Manifest
+      tags:
+        - admin-rbac
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).PreviewApplicationManifest
+  /api/v1/admin/rbac/application-manifests/validate:
+    post:
+      operationId: post_api_v1_admin_rbac_application-manifests_validate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/rbac.ManifestRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/rbac.ApplicationManifest'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Validate Application Manifest
+      tags:
+        - admin-rbac
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).ValidateApplicationManifest
   /api/v1/admin/rbac/audit:
     get:
       operationId: get_api_v1_admin_rbac_audit
@@ -19571,6 +19968,95 @@ paths:
       tags:
         - announcements
       x-go-handler: github.com/moh-sso-dashboard/internal/features/announcements.(*Handler).ListAnnouncementsForUser
+  /api/v1/applications/{clientId}/manifest:
+    get:
+      operationId: get_api_v1_applications_clientId_manifest
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/rbac.ManifestRuntime'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Internal Server Error
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Application Manifest Runtime
+      tags:
+        - rbac
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/rbac.(*Handler).GetApplicationManifestRuntime
   /api/v1/auth/callback:
     get:
       description: Handles the fixed Keycloak callback, creates the portal session, and redirects to the state-bound return target when present.

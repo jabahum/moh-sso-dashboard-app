@@ -138,6 +138,13 @@ func (s *Service) ApplyRealmExportSync(ctx context.Context, payload []byte) (Syn
 
 	response := SyncApplyResponse{Preview: preview}
 	for _, system := range discovered.Systems {
+		preserve, err := s.skipManifestStartup(ctx, system.ClientID)
+		if err != nil {
+			return SyncApplyResponse{}, err
+		}
+		if preserve {
+			continue
+		}
 		enabled := system.Enabled
 		if _, err := s.UpsertSystem(ctx, UpsertSystemInput{
 			LifecycleManaged:       system.LifecycleManaged,

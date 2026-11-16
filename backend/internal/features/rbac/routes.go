@@ -11,6 +11,10 @@ func RegisterAdminRoutes(admin *gin.RouterGroup, handler *Handler, limiter *rate
 	rbac := admin.Group("/rbac")
 	sensitiveWriteLimit := ratelimit.MiddlewareForPolicy(limiter, ratelimit.RBACSensitiveWritePolicy())
 	bulkWriteLimit := ratelimit.MiddlewareForPolicy(limiter, ratelimit.RBACBulkWritePolicy())
+	manifests := rbac.Group("/application-manifests", middleware.RequireAdmin(), middleware.RequireAllPermissions(authz.PermissionRBACRead, authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite))
+	manifests.POST("/validate", handler.ValidateApplicationManifest)
+	manifests.POST("/preview", handler.PreviewApplicationManifest)
+	manifests.POST("/import", sensitiveWriteLimit, handler.ImportApplicationManifest)
 	{
 		rbac.POST("/systems", middleware.RequirePermission(authz.PermissionRBACWrite), sensitiveWriteLimit, handler.RegisterSystem)
 		rbac.GET("/systems", middleware.RequirePermission(authz.PermissionRBACRead), handler.ListSystems)

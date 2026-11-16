@@ -39,6 +39,15 @@ func ApplySeed(ctx context.Context, db *sql.DB, seed SeedFile) error {
 	}
 
 	for _, system := range seed.Systems {
+		if IsStartupDiscovery(ctx) {
+			var manifestManaged bool
+			if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM ihp_systems WHERE client_id=$1 AND metadata ? 'applicationManifest')`, system.ClientID).Scan(&manifestManaged); err != nil {
+				return err
+			}
+			if manifestManaged {
+				continue
+			}
+		}
 		systemID, err := upsertSystem(ctx, tx, system)
 		if err != nil {
 			return err
