@@ -39,9 +39,9 @@
     "changeset": "changeset",
     "version:packages": "changeset version && npm install --package-lock-only --ignore-scripts && npm run generate:versions",
     "release:packages": "changeset publish",
-    "release:dry-run": "changeset publish --dry-run",
+    "release:dry-run": "node ../scripts/check-frontend-release.mjs",
     "preversion:check": "npm run config:validate && npm run architecture:check && npm run mf:doctor && npm run rbac:doctor && npm run audit:packages && npm run version:audit && npm run typecheck && npm run lint && npm run build:all && npm run audit:publishability",
-    "release:check": "npm run config:validate && npm run architecture:check && npm run mf:doctor && npm run rbac:doctor && npm run deploy:doctor && npm run audit:packages && npm run version:audit && npm run typecheck && npm run lint && npm run config:prod && FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker && MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css && npm run audit:import-map && npm run runtime:verify && npm run bundle:budget && npm run audit:publishability",
+    "release:check": "npm run config:validate && npm run architecture:check && npm run mf:doctor && npm run rbac:doctor && npm run deploy:doctor && npm run audit:packages && npm run version:audit && npm run typecheck && npm run lint && npm run config:prod && FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker && MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css && npm run audit:import-map && npm run runtime:verify && npm run bundle:budget && npm run audit:publishability && npm run audit:packed",
     "dev:shell": "npm run config:dev && npm run dev -w @moh-sso/shell",
     "dev:remote:users": "npm run config:local-remote && node scripts/dev-microfrontends.mjs users",
     "dev:remote:clients": "npm run config:local-remote && node scripts/dev-microfrontends.mjs clients",
@@ -100,7 +100,8 @@
     "preview:mf:report-scheduler": "npm run preview -w @moh-sso/report-scheduler -- --port 4115",
     "check:lockfile": "node scripts/check-lockfile.mjs",
     "test:dependency-guards": "node --test scripts/check-lockfile.test.mjs scripts/audit-package-dependencies.test.mjs",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "audit:packed": "node scripts/check-packed-packages.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

@@ -88,7 +88,9 @@ make frontend-publish
 make release
 ```
 
-Npm publishing is a separate registry operation. `frontend-publish` verifies prepared frontend versions and runs Changesets publishing for eligible public apps/packages; the private shell remains unpublished. The frontend image release builds modules from source and does not require npm publication. Publish npm modules before component tags if both operations are needed, since release checks reject existing component tags.
+Npm publishing is a separate registry operation. `frontend-publish` verifies prepared frontend versions and runs Changesets publishing for all 23 public apps/packages; the private shell remains unpublished. The frontend image release builds modules from source and does not require npm publication. Publish npm modules before component tags if both operations are needed, since release checks reject existing component tags.
+
+Run `cd frontend && npm run release:dry-run` to verify builds, runtime artifacts, and packed packages without publishing or creating tags. The dry-run restores tracked runtime configuration, import maps, and version metadata afterward. Packed-package checks verify every exported file in npm tarballs and compile consumer imports without workspace aliases, using installed third-party dependencies offline. TypeScript emits declarations with a bundled local declaration graph, preserving inferred and authored public types.
 
 ## Failures and retries
 

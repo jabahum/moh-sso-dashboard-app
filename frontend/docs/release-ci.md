@@ -15,6 +15,7 @@ npm run audit:import-map
 npm run runtime:verify
 npm run bundle:budget
 npm run audit:publishability
+npm run audit:packed
 npm run config:dev
 ```
 
@@ -38,7 +39,7 @@ This applies Changesets version bumps and updates internal dependency ranges.
 npm run release:packages
 ```
 
-This publishes npm packages according to Changesets.
+This publishes the 23 public npm apps/packages according to Changesets; the private shell is excluded. Use `npm run release:dry-run` to run release checks without registry writes or tags. Packed-consumer checks extract actual npm tarballs into an isolated temporary project, reuse installed third-party dependencies offline, verify export targets and declaration imports, and compile a consumer including a negative type assertion.
 
 ## Source Docker Deploy Job
 

@@ -192,6 +192,8 @@ jobs:
           npm run audit:import-map
           npm run runtime:verify
           npm run bundle:budget
+      - name: Verify packed npm modules in an isolated consumer
+        run: npm run audit:publishability && npm run audit:packed
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser smoke tests
