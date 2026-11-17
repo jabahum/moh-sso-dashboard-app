@@ -216,6 +216,12 @@ jobs:
           npm run audit:import-map
           npm run runtime:verify
           npm run bundle:budget
+      # The production build may consume npm pins without building local modules.
+      # Packed-consumer checks must still verify artifacts from this checkout.
+      - name: Build workspace modules for packed-package checks
+        env:
+          FRONTEND_MODULE_SOURCE: workspace
+        run: npm run build:packages && npm run build:apps
       - name: Verify packed npm modules in an isolated consumer
         run: npm run audit:publishability && npm run audit:packed
       - name: Exercise npm module selection in development and production
