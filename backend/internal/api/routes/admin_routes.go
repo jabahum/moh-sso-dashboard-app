@@ -23,8 +23,8 @@ func RegisterAdminRoutes(protected *gin.RouterGroup, deps Dependencies) {
 		deps.Modules.RegisterRoutes(module.Routes{Protected: protected, Admin: admin})
 	} else {
 		registerAdminMetricRoutes(admin, deps)
+		registerAdminAuditRoutes(admin, deps)
 	}
-	registerAdminAuditRoutes(admin, deps)
 	registerAdminNotificationRoutes(admin, deps)
 	registerAdminAnnouncementRoutes(admin, deps)
 	registerAdminRBACRoutes(admin, deps)

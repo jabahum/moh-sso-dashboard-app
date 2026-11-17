@@ -22,7 +22,9 @@ import (
 func RegisterProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {
 	registerEmailRoutes(protected, deps)
 	registerAnnouncementRoutes(protected, deps)
-	registerGeoJSONRoutes(protected, deps)
+	if deps.Modules == nil {
+		registerGeoJSONRoutes(protected, deps)
+	}
 	registerClientRoutes(protected, deps)
 	registerUserRoutes(protected, deps)
 	registerStorageLocationRoutes(protected, deps)

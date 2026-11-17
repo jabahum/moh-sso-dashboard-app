@@ -55,12 +55,12 @@ permissions or administrator requirement to its endpoints.
 | --- | --- | --- |
 | Backend dependencies | Host module plus independently versioned metrics module | Extract additional domains after their dependency boundaries are reviewed |
 | Dependency wiring | Bootstrap builds repositories, services and handlers | Move domain construction behind independent module constructors incrementally |
-| Routing | Feature registrars under `internal/features`, metrics now uses the registry | Migrate additional registrars with regression checks |
+| Routing | Feature registrars under `internal/features`; metrics, audit reads and GeoJSON use the registry | Migrate additional registrars using the tracked coverage catalogue |
 | Workers | Existing bootstrap workers plus a cleanup contract for new modules | Integrate each extracted worker with readiness and shutdown |
 | Migrations | Existing golang-migrate runner executes core migrations before metrics initialization | Writing modules will need their own migration ownership and sequencing |
-| Frontend | npm workspaces, single-spa, package staging, import maps and Changesets | Reuse these mechanisms for pinned distribution assembly |
-| Access and navigation | Keycloak, permission middleware and application manifests in the existing system registry | Package deployment configuration in Phase 4 |
-| Deployment | Existing Docker, Compose, Helm and release scripts | Extend existing entry points for distribution releases in Phase 4 |
+| Frontend | Published npm packages, single-spa, reviewed production pins and dependency lock | Track every new publishable workspace before selecting its release |
+| Access and navigation | Keycloak, permission middleware and reviewed manifests in the existing system registry | Preserve authorization and lifecycle governance during each extraction |
+| Deployment | Versioned images, immutable deployment bundles and staging promotion | Follow the documented release, compatibility and recovery workflow |
 
 ## Phase 2 packaging
 
@@ -233,3 +233,42 @@ failed-version detection, automatic/operator rollback and data preservation.
 Temporary test resources were removed. These are local verification results;
 publishing images and deploying to real staging/production require the merged
 workflows and configured operator environments and were not triggered here.
+
+## Phase 6 expansion and module workflows
+
+The next bounded expansion integrates audit read APIs and GeoJSON serving into
+the compiled registry. Their implementations remain hosted by the backend and
+report its build version. Metrics remains independently packaged and versioned.
+`DISABLED_MODULES` accepts `metrics`, `audit` and `geojson`; existing route paths,
+permissions, export rate limits and response contracts are preserved. Disabling
+audit read APIs leaves the host's security/event recording service active.
+
+The source catalogue in `docs/module-catalog.json` tracks all 23 backend features
+and 23 publishable frontend packages. [Module coverage](module-coverage.md) is
+generated from it and the reviewed production npm pins. Entries distinguish core,
+planned, registry-hosted and published stages and record dependencies, current
+worker/migration owners and next extraction work. Remaining domains are explicit
+incremental work, rather than being reported as independently packaged.
+
+[Developer workflows](module-development.md) cover registry integration, public
+ports, worker transfer, schema ownership, standalone Go/npm release verification,
+dependency pinning and contract checks. [Operator workflows](module-operations.md)
+cover runtime inventory, disablement, affected applications and rollout/recovery.
+Report Scheduler is tracked as the next worker-bearing candidate after its
+provider/delivery boundaries and worker lifecycle are reviewed.
+
+CI validates catalogue coverage against source directories, publishable
+workspaces, production pins/lock and the generated guide. A Go architecture test
+checks the catalogue against the actual compiled inventory. Standalone module
+checks now discover direct `backend/modules/*/go.mod` packages automatically.
+
+Phase 6 verification passed the full backend suite, vet, standalone module checks
+and registry/API/architecture race tests. OpenAPI validation remains current at
+366 endpoints, with no public contract changes. Seven catalogue regression tests
+and 19 frontend module-source tests passed, along with Compose/environment and
+workflow checks. Development npm pins now reference available published releases,
+and the shell typechecked against that isolated development installation.
+The fresh backend image passed real Keycloak, manifest, backup/restore and restart
+checks, including enabled/disabled audit and GeoJSON APIs and continued core audit
+recording. Temporary fixture resources were removed. No additional independent
+Go package release or live deployment was performed in this expansion step.

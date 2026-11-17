@@ -27,7 +27,7 @@ func Routes() gin.RoutesInfo {
 			field.Set(reflect.New(field.Type().Elem()))
 		}
 	}
-	modules, err := router.NewModuleRegistry(handlers, "")
+	modules, err := router.NewModuleRegistry(handlers, "", nil)
 	if err != nil {
 		panic(err)
 	}

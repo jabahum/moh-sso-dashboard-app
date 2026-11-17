@@ -1460,5 +1460,9 @@ Frontend docs:
 | [`frontend/docs/versioning.md`](frontend/docs/versioning.md) | App/package versioning strategy. |
 | [`frontend/docs/verification.md`](frontend/docs/verification.md) | Frontend verification commands. |
 | [`frontend/docs/troubleshooting.md`](frontend/docs/troubleshooting.md) | Common frontend issues. |
+| [`docs/modular-distribution.md`](docs/modular-distribution.md) | Modular distribution architecture and implementation phases. |
+| [`docs/module-coverage.md`](docs/module-coverage.md) | Tracked backend/frontend module stages, dependencies and next extraction work. |
+| [`docs/module-development.md`](docs/module-development.md) | Developer workflow for registry integration and independent package releases. |
+| [`docs/module-operations.md`](docs/module-operations.md) | Runtime inventory, API disablement and module rollout guidance. |
 
 Use this root README for system-level orientation. Use module READMEs for module-specific UI behavior and ownership, `backend/README.md` for backend implementation rules, and `docs/api-reference.md` for endpoint lookup.

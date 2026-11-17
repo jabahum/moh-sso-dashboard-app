@@ -7,17 +7,20 @@ To use npm in either environment, change that environment's `source` to `"npm"` 
 ```json
 {
   "development": {
-    "source": "npm",
-    "versions": { "@moh-sso/api": "1.3.1", "...": "..." }
+    "source": "workspace",
+    "versions": { "@moh-sso/api": "1.3.2", "...": "..." }
   },
   "production": {
-    "source": "workspace",
-    "versions": { "@moh-sso/api": "1.3.1", "...": "..." }
+    "source": "npm",
+    "lockfile": "module-locks/production/package-lock.json",
+    "versions": { "@moh-sso/api": "1.3.2", "...": "..." }
   }
 }
 ```
 
 The example abbreviates the maps; retain every entry in the real configuration. Versions must exist in npm before switching to npm mode. Publishing modules and selecting deployed versions remain separate operations. Source version bumps do not change deployment pins; update pins intentionally after publishing.
+
+Both selections currently reference the verified published `1.3.2` packages (`0.4.2` for report-scheduler), so the development npm override is usable as well as workspace development. They can be changed independently after verifying the selected releases.
 
 ## Development
 

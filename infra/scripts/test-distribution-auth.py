@@ -45,7 +45,12 @@ def request(url, *, method='GET', data=None, token=None, status=200, form=False)
         if response.code != status:
             # Tokens and request bodies are intentionally excluded from diagnostics.
             raise AssertionError(f'{method} {urllib.parse.urlparse(url).path}: expected {status}, got {response.code}; {body[:500]!r}')
-        return json.loads(body) if body else None
+        if not body:
+            return None
+        content_type = response.headers.get_content_type()
+        if content_type == 'application/json' or content_type.endswith('+json'):
+            return json.loads(body)
+        return body.decode()
 
 
 def wait_ready(url, seconds=180):
@@ -170,6 +175,11 @@ def main():
             request(api + inventory, token=outsider, status=403)
             modules = request(api + inventory, token=admin)['data']
             assert any(item['id'] == 'metrics' and item['version'] == 'v0.1.0' and item['enabled'] for item in modules), modules
+            for module_id in ('audit', 'geojson'):
+                assert any(item['id'] == module_id and item['enabled'] for item in modules), module_id
+            request(api + '/api/v1/admin/audit-logs/actions', token=admin)
+            request(api + '/api/v1/admin/audit-logs/actions', token=viewer, status=403)
+            request(api + '/api/v1/geojson/geo_water', token=admin)
             document = {'apiVersion': 'portal.moh.go.ug/v1alpha1', 'kind': 'Application',
                 'metadata': {'id': 'fixture-reports', 'name': 'Fixture Reports', 'version': '1.0.0'},
                 'spec': {'environment': 'production', 'owner': {'team': 'Fixtures', 'name': 'Test Owner', 'email': 'owner@fixture.example.org'},
@@ -233,8 +243,29 @@ def main():
             assert request(manifests + '/import', method='POST', data=body, token=admin)['data']['operation'] == 'noop'
             run(*compose, 'exec', '-T', 'backend-db', 'sh', '-ec',
                 'test "$(psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "SELECT count(*) FROM ihp_rbac_audit_events WHERE action=\'application.manifest.imported\'")" = 1')
+            backend['environment']['DISABLED_MODULES'] = 'audit,geojson'
+            path.write_text(json.dumps(model))
+            run(*compose, 'up', '-d', '--no-deps', '--no-build', '--force-recreate', 'backend')
+            api = 'http://127.0.0.1:' + run(*compose, 'port', 'backend', '9000').rsplit(':', 1)[1]
+            wait_ready(api + '/health/ready')
+            admin = token('admin')
+            modules = request(api + inventory, token=admin)['data']
+            states = {item['id']: item['enabled'] for item in modules}
+            assert states == {'metrics': True, 'audit': False, 'geojson': False}, states
+            request(api + '/api/v1/admin/audit-logs/actions', token=admin, status=404)
+            request(api + '/api/v1/geojson/geo_water', token=admin, status=404)
+
+            def audit_count():
+                return int(run(*compose, 'exec', '-T', 'backend-db', 'psql', '-U', 'postgres',
+                               '-d', 'sso_dashboard', '-At', '-c', 'SELECT count(*) FROM audit_logs'))
+
+            before = audit_count()
+            manifests = api + '/api/v1/admin/rbac/application-manifests'
+            assert request(manifests + '/import', method='POST', data=body, token=admin)['data']['operation'] == 'noop'
+            assert audit_count() > before, 'Disabling audit read APIs must not stop core event recording'
+            print('Module disablement preserves core audit recording', flush=True)
             print('PASS: real Keycloak authentication, module inventory, admin/role authorization, reviewed import, '
-                  'lifecycle activation, idempotence, backup/restore, startup preservation, clean shutdown and restart recovery')
+                  'lifecycle activation, idempotence, backup/restore, startup preservation, clean shutdown, restart recovery and module disablement')
         finally:
             subprocess.run([*compose, 'down', '-v', '--remove-orphans'], cwd=ROOT, capture_output=True)
 

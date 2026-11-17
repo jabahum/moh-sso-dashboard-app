@@ -71,7 +71,12 @@ lint: ## Run static analysis
 
 .PHONY: modules-check
 modules-check: ## Verify independently packaged Go modules
-	cd modules/metrics && GOWORK=off $(GO) vet -mod=readonly ./... && GOWORK=off $(GOTEST) -mod=readonly ./...
+	@set -eu; for module_dir in modules/*; do \
+		if [ -f "$$module_dir/go.mod" ]; then \
+			echo "Checking $$module_dir"; \
+			(cd "$$module_dir" && GOWORK=off $(GO) vet -mod=readonly ./... && GOWORK=off $(GOTEST) -mod=readonly ./...); \
+		fi; \
+	done
 
 test: modules-check ## Run all tests
 	@echo "Running tests..."

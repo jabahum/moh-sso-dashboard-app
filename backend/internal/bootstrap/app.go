@@ -170,7 +170,7 @@ func Run() {
 		AuthzResolver:  authzResolver,
 	})
 
-	modules, err := router.NewModuleRegistry(handlers.Router, cfg.DisabledModules)
+	modules, err := router.NewModuleRegistry(handlers.Router, cfg.DisabledModules, rateLimiter)
 	if err != nil {
 		panic("invalid module configuration: " + err.Error())
 	}

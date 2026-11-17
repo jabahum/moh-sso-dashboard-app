@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	auditfeature "github.com/moh-sso-dashboard/internal/features/audit"
+	geojsonfeature "github.com/moh-sso-dashboard/internal/features/geojson"
 	metricsfeature "github.com/moh-sso-dashboard/internal/features/metrics"
 	"github.com/moh-sso-dashboard/internal/http/response"
 	"github.com/moh-sso-dashboard/internal/middleware"
@@ -15,10 +17,10 @@ import (
 )
 
 func TestModuleConfiguration(t *testing.T) {
-	if _, err := NewModuleRegistry(HandlerSet{}, "unknown"); err == nil {
+	if _, err := NewModuleRegistry(HandlerSet{}, "unknown", nil); err == nil {
 		t.Fatal("unknown module was accepted")
 	}
-	r, err := NewModuleRegistry(HandlerSet{}, "")
+	r, err := NewModuleRegistry(HandlerSet{}, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +32,7 @@ func TestModuleConfiguration(t *testing.T) {
 func TestMetricsModuleRoutesAndInventory(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, disabled := range []string{"", " metrics "} {
-		registry, err := NewModuleRegistry(HandlerSet{Metrics: &metricsfeature.Handler{}}, disabled)
+		registry, err := NewModuleRegistry(HandlerSet{Metrics: &metricsfeature.Handler{}, Audit: &auditfeature.Handler{}, GeoJSON: &geojsonfeature.Handler{}}, disabled, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,7 +62,7 @@ func TestMetricsModuleRoutesAndInventory(t *testing.T) {
 				if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
 					t.Fatal(err)
 				}
-				if !body.Success || len(body.Data) != 1 || body.Data[0].Enabled != (disabled == "") {
+				if !body.Success || len(body.Data) != 3 || body.Data[0].Enabled != (disabled == "") {
 					t.Fatalf("unexpected inventory: %s", res.Body.String())
 				}
 			}

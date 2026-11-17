@@ -131,6 +131,11 @@ jobs:
           sqlc generate
           git diff --exit-code -- internal/db/sqlc
 
+      - name: Module coverage catalogue and guide
+        run: |
+          python3 infra/scripts/check-module-catalog.py
+          python3 infra/scripts/test-module-catalog.py
+
       - name: Backend vet
         working-directory: backend
         run: go vet ./...

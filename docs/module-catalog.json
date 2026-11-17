@@ -1,0 +1,411 @@
+{
+  "schemaVersion": 1,
+  "backend": [
+    {
+      "id": "admin_units",
+      "stage": "planned",
+      "scope": "Administrative geography API",
+      "moduleId": "",
+      "dependencies": ["health_context", "primary-db"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Inject health-context visibility and administrative-geography repository ports before registry migration."
+    },
+    {
+      "id": "announcements",
+      "stage": "planned",
+      "scope": "Announcements and audience delivery",
+      "moduleId": "",
+      "dependencies": [
+        "users",
+        "rbac",
+        "health_context",
+        "email",
+        "notifications",
+        "blob-storage"
+      ],
+      "workers": [],
+      "migrations": "core",
+      "next": "Separate audience, attachment and delivery ports; preserve public/protected/admin route groups and publication behavior."
+    },
+    {
+      "id": "audit",
+      "stage": "registry-hosted",
+      "scope": "Audit read, metrics and export APIs only",
+      "moduleId": "audit",
+      "dependencies": ["primary-db", "redis", "rbac", "host-audit-recorder"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Define public cache/repository ports and response contracts before independent packaging. Core event recording remains in the host."
+    },
+    {
+      "id": "auth",
+      "stage": "core",
+      "scope": "OIDC login, callback and token lifecycle",
+      "moduleId": "",
+      "dependencies": ["keycloak", "authsession", "host-audit-recorder"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Keep authentication in the trusted host; extensions consume authenticated groups and injected identity."
+    },
+    {
+      "id": "authsession",
+      "stage": "core",
+      "scope": "Opaque browser-session backing store",
+      "moduleId": "",
+      "dependencies": ["redis"],
+      "workers": [],
+      "migrations": "none",
+      "next": "Retain with authentication; do not expose stored tokens through module contracts."
+    },
+    {
+      "id": "clients",
+      "stage": "planned",
+      "scope": "Keycloak application/client administration",
+      "moduleId": "",
+      "dependencies": ["keycloak", "rbac", "host-audit-recorder"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Separate Keycloak provisioning, local registry and audit ports while retaining governance checks."
+    },
+    {
+      "id": "data_quality",
+      "stage": "planned",
+      "scope": "DQA rules, results and schedules",
+      "moduleId": "",
+      "dependencies": ["warehouse", "health_context", "primary-db"],
+      "workers": ["host DQA schedule worker"],
+      "migrations": "core and warehouse",
+      "next": "Define DQA migration ownership and a joined worker stop/readiness contract before enabling module disablement."
+    },
+    {
+      "id": "document_templates",
+      "stage": "planned",
+      "scope": "Template, sheet and column APIs",
+      "moduleId": "",
+      "dependencies": ["primary-db", "blob-storage", "host-audit-recorder"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Keep all three handler families together and define template/storage ports and publication permissions."
+    },
+    {
+      "id": "documents",
+      "stage": "planned",
+      "scope": "Document ingestion, metadata and processing",
+      "moduleId": "",
+      "dependencies": [
+        "storage_locations",
+        "blob-storage",
+        "primary-db",
+        "upload-db",
+        "notifications"
+      ],
+      "workers": ["host document processing worker"],
+      "migrations": "core and upload database",
+      "next": "Move job claims, cancellation, readiness and shutdown with the domain; define storage and processor ports first."
+    },
+    {
+      "id": "email",
+      "stage": "planned",
+      "scope": "Email administration and recipient resolution",
+      "moduleId": "",
+      "dependencies": ["rbac", "users", "health_context", "smtp", "primary-db"],
+      "workers": ["host email outbox worker"],
+      "migrations": "core",
+      "next": "Separate recipient resolution and SMTP ports; preserve retry/idempotence and migrate outbox worker ownership."
+    },
+    {
+      "id": "geojson",
+      "stage": "registry-hosted",
+      "scope": "Permission-guarded map asset serving",
+      "moduleId": "geojson",
+      "dependencies": ["geojson-assets", "rbac"],
+      "workers": [],
+      "migrations": "none",
+      "next": "Define a public asset-reader and authorization contract before independent packaging; preserve the filename allowlist."
+    },
+    {
+      "id": "health_context",
+      "stage": "core",
+      "scope": "Shared contextual scope and geography policy",
+      "moduleId": "",
+      "dependencies": ["primary-db", "observatory-db", "rbac"],
+      "workers": ["host Observatory readiness and geography replication"],
+      "migrations": "core and Observatory",
+      "next": "Keep shared access policy in the host; modules receive contextual authorization/repository ports."
+    },
+    {
+      "id": "metrics",
+      "stage": "published",
+      "scope": "Dashboard metrics service and guarded APIs",
+      "moduleId": "metrics",
+      "dependencies": ["primary-db", "rbac"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Use the published v0.1.0 package as the independent-module reference; change its pin only after release verification."
+    },
+    {
+      "id": "notifications",
+      "stage": "planned",
+      "scope": "In-app, email and SMS delivery orchestration",
+      "moduleId": "",
+      "dependencies": ["primary-db", "email", "sms", "host-audit-recorder"],
+      "workers": [
+        "host notification email delivery",
+        "host notification SMS delivery"
+      ],
+      "migrations": "core",
+      "next": "Define delivery/provider and event ports and transfer all retry workers with bounded cancellation and cleanup."
+    },
+    {
+      "id": "platform",
+      "stage": "core",
+      "scope": "Platform inventory, introspection and operations API",
+      "moduleId": "",
+      "dependencies": ["primary-db", "keycloak", "rbac"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Retain platform trust and module lifecycle controls in the host."
+    },
+    {
+      "id": "rbac",
+      "stage": "core",
+      "scope": "Application registry, governance and permissions",
+      "moduleId": "",
+      "dependencies": ["primary-db", "keycloak", "system_rbac"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Keep authoritative permission resolution, manifest review and lifecycle governance in the host."
+    },
+    {
+      "id": "report_scheduler",
+      "stage": "planned",
+      "scope": "Report schedules, execution and delivery",
+      "moduleId": "",
+      "dependencies": [
+        "primary-db",
+        "keycloak",
+        "health-bi",
+        "notifications",
+        "host-audit-recorder"
+      ],
+      "workers": ["host report scheduler worker"],
+      "migrations": "core",
+      "next": "Next worker-bearing candidate: inject report provider/delivery ports and transfer schedule claims, readiness, retries and joined shutdown."
+    },
+    {
+      "id": "sessions",
+      "stage": "core",
+      "scope": "Authenticated session management and revocation",
+      "moduleId": "",
+      "dependencies": ["keycloak", "authsession", "rbac"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Retain revocation and session guarantees alongside host authentication."
+    },
+    {
+      "id": "storage_locations",
+      "stage": "planned",
+      "scope": "Storage configuration and location administration",
+      "moduleId": "",
+      "dependencies": ["primary-db", "blob-storage", "host-audit-recorder"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Define storage-factory/secret references without leaking credentials; preserve document consumers."
+    },
+    {
+      "id": "surveillance",
+      "stage": "planned",
+      "scope": "Surveillance and outbreak APIs",
+      "moduleId": "",
+      "dependencies": [
+        "health_context",
+        "primary-db",
+        "observatory-db",
+        "geojson"
+      ],
+      "workers": [],
+      "migrations": "core and Observatory",
+      "next": "Review primary/Observatory repository boundaries and schema ownership before packaging routes."
+    },
+    {
+      "id": "system_rbac",
+      "stage": "core",
+      "scope": "Seed application and system behavior policy",
+      "moduleId": "",
+      "dependencies": ["primary-db", "health_context"],
+      "workers": [],
+      "migrations": "core",
+      "next": "Retain bootstrap policy and manifest configuration precedence in the host."
+    },
+    {
+      "id": "users",
+      "stage": "planned",
+      "scope": "User administration and bulk import APIs",
+      "moduleId": "",
+      "dependencies": [
+        "keycloak",
+        "primary-db",
+        "notifications",
+        "host-audit-recorder"
+      ],
+      "workers": [],
+      "migrations": "core",
+      "next": "Define identity/import and delivery ports while preserving user synchronization and existing role checks."
+    },
+    {
+      "id": "visualiser",
+      "stage": "planned",
+      "scope": "Warehouse visualisation and query APIs",
+      "moduleId": "",
+      "dependencies": ["warehouse", "health_context"],
+      "workers": [],
+      "migrations": "external warehouse",
+      "next": "Inject query and contextual-scope ports; retain warehouse failure/readiness behavior."
+    }
+  ],
+  "frontend": [
+    {
+      "package": "@moh-sso/announcements",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["announcements"]
+    },
+    {
+      "package": "@moh-sso/audit",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["audit"]
+    },
+    {
+      "package": "@moh-sso/clients",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["clients", "rbac"]
+    },
+    {
+      "package": "@moh-sso/data-validation",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["data_quality"]
+    },
+    {
+      "package": "@moh-sso/data-visualizer",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["visualiser"]
+    },
+    {
+      "package": "@moh-sso/documents",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": [
+        "documents",
+        "document_templates",
+        "storage_locations"
+      ]
+    },
+    {
+      "package": "@moh-sso/e-services",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["clients", "rbac"]
+    },
+    {
+      "package": "@moh-sso/email",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["email"]
+    },
+    {
+      "package": "@moh-sso/issue-tracker",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["data_quality"]
+    },
+    {
+      "package": "@moh-sso/rbac",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["rbac", "health_context"]
+    },
+    {
+      "package": "@moh-sso/report-browser",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/report-scheduler",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["report_scheduler"]
+    },
+    {
+      "package": "@moh-sso/surveillance",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["surveillance", "geojson"]
+    },
+    {
+      "package": "@moh-sso/users",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": ["users"]
+    },
+    {
+      "package": "@moh-sso/utilities",
+      "kind": "application",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/api",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/auth",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": ["auth", "authsession"]
+    },
+    {
+      "package": "@moh-sso/config",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/microfrontend",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/state",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/types",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/ui",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": []
+    },
+    {
+      "package": "@moh-sso/utils",
+      "kind": "shared",
+      "stage": "published",
+      "backendFeatures": []
+    }
+  ]
+}
