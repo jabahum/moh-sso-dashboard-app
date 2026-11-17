@@ -165,6 +165,13 @@ def main():
 
             wait_for("/portal/", lambda r: r[0] == 200)
             wait_for("/health/ready", lambda r: r[0] == 200)
+            # Exercise the actual Compose probe against the IPv4-only gateway.
+            model = subprocess.run(['docker', 'compose', '-f', str(ROOT / 'infra/compose/docker-compose-nginx.yml'),
+                                    'config', '--format', 'json'], env=env, text=True,
+                                   capture_output=True, check=True)
+            healthcheck = json.loads(model.stdout)['services']['nginx']['healthcheck']['test']
+            assert healthcheck[0] == 'CMD-SHELL', healthcheck
+            assert docker('exec', gateway, 'sh', '-ec', healthcheck[1]) == 'ok'
             for prefix in ("", "/portal"):
                 for path, expected_cache in (
                     ("/config.js", "no-store"), ("/config.production.js", "no-store"),
