@@ -4,6 +4,7 @@
 Only registry transport and the Compose project name are adapted for isolation.
 The server's preflight, snapshots, up, verification, state and rollback run intact.
 """
+import argparse
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import tempfile
 import uuid
 
 from cd_server import Server
+from cd_bundle import distribution_metadata
 
 ROOT = Path(__file__).resolve().parents[2]
 COMMIT = 'a' * 40
@@ -40,6 +42,9 @@ class LocalTransport:
             override_index = max(i for i, arg in enumerate(args) if arg == '-f') + 1
             original = Path(args[override_index])
             model = json.loads(original.read_text())
+            # The transaction fixture has no public gateway. Its production
+            # Compose/trusted-proxy wiring is covered by test-compose.py.
+            model['services'].pop('nginx', None)
             for service in model['services'].values():
                 service['image'] = self.references[service['image']]
                 service['pull_policy'] = 'never'
@@ -51,6 +56,9 @@ class LocalTransport:
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--mode', choices=('prod', 'distribution'), default='prod')
+    args = parser.parse_args()
     project = 'moh-cd-fixture-' + uuid.uuid4().hex[:12]
     tags, transport = [], None
     with tempfile.TemporaryDirectory(prefix=project) as tmp:
@@ -59,6 +67,9 @@ def main():
             imports = json.loads((ROOT / 'frontend/public/import-map.json').read_text())['imports']
             imports = {name: '/portal/mf/' + name.split('/')[-1] + '.js' for name in imports if name.startswith('@moh-sso/')}
             (root / 'imports.json').write_text(json.dumps({'imports': imports}))
+            dependencies = distribution_metadata()
+            (root / 'module-pins.json').write_text(json.dumps({name: {'name': name, 'version': version}
+                for name, version in dependencies['frontend']['versions'].items()}))
             (root / 'server.cjs').write_text('''
 const http = require('node:http');
 const fs = require('node:fs');
@@ -67,7 +78,7 @@ const commit = process.env.FIXTURE_COMMIT;
 if (process.env.ROLE === 'backend' && !fs.existsSync('/data/marker')) fs.writeFileSync('/data/marker', 'preserved');
 http.createServer((req,res) => {
   if (req.url === '/version') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({success:true,data:{version:process.env.BROKEN_VERSION==='1'?'0.0.0':version,commit}})); }
-  if (req.url === '/portal/version-manifest.json') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({service:{version,commit}})); }
+  if (req.url === '/portal/version-manifest.json') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({service:{version,commit},apps:{},packages:JSON.parse(fs.readFileSync('/fixture/module-pins.json'))})); }
   if (req.url === '/setting') return res.end(process.env.FIXTURE_SETTING);
   if (req.url === '/portal/import-map.json') {res.setHeader('Content-Type','application/json'); return res.end(fs.readFileSync('/fixture/imports.json'));}
   if (req.url === '/portal/') {res.setHeader('Content-Type','text/html'); return res.end('<!doctype html><div id="root"></div><script src="/portal/assets/index-fixture.js"></script>');}
@@ -81,7 +92,7 @@ ARG COMMIT
 LABEL org.opencontainers.image.version=$VERSION org.opencontainers.image.revision=$COMMIT
 ENV FIXTURE_VERSION=$VERSION FIXTURE_COMMIT=$COMMIT
 WORKDIR /fixture
-COPY server.cjs imports.json ./
+COPY server.cjs imports.json module-pins.json ./
 CMD ["node", "server.cjs"]
 ''')
             references, manifests = {}, []
@@ -98,16 +109,21 @@ CMD ["node", "server.cjs"]
                     images[component] = image
                     references[image['repository'] + '@' + identity] = identity
                     references[f"{image['repository']}:{version}@{identity}"] = identity
-                manifests.append({'schema_version': 1, 'source_commit': COMMIT, 'release_id': f'{COMMIT}-{number}-1', 'images': images})
+                manifests.append({'schema_version': 1, 'source_commit': COMMIT, 'release_id': f'{COMMIT}-{number}-1', 'images': images,
+                                  **({'distribution': dependencies} if args.mode == 'distribution' else {})})
             transport = LocalTransport(project, references)
             env_file = root / 'fixture.env'
             env_file.write_text('FIXTURE_SETTING=A\nBROKEN_VERSION=0\n')
             secret = root / 'secret'
             secret.write_text('fixture-only')
             config = root / 'config.json'
-            config.write_text(json.dumps({'schema_version': 1, 'mode': 'prod', 'deploy_root': str(root),
+            keys = ['DB_PASSWORD_SECRET_FILE', 'KEYCLOAK_ADMIN_SECRET_FILE', 'KEYCLOAK_WEB_SECRET_FILE']
+            if args.mode == 'distribution':
+                keys.append('OBSERVATORY_DB_PASSWORD_SECRET_FILE')
+            config.write_text(json.dumps({'schema_version': 1, 'mode': args.mode, 'deploy_root': str(root),
                                          'env_file': str(env_file), 'verify_public_edge': False, 'wait_timeout': 30,
-                                         'secret_files': {key: str(secret) for key in ('DB_PASSWORD_SECRET_FILE', 'KEYCLOAK_ADMIN_SECRET_FILE', 'KEYCLOAK_WEB_SECRET_FILE')}}))
+                                         'gateway_trusted_proxies_file': str(secret),
+                                         'secret_files': {key: str(secret) for key in keys}}))
             server = Server(config, runner=transport)
             releases = []
             for manifest in manifests:
@@ -122,7 +138,8 @@ CMD ["node", "server.cjs"]
                             'healthcheck': {'test': ['CMD', 'wget', '-qO-', f'http://127.0.0.1:{9000 if component == "backend" else 3000}/health/ready'], 'interval': '1s', 'timeout': '2s', 'retries': 10}}
                             for component in ('backend', 'frontend')}
                 services['backend']['volumes'] = ['fixture_data:/data']
-                (compose / 'docker-compose.prod.yml').write_text(json.dumps({'services': services, 'volumes': {'fixture_data': {}}}))
+                filename = 'docker-compose.distribution.release.yml' if args.mode == 'distribution' else 'docker-compose.prod.yml'
+                (compose / filename).write_text(json.dumps({'services': services, 'volumes': {'fixture_data': {}}}))
                 releases.append(release)
             server.deploy(releases[0], 'fixture')
             before = json.loads((server.state / 'deployment.json').read_text())

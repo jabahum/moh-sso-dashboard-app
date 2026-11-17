@@ -40,7 +40,7 @@ jobs:
             suffix: backend
           - service: frontend
             context: .
-            dockerfile: infra/docker/frontend/Dockerfile
+            dockerfile: infra/docker/frontend/Dockerfile.npm-modules
             suffix: frontend
 
     steps:

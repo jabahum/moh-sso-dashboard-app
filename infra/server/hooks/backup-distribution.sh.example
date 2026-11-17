@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Install as a private executable pre_deploy_hook; set these operator-owned paths.
+# Requires a previously running distribution. Run a first-install backup policy
+# separately when there is no existing data. Test restores before relying on it.
+set -euo pipefail
+umask 077
+project=moh-sso-staging
+backup_root=/var/backups/moh-sso-staging
+destination="$backup_root/$(date -u +%Y%m%dT%H%M%SZ)-$$"
+mkdir -p "$destination"
+container_for() {
+  local container
+  container=$(docker ps -q --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=$1")
+  [[ -n "$container" && "$container" != *$'\n'* ]]
+  printf '%s' "$container"
+}
+for service in backend-db observatory-db; do
+  container=$(container_for "$service")
+  docker exec "$container" sh -ec 'exec pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "$destination/$service.sql.gz.partial"
+  gzip -t "$destination/$service.sql.gz.partial"
+  mv "$destination/$service.sql.gz.partial" "$destination/$service.sql.gz"
+done
+container=$(container_for backend)
+docker run --rm --volumes-from "$container:ro" alpine:3.19 tar -C /data/uploads -czf - . > "$destination/uploads.tar.gz.partial"
+tar -tzf "$destination/uploads.tar.gz.partial" > /dev/null
+mv "$destination/uploads.tar.gz.partial" "$destination/uploads.tar.gz"
+printf 'Distribution backup completed: %s\n' "$destination"

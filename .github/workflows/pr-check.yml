@@ -11,6 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  distribution:
+    name: Distribution installation gate
+    uses: ./.github/workflows/distribution-check.yml
+
   nginx:
     name: Production Nginx contracts
     runs-on: ubuntu-latest

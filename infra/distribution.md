@@ -81,7 +81,9 @@ not reverse migrations. Restore a verified backup if an older image cannot use
 the upgraded schema. Do not automatically force dirty migrations or run down
 migrations against production data.
 
-This phase builds locally. GHCR publication and release promotion are Phase 5.
+For verified GHCR publication and staging-to-production promotion, see
+`infra/server/README.md` and `infra/server/deploy.distribution.json.example`.
+Local builds remain useful for development and isolated verification.
 
 ## Verification
 
@@ -101,4 +103,18 @@ Redis in a uniquely named project, verifies public configuration and module
 versions, recreates the core database container to verify persistence, then
 removes its fixture containers and volumes. It checks the backend version command
 but does not start the authenticated backend or contact external integrations.
-Full authenticated installation/promotion verification remains in Phase 5.
+Use the authenticated and transaction checks below for broader coverage.
+
+The authenticated check uses a disposable real Keycloak and fixture users:
+
+```sh
+python3 infra/scripts/test-distribution-auth.py \
+  --backend-image moh-sso-distribution-backend:0.1.0
+python3 infra/scripts/test-cd-runtime.py --mode distribution
+```
+
+It checks real tokens and role restrictions, manifest review/activation, audit
+idempotence, database and upload backup/restore, shutdown and restart preservation.
+The deployment transaction check uses small container fixtures to verify image
+identity, failed rollout detection, automatic/operator rollback and persistent
+data. These checks create unique projects and remove their fixture resources.

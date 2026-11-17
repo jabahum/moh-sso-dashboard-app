@@ -15,6 +15,48 @@ VERSION = re.compile(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?')
 REPOSITORY = re.compile(r'ghcr\.io/[a-z0-9_.-]+/[a-z0-9_.-]+')
 
 
+def validate_distribution(data):
+    if not isinstance(data, dict) or data.get('schema_version') != 1:
+        raise ValueError('Invalid distribution dependency metadata')
+    for group, keys in [('backend', ('goModSha256', 'goSumSha256')), ('frontend', ('lockSha256',))]:
+        entry = data.get(group, {})
+        if not isinstance(entry, dict) or any(not re.fullmatch(r'[0-9a-f]{64}', entry.get(key, '')) for key in keys):
+            raise ValueError('Invalid distribution dependency checksum')
+    versions = data['frontend'].get('versions', {})
+    if not isinstance(versions, dict) or not versions or any(
+            not re.fullmatch(r'@moh-sso/[a-z0-9-]+', key) or not isinstance(value, str) or not VERSION.fullmatch(value)
+            for key, value in versions.items()):
+        raise ValueError('Distribution frontend modules must use exact versions')
+    modules = data['backend'].get('modules', {})
+    if not isinstance(modules, dict) or not modules or any(
+            not key.startswith('github.com/mohuganda/moh-sso-dashboard/backend/modules/') or
+            not isinstance(value, str) or not VERSION.fullmatch(value.removeprefix('v')) or not value.startswith('v')
+            for key, value in modules.items()):
+        raise ValueError('Invalid compiled module version metadata')
+    return data
+
+
+def distribution_metadata():
+    production = json.loads((ROOT / 'frontend/module-sources.json').read_text())['production']
+    if production.get('source') != 'npm' or production.get('lockfile') != 'module-locks/production/package-lock.json':
+        raise ValueError('Distribution releases require the committed production npm lock')
+    lock_path = ROOT / 'frontend' / production['lockfile']
+    lock = json.loads(lock_path.read_text())
+    versions = production['versions']
+    if lock.get('lockfileVersion') != 3 or lock.get('packages', {}).get('', {}).get('dependencies') != versions:
+        raise ValueError('Distribution npm lock/pins mismatch')
+    for name, version in versions.items():
+        item = lock['packages'].get('node_modules/' + name, {})
+        if item.get('version') != version or not item.get('integrity') or item.get('link') or not item.get('resolved', '').startswith('https://'):
+            raise ValueError('Distribution npm artifact lacks registry integrity')
+    go_mod = ROOT / 'backend/go.mod'
+    modules = dict(re.findall(r'^\s*(?:require\s+)?(github\.com/mohuganda/moh-sso-dashboard/backend/modules/\S+)\s+(v\S+)', go_mod.read_text(), re.MULTILINE))
+    digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+    return validate_distribution({'schema_version': 1,
+        'backend': {'goModSha256': digest(go_mod), 'goSumSha256': digest(ROOT / 'backend/go.sum'), 'modules': modules},
+        'frontend': {'lockSha256': digest(lock_path), 'versions': versions}})
+
+
 def validate_manifest(data):
     if data.get('schema_version') != 1 or not HEX.fullmatch(data.get('source_commit', '')):
         raise ValueError('Invalid manifest schema/source commit')
@@ -33,6 +75,8 @@ def validate_manifest(data):
             raise ValueError('Image/source commits must match for a paired deployment')
         if not image['repository'].endswith('-' + component):
             raise ValueError('Image repository/component mismatch')
+    if 'distribution' in data:
+        validate_distribution(data['distribution'])
     return data
 
 
@@ -93,6 +137,7 @@ def package(metadata_dir, output, commit, run_id, attempt):
             'source_commit': commit, 'images': {}}
     for component in ('backend', 'frontend'):
         data['images'][component] = json.loads((metadata_dir / f'{component}.json').read_text())
+    data['distribution'] = distribution_metadata()
     validate_manifest(data)
     output.mkdir(parents=True, exist_ok=True)
     manifest = output / 'deployment.json'
@@ -132,9 +177,14 @@ def extract(archive, checksum, destination):
         if 'deployment.json' not in names:
             raise ValueError('Deployment manifest missing')
         data = validate_manifest(json.load(tar.extractfile('deployment.json')))
-        for required in ('environment-contract.json', 'infra/scripts/cd_server.py', 'infra/scripts/compose.sh',
+        required_files = ('environment-contract.json', 'infra/scripts/cd_server.py', 'infra/scripts/compose.sh',
                          'infra/scripts/verify-frontend-deployment.mjs', 'infra/compose/docker-compose.yml',
-                         'infra/compose/docker-compose.prod.yml', 'infra/compose/docker-compose-nginx.yml'):
+                         'infra/compose/docker-compose.prod.yml', 'infra/compose/docker-compose-nginx.yml')
+        if 'distribution' in data:
+            required_files += ('infra/compose/docker-compose.distribution.override.yml',
+                               'infra/compose/docker-compose.distribution.release.yml',
+                               'infra/compose/docker-compose.distribution.release.override.yml')
+        for required in required_files:
             if required not in names:
                 raise ValueError('Incomplete deployment infrastructure bundle')
         validate_environment_contract(json.load(tar.extractfile('environment-contract.json')))

@@ -63,6 +63,21 @@ class ImageVersions(unittest.TestCase):
 
 
 class BundleTests(unittest.TestCase):
+    def test_distribution_metadata_binds_exact_pins_and_dependency_checksums(self):
+        data = bundle.distribution_metadata()
+        self.assertEqual(data['frontend']['versions']['@moh-sso/announcements'], '1.3.2')
+        self.assertEqual(data['backend']['modules']['github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics'], 'v0.1.0')
+        for field in ('version', 'checksum', 'module'):
+            changed = json.loads(json.dumps(data))
+            if field == 'version':
+                changed['frontend']['versions']['@moh-sso/announcements'] = '^1.3.2'
+            elif field == 'checksum':
+                changed['frontend']['lockSha256'] = 'unverified'
+            else:
+                changed['backend']['modules'] = {'local/metrics': 'dev'}
+            with self.assertRaises(ValueError):
+                bundle.validate_distribution(changed)
+
     def test_manifest_rejects_incomplete_mutable_or_mixed_commit_images(self):
         bundle.validate_manifest(manifest())
         for mutation in ('digest', 'tag', 'commit', 'pair'):
@@ -139,6 +154,12 @@ class RuntimeVerification(unittest.TestCase):
     def test_actual_backend_envelope_passes_runtime_verification(self):
         self.server.verify(self.record)
 
+    def test_distribution_rejects_runtime_frontend_versions_without_matching_pins(self):
+        self.record['manifest']['distribution'] = bundle.distribution_metadata()
+        with self.assertRaisesRegex(ValueError, 'runtime modules differ'):
+            self.server.verify(self.record)
+
+
     def test_failed_or_malformed_version_responses_are_rejected(self):
         for payload in ({'success': False, 'data': self.payload['data']},
                         {'success': True, 'data': []}, self.payload['data'], []):
@@ -171,6 +192,36 @@ class RuntimeVerification(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Public API runtime metadata mismatch'):
                 self.server.verify(self.record)
 
+
+class DistributionDeployment(unittest.TestCase):
+    def test_candidate_records_project_and_requires_dependency_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env_file = root / 'prod.env'
+            env_file.write_text('ENVIRONMENT=production\n')
+            config = root / 'config.json'
+            config.write_text(json.dumps({'schema_version': 1, 'mode': 'distribution',
+                'project_name': 'moh-staging', 'deploy_root': str(root),
+                'env_file': str(env_file), 'verify_public_edge': False,
+                'gateway_trusted_proxies_file': str(root / 'proxies'), 'secret_files': {}}))
+            server = Server(config)
+            release = root / 'releases' / manifest()['release_id']
+            release.mkdir(parents=True)
+            (release / 'deployment.json').write_text(json.dumps(manifest()))
+            with self.assertRaisesRegex(ValueError, 'pinned dependency metadata'):
+                server.candidate(release)
+            data = manifest()
+            data['distribution'] = bundle.distribution_metadata()
+            (release / 'deployment.json').write_text(json.dumps(data))
+            record = server.candidate(release)
+            self.assertEqual(record['project_name'], 'moh-staging')
+            self.assertEqual(server.environment(record)['DISTRIBUTION_TAG'], 'sha-' + COMMIT[:7])
+            self.assertIn('nginx', json.loads(Path(record['override_file']).read_text())['services'])
+            server.config['project_name'] = 'new-setting-after-deploy'
+            calls = []
+            server.runner = lambda args, **kwargs: calls.append(args) or ''
+            server.compose(record, 'config', '--quiet')
+            self.assertEqual(calls[0][calls[0].index('--project-name') + 1], 'moh-staging')
 
 class Transactions(unittest.TestCase):
     def setUp(self):
@@ -219,6 +270,19 @@ class Transactions(unittest.TestCase):
                              f"{image['repository']}:{image['version']}@{image['digest']}")
         self.assertEqual(Path(state['current']['env_file']).stat().st_mode & 0o777, 0o600)
         self.assertNotIn('private-value', (self.root / 'state/history.jsonl').read_text())
+
+    def test_existing_installation_cannot_change_project_or_topology(self):
+        self.server.deploy(self.release('1'), 'tester')
+        original = self.state()
+        candidate = self.release('2')
+        self.commands.clear()
+        for mode, project in [('distribution', 'moh-sso-distribution'), ('prod', 'another-project')]:
+            self.server.config['mode'] = mode
+            self.server.project = project
+            with self.assertRaisesRegex(ValueError, 'topology/project'):
+                self.server.deploy(candidate, 'tester')
+            self.assertEqual(self.state(), original)
+            self.assertEqual(self.commands, [])
 
     def test_duplicate_automatic_event_verifies_current_without_rollout_or_losing_rollback(self):
         self.server.deploy(self.release('1'), 'tester')

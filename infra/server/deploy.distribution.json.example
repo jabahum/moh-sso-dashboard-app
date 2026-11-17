@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "mode": "distribution",
+  "project_name": "moh-sso-staging",
+  "deploy_root": "/opt/moh-sso-staging",
+  "env_file": "/etc/moh-sso-staging/prod.env",
+  "secret_files": {
+    "DB_PASSWORD_SECRET_FILE": "/etc/moh-sso-staging/secrets/db_password.txt",
+    "OBSERVATORY_DB_PASSWORD_SECRET_FILE": "/etc/moh-sso-staging/secrets/observatory_db_password.txt",
+    "KEYCLOAK_ADMIN_SECRET_FILE": "/etc/moh-sso-staging/secrets/keycloak_admin_client_secret.txt",
+    "KEYCLOAK_WEB_SECRET_FILE": "/etc/moh-sso-staging/secrets/keycloak_web_client_secret.txt"
+  },
+  "gateway_trusted_proxies_file": "/etc/moh-sso-staging/trusted-proxies.conf",
+  "public_base_url": "https://staging.example.org",
+  "verify_public_edge": true,
+  "wait_timeout": 360,
+  "verifier_image": "node:22-alpine",
+  "pre_deploy_hook": null
+}

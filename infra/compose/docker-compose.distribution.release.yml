@@ -1,0 +1,7 @@
+# Deploy the verified image pair from a bundle, without source-build settings.
+name: moh-sso-distribution
+include:
+  - path:
+      - docker-compose-nginx.yml
+      - docker-compose.distribution.override.yml
+      - docker-compose.distribution.release.override.yml

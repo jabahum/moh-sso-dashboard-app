@@ -200,3 +200,36 @@ The new isolated Compose smoke test verified the real frontend image, secret
 mounts, database/Redis readiness, module versions and core database persistence
 across container recreation. It cleaned up its own containers and volumes.
 Authenticated external Keycloak and production deployment were not exercised.
+
+## Phase 5 release and installation verification
+
+The existing GHCR image workflow now builds the frontend with the pinned npm
+Dockerfile. Its validation dependency includes the new distribution installation
+gate, which builds both images before exercising runtime, authentication and
+deployment recovery. Component version/SHA tags and the existing image-pair
+deployment bundle remain the release mechanism.
+
+Bundles record the compiled module versions, exact frontend versions and hashes
+of `go.mod`, `go.sum` and the production npm lock. Distribution server deployments
+use digest-pinned images with no source-build settings. Runtime verification
+compares the complete frontend module set with the approved pins. Deployment
+snapshots retain their Compose project name, and an existing installation cannot
+silently change topology/project. Legacy deployment records remain compatible.
+
+Use `infra/server/deploy.distribution.json.example` for separate staging and
+production configurations. The existing trusted-build selector and GitHub
+environment deployment workflow promote the same successful main-build bundle
+by run ID. The operator guide describes staging-first settings, secret files,
+backup hooks, schema compatibility and rollback.
+
+Verification passed 32 deployment/archive contracts, 14 Compose/environment
+contracts and 8 trusted-build/promotion tests. Workflow lint and the new backup
+hook's shell checks passed. Isolated tests using the real backend and Keycloak
+26.0.5 verified fresh migrations, real token/role authorization, module inventory,
+manifest import/approval, audit idempotence, startup preservation, graceful
+shutdown, restart, and restoration of both databases and uploads. Container
+transaction tests passed for legacy and distribution deployments, including
+failed-version detection, automatic/operator rollback and data preservation.
+Temporary test resources were removed. These are local verification results;
+publishing images and deploying to real staging/production require the merged
+workflows and configured operator environments and were not triggered here.

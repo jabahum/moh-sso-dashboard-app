@@ -43,7 +43,7 @@ class ComposeTests(unittest.TestCase):
             manifest = cd_bundle.package(metadata, root / 'bundle', commit, '1', '1')
             release = root / 'releases' / manifest['release_id']
             cd_bundle.extract(root / 'bundle/deployment.tar.gz', root / 'bundle/deployment.tar.gz.sha256', release)
-            for mode in ('prod', 'remote', 'gateway'):
+            for mode in ('prod', 'remote', 'gateway', 'distribution'):
                 configuration = root / 'deploy.json'
                 trust = ROOT / 'infra/nginx/trusted-proxies.conf'
                 configuration.write_text(json.dumps({
@@ -58,8 +58,11 @@ class ComposeTests(unittest.TestCase):
                 for component, image in images.items():
                     self.assertEqual(model['services'][component]['image'],
                                      f"{image['repository']}:{image['version']}@{image['digest']}")
-                self.assertEqual(model['name'], 'moh-sso-dashboard')
-                if mode == 'gateway':
+                self.assertEqual(model['name'], 'moh-sso-distribution' if mode == 'distribution' else 'moh-sso-dashboard')
+                if mode == 'distribution':
+                    for component in images:
+                        self.assertNotIn('build', model['services'][component])
+                if mode in ('gateway', 'distribution'):
                     mounts = model['services']['nginx']['volumes']
                     self.assertEqual(next(v['source'] for v in mounts if v['target'] == '/etc/nginx/trusted-proxies.conf'), str(trust))
                 cd_bundle.extract(root / 'bundle/deployment.tar.gz', root / 'bundle/deployment.tar.gz.sha256', release)
