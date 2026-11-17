@@ -1,5 +1,25 @@
 # @moh-sso/microfrontend
 
+## 1.4.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/auth@1.4.0
+  - @moh-sso/state@1.4.0
+  - @moh-sso/ui@1.4.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.3.2`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.3.2
 
 ### Patch Changes
@@ -11,6 +31,7 @@
   - @moh-sso/ui@1.3.2
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.3.1`.
