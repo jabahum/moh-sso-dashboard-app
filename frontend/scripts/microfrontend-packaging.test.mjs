@@ -71,3 +71,29 @@ test("app packages keep shared providers and state external", async () => {
     await closeViteTestServer();
   }
 });
+
+test("published lifecycle uses the host React renderer and JSX runtime", async () => {
+  try {
+    const result = await loadConfigFromFile(
+      { command: "build", mode: "production" },
+      join(frontendRoot, "packages/microfrontend/vite.config.ts"),
+    );
+    const output = await build({
+      ...result.config,
+      configFile: false,
+      logLevel: "silent",
+      build: { ...result.config.build, write: false },
+    });
+    const chunks = [output].flat().flatMap((result) => result.output)
+      .filter((item) => item.type === "chunk");
+    const imports = chunks.flatMap((chunk) => chunk.imports);
+    assert.ok(imports.includes("react-dom/client"), "The host must supply the renderer");
+    assert.ok(imports.includes("react/jsx-runtime"), "The host must supply the JSX runtime");
+    for (const chunk of chunks) {
+      assert.equal(chunk.code.includes("Incompatible React versions"), false);
+      assert.equal(chunk.code.includes("checkDCE"), false);
+    }
+  } finally {
+    await closeViteTestServer();
+  }
+});

@@ -49,8 +49,9 @@ export function definePackageConfig({ packageUrl, name }: PackageConfigOptions) 
       },
       rollupOptions: {
         external: [
-          "react",
-          "react-dom",
+          // Share the host renderer and JSX runtimes as well as the root peers.
+          // Exact root names alone let react-dom/client embed its own version.
+          /^react(?:-dom)?(?:\/|$)/,
           "react-redux",
           "react-router-dom",
           "@reduxjs/toolkit",
