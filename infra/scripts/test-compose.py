@@ -128,6 +128,17 @@ class ComposeTests(unittest.TestCase):
             declared = set(re.findall(r'^([A-Z][A-Z0-9_]+)=', (ROOT / example).read_text(), re.M))
             self.assertFalse(fields - infrastructure - declared, (example, fields - infrastructure - declared))
 
+    def test_disabled_modules_reach_only_backend(self):
+        for filename, example in [('infra/compose/docker-compose.yml', 'infra/env/prod.env.example'),
+                                  ('infra/compose/docker-compose.dev.yml', 'infra/env/dev.env.example')]:
+            with self.subTest(compose=filename), tempfile.TemporaryDirectory() as tmp:
+                env_file = Path(tmp) / 'application.env'
+                env_file.write_text((ROOT / example).read_text().replace(
+                    '\nDISABLED_MODULES=\n', '\nDISABLED_MODULES=metrics\n'))
+                services = config(filename, str(env_file), DEV_ENV_FILE=str(env_file))['services']
+                self.assertEqual(services['backend']['environment']['DISABLED_MODULES'], 'metrics')
+                self.assertNotIn('DISABLED_MODULES', services['frontend']['environment'])
+
     def test_production_database_redis_secrets_and_remote_binding(self):
         services = config('infra/compose/docker-compose.prod.yml', DB_USER='custom_owner', DB_NAME='custom_database',
                           REDIS_PASSWORD='fixture-password', APP_BIND_ADDRESS='10.0.0.20')['services']
