@@ -88,6 +88,12 @@ make release-frontend
 
 Pushing `frontend/v<shell-version>` automatically runs **Frontend Release** in `mohuganda/moh-sso-dashboard`. It validates the shell version against the tag, installs dependencies, builds and verifies every module, publishes eligible public apps/packages through Changesets, and confirms each exact version exists on npm. Only then does it publish the GitHub Release notes. The private shell stays unpublished. No extra `frontend-publish` command is needed for a normal CI release.
 
+To publish prepared package versions before updating deployment pins, manually
+run **Frontend Release** from `main`. This runs the same build, publishing and
+registry checks without creating a component tag or GitHub release notes. After
+the versions are confirmed on npm, update the reviewed production pins and lock,
+then build the frontend image. Tag-triggered releases retain their normal notes.
+
 Configure one authentication method before the first release:
 
 - Add the upstream repository's `NPM_TOKEN` Actions secret using an npm granular token with permission to publish the `@moh-sso` scope and bypass publishing 2FA. This can bootstrap packages that do not yet exist.

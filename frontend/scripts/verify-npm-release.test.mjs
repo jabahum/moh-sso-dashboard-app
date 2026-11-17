@@ -48,6 +48,14 @@ test("partially published releases fail and identify missing versions", async ()
     /incomplete.*@moh-sso\/users@1.3.1/,
   );
 });
+test("default retries tolerate registry propagation beyond the initial checks", async () => {
+  let lookups = 0;
+  await verifyNpmRelease([module], {
+    lookup: async () => response(++lookups < 6 ? 404 : 200),
+    wait: async () => {},
+  });
+  assert.equal(lookups, 6);
+});
 test("transient registry failures are retried", async () => {
   let count = 0;
   await verifyNpmRelease([module], {
@@ -112,9 +120,11 @@ test("tag releases build and publish npm modules before publishing GitHub releas
     readFileSync(join(root, "../.github/workflows/frontend-release.yml"), "utf8"),
   );
   assert.deepEqual(workflow.on.push.tags, ["frontend/v*.*.*"]);
+  assert.equal(workflow.on.workflow_dispatch, null);
   assert.equal(workflow.on.pull_request, undefined);
   const job = workflow.jobs.release;
   assert.match(job.if, /github.repository == 'mohuganda\/moh-sso-dashboard'/);
+  assert.match(job.if, /github.ref == 'refs\/heads\/main'/);
   assert.equal(job.permissions["id-token"], "write");
   const steps = job.steps;
   const index = (run) => steps.findIndex((step) => step.run === run);
@@ -125,4 +135,8 @@ test("tag releases build and publish npm modules before publishing GitHub releas
   const notes = steps.findIndex((step) => step.uses?.startsWith("softprops/action-gh-release@"));
   assert.ok(check >= 0 && build > check && publish > build && confirm > publish && notes > confirm);
   assert.equal(steps[publish].env.NODE_AUTH_TOKEN, "${{ secrets.NPM_TOKEN }}");
+  for (const step of steps.filter((step) =>
+    step.name === "Validate component version" || step.name?.includes("notes"))) {
+    assert.equal(step.if, "github.event_name == 'push'");
+  }
 });

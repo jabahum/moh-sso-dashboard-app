@@ -1,6 +1,7 @@
 name: Frontend Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "frontend/v*.*.*"
@@ -14,7 +15,9 @@ concurrency:
 
 jobs:
   release:
-    if: github.repository == 'mohuganda/moh-sso-dashboard'
+    if: >-
+      github.repository == 'mohuganda/moh-sso-dashboard' &&
+      (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -36,6 +39,7 @@ jobs:
       - name: Install npm with trusted publishing support
         run: npm install --global npm@11
       - name: Validate component version
+        if: github.event_name == 'push'
         working-directory: .
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -63,12 +67,15 @@ jobs:
       - name: Confirm every frontend module version is on npm
         run: npm run release:verify-npm
       - name: Generate notes for every frontend module
+        if: github.event_name == 'push'
         working-directory: .
         run: node scripts/release-notes.mjs frontend
       - name: Archive per-module release notes
+        if: github.event_name == 'push'
         working-directory: .
         run: tar -czf frontend-release-notes.tar.gz -C .release/notes frontend manifest.json
       - name: Publish frontend release notes
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}

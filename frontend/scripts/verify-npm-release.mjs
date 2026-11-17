@@ -40,8 +40,8 @@ export async function verifyNpmRelease(
         `https://registry.npmjs.org/${encodeURIComponent(module.name)}/${encodeURIComponent(module.version)}`,
         { signal: AbortSignal.timeout(15000), headers: { Accept: "application/json" } },
       ),
-    attempts = 4,
-    wait = () => new Promise((resolve) => setTimeout(resolve, 2000)),
+    attempts = 31,
+    wait = () => new Promise((resolve) => setTimeout(resolve, 10000)),
   } = {},
 ) {
   let pending = modules;

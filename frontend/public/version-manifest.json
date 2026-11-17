@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-17T09:57:29.162Z",
+  "generatedAt": "2026-11-17T13:01:24.130Z",
   "service": {
     "name": "moh-sso-dashboard-frontend",
     "version": "1.4.0",
@@ -75,35 +75,35 @@
   "packages": {
     "api": {
       "name": "@moh-sso/api",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     "auth": {
       "name": "@moh-sso/auth",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     "config": {
       "name": "@moh-sso/config",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     "microfrontend": {
       "name": "@moh-sso/microfrontend",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     "state": {
       "name": "@moh-sso/state",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     "types": {
       "name": "@moh-sso/types",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     "ui": {
       "name": "@moh-sso/ui",
-      "version": "1.4.0"
+      "version": "1.4.1"
     },
     "utils": {
       "name": "@moh-sso/utils",
-      "version": "1.4.0"
+      "version": "1.4.1"
     }
   }
 }

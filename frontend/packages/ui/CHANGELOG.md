@@ -1,5 +1,16 @@
 # @moh-sso/ui
 
+## 1.4.1
+
+### Patch Changes
+
+- 864c86e: Keep React and React DOM subpaths, including the client renderer and JSX runtimes,
+  external in published shared packages. Microfrontends now use the import map's
+  matching React runtime instead of loading a renderer bundled at build time, which
+  could fail every published application with React version mismatch error 527.
+- Updated dependencies [864c86e]
+  - @moh-sso/types@1.4.1
+
 ## 1.4.0
 
 ### Minor Changes
@@ -12,6 +23,7 @@
   - @moh-sso/types@1.4.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.3.2`.
