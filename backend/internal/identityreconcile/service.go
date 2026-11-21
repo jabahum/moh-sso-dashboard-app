@@ -43,8 +43,14 @@ type PreviewPage struct {
 	NextCursor string
 }
 
+// Accounts is the application-side capability needed for reconciliation.
+type Accounts interface {
+	ListEligibleAccounts(context.Context, string, int) (identitysync.AccountPage, error)
+	LinkIdentity(context.Context, string, identitysync.Identity) error
+}
+
 type Service struct {
-	Accounts  identitysync.AccountStore
+	Accounts  Accounts
 	Directory Directory
 	Issuer    string
 }
