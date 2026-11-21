@@ -38,7 +38,15 @@ def main():
             (frontend / 'infra/docker/frontend/40-runtime-config.sh').write_bytes((ROOT / 'infra/docker/frontend/40-runtime-config.sh').read_bytes())
             (frontend / 'infra/docker/frontend/nginx.conf').write_bytes((ROOT / 'infra/docker/frontend/nginx.conf').read_bytes())
             stage = (ROOT / 'infra/docker/frontend/Dockerfile').read_text().split('FROM nginx:', 1)[1]
-            (frontend / 'Dockerfile').write_text('FROM nginx:1.30.6-alpine AS build\nCOPY fixture /app/dist\nFROM nginx:' + stage)
+            (frontend / 'docs-fixture').mkdir()
+            (frontend / 'docs-fixture/index.html').write_text('<!doctype html><title>Documentation fixture</title>')
+            (frontend / 'Dockerfile').write_text(
+                'FROM nginx:1.30.6-alpine AS build\n'
+                'COPY fixture /app/dist\n'
+                'FROM nginx:1.30.6-alpine AS documentation\n'
+                'COPY docs-fixture /repository/documentation/build\n'
+                'FROM nginx:' + stage
+            )
             image = prefix + ':frontend'
             images.append(image)
             docker('build', '-q', '-t', image, str(frontend))
@@ -67,6 +75,8 @@ def main():
                     if time.monotonic() > deadline:
                         raise RuntimeError('Frontend failed startup: ' + docker('logs', container))
                     time.sleep(.25)
+            status, _, body = get('/docs/')
+            assert status == 200 and '<title>Documentation fixture</title>' in body
             for path in ('/config.js', '/portal/config.js'):
                 status, headers, text = get(path)
                 assert status == 200 and headers['Cache-Control'] == 'no-store'
