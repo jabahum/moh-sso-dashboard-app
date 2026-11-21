@@ -87,10 +87,8 @@ export const rbacApi = baseApi.injectEndpoints({
         body: data,
       }),
       transformResponse: (res: ApiEnvelope<RbacSystem>) => res.data,
-      invalidatesTags: (_result, _error, { clientId }) => [
-        { type: "RbacSystem", id: "LIST" },
-        { type: "RbacSystem", id: clientId },
-      ],
+      invalidatesTags: (_result, error, { clientId }) =>
+        error ? [] : [{ type: "RbacSystem", id: "LIST" }, { type: "RbacSystem", id: clientId }, "Auth"],
     }),
     transitionRbacSystem: builder.mutation<
       RbacSystem,
@@ -102,10 +100,11 @@ export const rbacApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (res: ApiEnvelope<RbacSystem>) => res.data,
-      invalidatesTags: (_result, _error, { clientId }) => [
+      invalidatesTags: (_result, error, { clientId }) => [
         { type: "RbacSystem", id: "LIST" },
         { type: "RbacSystem", id: clientId },
         { type: "RbacAudit", id: "LIST" },
+        ...(error ? [] : (["Auth"] as const)),
       ],
     }),
     listRbacPermissions: builder.query<RbacPermission[], void>({
@@ -396,7 +395,8 @@ export const rbacApi = baseApi.injectEndpoints({
         method: "POST",
         body: data,
       }),
-      invalidatesTags: (_result, _error, { clientId }) => [{ type: "RbacSystem", id: clientId }],
+      invalidatesTags: (_result, error, { clientId }) =>
+        error ? [] : [{ type: "RbacSystem", id: clientId }, "Auth"],
     }),
     removeSystemAccessRole: builder.mutation<
       void,
@@ -406,7 +406,8 @@ export const rbacApi = baseApi.injectEndpoints({
         url: `${base}/systems/${encodeURIComponent(clientId)}/access-roles/${encodeURIComponent(roleName)}${force ? "?force=true" : ""}`,
         method: "DELETE",
       }),
-      invalidatesTags: (_result, _error, { clientId }) => [{ type: "RbacSystem", id: clientId }],
+      invalidatesTags: (_result, error, { clientId }) =>
+        error ? [] : [{ type: "RbacSystem", id: clientId }, "Auth"],
     }),
     getRbacDrift: builder.query<RbacDriftReport, void>({
       query: () => `${base}/drift`,

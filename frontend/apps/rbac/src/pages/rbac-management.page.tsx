@@ -938,6 +938,12 @@ export default function RbacManagementPage() {
                 ownership, launch settings, environment, navigation, or integration require
                 validation and approval again.
               </p>
+              <p>Enter a reason at each step: Configure → Validate → Approve → Activate.</p>
+              <p>
+                To show the system tile, turn on launcher visibility under Launch &amp; visibility.
+                The tile appears when the application is active and the signed-in user has a mapped
+                system access role.
+              </p>
               <TextInput
                 id="application-lifecycle-reason"
                 labelText="Reason for status change"
