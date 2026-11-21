@@ -25,6 +25,7 @@ class Coverage(unittest.TestCase):
         for feature in (ROOT / 'backend/internal/features').iterdir():
             if feature.is_dir():
                 (self.root / 'backend/internal/features' / feature.name).mkdir(parents=True)
+        (self.root / "backend/internal/adapters/modules").mkdir(parents=True, exist_ok=True)
         for adapter in (ROOT / 'backend/internal/adapters/modules').iterdir():
             if adapter.is_dir():
                 (self.root / 'backend/internal/adapters/modules' / adapter.name).mkdir(parents=True)

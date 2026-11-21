@@ -1,9 +1,10 @@
-package report_scheduler
+package router
 
 import (
 	"context"
 	"errors"
 	"github.com/moh-sso-dashboard/module"
+	scheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -41,15 +42,15 @@ func waitSignal(t *testing.T, signal <-chan struct{}) {
 func TestWorkerReadinessFailureNeverClaimsJobs(t *testing.T) {
 	failure := errors.New("runtime table unavailable")
 	s := &lifecycleService{readyErr: failure}
-	stop, err := NewWorker(s, time.Hour, nil).Initialize(context.Background())
+	stop, err := scheduler.NewWorker(s, time.Hour, nil).Initialize(context.Background())
 	if !errors.Is(err, failure) || stop != nil || s.cycles.Load() != 0 {
 		t.Fatalf("readiness failure: stop=%v err=%v cycles=%d", stop != nil, err, s.cycles.Load())
 	}
-	var service *Service
-	if _, err := NewWorker(service, time.Hour, nil).Initialize(context.Background()); err == nil {
+	var service *scheduler.Service
+	if _, err := scheduler.NewWorker(service, time.Hour, nil).Initialize(context.Background()); err == nil {
 		t.Fatal("nil service passed readiness")
 	}
-	if _, err := NewWorker(NewService(nil, nil, nil, nil, nil, nil), time.Hour, nil).Initialize(context.Background()); err == nil {
+	if _, err := scheduler.NewWorker(scheduler.NewService(nil, nil, nil, nil, nil, nil), time.Hour, nil).Initialize(context.Background()); err == nil {
 		t.Fatal("missing repository passed readiness")
 	}
 }
@@ -63,7 +64,7 @@ func TestWorkerStopCancelsAndJoinsInFlightCycle(t *testing.T) {
 		<-release
 		return ctx.Err()
 	}}
-	w := NewWorker(s, time.Hour, nil)
+	w := scheduler.NewWorker(s, time.Hour, nil)
 	stop, err := w.Initialize(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +110,7 @@ func TestWorkerShutdownDeadlineAndParentCancellation(t *testing.T) {
 		return ctx.Err()
 	}}
 	ctx, cancel := context.WithCancel(context.Background())
-	stop, err := NewWorker(s, time.Hour, nil).Initialize(ctx)
+	stop, err := scheduler.NewWorker(s, time.Hour, nil).Initialize(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +134,7 @@ func TestCanceledWorkerNeverStarts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	s := &lifecycleService{}
-	if _, err := NewWorker(s, time.Hour, nil).Initialize(ctx); !errors.Is(err, context.Canceled) || s.cycles.Load() != 0 {
+	if _, err := scheduler.NewWorker(s, time.Hour, nil).Initialize(ctx); !errors.Is(err, context.Canceled) || s.cycles.Load() != 0 {
 		t.Fatalf("canceled startup: %v", err)
 	}
 }
@@ -149,7 +150,7 @@ func TestReadinessRespectsStartupDeadline(t *testing.T) {
 	s := &blockedReadiness{}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
-	if _, err := NewWorker(s, time.Hour, nil).Initialize(ctx); !errors.Is(err, context.DeadlineExceeded) || s.cycles.Load() != 0 {
+	if _, err := scheduler.NewWorker(s, time.Hour, nil).Initialize(ctx); !errors.Is(err, context.DeadlineExceeded) || s.cycles.Load() != 0 {
 		t.Fatalf("startup deadline ignored: %v", err)
 	}
 }
@@ -162,7 +163,7 @@ func TestRegistryRollbackJoinsSchedulerWorker(t *testing.T) {
 		close(exited)
 		return ctx.Err()
 	}}
-	worker := NewWorker(s, time.Hour, nil)
+	worker := scheduler.NewWorker(s, time.Hour, nil)
 	failure := errors.New("later module failed")
 	registry, err := module.New(
 		module.Definition{Info: module.Info{ID: "report-scheduler", Version: "test", Enabled: true}, Initialize: func(ctx context.Context) (module.Stop, error) { return worker.Initialize(ctx) }},

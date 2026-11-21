@@ -1,8 +1,9 @@
-package report_scheduler
+package router
 
 import (
 	"context"
 	"encoding/json"
+	scheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -36,19 +37,19 @@ func TestHealthBIAdapterContract(t *testing.T) {
 		reportPath := "/report-browser/api/v1/reports/" + id
 		switch r.URL.Path {
 		case "/report-browser/api/v1/reports":
-			json.NewEncoder(w).Encode(map[string]any{"data": []HealthBIReport{{ID: id, Name: "Test", SupportedFormats: []string{"pdf", "csv"}}}})
+			json.NewEncoder(w).Encode(map[string]any{"data": []scheduler.HealthBIReport{{ID: id, Name: "Test", SupportedFormats: []string{"pdf", "csv"}}}})
 		case reportPath:
 			if r.URL.EscapedPath() != "/report-browser/api/v1/reports/"+url.PathEscape(id) {
 				t.Errorf("category ID not escaped: %s", r.URL.EscapedPath())
 			}
-			json.NewEncoder(w).Encode(map[string]any{"data": HealthBIReport{ID: id, Name: "Test", SupportedFormats: []string{"pdf", "csv"}, Metadata: map[string]any{"periodStrategies": []string{"previous_month"}}}})
+			json.NewEncoder(w).Encode(map[string]any{"data": scheduler.HealthBIReport{ID: id, Name: "Test", SupportedFormats: []string{"pdf", "csv"}, Metadata: map[string]any{"periodStrategies": []string{"previous_month"}}}})
 		case reportPath + "/parameters":
 			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"name": "basket", "type": "string", "required": false, "defaultValue": "EMHS"}}})
 		case reportPath + "/generate":
 			if r.Method != "POST" {
 				t.Errorf("method: %s", r.Method)
 			}
-			var input GenerateReportRequest
+			var input scheduler.GenerateReportRequest
 			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 				t.Error(err)
 				return
@@ -59,16 +60,16 @@ func TestHealthBIAdapterContract(t *testing.T) {
 				t.Errorf("unexpected generation payload: %+v", input)
 			}
 			w.WriteHeader(http.StatusAccepted)
-			json.NewEncoder(w).Encode(map[string]any{"data": HealthBIJob{ID: "job-1", ReportID: id, Status: "queued"}})
+			json.NewEncoder(w).Encode(map[string]any{"data": scheduler.HealthBIJob{ID: "job-1", ReportID: id, Status: "queued"}})
 		case "/report-browser/api/v1/report-jobs/job-1":
-			json.NewEncoder(w).Encode(map[string]any{"data": HealthBIJob{ID: "job-1", ReportID: id, Status: "completed", ArtifactURL: "https://datawarehouse-report-browser.example/report-browser/api/v1/report-artifacts/job-1?token=signed"}})
+			json.NewEncoder(w).Encode(map[string]any{"data": scheduler.HealthBIJob{ID: "job-1", ReportID: id, Status: "completed", ArtifactURL: "https://datawarehouse-report-browser.example/report-browser/api/v1/report-artifacts/job-1?token=signed"}})
 		default:
 			t.Errorf("unexpected upstream path: %s", r.URL.Path)
 			w.WriteHeader(404)
 		}
 	}))
 	defer upstream.Close()
-	client := NewKeycloakHealthBIClient(upstream.URL+"/report-browser/", upstream.URL+"/token", "report-scheduler-worker", key, time.Second)
+	client := scheduler.NewKeycloakHealthBIClient(upstream.URL+"/report-browser/", upstream.URL+"/token", "report-scheduler-worker", key, time.Second)
 	ctx := context.Background()
 	parameters, err := client.GetReportParameters(ctx, id)
 	if err != nil || len(parameters) != 1 || parameters[0].DefaultValue != "EMHS" {
@@ -82,7 +83,7 @@ func TestHealthBIAdapterContract(t *testing.T) {
 	router := gin.New()
 	allowed := authz.NewContext("test-user", nil, map[string][]string{authz.SystemDataStatistics: {authz.ReportSchedulerAccess}})
 	group := router.Group("/api/v1", func(c *gin.Context) { c.Set(authz.ContextKey, allowed) })
-	RegisterProtectedRoutes(group, NewHandler(NewService(nil, client, nil, nil, nil, nil)))
+	registerProtectedSchedulerTestRoutes(group, NewReportSchedulerModule(scheduler.NewService(nil, client, nil, nil, nil, nil)))
 	for _, path := range []string{"/report", "/report-parameters"} {
 		res := httptest.NewRecorder()
 		router.ServeHTTP(res, httptest.NewRequest("GET", "/api/v1/report-scheduler"+path+"?reportId="+url.QueryEscape(id), nil))
@@ -100,7 +101,7 @@ func TestHealthBIAdapterContract(t *testing.T) {
 }
 
 func TestHealthBIRequiresServiceKey(t *testing.T) {
-	client := NewKeycloakHealthBIClient("https://datawarehouse-report-browser.example/report-browser", "https://keycloak.example/token", "report-scheduler-worker", "", time.Second)
+	client := scheduler.NewKeycloakHealthBIClient("https://datawarehouse-report-browser.example/report-browser", "https://keycloak.example/token", "report-scheduler-worker", "", time.Second)
 	if client.Enabled() {
 		t.Fatal("scheduler integration must remain disabled without its service key")
 	}

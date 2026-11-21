@@ -60,13 +60,18 @@ recording, as well as manifests, backup/restore and restart recovery. It uses
 disposable projects and does not contact an existing production identity provider.
 
 
-Report Scheduler currently selects `v0.1.0` from
-`github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler`.
-Its immutable tag is `backend/modules/report-scheduler/v0.1.0`. A version change
-requires updating the host Go pin/checksums and rebuilding the backend image.
-The package release does not deploy a running installation. Verify the compiled
-inventory reports the selected version, and review scheduler schema compatibility
-before promoting a newly built image pair.
+Report Scheduler owns its public and protected HTTP routes, OpenAPI contract,
+and worker implementation. The dashboard supplies authenticated request
+context, rate limiting, and shared services such as email, audit, and
+notifications. Apply the dashboard's core database migrations before starting
+the scheduler worker.
+
+The dashboard pins the standalone Go module in `backend/go.mod` and records its
+checksums in `backend/go.sum`. After changing the pin, rebuild the backend
+image, verify the compiled module inventory reports the selected version, and
+review scheduler schema compatibility before promoting the image pair. See the
+[scheduler backend guide](scheduler-backend.md) for the schema contract.
+
 
 
 Audit read APIs select `v0.1.0` from

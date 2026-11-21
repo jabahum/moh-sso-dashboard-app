@@ -1,8 +1,9 @@
-package report_scheduler
+package router
 
 import (
 	"context"
 	"database/sql"
+	scheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -14,13 +15,13 @@ import (
 )
 
 type recipientOptionsRepository struct {
-	Repository
+	scheduler.Repository
 	called bool
 }
 
-func (r *recipientOptionsRepository) ListRecipientOptions(context.Context, string, string, int, []string) ([]RecipientOption, error) {
+func (r *recipientOptionsRepository) ListRecipientOptions(context.Context, string, string, int, []string) ([]scheduler.RecipientOption, error) {
 	r.called = true
-	return []RecipientOption{{ID: "user:123", Type: "user", Value: "123", Label: "Test User (test@example.invalid)"}}, nil
+	return []scheduler.RecipientOption{{ID: "user:123", Type: "user", Value: "123", Label: "Test User (test@example.invalid)"}}, nil
 }
 
 func TestRecipientOptionsRequireScheduleWritePermission(t *testing.T) {
@@ -49,7 +50,7 @@ func TestRecipientOptionsRequireScheduleWritePermission(t *testing.T) {
 					c.Set(authz.ContextKey, permissions)
 				}
 			})
-			RegisterProtectedRoutes(group, NewHandler(NewService(repo, nil, nil, nil, nil, nil)))
+			registerProtectedSchedulerTestRoutes(group, NewReportSchedulerModule(scheduler.NewService(repo, nil, nil, nil, nil, nil)))
 			response := httptest.NewRecorder()
 			router.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/report-scheduler/recipients/options?kind=email", nil))
 			if response.Code != tc.status || repo.called != (tc.status == 200) {
@@ -63,8 +64,8 @@ func TestRecipientOptionsValidateQueries(t *testing.T) {
 	for _, query := range []string{"kind=admin", "kind=email&limit=0", "kind=email&limit=101", "kind=email&limit=no", "search=" + strings.Repeat("x", 201)} {
 		group, router := schedulerTestRouter()
 		repo := &recipientOptionsRepository{}
-		handler := NewHandler(NewService(repo, nil, nil, nil, nil, nil))
-		RegisterProtectedRoutes(group, handler)
+		handler := NewReportSchedulerModule(scheduler.NewService(repo, nil, nil, nil, nil, nil))
+		registerProtectedSchedulerTestRoutes(group, handler)
 		response := httptest.NewRecorder()
 		router.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/report-scheduler/recipients/options?"+query, nil))
 		if response.Code != 400 || repo.called {
@@ -94,7 +95,7 @@ func TestRecipientOptionsPostgresDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo := NewRepository(db)
+	repo := scheduler.NewRepository(db)
 	options, err := repo.ListRecipientOptions(ctx, "email", "", 100, nil)
 	if err != nil || len(options) != 1 || options[0].Value != "one" || !strings.Contains(options[0].Label, "test@example.invalid") {
 		t.Fatalf("email directory: %+v %v", options, err)

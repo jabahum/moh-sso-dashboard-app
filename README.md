@@ -1413,14 +1413,16 @@ Email attachment payloads should provide exactly one of `path` or `data_base64`.
 
 The [Docusaurus site](documentation/) brings the platform and frontend guides
 together with a shared sidebar, page navigation, and Mermaid diagrams.
-Run it with Node.js 20 or later.
+Run it with Node.js 20.6 or later. If needed, copy
+`infra/env/dev.env.example` to `infra/env/dev.env` first.
 
 ```sh
 npm --prefix documentation ci
-npm --prefix documentation start -- --port 3001
+DOCS_URL="$(node --env-file=infra/env/dev.env -p 'process.env.DOCS_URL')" \
+  npm --prefix documentation start -- --port 3001
 ```
 
-Open http://localhost:3001/moh-sso-dashboard/. Run
+Open http://localhost:3001/docs/. Run
 `npm --prefix documentation run build` to validate internal links and generate
 the static site in `documentation/build/`. The Documentation workflow also
 builds the site and uploads it as an artifact. Set `DOCS_URL` and

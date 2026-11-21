@@ -50,6 +50,7 @@ services:
       context: ../..
       dockerfile: infra/docker/frontend/Dockerfile.npm-modules
       args:
+        DOCS_URL: ${DOCS_URL:-https://dashboards.health.go.ug}
         VERSION: ${DISTRIBUTION_TAG}
         COMMIT: ${DISTRIBUTION_COMMIT:-none}
         BUILD_TIME: ${DISTRIBUTION_BUILD_TIME:-unknown}

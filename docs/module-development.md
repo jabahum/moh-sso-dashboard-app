@@ -24,19 +24,17 @@ Metrics remains the independent Go-package reference in `backend/modules/metrics
 Choose a bounded migration rather than moving unrelated domains together.
 Worker-bearing domains need their processing lifecycle migrated with their
 routes. Report Scheduler follows Metrics as an independently versioned Go
-module in `backend/modules/report-scheduler`, selected at `v0.1.0` in the host.
-Its registry definition owns readiness, startup and joined shutdown, together
-with public token-download and protected routes. Host HTTP authorization,
-platform adapters and core schema migrations remain explicit host responsibilities.
+module in `backend/modules/report-scheduler`. It owns its public and protected
+HTTP routes and OpenAPI contract. The dashboard pins the module in
+`backend/go.mod` and supplies authenticated context, per-IP rate limiting,
+platform services, and schema migrations. The registry manages worker
+readiness, startup, and shutdown.
 
-The former host implementation has been replaced by aliases and thin constructors
-in `internal/adapters/modules/report_scheduler/package.go`. Portable implementation tests
-live in the module; host HTTP, queue conversion and registry integration tests
-exercise the selected published dependency. Verify changes with
-`make -C backend modules-check` and
-`python3 infra/scripts/test-report-scheduler-package.py`, then publish an immutable
-nested module tag before updating the host pin. Production builds do not use
-local module replacements.
+Portable implementation tests live in the module. Host integration tests cover
+HTTP authorization, queue conversion, and registry integration. Verify changes
+with `make -C backend modules-check` and
+`python3 infra/scripts/test-report-scheduler-package.py`.
+
 
 ## Verify published backend versions
 

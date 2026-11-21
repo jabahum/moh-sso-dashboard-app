@@ -59,9 +59,6 @@ func Generate(dir string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := loadSchedulerContract(dir, definitions, moduleContracts); err != nil {
-		return nil, err
-	}
 	routes := Routes()
 	sort.Slice(routes, func(i, j int) bool { return routes[i].Path+routes[i].Method < routes[j].Path+routes[j].Method })
 	for _, route := range routes {
@@ -504,40 +501,4 @@ func applyOverrides(op, previous object) {
 		sort.Strings(required)
 		schema["required"] = required
 	}
-}
-
-func loadSchedulerContract(dir string, definitions object, operations map[string]object) error {
-	data, err := os.ReadFile(filepath.Join(dir, "docs/openapi.report-scheduler.yaml"))
-	if err != nil {
-		return err
-	}
-	var contract struct {
-		Components struct{ Schemas object }
-		Paths      map[string]map[string]object
-	}
-	if err := yaml.Unmarshal(data, &contract); err != nil {
-		return err
-	}
-	for name, schema := range contract.Components.Schemas {
-		definitions[name] = schema
-	}
-	for path, methods := range contract.Paths {
-		for method, operation := range methods {
-			rawTags, ok := operation["tags"].([]any)
-			if !ok {
-				return fmt.Errorf("missing scheduler tags for %s %s", method, path)
-			}
-			tags := make([]string, 0, len(rawTags))
-			for _, value := range rawTags {
-				tag, ok := value.(string)
-				if !ok {
-					return fmt.Errorf("invalid scheduler tag for %s %s", method, path)
-				}
-				tags = append(tags, tag)
-			}
-			operation["tags"] = tags
-			operations[strings.ToUpper(method)+" "+path] = operation
-		}
-	}
-	return nil
 }

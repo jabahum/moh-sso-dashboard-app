@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	reportscheduler "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	"github.com/moh-sso-dashboard/internal/model"
 	"github.com/moh-sso-dashboard/internal/service"
+	reportscheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 )
 
 // Host adapters keep the scheduler independent of shared identity and delivery models.

@@ -33459,7 +33459,9 @@ paths:
       summary: Get Module
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).GetModule
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/artifacts/{artifactId}/download:
@@ -33519,7 +33521,9 @@ paths:
       summary: Download Artifact
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).DownloadArtifact
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/executions:
@@ -33610,7 +33614,9 @@ paths:
       summary: List Executions
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).ListExecutions
+      x-required-permission-groups:
+        - - report_scheduler:history
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:history
   /api/v1/report-scheduler/executions/{executionId}:
@@ -33684,7 +33690,9 @@ paths:
       summary: Get Execution
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).GetExecution
+      x-required-permission-groups:
+        - - report_scheduler:history
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:history
   /api/v1/report-scheduler/executions/{executionId}/retry:
@@ -33758,7 +33766,9 @@ paths:
       summary: Retry Execution
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).RetryExecution
+      x-required-permission-groups:
+        - - report_scheduler:execute
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:execute
   /api/v1/report-scheduler/metrics:
@@ -33820,7 +33830,10 @@ paths:
       summary: Overview
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).Overview
+      x-required-permission-groups:
+        - - metrics:read
+        - - report_scheduler:manage
+      x-required-system: data-statistics
       x-route-permissions:
         - metrics:read
         - report_scheduler:history
@@ -33884,7 +33897,9 @@ paths:
       summary: Overview
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).Overview
+      x-required-permission-groups:
+        - - report_scheduler:history
+      x-required-system: data-statistics
       x-route-permissions:
         - metrics:read
         - report_scheduler:history
@@ -33962,7 +33977,9 @@ paths:
       summary: List Portal Reports
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).ListPortalReports
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/public/deliveries/{token}/download:
@@ -34010,7 +34027,6 @@ paths:
       summary: Download Delivery Link
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).DownloadDeliveryLink
   /api/v1/report-scheduler/recipients/options:
     get:
       operationId: get_api_v1_report-scheduler_recipients_options
@@ -34099,7 +34115,10 @@ paths:
       summary: Recipient Options
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).RecipientOptions
+      x-required-permission-groups:
+        - - report_scheduler:create
+          - report_scheduler:update
+      x-required-system: data-statistics
   /api/v1/report-scheduler/recipients/preview:
     post:
       operationId: post_api_v1_report-scheduler_recipients_preview
@@ -34171,7 +34190,10 @@ paths:
       summary: Preview Recipients
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).PreviewRecipients
+      x-required-permission-groups:
+        - - report_scheduler:create
+          - report_scheduler:update
+      x-required-system: data-statistics
   /api/v1/report-scheduler/report:
     get:
       description: 'Explicit route permission: report_scheduler:read. Additional group/system access checks may apply.'
@@ -34237,7 +34259,9 @@ paths:
       summary: Get Report
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).GetReport
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/report-parameters:
@@ -34307,7 +34331,9 @@ paths:
       summary: Get Report Parameters
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).GetReportParameters
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/reports:
@@ -34365,7 +34391,9 @@ paths:
       summary: List Reports
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).ListReports
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/reports/{reportId}:
@@ -34438,7 +34466,9 @@ paths:
       summary: Get Report
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).GetReport
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/reports/{reportId}/parameters:
@@ -34513,7 +34543,9 @@ paths:
       summary: Get Report Parameters
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).GetReportParameters
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
   /api/v1/report-scheduler/schedules:
@@ -34604,7 +34636,9 @@ paths:
       summary: List Schedules
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).ListSchedules
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
     post:
@@ -34671,7 +34705,9 @@ paths:
       summary: Create Schedule
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).CreateSchedule
+      x-required-permission-groups:
+        - - report_scheduler:create
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:create
   /api/v1/report-scheduler/schedules/{scheduleId}:
@@ -34748,7 +34784,9 @@ paths:
       summary: Delete Schedule
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).DeleteSchedule
+      x-required-permission-groups:
+        - - report_scheduler:delete
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:delete
     get:
@@ -34821,7 +34859,9 @@ paths:
       summary: Get Schedule
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).GetSchedule
+      x-required-permission-groups:
+        - - report_scheduler:read
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:read
     put:
@@ -34900,7 +34940,9 @@ paths:
       summary: Update Schedule
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).UpdateSchedule
+      x-required-permission-groups:
+        - - report_scheduler:update
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:update
   /api/v1/report-scheduler/schedules/{scheduleId}/duplicate:
@@ -34974,7 +35016,9 @@ paths:
       summary: Duplicate Schedule
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).DuplicateSchedule
+      x-required-permission-groups:
+        - - report_scheduler:create
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:create
   /api/v1/report-scheduler/schedules/{scheduleId}/pause:
@@ -35048,7 +35092,9 @@ paths:
       summary: Pause Schedule
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).PauseSchedule
+      x-required-permission-groups:
+        - - report_scheduler:update
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:update
   /api/v1/report-scheduler/schedules/{scheduleId}/resume:
@@ -35122,7 +35168,9 @@ paths:
       summary: Resume Schedule
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).ResumeSchedule
+      x-required-permission-groups:
+        - - report_scheduler:update
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:update
   /api/v1/report-scheduler/schedules/{scheduleId}/run:
@@ -35196,7 +35244,9 @@ paths:
       summary: Run Now
       tags:
         - report-scheduler
-      x-go-handler: github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler.(*Handler).RunNow
+      x-required-permission-groups:
+        - - report_scheduler:execute
+      x-required-system: data-statistics
       x-route-permissions:
         - report_scheduler:execute
   /api/v1/sessions:

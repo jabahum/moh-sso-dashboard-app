@@ -4,7 +4,6 @@ import (
 	"net/url"
 	"strings"
 
-	reportschedulerfeature "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	"github.com/moh-sso-dashboard/internal/cache"
 	"github.com/moh-sso-dashboard/internal/config"
 	storepkg "github.com/moh-sso-dashboard/internal/db/sqlc"
@@ -24,6 +23,7 @@ import (
 	importsvc "github.com/moh-sso-dashboard/internal/service/import"
 	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/moh-sso-dashboard/internal/worker"
+	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -273,8 +273,8 @@
         "registry-owned report scheduler worker"
       ],
       "migrations": "core",
-      "next": "Maintain host HTTP/platform adapters and core migrations; release scheduler changes independently and update the reviewed Go dependency pin.",
-      "integration": "adapter"
+      "next": "Maintain module-owned HTTP routes, OpenAPI and worker implementation; supply host capabilities and apply core migrations.",
+      "integration": "self-contained"
     },
     {
       "id": "sessions",

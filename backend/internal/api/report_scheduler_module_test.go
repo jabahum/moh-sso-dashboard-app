@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	scheduler "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	"github.com/moh-sso-dashboard/internal/authz"
 	"github.com/moh-sso-dashboard/internal/middleware"
 	"github.com/moh-sso-dashboard/module"
+	scheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 )
 
 type schedulerModuleFixture struct {
@@ -55,7 +55,7 @@ func TestSchedulerModuleControlsRoutesAndWorker(t *testing.T) {
 		}
 		fixture := &schedulerModuleFixture{}
 		service := scheduler.NewService(fixture, nil, nil, nil, nil, nil)
-		registry, err := NewModuleRegistry(HandlerSet{ReportScheduler: scheduler.NewHandler(service)}, disabledIDs, nil, scheduler.NewWorker(service, time.Hour, nil))
+		registry, err := NewModuleRegistry(HandlerSet{ReportScheduler: NewReportSchedulerModule(service)}, disabledIDs, nil, scheduler.NewWorker(service, time.Hour, nil))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +128,7 @@ func TestSchedulerRegistryFailsStartupBeforeClaims(t *testing.T) {
 	for _, missing := range []string{"handler", "worker", "persistence"} {
 		fixture := &schedulerModuleFixture{readyErr: errors.New("database unavailable")}
 		service := scheduler.NewService(fixture, nil, nil, nil, nil, nil)
-		handlers := HandlerSet{ReportScheduler: scheduler.NewHandler(service)}
+		handlers := HandlerSet{ReportScheduler: NewReportSchedulerModule(service)}
 		worker := scheduler.NewWorker(service, time.Hour, nil)
 		if missing == "handler" {
 			handlers.ReportScheduler = nil

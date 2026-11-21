@@ -1,8 +1,9 @@
-package report_scheduler
+package router
 
 import (
 	"context"
 	"encoding/json"
+	scheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,7 +37,7 @@ func TestModuleAccess(t *testing.T) {
 					c.Set(authz.ContextKey, *tt.auth)
 				}
 			})
-			RegisterProtectedRoutes(group, NewHandler(NewService(nil, nil, nil, nil, nil, nil)))
+			registerProtectedSchedulerTestRoutes(group, NewReportSchedulerModule(scheduler.NewService(nil, nil, nil, nil, nil, nil)))
 			res := httptest.NewRecorder()
 			router.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/api/v1/report-scheduler", nil))
 			if res.Code != tt.status {
@@ -44,8 +45,8 @@ func TestModuleAccess(t *testing.T) {
 			}
 			if tt.status == http.StatusOK {
 				var body struct {
-					Success bool           `json:"success"`
-					Data    ModuleResponse `json:"data"`
+					Success bool                     `json:"success"`
+					Data    scheduler.ModuleResponse `json:"data"`
 				}
 				if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
 					t.Fatal(err)
@@ -79,7 +80,7 @@ func TestParseListOptionsValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			res := httptest.NewRecorder()
 			group, router := schedulerTestRouter()
-			RegisterProtectedRoutes(group, NewHandler(NewService(schedulerListRepository{}, nil, nil, nil, nil, nil)))
+			registerProtectedSchedulerTestRoutes(group, NewReportSchedulerModule(scheduler.NewService(schedulerListRepository{}, nil, nil, nil, nil, nil)))
 			path := "/schedules"
 			if !tt.allowEnabled {
 				path = "/executions"
@@ -103,12 +104,16 @@ func schedulerTestRouter() (*gin.RouterGroup, *gin.Engine) {
 	return group, router
 }
 
-type schedulerListRepository struct{ Repository }
+type schedulerListRepository struct{ scheduler.Repository }
 
-func (schedulerListRepository) ListSchedules(context.Context, string, bool, HealthContext, ListOptions) ([]Schedule, error) {
+func (schedulerListRepository) ListSchedules(context.Context, string, bool, scheduler.HealthContext, scheduler.ListOptions) ([]scheduler.Schedule, error) {
 	return nil, nil
 }
 
-func (schedulerListRepository) ListExecutions(context.Context, string, bool, HealthContext, ListOptions) ([]Execution, error) {
+func (schedulerListRepository) ListExecutions(context.Context, string, bool, scheduler.HealthContext, scheduler.ListOptions) ([]scheduler.Execution, error) {
 	return nil, nil
+}
+
+func registerProtectedSchedulerTestRoutes(group *gin.RouterGroup, handler *scheduler.HTTPModule) {
+	RegisterReportScheduler(nil, group, handler, nil)
 }

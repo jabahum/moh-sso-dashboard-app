@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	reportScheduler "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	router "github.com/moh-sso-dashboard/internal/api"
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	adminunits "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
@@ -22,6 +21,7 @@ import (
 	audit "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
 	geojson "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metrics "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
+	reportScheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 )
 
 // Routes uses inert handlers: route registration never needs live DB/Redis/SSO.
@@ -78,7 +78,7 @@ func documentationHandlers() router.HandlerSet {
 		}
 	}
 	var err error
-	handlers.ReportScheduler = reportScheduler.NewHandler(reportScheduler.NewService(nil, nil, nil, nil, nil, nil))
+	handlers.ReportScheduler = router.NewReportSchedulerModule(reportScheduler.NewService(nil, nil, nil, nil, nil, nil))
 	handlers.GeoJSON, err = geojson.NewModule(geojson.Dependencies{AuthorizeAny: func(*http.Request, ...string) error { return geojson.ErrUnauthorized }})
 	if err != nil {
 		panic(err)

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/moh-sso-dashboard/core"
-	reportschedulerfeature "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	router "github.com/moh-sso-dashboard/internal/api"
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	"github.com/moh-sso-dashboard/internal/authz"
@@ -236,7 +235,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			Email:                   emailHandler,
 			RBAC:                    rbacHandler,
 			HealthContexts:          healthContextHandler,
-			ReportScheduler:         reportschedulerfeature.NewHandler(deps.Services.ReportScheduler),
+			ReportScheduler:         router.NewReportSchedulerModule(deps.Services.ReportScheduler),
 		},
 		Health: healthHandler,
 	}

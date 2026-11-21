@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	reportschedulerfeature "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	"github.com/moh-sso-dashboard/internal/config"
 	"github.com/moh-sso-dashboard/internal/middleware"
@@ -24,7 +23,7 @@ import (
 
 // NewModuleRegistry is the distribution's explicit composition root. Legacy
 // features enter this inventory only as their registration is migrated.
-func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.Limiter, scheduler *reportschedulerfeature.Worker) (*module.Registry, error) {
+func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.Limiter, scheduler *schedulermodule.Worker) (*module.Registry, error) {
 	enabled := map[string]bool{}
 	for _, id := range config.OptionalModuleIDs() {
 		enabled[id] = true
@@ -84,12 +83,7 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 			return scheduler.Initialize(ctx)
 		},
 		Register: func(routes module.Routes) {
-			if routes.Protected != nil {
-				reportschedulerfeature.RegisterProtectedRoutes(routes.Protected, handlers.ReportScheduler)
-			}
-			if routes.Public != nil {
-				reportschedulerfeature.RegisterPublicRoutes(routes.Public, handlers.ReportScheduler, limiter)
-			}
+			RegisterReportScheduler(routes.Public, routes.Protected, handlers.ReportScheduler, limiter)
 		},
 	}, module.Definition{
 		Info: module.Info{ID: "announcements", Version: announcementmodule.Version(), Enabled: enabled["announcements"]},

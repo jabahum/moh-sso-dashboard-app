@@ -173,8 +173,8 @@ github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics v0.1.0 h1:JR4+Ncc
 github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics v0.1.0/go.mod h1:QRq5A1hzHzJW2h0ruJsuZyGhwz2POBcARy28ViBHbVE=
 github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics v0.2.0 h1:3ub1lk5Rk0zKHK6AzgN2C8ZaEE7oKBK9BBSMwS0Yn7g=
 github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics v0.2.0/go.mod h1:89xcIfGAGfgcpnqgpcpR63uTMIPAT/WY0xM3NEVt5d8=
-github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler v0.2.0 h1:g4HDw4oq1JqdB1xX3YIMvZBltlDj9cse025KLhzey6M=
-github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler v0.2.0/go.mod h1:0z7VLLvsUwxNHy28rq9IzNGP4guABOKQ4uyqLgJMDA0=
+github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler v0.1.1-0.20261120164120-d9bb6f8c819f h1:5X2OvgSqPkGw/9qGqmy+n7xdlfN9hpWLIzfKn2QwX2E=
+github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler v0.1.1-0.20261120164120-d9bb6f8c819f/go.mod h1:0z7VLLvsUwxNHy28rq9IzNGP4guABOKQ4uyqLgJMDA0=
 github.com/morikuni/aec v1.0.0 h1:nP9CBfwrvYnBRgY6qfDQkygYDmYwOilePFkwzv4dU8A=
 github.com/morikuni/aec v1.0.0/go.mod h1:BbKIizmSmc5MMPqRYbxO4ZU0S0+P200+tUnFx7PXmsc=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=

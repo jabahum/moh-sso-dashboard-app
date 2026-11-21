@@ -1,7 +1,6 @@
 package routes
 
 import (
-	reportschedulerfeature "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	authfeature "github.com/moh-sso-dashboard/internal/features/auth"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
 	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
@@ -42,14 +41,13 @@ type Dependencies struct {
 	Sessions                *sessionfeature.Handler
 	DataQuality             *dataqualityfeature.Handler
 
-	AdminUnits      *adminunitsfeature.Module
-	Visualiser      *visualiserfeature.Handler
-	Surveillance    *surveillancefeature.Handler
-	GeoJSON         *geojsonfeature.Module
-	Email           *emailfeature.Handler
-	RBAC            *rbacfeature.Handler
-	HealthContexts  *healthcontextfeature.Handler
-	ReportScheduler *reportschedulerfeature.Handler
+	AdminUnits     *adminunitsfeature.Module
+	Visualiser     *visualiserfeature.Handler
+	Surveillance   *surveillancefeature.Handler
+	GeoJSON        *geojsonfeature.Module
+	Email          *emailfeature.Handler
+	RBAC           *rbacfeature.Handler
+	HealthContexts *healthcontextfeature.Handler
 
 	AuthenticatedRateLimitPerMin  int
 	AuthLoginRateLimitPerMin      int

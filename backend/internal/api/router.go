@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/moh-sso-dashboard/docs"
 
-	reportschedulerfeature "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	"github.com/moh-sso-dashboard/internal/api/routes"
 	"github.com/moh-sso-dashboard/internal/authz"
@@ -41,6 +40,7 @@ import (
 	auditfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
+	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 )
 
 type RouterDependencies struct {
@@ -78,7 +78,7 @@ type HandlerSet struct {
 	Email                   *emailfeature.Handler
 	RBAC                    *rbacfeature.Handler
 	HealthContexts          *healthcontextfeature.Handler
-	ReportScheduler         *reportschedulerfeature.Handler
+	ReportScheduler         *reportschedulerfeature.HTTPModule
 }
 
 type RateLimits struct {
@@ -98,29 +98,29 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 	r.Use(cors.New(corsConfig(deps.Config)))
 
 	routeDeps := routes.Dependencies{
-		Modules:                       deps.Modules,
-		Limiter:                       deps.Limiter,
-		Auth:                          deps.Handlers.Auth,
-		Clients:                       deps.Handlers.Clients,
-		Users:                         deps.Handlers.Users,
-		Metrics:                       deps.Handlers.Metrics,
-		Audit:                         deps.Handlers.Audit,
-		Notifications:                 deps.Handlers.Notifications,
-		Documents:                     deps.Handlers.Documents,
-		DocumentTemplates:             deps.Handlers.DocumentTemplates,
-		DocumentTemplateSheets:        deps.Handlers.DocumentTemplateSheets,
-		DocumentTemplateColumns:       deps.Handlers.DocumentTemplateColumns,
-		StorageLocations:              deps.Handlers.StorageLocations,
-		Sessions:                      deps.Handlers.Sessions,
-		DataQuality:                   deps.Handlers.DataQuality,
-		AdminUnits:                    deps.Handlers.AdminUnits,
-		Visualiser:                    deps.Handlers.Visualiser,
-		Surveillance:                  deps.Handlers.Surveillance,
-		GeoJSON:                       deps.Handlers.GeoJSON,
-		Email:                         deps.Handlers.Email,
-		RBAC:                          deps.Handlers.RBAC,
-		HealthContexts:                deps.Handlers.HealthContexts,
-		ReportScheduler:               deps.Handlers.ReportScheduler,
+		Modules:                 deps.Modules,
+		Limiter:                 deps.Limiter,
+		Auth:                    deps.Handlers.Auth,
+		Clients:                 deps.Handlers.Clients,
+		Users:                   deps.Handlers.Users,
+		Metrics:                 deps.Handlers.Metrics,
+		Audit:                   deps.Handlers.Audit,
+		Notifications:           deps.Handlers.Notifications,
+		Documents:               deps.Handlers.Documents,
+		DocumentTemplates:       deps.Handlers.DocumentTemplates,
+		DocumentTemplateSheets:  deps.Handlers.DocumentTemplateSheets,
+		DocumentTemplateColumns: deps.Handlers.DocumentTemplateColumns,
+		StorageLocations:        deps.Handlers.StorageLocations,
+		Sessions:                deps.Handlers.Sessions,
+		DataQuality:             deps.Handlers.DataQuality,
+		AdminUnits:              deps.Handlers.AdminUnits,
+		Visualiser:              deps.Handlers.Visualiser,
+		Surveillance:            deps.Handlers.Surveillance,
+		GeoJSON:                 deps.Handlers.GeoJSON,
+		Email:                   deps.Handlers.Email,
+		RBAC:                    deps.Handlers.RBAC,
+		HealthContexts:          deps.Handlers.HealthContexts,
+
 		AuthenticatedRateLimitPerMin:  rateLimits.AuthenticatedPerMinute,
 		AuthLoginRateLimitPerMin:      rateLimits.AuthLoginPerMinute,
 		AuthCallbackRateLimitPerMin:   rateLimits.AuthCallbackPerMinute,
@@ -135,11 +135,6 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 
 	api := r.Group("/api/v1")
 	routes.RegisterAuthRoutes(api, routeDeps)
-	if deps.Config == nil || !deps.Config.CoreOnly() {
-		if deps.Modules == nil {
-			routes.RegisterPublicReportSchedulerRoutes(api, routeDeps)
-		}
-	}
 
 	protected := api.Group("")
 	protected.Use(middleware.ExtractAuthContext(
@@ -170,6 +165,9 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 		healthcontextfeature.RegisterAdminRoutes(protected.Group("/admin"), deps.Handlers.HealthContexts)
 	} else {
 		routes.RegisterProtectedRoutes(protected, routeDeps)
+		if deps.Modules == nil {
+			RegisterReportScheduler(api, protected, deps.Handlers.ReportScheduler, routeDeps.Limiter)
+		}
 		routes.RegisterAdminRoutes(protected, routeDeps)
 	}
 	if deps.Modules != nil {

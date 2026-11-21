@@ -3,7 +3,6 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	reportschedulerfeature "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	"github.com/moh-sso-dashboard/internal/authz"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
 	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
@@ -38,9 +37,6 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {
 
 	registerRBACProtectedRoutes(protected, deps)
 	registerHealthContextProtectedRoutes(protected, deps)
-	if deps.Modules == nil {
-		reportschedulerfeature.RegisterProtectedRoutes(protected, deps.ReportScheduler)
-	}
 }
 
 func registerHealthContextProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {

@@ -1,20 +1,21 @@
-package report_scheduler
+package router
 
 import (
 	"context"
 	"database/sql"
+	scheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	"os"
 	"testing"
 	"time"
 )
 
 type orphanExecutionRepository struct {
-	Repository
+	scheduler.Repository
 	status, message string
 }
 
-func (r *orphanExecutionRepository) ClaimGeneratingExecutions(context.Context, int) ([]Execution, error) {
-	return []Execution{{ID: "orphan", HealthBIJobID: "existing-job"}}, nil
+func (r *orphanExecutionRepository) ClaimGeneratingExecutions(context.Context, int) ([]scheduler.Execution, error) {
+	return []scheduler.Execution{{ID: "orphan", HealthBIJobID: "existing-job"}}, nil
 }
 func (r *orphanExecutionRepository) UpdateExecutionJob(_ context.Context, _, _, status, message string) error {
 	r.status, r.message = status, message
@@ -22,7 +23,7 @@ func (r *orphanExecutionRepository) UpdateExecutionJob(_ context.Context, _, _, 
 }
 func TestPollDetachedExecutionCancels(t *testing.T) {
 	repo := &orphanExecutionRepository{}
-	service := NewService(repo, nil, nil, nil, nil, nil)
+	service := scheduler.NewService(repo, nil, nil, nil, nil, nil)
 	if err := service.PollGenerating(context.Background(), 10); err != nil {
 		t.Fatal(err)
 	}
@@ -54,10 +55,10 @@ func TestDeleteSchedulePostgresLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo := NewRepository(db)
+	repo := scheduler.NewRepository(db)
 	schedule := "00000000-0000-0000-0000-000000000001"
 	execution := "00000000-0000-0000-0000-000000000002"
-	if err := repo.DeleteSchedule(ctx, schedule, "wrong-owner", false); err != ErrScheduleNotFound {
+	if err := repo.DeleteSchedule(ctx, schedule, "wrong-owner", false); err != scheduler.ErrScheduleNotFound {
 		t.Fatalf("unauthorized delete: %v", err)
 	}
 	if err := repo.DeleteSchedule(ctx, schedule, "owner", false); err != nil {

@@ -139,6 +139,7 @@ jobs:
             COMMIT=${{ github.sha }}
             BUILD_TIME=${{ steps.frontend-meta.outputs.build_time }}
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+            DOCS_URL=${{ vars.DOCS_URL || 'https://dashboards.health.go.ug' }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache,mode=max
 
@@ -153,6 +154,10 @@ jobs:
             --arg commit "${{ github.sha }}" \
             -e '.service.version == $version and .service.commit == $commit' \
             /usr/share/nginx/html/version-manifest.json
+          docker run --rm --entrypoint sh "$IMAGE" -ec '
+            test -s /usr/share/nginx/html/docs/index.html
+            test -s /usr/share/nginx/html/docs/img/moh-logo.png
+          '
 
       - name: Verify backend runtime metadata and layout
         if: matrix.service == 'backend' && !startsWith(github.ref, 'refs/tags/frontend/v')

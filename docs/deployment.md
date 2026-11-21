@@ -252,8 +252,26 @@ Shared public host routing stays:
 ```text
 / and /report-browser/* -> existing Report Browser owner
 /portal/*              -> portal frontend, preserving the prefix
+/docs/*                -> Docusaurus site in the frontend image
 /ssobackend/*           -> Go backend, stripping that prefix internally
 ```
+
+The frontend image builds and carries the documentation. For an existing host
+Nginx installation, reinstall the updated snippets above, then run
+`sudo nginx -t && sudo systemctl reload nginx` after deploying the new image.
+On a separate Nginx server, update `portal.locations.conf` there and keep the
+existing private upstream addresses. The Compose gateway forwards `/docs/`
+through its existing frontend route. Verify the site at
+[https://dashboards.health.go.ug/docs/](https://dashboards.health.go.ug/docs/).
+
+Set `DOCS_URL` to the public origin, for example `https://portal.example.org`.
+For GitHub Actions, set the repository variable `DOCS_URL`. For a Compose
+distribution build, set `DOCS_URL` in `infra/env/prod.env` before running
+`infra/scripts/compose.sh distribution build frontend`. Direct Docker builds accept
+`--build-arg DOCS_URL` and inherit the value from the shell environment.
+The image defaults to `https://dashboards.health.go.ug` and serves the site at
+`/docs/`. Docusaurus embeds the origin in static metadata, so applying a new
+origin requires rebuilding the frontend image.
 
 Swagger is `/ssobackend/swagger/`, with the spec at
 `/ssobackend/swagger/openapi.json`. Stable module URLs revalidate; runtime config,

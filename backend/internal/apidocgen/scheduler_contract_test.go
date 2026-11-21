@@ -5,18 +5,18 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	scheduler "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
+	router "github.com/moh-sso-dashboard/internal/api"
+	scheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 )
 
 func TestSchedulerContractMatchesMountedSurfaces(t *testing.T) {
-	operations := map[string]object{}
-	if err := loadSchedulerContract(backendRoot(t), object{}, operations); err != nil {
+	operations, err := moduleOperations(object{})
+	if err != nil {
 		t.Fatal(err)
 	}
 	engine := gin.New()
-	handler := scheduler.NewHandler(scheduler.NewService(nil, nil, nil, nil, nil, nil))
-	scheduler.RegisterPublicRoutes(engine.Group("/public"), handler, nil)
-	scheduler.RegisterProtectedRoutes(engine.Group("/protected"), handler)
+	handler := router.NewReportSchedulerModule(scheduler.NewService(nil, nil, nil, nil, nil, nil))
+	router.RegisterReportScheduler(engine.Group("/public"), engine.Group("/protected"), handler, nil)
 	for _, route := range engine.Routes() {
 		surface, path, _ := strings.Cut(strings.TrimPrefix(route.Path, "/"), "/")
 		public := surface == "public"
@@ -31,7 +31,9 @@ func TestSchedulerContractMatchesMountedSurfaces(t *testing.T) {
 		}
 		delete(operations, key)
 	}
-	if len(operations) != 0 {
-		t.Errorf("OpenAPI describes %d unmounted scheduler operations", len(operations))
+	for key := range operations {
+		if strings.Contains(key, " /api/v1/report-scheduler") {
+			t.Errorf("OpenAPI describes unmounted scheduler operation %s", key)
+		}
 	}
 }

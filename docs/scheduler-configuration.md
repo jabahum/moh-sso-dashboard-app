@@ -111,7 +111,7 @@ into the portal env. Do not use the portal admin or browser-login client secret.
 
 For a fully local Keycloak/Health BI stack, the existing `make sso-up` tool can
 provision/reconcile the worker account and retrieve its credential; see
-[the scheduler backend contract](../backend/internal/adapters/modules/report_scheduler/README.md).
+[the scheduler backend contract](scheduler-backend.md).
 For external/production Keycloak, this generator leaves account provisioning to
 the realm administrator.
 

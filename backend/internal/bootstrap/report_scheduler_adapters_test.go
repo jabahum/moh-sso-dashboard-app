@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	reportscheduler "github.com/moh-sso-dashboard/internal/adapters/modules/report_scheduler"
 	emailutil "github.com/moh-sso-dashboard/internal/email"
 	"github.com/moh-sso-dashboard/internal/model"
 	"github.com/moh-sso-dashboard/internal/service"
+	reportscheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 )
 
 type reportEmailCapture struct {
