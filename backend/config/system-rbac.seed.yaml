@@ -546,6 +546,63 @@ systems:
           - portal:access
           - systems:read
           - systems:launch
+  - clientId: clims
+    displayName: CLIMS
+    description: Laboratory orders, specimens and results.
+    launchUrl: https://clims.health.go.ug/
+    category: laboratory
+    systemType: external
+    displayInLauncher: true
+    displayInSideNav: false
+    launchMode: new_tab
+    enabled: true
+    accessRoles:
+      - clims_access
+    roles:
+      - name: clims_access
+        displayName: CLIMS Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+  - clientId: poesgo
+    displayName: Poesgo
+    description: Point-of-entry screening.
+    launchUrl: https://poes.health.go.ug/api/v1/auth/sso/start
+    category: surveillance
+    systemType: external
+    displayInLauncher: true
+    displayInSideNav: false
+    launchMode: new_tab
+    enabled: true
+    accessRoles:
+      - poesgo_access
+    roles:
+      - name: poesgo_access
+        displayName: Poesgo Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
+  - clientId: digital-timesheets
+    displayName: Health Workforce Portal
+    description: Digital timesheets and clinical training.
+    launchUrl: https://timesheet.health.go.ug
+    category: workforce
+    systemType: external
+    displayInLauncher: true
+    displayInSideNav: false
+    launchMode: new_tab
+    enabled: true
+    accessRoles:
+      - digital-timesheets_access
+    roles:
+      - name: digital-timesheets_access
+        displayName: Health Workforce Portal Access
+        permissions:
+          - portal:access
+          - systems:read
+          - systems:launch
   - clientId: demo-platform-system
     displayName: Demo Platform System
     description: Development example of an internal platform system with side navigation.
