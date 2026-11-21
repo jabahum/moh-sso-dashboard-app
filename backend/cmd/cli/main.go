@@ -77,6 +77,7 @@ func main() {
 	rootCmd.AddCommand(listUsersCmd)
 	rootCmd.AddCommand(systemRBACCmd)
 	rootCmd.AddCommand(newPOESSyncCommand())
+	rootCmd.AddCommand(newCLIMSSyncCommand())
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(devCmd)

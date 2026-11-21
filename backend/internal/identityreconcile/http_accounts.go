@@ -13,29 +13,44 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/mohuganda/moh-sso-dashboard/backend/core/identitysync"
 )
 
 // AccessToken supplies a short-lived Keycloak service-account access token.
 type AccessToken func(context.Context) (string, error)
 
-type POES struct {
-	origin string
-	token  AccessToken
-	client *http.Client
+type HTTPAccounts struct {
+	validID func(string) bool
+	origin  string
+	token   AccessToken
+	client  *http.Client
 }
 
-var _ Accounts = (*POES)(nil)
+var _ Accounts = (*HTTPAccounts)(nil)
 
-func NewPOES(origin string, token AccessToken) (*POES, error) {
+func NewPOES(origin string, token AccessToken) (*HTTPAccounts, error) {
+	return newHTTPAccounts(origin, token, positiveID)
+}
+
+func NewCLIMS(origin string, token AccessToken) (*HTTPAccounts, error) {
+	return newHTTPAccounts(origin, token, func(raw string) bool {
+		id, err := uuid.Parse(raw)
+		return err == nil && id != uuid.Nil && id.String() == raw
+	})
+}
+
+func newHTTPAccounts(origin string, token AccessToken, validID func(string) bool) (*HTTPAccounts, error) {
 	u, err := url.Parse(origin)
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil ||
 		strings.TrimSuffix(origin, "/") != "https://"+u.Host || token == nil {
-		return nil, errors.New("POES requires an HTTPS origin and a service access token source")
+		return nil, errors.New("Identity sync requires an HTTPS origin and a service access token source")
 	}
-	return &POES{
-		origin: "https://" + u.Host,
-		token:  token,
+	return &HTTPAccounts{
+		validID: validID,
+		origin:  "https://" + u.Host,
+		token:   token,
 		client: &http.Client{
 			Timeout: 15 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -45,9 +60,9 @@ func NewPOES(origin string, token AccessToken) (*POES, error) {
 	}, nil
 }
 
-func (p *POES) ListEligibleAccounts(ctx context.Context, cursor string, limit int) (identitysync.AccountPage, error) {
-	if limit < 1 || limit > 100 || (cursor != "" && !positiveID(cursor)) {
-		return identitysync.AccountPage{}, errors.New("invalid POES account page")
+func (p *HTTPAccounts) ListEligibleAccounts(ctx context.Context, cursor string, limit int) (identitysync.AccountPage, error) {
+	if limit < 1 || limit > 100 || (cursor != "" && !p.validID(cursor)) {
+		return identitysync.AccountPage{}, errors.New("invalid identity sync account page")
 	}
 	path := "/accounts"
 	if cursor != "" {
@@ -59,21 +74,21 @@ func (p *POES) ListEligibleAccounts(ctx context.Context, cursor string, limit in
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return identitysync.AccountPage{}, fmt.Errorf("list POES accounts: HTTP %d", resp.StatusCode)
+		return identitysync.AccountPage{}, fmt.Errorf("list identity sync accounts: HTTP %d", resp.StatusCode)
 	}
 	var wire struct {
 		Accounts   []identitysync.Account
 		NextCursor string
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 256<<10)).Decode(&wire); err != nil {
-		return identitysync.AccountPage{}, fmt.Errorf("decode POES account page: %w", err)
+		return identitysync.AccountPage{}, fmt.Errorf("decode identity sync account page: %w", err)
 	}
-	if len(wire.Accounts) > 100 || (wire.NextCursor != "" && !positiveID(wire.NextCursor)) {
-		return identitysync.AccountPage{}, errors.New("invalid POES account response")
+	if len(wire.Accounts) > 100 || (wire.NextCursor != "" && !p.validID(wire.NextCursor)) {
+		return identitysync.AccountPage{}, errors.New("invalid identity sync account response")
 	}
 	for _, account := range wire.Accounts {
-		if !positiveID(account.ID) {
-			return identitysync.AccountPage{}, errors.New("invalid POES account ID")
+		if !p.validID(account.ID) {
+			return identitysync.AccountPage{}, errors.New("invalid identity sync account ID")
 		}
 	}
 	if len(wire.Accounts) > limit {
@@ -83,9 +98,9 @@ func (p *POES) ListEligibleAccounts(ctx context.Context, cursor string, limit in
 	return identitysync.AccountPage{Accounts: wire.Accounts, NextCursor: wire.NextCursor}, nil
 }
 
-func (p *POES) LinkIdentity(ctx context.Context, accountID string, identity identitysync.Identity) error {
-	if !positiveID(accountID) || identity.Issuer == "" || strings.TrimSpace(identity.Subject) == "" {
-		return errors.New("invalid POES identity link")
+func (p *HTTPAccounts) LinkIdentity(ctx context.Context, accountID string, identity identitysync.Identity) error {
+	if !p.validID(accountID) || identity.Issuer == "" || strings.TrimSpace(identity.Subject) == "" {
+		return errors.New("invalid application identity link")
 	}
 	body, err := json.Marshal(map[string]string{"issuer": identity.Issuer, "subject": identity.Subject})
 	if err != nil {
@@ -104,17 +119,17 @@ func (p *POES) LinkIdentity(ctx context.Context, accountID string, identity iden
 	case http.StatusConflict:
 		return identitysync.ErrLinkConflict
 	default:
-		return fmt.Errorf("link POES identity: HTTP %d", resp.StatusCode)
+		return fmt.Errorf("link application identity: HTTP %d", resp.StatusCode)
 	}
 }
 
-func (p *POES) request(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+func (p *HTTPAccounts) request(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
 	token, err := p.token(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get POES service access token: %w", err)
+		return nil, fmt.Errorf("get identity sync service access token: %w", err)
 	}
 	if strings.TrimSpace(token) == "" {
-		return nil, errors.New("empty POES service access token")
+		return nil, errors.New("empty identity sync service access token")
 	}
 	req, err := http.NewRequestWithContext(ctx, method, p.origin+"/api/v1/internal/identity-sync"+path, bytes.NewReader(body))
 	if err != nil {

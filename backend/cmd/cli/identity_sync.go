@@ -18,14 +18,13 @@ import (
 	"github.com/mohuganda/moh-sso-dashboard/backend/core/identitysync"
 )
 
-const poesClientID = "poesgo"
-
-type poesDirectory struct {
-	admin  *keycloak.KeyAdminClient
-	issuer string
+type applicationDirectory struct {
+	admin    *keycloak.KeyAdminClient
+	issuer   string
+	clientID string
 }
 
-func (d poesDirectory) FindEmail(ctx context.Context, email string) ([]identitysync.Identity, error) {
+func (d applicationDirectory) FindEmail(ctx context.Context, email string) ([]identitysync.Identity, error) {
 	query := url.Values{"email": {email}, "exact": {"true"}, "max": {"2"}}
 	resp, err := d.admin.GetWithContext(ctx, "users?"+query.Encode())
 	if err != nil {
@@ -53,34 +52,42 @@ func (d poesDirectory) FindEmail(ctx context.Context, email string) ([]identitys
 	return matches, nil
 }
 
-func (poesDirectory) EnsureUser(context.Context, identitysync.Account) (identitysync.Identity, error) {
-	return identitysync.Identity{}, errors.New("provision new Keycloak users separately before applying POES links")
+func (applicationDirectory) EnsureUser(context.Context, identitysync.Account) (identitysync.Identity, error) {
+	return identitysync.Identity{}, errors.New("provision new Keycloak users separately before applying identity links")
 }
 
-func (d poesDirectory) GrantAccess(ctx context.Context, identity identitysync.Identity) error {
-	client, err := d.admin.GetClientByClientID(poesClientID)
+func (d applicationDirectory) GrantAccess(ctx context.Context, identity identitysync.Identity) error {
+	client, err := d.admin.GetClientByClientID(d.clientID)
 	if err != nil {
 		return err
 	}
-	if !client.Enabled || client.ClientID != poesClientID {
-		return errors.New("POES Keycloak client is unavailable")
+	if !client.Enabled || client.ClientID != d.clientID {
+		return errors.New("application Keycloak client is unavailable")
 	}
-	return d.admin.AssignClientRolesToUser(ctx, identity.Subject, poesClientID, client.ID, []string{"poesgo_access"})
+	return d.admin.AssignClientRolesToUser(ctx, identity.Subject, d.clientID, client.ID, []string{d.clientID + "_access"})
 }
 
 func newPOESSyncCommand() *cobra.Command {
+	return newIdentitySyncCommand("poes-identity-sync", "POES", "poesgo", identityreconcile.NewPOES)
+}
+
+func newCLIMSSyncCommand() *cobra.Command {
+	return newIdentitySyncCommand("clims-identity-sync", "CLIMS", "clims", identityreconcile.NewCLIMS)
+}
+
+func newIdentitySyncCommand(name, app, clientID string, connect func(string, identityreconcile.AccessToken) (*identityreconcile.HTTPAccounts, error)) *cobra.Command {
 	var cursor, accountID, subject string
 	var limit int
 	cmd := &cobra.Command{
-		Use:   "poes-identity-sync",
-		Short: "Preview POES identity matches or apply one reviewed existing-user link",
+		Use:   name,
+		Short: "Preview " + app + " identity matches or apply one reviewed existing-user link",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if (accountID == "") != (subject == "") {
 				return errors.New("apply requires both --apply-account and --approved-subject")
 			}
-			origin := os.Getenv("POES_SYNC_ORIGIN")
-			token := os.Getenv("POES_SYNC_ACCESS_TOKEN")
+			origin := os.Getenv(app + "_SYNC_ORIGIN")
+			token := os.Getenv(app + "_SYNC_ACCESS_TOKEN")
 			base := strings.TrimRight(os.Getenv("KEYCLOAK_BASE_URL"), "/")
 			realm := os.Getenv("KEYCLOAK_REALM")
 			adminID := os.Getenv("KEYCLOAK_ADMIN_CLIENT_ID")
@@ -89,16 +96,16 @@ func newPOESSyncCommand() *cobra.Command {
 			if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" ||
 				u.Fragment != "" || realm == "" || url.PathEscape(realm) != realm ||
 				adminID == "" || secret == "" || token == "" {
-				return errors.New("configure the HTTPS Keycloak base URL, realm, operator credentials and POES service access token")
+				return errors.New("configure the HTTPS Keycloak base URL, realm, operator credentials and application service access token")
 			}
-			accounts, err := identityreconcile.NewPOES(origin, func(context.Context) (string, error) { return token, nil })
+			accounts, err := connect(origin, func(context.Context) (string, error) { return token, nil })
 			if err != nil {
 				return err
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 90*time.Second)
 			defer cancel()
 			issuer := base + "/realms/" + realm
-			directory := poesDirectory{admin: keycloak.NewAdminClient(base, realm, adminID, secret), issuer: issuer}
+			directory := applicationDirectory{admin: keycloak.NewAdminClient(base, realm, adminID, secret), issuer: issuer, clientID: clientID}
 			service := identityreconcile.Service{Accounts: accounts, Directory: directory, Issuer: issuer}
 			page, err := service.Preview(ctx, cursor, limit)
 			if err != nil {
@@ -117,7 +124,7 @@ func newPOESSyncCommand() *cobra.Command {
 				if err := service.Apply(ctx, decision, decision.Account); err != nil {
 					return err
 				}
-				fmt.Fprintln(cmd.OutOrStdout(), "POES identity linked and access granted")
+				fmt.Fprintln(cmd.OutOrStdout(), app+" identity linked and access granted")
 				return nil
 			}
 			return errors.New("approved account is not eligible or is outside the requested page")
@@ -125,7 +132,7 @@ func newPOESSyncCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&cursor, "after", "", "Resume from a preview cursor")
 	cmd.Flags().IntVar(&limit, "limit", 25, "Accounts to preview in the requested page")
-	cmd.Flags().StringVar(&accountID, "apply-account", "", "Apply one reviewed POES account ID")
+	cmd.Flags().StringVar(&accountID, "apply-account", "", "Apply one reviewed "+app+" account ID")
 	cmd.Flags().StringVar(&subject, "approved-subject", "", "Reviewed Keycloak subject for this account")
 	return cmd
 }
