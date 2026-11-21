@@ -751,6 +751,69 @@
             ]
           }
         }
+      ],
+      "eservices": [
+        {
+          "name": "eservices_access",
+          "description": "Default access to eServices",
+          "attributes": {
+            "portal.permissions": [
+              "portal:access",
+              "systems:read",
+              "systems:launch"
+            ]
+          }
+        }
+      ],
+      "research-studies": [
+        {
+          "name": "research-studies_access",
+          "description": "Default access to Research & Studies",
+          "attributes": {
+            "portal.permissions": [
+              "portal:access",
+              "systems:read",
+              "systems:launch"
+            ]
+          }
+        }
+      ],
+      "case-registers": [
+        {
+          "name": "case-registers_access",
+          "description": "Default access to Case Registers",
+          "attributes": {
+            "portal.permissions": [
+              "portal:access",
+              "systems:read",
+              "systems:launch",
+              "documents:read"
+            ]
+          }
+        }
+      ],
+      "reference-registers": [
+        {
+          "name": "reference-registers_access",
+          "description": "Default access to Reference Registers",
+          "attributes": {
+            "portal.permissions": [
+              "portal:access",
+              "systems:read",
+              "systems:launch"
+            ]
+          }
+        }
+      ],
+      "clims": [
+        {
+          "name": "clims_access"
+        }
+      ],
+      "poesgo": [
+        {
+          "name": "poesgo_access"
+        }
       ]
     }
   },
@@ -1013,6 +1076,196 @@
         "ui.category": "support",
         "portal.accessRoles": "demo-external-same-tab_access"
       }
+    },
+    {
+      "clientId": "eservices",
+      "name": "eServices",
+      "description": "Digital service requests and operational tools.",
+      "baseUrl": "/portal/apps/eservices",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "portal.system": "true",
+        "portal.accessRoles": "eservices_access",
+        "ui.systemType": "platform",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "true",
+        "ui.launchMode": "internal",
+        "ui.launchUrl": "/portal/apps/eservices",
+        "ui.home": "/portal/apps/eservices",
+        "ui.icon": "application",
+        "ui.category": "services",
+        "ui.order": "30",
+        "ui.navigation": "[{\"id\":\"ihris\",\"label\":\"iHRIS\",\"path\":\"/apps/eservices/ihris\"},{\"id\":\"meeting-manager\",\"label\":\"Meeting Manager\",\"path\":\"/apps/eservices/meeting-manager\"},{\"id\":\"action-tracker\",\"label\":\"Action Tracker\",\"path\":\"/apps/eservices/action-tracker\"},{\"id\":\"clinician-outputs\",\"label\":\"Clinician Outputs\",\"path\":\"/apps/eservices/clinician-outputs\"},{\"id\":\"leave-absence\",\"label\":\"Leave & Absence Management\",\"path\":\"/apps/eservices/leave-absence\"},{\"id\":\"workplans\",\"label\":\"Workplans\",\"path\":\"/apps/eservices/workplans\"},{\"id\":\"budget-tracker\",\"label\":\"Budget Tracker\",\"path\":\"/apps/eservices/budget-tracker\"},{\"id\":\"activity-reporting\",\"label\":\"Activity Reporting\",\"path\":\"/apps/eservices/activity-reporting\"},{\"id\":\"partner-management\",\"label\":\"Partner Management\",\"path\":\"/apps/eservices/partner-management\"},{\"id\":\"observatory-uploads\",\"label\":\"Observatory Uploads\",\"path\":\"/apps/eservices/observatory-uploads\"}]"
+      }
+    },
+    {
+      "clientId": "research-studies",
+      "name": "Research & Studies",
+      "description": "Research studies, datasets, ethics approvals, and publications.",
+      "baseUrl": "/portal/apps/research-studies",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "portal.system": "true",
+        "portal.accessRoles": "research-studies_access",
+        "ui.systemType": "platform",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "true",
+        "ui.launchMode": "internal",
+        "ui.launchUrl": "/portal/apps/research-studies",
+        "ui.home": "/portal/apps/research-studies",
+        "ui.icon": "microscope",
+        "ui.category": "research",
+        "ui.order": "40",
+        "ui.navigation": "[{\"id\":\"studies\",\"label\":\"Studies\",\"path\":\"/apps/research-studies/studies\"},{\"id\":\"datasets\",\"label\":\"Datasets\",\"path\":\"/apps/research-studies/datasets\"},{\"id\":\"ethics-approvals\",\"label\":\"Ethics & Approvals\",\"path\":\"/apps/research-studies/ethics\"},{\"id\":\"publications\",\"label\":\"Publications\",\"path\":\"/apps/research-studies/publications\"}]"
+      }
+    },
+    {
+      "clientId": "case-registers",
+      "name": "Case Registers",
+      "description": "Case registers and referral tracking.",
+      "baseUrl": "/portal/apps/case-registers",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "portal.system": "true",
+        "portal.accessRoles": "case-registers_access",
+        "ui.systemType": "platform",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "true",
+        "ui.launchMode": "internal",
+        "ui.launchUrl": "/portal/apps/case-registers",
+        "ui.home": "/portal/apps/case-registers",
+        "ui.icon": "document",
+        "ui.category": "clinical",
+        "ui.order": "50",
+        "ui.navigation": "[{\"id\":\"external-referrals\",\"label\":\"External Referrals\",\"path\":\"/apps/case-registers/external-referrals\"},{\"id\":\"disease-registers\",\"label\":\"Disease Registers\",\"path\":\"/apps/case-registers/disease-registers\"}]"
+      }
+    },
+    {
+      "clientId": "reference-registers",
+      "name": "Reference Registers",
+      "description": "Facility, terminology, and reference data registers.",
+      "baseUrl": "/portal/apps/reference-registers",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "portal.system": "true",
+        "portal.accessRoles": "reference-registers_access",
+        "ui.systemType": "platform",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "true",
+        "ui.launchMode": "internal",
+        "ui.launchUrl": "/portal/apps/reference-registers",
+        "ui.home": "/portal/apps/reference-registers",
+        "ui.icon": "catalog",
+        "ui.category": "registry",
+        "ui.order": "60",
+        "ui.navigation": "[{\"id\":\"facility-register\",\"label\":\"Facility Register\",\"path\":\"/apps/reference-registers/facility-register\"},{\"id\":\"terminology-service\",\"label\":\"Terminology Service\",\"children\":[{\"id\":\"test-menu\",\"label\":\"Test Menu\",\"path\":\"/apps/reference-registers/terminology/test-menu\"},{\"id\":\"pharmaceuticals\",\"label\":\"Pharmaceuticals\",\"path\":\"/apps/reference-registers/terminology/pharmaceuticals\"},{\"id\":\"procedures\",\"label\":\"Procedures\",\"path\":\"/apps/reference-registers/terminology/procedures\"},{\"id\":\"equipment\",\"label\":\"Equipment\",\"path\":\"/apps/reference-registers/terminology/equipment\"}]}]"
+      }
+    },
+    {
+      "clientId": "clims",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "https://clims.health.go.ug/sso/callback"
+      ],
+      "webOrigins": [
+        "https://clims.health.go.ug"
+      ],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "portal.system": "true",
+        "portal.accessRoles": "clims_access",
+        "ui.systemType": "external",
+        "ui.displayInLauncher": "true",
+        "ui.displayInSideNav": "false",
+        "ui.launchMode": "new_tab",
+        "ui.category": "Laboratory",
+        "ui.launchUrl": "https://clims.health.go.ug/"
+      },
+      "name": "CLIMS",
+      "description": "Laboratory orders, specimens and results",
+      "baseUrl": "https://clims.health.go.ug/"
+    },
+    {
+      "clientId": "poesgo",
+      "name": "Poesgo",
+      "description": "Point-of-Entry Screening",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "baseUrl": "https://poes.health.go.ug/api/v1/auth/sso/start",
+      "redirectUris": [
+        "https://poes.health.go.ug/api/v1/auth/sso/callback"
+      ],
+      "webOrigins": [],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
+      "attributes": {
+        "ui.displayInSideNav": "false",
+        "portal.accessRoles": "poesgo_access",
+        "portal.onboarding.profile": "external",
+        "ui.systemType": "external",
+        "ui.category": "Surveillance",
+        "ui.launchUrl": "https://poes.health.go.ug/api/v1/auth/sso/start",
+        "portal.system": "true",
+        "ui.displayInLauncher": "true",
+        "ui.launchMode": "new_tab",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "Poesgo access roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "claim.name": "poesgo_roles",
+            "jsonType.label": "String",
+            "usermodel.clientRoleMapping.clientId": "poesgo"
+          }
+        }
+      ]
     },
     {
       "clientId": "datawarehouse-report-browser",
