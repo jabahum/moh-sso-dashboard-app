@@ -12,6 +12,7 @@
 .admin-layout {
   min-height: 100vh;
   --moh-footer-left-offset: var(--moh-admin-sidenav-width);
+  --moh-panel-header-offset: var(--moh-admin-header-height);
   background: var(--cds-background, #ffffff);
 }
 

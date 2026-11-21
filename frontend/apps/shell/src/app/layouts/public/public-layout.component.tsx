@@ -5,17 +5,19 @@ import { HeaderPanelProvider, PublicFooter } from "@moh-sso/ui";
 
 import { useVersionInfo } from "@/app/version/useVersionInfo";
 import { ConnectedPublicHeader } from "@/app/ui-containers";
+import { PanelRouteReset } from "../PanelRouteReset";
 import "./public-layout.scss";
 
 export default function PublicLayout() {
   const versionInfo = useVersionInfo();
 
   return (
-    <HeaderPanelProvider>
-      <div className="public-layout">
+    <div className="public-layout app-side-panel-layout">
+      <HeaderPanelProvider>
+        <PanelRouteReset />
         <ConnectedPublicHeader />
 
-        <main className="public-layout__main">
+        <main className="public-layout__main app-side-panel-content">
           <Content id="main-content" className="public-layout__content">
             <Outlet />
           </Content>
@@ -26,7 +28,7 @@ export default function PublicLayout() {
           backendVersion={versionInfo.backend?.version}
           backendUnavailable={!versionInfo.isLoading && !versionInfo.backend}
         />
-      </div>
-    </HeaderPanelProvider>
+      </HeaderPanelProvider>
+    </div>
   );
 }

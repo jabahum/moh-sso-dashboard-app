@@ -10,6 +10,7 @@ data:
   config.js: |
     window.__APP_CONFIG__ = {
       API_BASE_URL: "{{ include "moh-sso.backend.publicUrl" . }}",
+      sidePanelDocking: {{ .Values.frontend.sidePanelDocking | toJson }},
       ENVIRONMENT: "{{ include "moh-sso.environment" . }}"
     };
 

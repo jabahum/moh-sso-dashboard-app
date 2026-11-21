@@ -263,3 +263,51 @@ for (const width of [1440, 390]) {
     });
   }
 }
+
+test("Systems panel docks beside the table and becomes an overlay on narrow screens", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const system = { clientId: "dashboard-web", displayName: "Integrated Health Portal", enabled: true };
+  await page.route("**/ssobackend/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const data = path.endsWith("/admin/rbac/systems")
+      ? [system]
+      : path.endsWith("/admin/rbac/systems/dashboard-web")
+        ? { ...system, roles: [], accessRoles: [] }
+        : fixtureData(path);
+    await route.fulfill({ json: { success: true, data } });
+  });
+  await page.goto("/portal/admin/systems");
+
+  const main = page.locator("#main-content");
+  const manage = main.getByRole("button", { name: "Manage" });
+  const table = main.locator(".moh-data-table-shell__table-scroll");
+  await expect(manage).toBeVisible();
+  const fullWidth = (await main.boundingBox()).width;
+
+  await manage.focus();
+  await manage.press("Enter");
+
+  const panel = page.getByRole("dialog", { name: "System: Integrated Health Portal" });
+  await expect(panel.getByRole("button", { name: "Close panel", exact: true })).toBeFocused();
+  await expect(panel).not.toHaveAttribute("aria-modal", "true");
+  const drawer = await panel.boundingBox();
+  expect((await main.boundingBox()).width).toBeLessThan(fullWidth);
+  const tableBounds = await table.boundingBox();
+  expect(tableBounds.x + tableBounds.width).toBeLessThanOrEqual(drawer.x);
+
+  const search = main.getByRole("searchbox");
+  await search.click();
+  await expect(search).toBeFocused();
+  await expect(panel).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(manage).toBeFocused();
+  expect((await main.boundingBox()).width).toBe(fullWidth);
+
+  await manage.press("Enter");
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(panel).toHaveAttribute("aria-modal", "true");
+  await expect(page.getByRole("button", { name: "Close panel backdrop" })).toBeVisible();
+  expect((await panel.boundingBox()).width).toBe(390);
+});

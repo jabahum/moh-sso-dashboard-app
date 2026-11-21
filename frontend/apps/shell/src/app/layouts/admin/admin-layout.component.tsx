@@ -45,6 +45,7 @@ import { useVersionInfo } from "@/app/version/useVersionInfo";
 import { HealthContextSelector } from "@/app/ui-containers/HealthContextSelector";
 import { useOpenNotifications } from "@/app/ui-containers/ConnectedNotificationsPanel";
 
+import { PanelRouteReset } from "../PanelRouteReset";
 import "./admin-layout.scss";
 
 import imagePath from "../../../assets/logo.png";
@@ -351,8 +352,9 @@ export default function AdminLayout() {
   const versionInfo = useVersionInfo();
 
   return (
-    <HeaderPanelProvider>
-      <div className={`admin-layout${isSideNavVisible ? "" : " admin-layout--sidenav-hidden"}`}>
+    <div className={`admin-layout app-side-panel-layout${isSideNavVisible ? "" : " admin-layout--sidenav-hidden"}`}>
+      <HeaderPanelProvider>
+        <PanelRouteReset />
         <Header aria-label="MOH Integrated Health Portal" className="admin-layout__header">
           <SkipToContent />
           <HeaderMenuButton
@@ -414,7 +416,7 @@ export default function AdminLayout() {
           />
         ) : null}
 
-        <div className="admin-layout__content-shell">
+        <div className="admin-layout__content-shell app-side-panel-content">
           <RouteBreadcrumbBar />
 
           <Content id="main-content" className="admin-layout__content">
@@ -426,7 +428,7 @@ export default function AdminLayout() {
           backendVersion={versionInfo.backend?.version}
           backendUnavailable={!versionInfo.isLoading && !versionInfo.backend}
         />
-      </div>
-    </HeaderPanelProvider>
+      </HeaderPanelProvider>
+    </div>
   );
 }

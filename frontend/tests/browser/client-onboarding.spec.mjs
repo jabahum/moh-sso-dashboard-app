@@ -6,6 +6,7 @@ const admin = { id: '00000000-0000-0000-0000-000000000001', username: 'admin', e
 for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
 test(`admin reviews and provisions a disabled client at ${viewport.width}px`, async ({ page }) => {
   await page.setViewportSize(viewport);
+  await page.emulateMedia({ reducedMotion: "reduce" });
   const writes = [];
   const failures = [];
   page.on('pageerror', error => failures.push(error.message));
@@ -24,7 +25,21 @@ test(`admin reviews and provisions a disabled client at ${viewport.width}px`, as
     await route.fulfill({ json: { success: true, data } });
   });
   await page.goto('/portal/admin/clients');
-  await page.getByRole('button', { name: 'Onboard application', exact: true }).click();
+  const main = page.locator('#main-content');
+  const openOnboarding = page.getByRole('button', { name: 'Onboard application', exact: true });
+  await expect(openOnboarding).toBeVisible();
+  const initialWidth = (await main.boundingBox()).width;
+  await openOnboarding.click();
+  const panel = page.getByRole('dialog', { name: 'Onboard application', exact: true });
+  await expect(panel).toBeVisible();
+  if (viewport.width >= 1280) {
+    await expect(panel).not.toHaveAttribute('aria-modal', 'true');
+    const content = await main.boundingBox();
+    expect(content.width).toBeLessThan(initialWidth);
+    expect(content.x + content.width).toBeLessThanOrEqual((await panel.boundingBox()).x);
+  } else {
+    await expect(panel).toHaveAttribute('aria-modal', 'true');
+  }
   await page.getByLabel('Client ID', { exact: true }).fill('workforce-app');
   await page.getByLabel('Application name', { exact: true }).fill('Workforce');
   await page.getByLabel('Application owner or team').fill('Workforce team');

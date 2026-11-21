@@ -158,3 +158,14 @@ npm run build:shell
 ```
 
 Run app/package builds when changing shared package exports, app entrypoints, route ownership, or package metadata.
+
+### Desktop side panels
+
+Side panels dock alongside the page at desktop widths by default. To use overlays for every panel, set
+`FRONTEND_SIDE_PANEL_DOCKING=false` in the Docker Compose environment,
+`frontend.sidePanelDocking: false` in Helm values, or `sidePanelDocking: false` in the served
+`config.js` for static hosting. A panel caller can also use `openPanel({ ..., dockOnDesktop: false })`
+for an individual overlay. Small screens and maximized panels use overlays.
+
+Build from the workspace with `FRONTEND_MODULE_SOURCE=workspace` to test the current checkout.
+Builds that use npm module pins need a published `@moh-sso/ui` version that includes docking.

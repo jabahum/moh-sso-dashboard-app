@@ -3,6 +3,7 @@
 }
 
 .public-layout {
+  --moh-panel-header-offset: var(--moh-header-height);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -39,7 +40,6 @@
 /*
  * Footer stays below content.
  */
-.public-layout>footer,
 .public-layout .public-footer {
   flex-shrink: 0;
 }

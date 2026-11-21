@@ -295,6 +295,10 @@ jobs:
       - name: Exercise npm module selection in development and production
         timeout-minutes: 5
         run: npm run test:module-consumption
+      - name: Stage workspace frontend for browser regression tests
+        env:
+          FRONTEND_MODULE_SOURCE: workspace
+        run: npm run generate:import-map && npm run build:shell && npm run stage:mf
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser smoke tests

@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from "react";
 
 type FocusTrapOptions = {
   active: boolean;
+  trapFocus?: boolean;
   containerRef: RefObject<HTMLElement | null>;
   restoreFocus?: boolean;
   initialFocusRef?: RefObject<HTMLElement | HTMLButtonElement | null>;
@@ -28,6 +29,7 @@ function getFocusableElements(container: HTMLElement) {
 
 export function useFocusTrap({
   active,
+  trapFocus = true,
   containerRef,
   restoreFocus = true,
   initialFocusRef,
@@ -60,6 +62,20 @@ export function useFocusTrap({
       (focusableElements[0] ?? container).focus();
     };
 
+    const focusFrame = requestAnimationFrame(focusInitialElement);
+
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      if (restoreFocus && previouslyFocused?.isConnected) {
+        previouslyFocused.focus();
+      }
+    };
+  }, [active, containerRef, initialFocusRef, initialFocusSelector, restoreFocus]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!active || !trapFocus || !container) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Tab") {
         return;
@@ -89,16 +105,7 @@ export function useFocusTrap({
       }
     };
 
-    const focusFrame = requestAnimationFrame(focusInitialElement);
     document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      cancelAnimationFrame(focusFrame);
-      document.removeEventListener("keydown", handleKeyDown);
-
-      if (restoreFocus && previouslyFocused?.isConnected) {
-        previouslyFocused.focus();
-      }
-    };
-  }, [active, containerRef, initialFocusRef, initialFocusSelector, restoreFocus]);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [active, containerRef, trapFocus]);
 }

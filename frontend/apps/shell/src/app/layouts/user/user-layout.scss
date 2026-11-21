@@ -4,6 +4,7 @@
 }
 
 .user-layout {
+  --moh-panel-header-offset: var(--moh-header-height);
   min-height: 100vh;
   display: flex;
   flex-direction: column;

@@ -119,6 +119,7 @@ services:
       FRONTEND_MICROFRONTEND_MODE: remote
       FRONTEND_SINGLE_SPA_ORCHESTRATION: "true"
       FRONTEND_MICROFRONTEND_MOUNT_MODE: orchestrated
+      FRONTEND_SIDE_PANEL_DOCKING: "${FRONTEND_SIDE_PANEL_DOCKING:-true}"
     ports: ["${APP_BIND_ADDRESS:-127.0.0.1}:3000:3000"]
     healthcheck:
       test:

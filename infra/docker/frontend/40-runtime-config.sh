@@ -6,8 +6,13 @@ config="$(jq -cn \
   --arg mode "${FRONTEND_MICROFRONTEND_MODE:-remote}" \
   --arg orchestration "${FRONTEND_SINGLE_SPA_ORCHESTRATION:-true}" \
   --arg mount "${FRONTEND_MICROFRONTEND_MOUNT_MODE:-orchestrated}" \
-  '{API_BASE_URL:$api,microfrontendMode:$mode,singleSpaOrchestration:($orchestration == "true"),microfrontendMountMode:$mount}')"
+  --arg docking "${FRONTEND_SIDE_PANEL_DOCKING:-true}" \
+  '{API_BASE_URL:$api,microfrontendMode:$mode,singleSpaOrchestration:($orchestration == "true"),microfrontendMountMode:$mount,sidePanelDocking:($docking != "false")}')"
 write_config() {
+  # Helm supplies an existing config.js through a read-only ConfigMap mount.
+  if [ -f "$1" ] && [ ! -w "$1" ]; then
+    return
+  fi
   mkdir -p "$(dirname "$1")"
   printf '/* generated from public container settings */\nwindow.__APP_CONFIG__ = %s;\n' "$config" > "$1"
 }

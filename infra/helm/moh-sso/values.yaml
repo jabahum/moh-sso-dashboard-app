@@ -124,6 +124,7 @@ backend:
 # Frontend (React + Nginx)
 # --------------------------------------------------
 frontend:
+  sidePanelDocking: true
   enabled: true
 
   replicas: 1

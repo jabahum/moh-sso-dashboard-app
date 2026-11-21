@@ -12,6 +12,8 @@ spec:
       app: {{ .Release.Name }}-frontend
   template:
     metadata:
+      annotations:
+        checksum/frontend-config: {{ include (print $.Template.BasePath "/frontend-config.yaml") . | sha256sum }}
       labels:
         app: {{ .Release.Name }}-frontend
         {{- include "moh-sso.labels" . | nindent 8 }}

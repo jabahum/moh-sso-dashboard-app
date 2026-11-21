@@ -1,3 +1,54 @@
+$panel-widths: (
+  "sm": 22rem,
+  "md": 28rem,
+  "lg": 36rem,
+);
+
+.app-side-panel-layout,
+.app-side-panel-scope:not(.app-side-panel-layout *, .app-side-panel-scope *) {
+  --moh-panel-space: 0rem;
+
+  @each $size, $width in $panel-widths {
+    &:has(.app-side-panel--open[data-docked][data-size="#{$size}"]) {
+      --moh-panel-space: #{$width};
+    }
+  }
+}
+
+.app-side-panel-layout .app-side-panel-scope {
+  display: contents;
+}
+
+.app-side-panel-scope:not(.app-side-panel-layout *, .app-side-panel-scope *) {
+  min-width: 0;
+  padding-right: var(--moh-panel-space);
+  transition: padding-right 220ms ease;
+}
+
+.app-side-panel-layout .app-side-panel-content {
+  margin-right: var(--moh-panel-space);
+  transition: margin-right 220ms ease;
+}
+
+.app-side-panel-layout .public-footer {
+  width: calc(100% - var(--moh-footer-left-offset, 0rem) - var(--moh-panel-space));
+  transition: width 220ms ease;
+}
+
+.app-side-panel[data-docked] {
+  top: var(--moh-panel-header-offset, 0rem);
+  pointer-events: none;
+}
+
+.app-side-panel[data-docked] .app-side-panel__drawer {
+  height: 100%;
+  box-shadow: none;
+}
+
+.app-side-panel--open[data-docked] .app-side-panel__drawer {
+  pointer-events: auto;
+}
+
 .app-side-panel {
   position: fixed;
   inset: 0;
@@ -48,16 +99,10 @@
   transform: translateX(0);
 }
 
-.app-side-panel__drawer--sm {
-  max-width: 22rem;
-}
-
-.app-side-panel__drawer--md {
-  max-width: 28rem;
-}
-
-.app-side-panel__drawer--lg {
-  max-width: 36rem;
+@each $size, $width in $panel-widths {
+  .app-side-panel__drawer--#{$size} {
+    max-width: $width;
+  }
 }
 
 .app-side-panel__drawer--maximized {
@@ -125,6 +170,16 @@
 .app-side-panel__body::-webkit-scrollbar-thumb {
   background: var(--cds-border-strong);
   border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-side-panel__backdrop,
+  .app-side-panel__drawer,
+  .app-side-panel-scope:not(.app-side-panel-layout *, .app-side-panel-scope *),
+  .app-side-panel-layout .public-footer,
+  .app-side-panel-layout .app-side-panel-content {
+    transition: none;
+  }
 }
 
 @media (max-width: 672px) {

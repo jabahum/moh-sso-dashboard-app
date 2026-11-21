@@ -11,6 +11,7 @@ import { ConnectedClientSideNav, ConnectedUserHeader } from "@/app/ui-containers
 import { useVersionInfo } from "@/app/version/useVersionInfo";
 
 import { useShellNavigation } from "../useShellNavigation";
+import { PanelRouteReset } from "../PanelRouteReset";
 import "./user-layout.scss";
 
 const USER_SIDENAV_STORAGE_KEY = "moh.userLayout.sideNavVisible";
@@ -26,7 +27,7 @@ export default function UserLayout() {
   const navigation = useShellNavigation(USER_SIDENAV_STORAGE_KEY, hasSideNav);
   const isSideNavVisible = navigation.visible;
   const layoutClassName = [
-    "user-layout",
+    "user-layout app-side-panel-layout",
     !hasSideNav ? "user-layout--without-sidenav" : "",
     hasSideNav && !isSideNavVisible ? "user-layout--sidenav-hidden" : "",
   ]
@@ -34,15 +35,16 @@ export default function UserLayout() {
     .join(" ");
 
   return (
-    <HeaderPanelProvider>
-      <div className={layoutClassName}>
+    <div className={layoutClassName}>
+      <HeaderPanelProvider>
+        <PanelRouteReset />
         <ConnectedUserHeader
           navigationExpanded={isSideNavVisible}
           onGlobalAction={navigation.compact ? () => navigation.setVisible(false) : undefined}
           onToggleNavigation={hasSideNav ? navigation.toggle : undefined}
         />
 
-        <div className="user-layout__body">
+        <div className="user-layout__body app-side-panel-content">
           {hasSideNav && (
             <ConnectedClientSideNav
               visible={isSideNavVisible}
@@ -73,7 +75,7 @@ export default function UserLayout() {
           backendVersion={versionInfo.backend?.version}
           backendUnavailable={!versionInfo.isLoading && !versionInfo.backend}
         />
-      </div>
-    </HeaderPanelProvider>
+      </HeaderPanelProvider>
+    </div>
   );
 }

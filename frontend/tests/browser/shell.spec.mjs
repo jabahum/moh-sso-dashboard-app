@@ -484,3 +484,42 @@ test("nested sidebar groups and pages share label columns at every level", async
   }
   await page.screenshot({ path: "/tmp/moh-sidebar-indentation.png" });
 });
+
+for (const sidePanelDocking of [true, false]) {
+  test(`account panel respects desktop docking configuration (${sidePanelDocking})`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await fixture(page);
+    await page.route("**/portal/config.js", async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      await route.fulfill({
+        response,
+        body: `${body}\nwindow.__APP_CONFIG__.sidePanelDocking = ${sidePanelDocking};`,
+      });
+    });
+    await page.goto("/portal/apps/dwh/data-validation");
+
+    const main = page.locator(".user-layout #main-content");
+    const profile = page.getByRole("button", { name: "Signed in as shell-reviewer" });
+    await expect(main).toBeVisible();
+    const initialWidth = (await main.boundingBox()).width;
+    await profile.click();
+
+    const panel = page.getByRole("dialog", { name: "Your account", exact: true });
+    await expect(panel.getByRole("button", { name: "Close panel", exact: true })).toBeFocused();
+    if (sidePanelDocking) {
+      await expect(panel).not.toHaveAttribute("aria-modal", "true");
+      const content = await main.boundingBox();
+      expect(content.width).toBeLessThan(initialWidth);
+      expect(content.x + content.width).toBeLessThanOrEqual((await panel.boundingBox()).x);
+    } else {
+      await expect(panel).toHaveAttribute("aria-modal", "true");
+      expect((await main.boundingBox()).width).toBe(initialWidth);
+    }
+
+    await page.keyboard.press("Escape");
+    await expect(profile).toBeFocused();
+    expect((await main.boundingBox()).width).toBe(initialWidth);
+  });
+}
