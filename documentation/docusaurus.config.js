@@ -7,7 +7,7 @@ const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 export default {
   title: 'Integrated Health Portal Documentation',
   url: process.env.DOCS_URL ?? 'https://mohuganda.github.io',
-  baseUrl: process.env.DOCS_BASE_URL ?? '/moh-sso-dashboard/',
+  baseUrl: process.env.DOCS_BASE_URL ?? '/docs/',
   trailingSlash: true,
   onBrokenLinks: 'throw',
   markdown: {
@@ -44,6 +44,10 @@ export default {
   themeConfig: {
     navbar: {
       title: 'Integrated Health Portal',
+      logo: {
+        alt: 'Uganda Ministry of Health',
+        src: 'img/moh-logo.png',
+      },
       items: [
         {type: 'docSidebar', sidebarId: 'guides', label: 'Documentation', position: 'left'},
         {href: repository, label: 'GitHub', position: 'right'},

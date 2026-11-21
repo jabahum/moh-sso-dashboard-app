@@ -24,3 +24,7 @@ infra/certs
 .DS_Store
 
 **/.npm-modules
+
+.cache
+documentation/.docusaurus
+documentation/build

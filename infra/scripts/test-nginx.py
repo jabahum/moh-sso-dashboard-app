@@ -80,6 +80,15 @@ def main():
                     target = html / (prefix + path)
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text(contents)
+            for path, contents in {
+                'index.html': '<title>Documentation fixture</title>',
+                'guide/index.html': '<title>Guide fixture</title>',
+                'img/moh-logo.png': 'logo fixture',
+            }.items():
+                target = html / 'docs' / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(contents)
+
             # Use the exact port transformation performed by infra/docker/frontend/Dockerfile.
             frontend = tmp / "frontend.conf"
             frontend.write_text((ROOT / 'infra/docker/frontend/nginx.conf').read_text().replace(
@@ -163,8 +172,21 @@ def main():
                     time.sleep(0.25)
                 raise AssertionError(f"Timed out waiting for {path}")
 
+            def check_docs():
+                status, headers, _ = request('/docs?keep=1')
+                assert status == 308 and headers['Location'] == '/docs/?keep=1'
+                for path, content in (
+                    ('/docs/', b'Documentation fixture'),
+                    ('/docs/guide/', b'Guide fixture'),
+                    ('/docs/img/moh-logo.png', b'logo fixture'),
+                ):
+                    status, _, body = request(path)
+                    assert status == 200 and content in body, (path, status, body)
+                assert request('/docs/missing/')[0] == 404
+
             wait_for("/portal/", lambda r: r[0] == 200)
             wait_for("/health/ready", lambda r: r[0] == 200)
+            check_docs()
             # Exercise the actual Compose probe against the IPv4-only gateway.
             model = subprocess.run(['docker', 'compose', '-f', str(ROOT / 'infra/compose/docker-compose-nginx.yml'),
                                     'config', '--format', 'json'], env=env, text=True,
@@ -275,6 +297,7 @@ server {
             port = int(docker('port', host, '443/tcp').rsplit(':', 1)[1])
             use_tls = True
             wait_for('/portal/', lambda r: r[0] == 200)
+            check_docs()
             for path, expected in (('/', b'report-browser-root'),
                                    ('/report-browser/reports', b'report-browser-route')):
                 assert request(path)[2] == expected
@@ -327,6 +350,7 @@ server {
             docker('exec', remote, 'nginx', '-t')
             port = int(docker('port', remote, '443/tcp').rsplit(':', 1)[1])
             wait_for('/portal/import-map.json', lambda r: r[0] == 200)
+            check_docs()
             assert request('/')[2] == b'report-browser-root'
             assert request('/report-browser/reports')[2] == b'report-browser-route'
             for path, expected_cache in (
