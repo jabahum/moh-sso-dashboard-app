@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 // moduleAudit adapts the audit interfaces of the currently published modules.

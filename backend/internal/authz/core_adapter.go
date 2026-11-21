@@ -3,7 +3,7 @@ package authz
 import (
 	"context"
 
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 type coreAuthorizationResolver struct{ host PermissionResolver }

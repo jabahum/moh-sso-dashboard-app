@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 func TestConcurrentShutdownCancelsBeforeReverseCleanupAndRetainsAllErrors(t *testing.T) {

@@ -7,15 +7,13 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-MODULE = 'github.com/moh-sso-dashboard/core'
+MODULE = 'github.com/mohuganda/moh-sso-dashboard/backend/core'
 
 
 def main():
     with tempfile.TemporaryDirectory(prefix='moh-platform-core-') as tmp:
         root = Path(tmp) / 'core'
         shutil.copytree(ROOT / 'backend/core', root)
-        assert not list(root.rglob('go.mod')), 'Core tree is host-integrated; nested module boundaries need an explicit review'
-        (root / 'go.mod').write_text('module ' + MODULE + '\n\ngo 1.25.4\n')
         before = (root / 'go.mod').read_bytes()
         env = {**os.environ, 'GOWORK': 'off', 'GOTOOLCHAIN': 'local',
                'GOPROXY': 'off', 'GOMODCACHE': str(Path(tmp) / 'empty-module-cache')}

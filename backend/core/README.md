@@ -32,3 +32,15 @@ and failure propagation. Host ID/explanation types remain type parameters;
 core imports no UUID, geographic provider or database packages. Effective
 assignment loading, alias resolution and selected-context middleware remain
 host responsibilities. Core-only startup is deferred.
+
+## External Go consumers
+
+The module path is `github.com/mohuganda/moh-sso-dashboard/backend/core`.
+Release tags for this nested module use the `backend/core/vX.Y.Z` prefix.
+The dashboard currently uses a local replacement so it builds against the
+same source tree as the module.
+
+The `identitysync.AccountStore` contract lets a host expose eligible accounts
+and persist OIDC identity links keyed by issuer and subject. The host owns
+authorization, storage, and roles. Repeating an existing link is safe, and
+conflicting links must fail atomically.

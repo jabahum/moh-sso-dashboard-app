@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 type authorizationFunc func(context.Context, core.Identity) (core.Access, error)

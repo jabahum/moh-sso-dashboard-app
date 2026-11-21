@@ -32,7 +32,7 @@ func TestPlatformCoreUsesOnlyStandardLibraryImports(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if name == "github.com/moh-sso-dashboard/core" || strings.HasPrefix(name, "github.com/moh-sso-dashboard/core/") {
+			if name == "github.com/mohuganda/moh-sso-dashboard/backend/core" || strings.HasPrefix(name, "github.com/mohuganda/moh-sso-dashboard/backend/core/") {
 				continue
 			}
 			dependency, err := build.Default.Import(name, "", build.FindOnly)

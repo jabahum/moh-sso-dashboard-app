@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	logger "github.com/moh-sso-dashboard/internal/log"
 	"github.com/moh-sso-dashboard/internal/model"
 	repository "github.com/moh-sso-dashboard/internal/repository/email"

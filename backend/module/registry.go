@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 // Info retains the host API schema name while core owns its field contract.

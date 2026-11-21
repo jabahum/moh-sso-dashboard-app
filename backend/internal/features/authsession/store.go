@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	"github.com/redis/go-redis/v9"
 )
 

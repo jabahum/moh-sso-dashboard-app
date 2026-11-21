@@ -3,7 +3,7 @@ package rbac
 import (
 	"context"
 
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 // NewCoreApplicationRegistry adapts the authoritative registry without moving

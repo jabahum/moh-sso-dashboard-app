@@ -17,6 +17,7 @@ WORKDIR /app
 
 # Copy go.mod and go.sum first (for caching dependencies)
 COPY backend/go.mod backend/go.sum ./
+COPY backend/core/go.mod ./core/go.mod
 RUN go mod download
 
 # Copy all source code

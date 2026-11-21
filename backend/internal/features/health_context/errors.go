@@ -2,7 +2,7 @@ package health_context
 
 import (
 	"errors"
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/moh-sso-dashboard/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	"github.com/moh-sso-dashboard/internal/config"
 	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
 	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"

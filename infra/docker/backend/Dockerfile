@@ -16,6 +16,7 @@ ENV CGO_ENABLED=0 GOWORK=off
 WORKDIR /app
 
 COPY backend/go.mod backend/go.sum ./
+COPY backend/core/go.mod ./core/go.mod
 RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
 
 COPY backend/ .
