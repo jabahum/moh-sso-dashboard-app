@@ -305,8 +305,12 @@ later.
 **Revocations (Track C).** `BatchService.Revocations` is a
 `RevocationChecker { IsRevoked(ctx, application, issuer, subject) (bool, error) }`.
 Nil means nothing is revoked (`NoRevocations`). The CLI gets it from the package
-variable `identitySyncRevocations(ctx, rt)`, which Track C replaces from
-`identity_sync_revoke.go`.
+variable `identitySyncRevocations(ctx, rt)`, which `identity_sync_wiring.go`
+sets to Track C's `RevokeService.IsRevoked` on the registry database (it fails
+closed when that database is unavailable). The same checker guards the
+single-account `identity-sync apply` and the deprecated aliases' registry
+path (`Service.Application`/`Service.Revocations`), checked before the link and
+before the grant.
 
 **Owned files:** `backend/internal/identityreconcile/batch*.go`,
 `backend/internal/identityreconcile/invite*.go`, migration 63,
