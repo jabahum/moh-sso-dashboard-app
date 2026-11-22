@@ -39,7 +39,7 @@ def main():
                        cwd=ROOT / 'backend', env=env, check=True)
         subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/platform', '-run', '^TestPlatformPostgres$', '-count=1', '-v', '-timeout=5m'],
                        cwd=ROOT / 'backend', env=env, check=True)
-        subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/identityreconcile', '-run', '^TestIdentitySyncRegistryPostgres$', '-count=1', '-v', '-timeout=5m'],
+        subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/identityreconcile', '-run', '^(TestIdentitySyncRegistryPostgres|TestIdentitySyncRevocationsPostgres)$', '-count=1', '-v', '-timeout=5m'],
                        cwd=ROOT / 'backend', env=env, check=True)
     finally:
         subprocess.run(['docker', 'rm', '-f', name], capture_output=True)
