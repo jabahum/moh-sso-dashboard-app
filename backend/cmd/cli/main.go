@@ -103,6 +103,8 @@ func isLocalToolCommand(cmd *cobra.Command) bool {
 		"moh-sso dev",
 		"moh-sso openapi",
 		"moh-sso version",
+		// Run by application teams against their own app; needs no Keycloak admin.
+		"moh-sso identity-sync conformance",
 	}
 	for _, prefix := range localPrefixes {
 		if strings.HasPrefix(commandPath, prefix) {

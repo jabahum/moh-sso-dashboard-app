@@ -5,8 +5,24 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/moh-sso-dashboard/internal/identityreconcile"
 )
+
+func TestIdentitySyncConformanceNeedsNoKeycloakAdmin(t *testing.T) {
+	root := &cobra.Command{Use: "moh-sso"}
+	root.AddCommand(newIdentitySyncCommand())
+	for name, wantLocal := range map[string]bool{"conformance": true, "run": false, "revoke": false, "register": false} {
+		sub, _, err := root.Find([]string{"identity-sync", name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := isLocalToolCommand(sub); got != wantLocal {
+			t.Errorf("identity-sync %s: local tool = %v, want %v", name, got, wantLocal)
+		}
+	}
+}
 
 func TestIdentitySyncParentHasEveryTrackSubcommand(t *testing.T) {
 	cmd := newIdentitySyncCommand()
