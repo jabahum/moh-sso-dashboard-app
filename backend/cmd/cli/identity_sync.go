@@ -87,7 +87,9 @@ func newIdentitySyncCommand(name, app, clientID string, connect func(string, ide
 				return errors.New("apply requires both --apply-account and --approved-subject")
 			}
 			origin := os.Getenv(app + "_SYNC_ORIGIN")
-			token := os.Getenv(app + "_SYNC_ACCESS_TOKEN")
+			staticToken := os.Getenv(app + "_SYNC_ACCESS_TOKEN")
+			syncClientID := os.Getenv(app + "_SYNC_CLIENT_ID")
+			syncClientSecret := os.Getenv(app + "_SYNC_CLIENT_SECRET")
 			base := strings.TrimRight(os.Getenv("KEYCLOAK_BASE_URL"), "/")
 			realm := os.Getenv("KEYCLOAK_REALM")
 			adminID := os.Getenv("KEYCLOAK_ADMIN_CLIENT_ID")
@@ -95,16 +97,20 @@ func newIdentitySyncCommand(name, app, clientID string, connect func(string, ide
 			u, err := url.Parse(base)
 			if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" ||
 				u.Fragment != "" || realm == "" || url.PathEscape(realm) != realm ||
-				adminID == "" || secret == "" || token == "" {
-				return errors.New("configure the HTTPS Keycloak base URL, realm, operator credentials and application service access token")
+				adminID == "" || secret == "" {
+				return errors.New("configure the HTTPS Keycloak base URL, realm and operator credentials")
 			}
-			accounts, err := connect(origin, func(context.Context) (string, error) { return token, nil })
+			issuer := base + "/realms/" + realm
+			token, err := identitySyncToken(app, issuer, syncClientID, syncClientSecret, staticToken)
+			if err != nil {
+				return err
+			}
+			accounts, err := connect(origin, token)
 			if err != nil {
 				return err
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 90*time.Second)
 			defer cancel()
-			issuer := base + "/realms/" + realm
 			directory := applicationDirectory{admin: keycloak.NewAdminClient(base, realm, adminID, secret), issuer: issuer, clientID: clientID}
 			service := identityreconcile.Service{Accounts: accounts, Directory: directory, Issuer: issuer}
 			page, err := service.Preview(ctx, cursor, limit)
@@ -135,4 +141,17 @@ func newIdentitySyncCommand(name, app, clientID string, connect func(string, ide
 	cmd.Flags().StringVar(&accountID, "apply-account", "", "Apply one reviewed "+app+" account ID")
 	cmd.Flags().StringVar(&subject, "approved-subject", "", "Reviewed Keycloak subject for this account")
 	return cmd
+}
+
+// identitySyncToken prefers the application's dedicated identity-sync service account
+// (<APP>_SYNC_CLIENT_ID / <APP>_SYNC_CLIENT_SECRET) and falls back to a pre-minted
+// <APP>_SYNC_ACCESS_TOKEN only when no service client is configured.
+func identitySyncToken(app, issuer, clientID, clientSecret, staticToken string) (identityreconcile.AccessToken, error) {
+	if clientID != "" || clientSecret != "" {
+		return identityreconcile.ClientCredentials(issuer+"/protocol/openid-connect/token", clientID, clientSecret)
+	}
+	if staticToken != "" {
+		return func(context.Context) (string, error) { return staticToken, nil }, nil
+	}
+	return nil, fmt.Errorf("configure %[1]s_SYNC_CLIENT_ID and %[1]s_SYNC_CLIENT_SECRET (or %[1]s_SYNC_ACCESS_TOKEN)", app)
 }
