@@ -1,0 +1,307 @@
+openapi: 3.0.3
+info:
+  title: MoH identity-sync application contract
+  version: 1.1.0
+  description: |
+    Endpoints an application exposes so the MoH SSO Dashboard can reconcile the
+    application's local accounts with Keycloak identities.
+
+    The normative rules (authorization, pagination, idempotency, retries and
+    conflict handling) are in docs/integrations/identity-sync-contract.md. This
+    file is the machine-readable shape that the conformance suite checks.
+
+    Version history:
+    - 1.0: account listing (`after` cursor, fixed page size) and identity linking.
+      CLIMS and POES implement 1.0.
+    - 1.1: adds the contract descriptor, the `limit` parameter, each account's
+      current link, and session revocation. 1.1 is backwards compatible: a 1.0
+      client ignores the new fields.
+servers:
+  - url: https://{applicationOrigin}/api/v1/internal/identity-sync
+    variables:
+      applicationOrigin:
+        default: app.health.go.ug
+        description: The application's registered HTTPS origin (scheme and host only).
+security:
+  - identitySyncServiceAccount: []
+paths:
+  /:
+    get:
+      operationId: getContractDescriptor
+      summary: Describe the implemented contract version and capabilities
+      description: Required from 1.1. A 404 tells the dashboard the application implements 1.0.
+      responses:
+        "200":
+          description: Contract descriptor
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractDescriptor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /accounts:
+    get:
+      operationId: listEligibleAccounts
+      summary: List local accounts eligible for an SSO identity link
+      parameters:
+        - name: after
+          in: query
+          required: false
+          description: The `nextCursor` from the previous page, passed back verbatim. Omit for the first page.
+          schema:
+            $ref: "#/components/schemas/Cursor"
+        - name: limit
+          in: query
+          required: false
+          description: Maximum accounts to return (1.1). Applications return at most this many and at most 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+      responses:
+        "200":
+          description: One page of eligible accounts in stable ascending order
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /accounts/{accountId}/identity:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/AccountId"
+    put:
+      operationId: linkIdentity
+      summary: Link an eligible account to a Keycloak identity
+      description: |
+        Idempotent. Repeating an identical link returns 204. A link is never replaced:
+        a different subject for this account, or this subject on another account, is a 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Identity"
+      responses:
+        "204":
+          description: The account is linked to exactly this identity
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: The account does not exist or is not eligible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The link conflicts with an existing link; nothing was changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /sessions/revoke:
+    post:
+      operationId: revokeSessions
+      summary: End every local session of the account linked to an identity (1.1)
+      description: |
+        Ends local sessions and invalidates local refresh tokens for the account
+        linked to this identity. Idempotent: returns 204 when the identity is not
+        linked or has no sessions. Does not remove the link or local roles.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Identity"
+      responses:
+        "204":
+          description: No session of the linked account remains usable
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+components:
+  securitySchemes:
+    identitySyncServiceAccount:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A Keycloak access token issued by client credentials to the application's
+        dedicated identity-sync client (for example `clims-identity-sync`). See the
+        contract document for the required claims.
+  headers:
+    NoStore:
+      description: Responses must not be cached.
+      schema:
+        type: string
+        enum: [no-store]
+  responses:
+    BadRequest:
+      description: Malformed parameters or body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing, expired or unverifiable bearer token
+    Forbidden:
+      description: Valid token that is not the registered identity-sync client or lacks the identity_sync role
+    TooManyRequests:
+      description: Rate limited; retry after the given delay
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+    Unavailable:
+      description: Temporarily unavailable; safe to retry after the given delay
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+  schemas:
+    AccountId:
+      type: string
+      description: Stable local account ID. Applications declare the format in the descriptor.
+      minLength: 1
+      maxLength: 128
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    Cursor:
+      type: string
+      description: Opaque continuation cursor. Clients must not parse or construct it.
+      minLength: 1
+      maxLength: 256
+      pattern: "^[A-Za-z0-9._:~-]+$"
+    Identity:
+      type: object
+      additionalProperties: false
+      required: [issuer, subject]
+      properties:
+        issuer:
+          type: string
+          format: uri
+          maxLength: 512
+          description: The public Keycloak realm issuer. Applications reject any issuer other than their configured one.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: The Keycloak user ID (the `sub` claim).
+    Account:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          $ref: "#/components/schemas/AccountId"
+        email:
+          type: string
+          maxLength: 320
+          description: Matching hint only; may be empty. Never an identity key.
+        link:
+          description: The account's current link for the application's configured issuer, or null (1.1).
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [issuer, subject]
+          properties:
+            issuer:
+              type: string
+              format: uri
+              maxLength: 512
+            subject:
+              type: string
+              minLength: 1
+              maxLength: 255
+    AccountPage:
+      type: object
+      required: [accounts, nextCursor]
+      properties:
+        accounts:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/Account"
+        nextCursor:
+          type: string
+          maxLength: 256
+          description: Empty string on the last page.
+    ContractDescriptor:
+      type: object
+      required: [contract, version, application, accountIdFormat, maxPageSize, capabilities]
+      properties:
+        contract:
+          type: string
+          enum: [moh-identity-sync]
+        version:
+          type: string
+          pattern: "^1\\.[0-9]+$"
+          example: "1.1"
+        application:
+          type: string
+          description: The application's Keycloak client ID, matching the dashboard registry.
+          example: clims
+        accountIdFormat:
+          type: string
+          enum: [uuid, positive-integer, opaque]
+        maxPageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        capabilities:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [accounts.list, identity.link, sessions.revoke]
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code]
+          properties:
+            code:
+              type: string
+              enum: [invalid_request, account_ineligible, link_conflict, rate_limited, unavailable]
+            message:
+              type: string
+              maxLength: 500

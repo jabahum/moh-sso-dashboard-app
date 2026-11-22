@@ -1,0 +1,283 @@
+# Identity sync: dashboard design
+
+This is the shared design for the identity-sync work. It covers the app registry,
+batch review, access removal, the published Go module, conformance and
+end-to-end testing. The application side is specified in the
+[identity-sync contract](../integrations/identity-sync-contract.md). Each section
+names the track that builds it and the files that track owns, so tracks can work
+in parallel without editing the same files.
+
+## Current state (baseline)
+
+- **CLI.** `moh-sso clims-identity-sync` and `poes-identity-sync` each hard-code
+  one application (`backend/cmd/cli/identity_sync.go`). They preview a page and
+  apply one reviewed link at a time.
+- **Connector.** `backend/internal/identityreconcile` holds the HTTP connector
+  for contract 1.0 and the review service: `Preview` and `Apply` for the `Reuse`
+  action. `Create` stops because `EnsureUser` is not implemented.
+- **Service accounts.** Each application has a dedicated sync client
+  (`clims-identity-sync`, `poesgo-identity-sync`) holding the service-only
+  `identity_sync` role (migration 61).
+- **Applications.** CLIMS and POES implement contract 1.0 and an OIDC callback
+  with a session handoff.
+
+## Track A — app registry and generic CLI
+
+### Registry table (migration 62)
+
+```sql
+CREATE TABLE ihp_identity_sync_integrations (
+    application_client_id TEXT PRIMARY KEY REFERENCES ihp_systems(client_id),
+    origin                TEXT NOT NULL CHECK (origin ~ '^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$'),
+    sync_client_id        TEXT NOT NULL UNIQUE REFERENCES ihp_application_identities(oauth_client_id),
+    access_role           TEXT NOT NULL,
+    credential_ref        TEXT NOT NULL CHECK (credential_ref ~ '^(env:[A-Z][A-Z0-9_]*|file:/[^\s]+)$'),
+    contract_version      TEXT,          -- last version read from GET /; NULL until checked
+    enabled               BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_by            TEXT,
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Enforced by trigger and in the service:
+
+- `sync_client_id` must be an enabled `ihp_application_identities` binding for
+  the same `application_client_id`. This reuses the existing, audited
+  service-identity registration (`PUT /api/v1/admin/platform/applications/:clientId/identities/:oauthClientId`).
+- `access_role` must be one of the system's `ihp_system_access_roles` and must
+  not be service-only.
+
+**Secrets.** The registry stores a reference, never a secret. `env:NAME` reads
+an environment variable, and `file:/path` reads a mounted secret file. Existing
+deployments register CLIMS as `env:CLIMS_SYNC_CLIENT_SECRET`, so nothing has to
+move.
+
+**Admin API.** `PUT/GET/DELETE /api/v1/admin/platform/applications/:clientId/identity-sync`
+requires both `rbac:write` and `rbac:roles:write`, records each change and its
+reason in the audit log in the same transaction, and refuses to enable an
+integration until `GET /` (or a 1.0 fallback probe) succeeds.
+
+### CLI
+
+```text
+moh-sso identity-sync register   --app <id> --origin <https> --sync-client <id> --access-role <role> --credential env:NAME
+moh-sso identity-sync describe   --app <id>                     # registry entry + live GET / descriptor
+moh-sso identity-sync preview    --app <id> [--after c] [--limit n]
+moh-sso identity-sync apply      --app <id> --account <id> --approved-subject <sub>
+moh-sso identity-sync conformance --app <id>                    # Track D
+```
+
+`clims-identity-sync` and `poes-identity-sync` remain as deprecated aliases for
+one release (`identity-sync … --app clims` / `--app poesgo`). The connector
+validates account IDs using the format in the descriptor. A 1.0 application gets
+the existing per-app validation, which comes from a registry field and not from
+code.
+
+**Done when:** a new application such as Alerts Manager can be registered and
+previewed with no dashboard code change.
+
+**Owned files:** `backend/cmd/cli/identity_sync*.go`,
+`backend/internal/identityreconcile/registry*.go` (new), migration 62, and the
+registry admin handler in `backend/internal/features/platform/`.
+
+## Track B — reviewed batch sync and invitations
+
+### Tables (migration 63)
+
+```sql
+CREATE TABLE ihp_identity_sync_runs (
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    application_client_id TEXT NOT NULL REFERENCES ihp_identity_sync_integrations(application_client_id),
+    issuer                TEXT NOT NULL,
+    status                TEXT NOT NULL CHECK (status IN ('previewed','applying','completed','failed','cancelled')),
+    created_by            TEXT NOT NULL,
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE ihp_identity_sync_rows (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id           UUID NOT NULL REFERENCES ihp_identity_sync_runs(id) ON DELETE CASCADE,
+    account_id       TEXT NOT NULL,
+    email_hint       TEXT NOT NULL DEFAULT '',
+    proposal         TEXT NOT NULL CHECK (proposal IN ('reuse','create','review','linked','linked_no_access','revoked')),
+    proposed_subject TEXT,
+    decision         TEXT NOT NULL DEFAULT 'pending' CHECK (decision IN ('pending','approved','rejected')),
+    reviewed_by      TEXT,
+    reviewed_at      TIMESTAMPTZ,
+    review_note      TEXT,
+    user_status      TEXT NOT NULL DEFAULT 'not_required' CHECK (user_status IN ('not_required','pending','invited','failed')),
+    link_status      TEXT NOT NULL DEFAULT 'pending' CHECK (link_status IN ('pending','linked','conflict','ineligible','failed')),
+    grant_status     TEXT NOT NULL DEFAULT 'pending' CHECK (grant_status IN ('pending','granted','failed','not_required')),
+    attempts         INT  NOT NULL DEFAULT 0,
+    last_error       TEXT,           -- stable code only, never upstream bodies
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (run_id, account_id)
+);
+```
+
+**Proposals.**
+
+| Proposal | Situation |
+|---|---|
+| `reuse` | One verified, enabled Keycloak user matches the email |
+| `create` | No Keycloak user matches |
+| `review` | Ambiguous, unverified or no email |
+| `linked` | The descriptor's `link` is already set and that Keycloak user holds the access role. Nothing to do. |
+| `linked_no_access` | The account is linked but its Keycloak user lacks the access role. Shown, never auto-granted (see Track C). |
+| `revoked` | The subject is in the revocation table. It can only be restored explicitly. |
+
+**Apply state machine.** Each approved row moves through these steps:
+
+1. `create` rows only: `EnsureUser`, then `user_status=invited`. This creates
+   the Keycloak user with `VERIFY_EMAIL` and `UPDATE_PASSWORD` required actions,
+   sends the execute-actions email, and stores the attribute
+   `ihp_identity_sync_origin=<app>:<accountId>` so a retry reuses the same user.
+2. Re-run the directory lookup. The match must equal the reviewed subject,
+   otherwise the row goes back to `review`.
+3. `PUT` the link: `linked`, or `conflict` / `ineligible` / `failed`.
+4. Grant the access role: `granted` or `failed`.
+
+Every step is idempotent. **Resume** re-processes rows that aren't finished:
+when `link_status=linked` and `grant_status=failed`, only the grant is retried
+and the link is never recreated. Retries follow the contract's backoff rules.
+The run records who approved each row and its final outcome. Approval and apply
+are separate actions, and apply refuses rows with no reviewer.
+
+**Interfaces.** The same review flow is available from the CLI
+(`identity-sync run start|show|approve|reject|apply|resume`) and, later, from an
+admin page. Both call one service in `internal/identityreconcile/batch*.go`.
+
+**Owned files:** `backend/internal/identityreconcile/batch*.go`,
+`backend/internal/identityreconcile/invite*.go`, migration 63, and the
+`identity-sync run` CLI subcommands.
+
+## Track C — access removal
+
+Removing a person's access to one application (`identity-sync revoke`, or
+removing `<app>_access` through portal RBAC) runs these idempotent steps:
+
+1. Record `(application, issuer, subject, revoked_by, reason)` in
+   `ihp_identity_sync_revocations` (migration 64). Proposals then show
+   `revoked`, and no later sync grants access again.
+2. Remove the application's access role in Keycloak. The application's OIDC
+   callback then refuses new sign-ins, as the contract requires.
+3. Revoke the user's consents and offline tokens for the application's
+   interactive client (`DELETE /admin/realms/{realm}/users/{id}/consents/{clientId}`).
+   The user's other applications and Keycloak SSO session are untouched.
+4. Call the application's `POST /sessions/revoke` (contract 1.1), retried with
+   backoff. For a 1.0 application, existing sessions last until their local
+   expiry. The CLI reports that window instead of claiming success.
+5. Record the outcome in the audit log.
+
+**Decision pending:** the agreed window for ending existing sessions. The design
+supports "immediately", meaning steps 2–4 run synchronously. The e2e tests
+assert whichever window is agreed.
+
+**Owned files:** `backend/internal/identityreconcile/revoke*.go`, migration 64,
+and the hook in `internal/features/rbac` (the `UpdateUserAccess` path) that calls
+the revoke service when an `<app>_access` role is removed.
+
+## Track D — published Go module and conformance suite
+
+**Contract types and HTTP client.** These move into the standard-library-only
+core module at `backend/core/identitysync`:
+
+- `contract/` — the OpenAPI file, embedded with `go:embed`.
+- `client/` — the 1.1 HTTP client (moved from `internal/identityreconcile/http_accounts.go`).
+- `adapter/` — a `net/http` handler implementing the contract on top of
+  `AccountStore` plus a `TokenVerifier` interface. The application supplies the
+  OIDC verification, so core stays dependency-free.
+- `conformance/` — a runner that takes a base URL and token sources and returns
+  structured results. The CLI and CI use it.
+
+The module is published by tagging `backend/core/v0.1.0` (pre-1.0 while the
+contract settles). The release workflow runs `infra/scripts/test-platform-core.py`
+first.
+
+### Conformance suite
+
+The suite runs against a disposable environment with synthetic accounts.
+
+| Area | Checks |
+|---|---|
+| Authorization | No token → 401. Expired token → 401. Wrong `aud` → 401. User token → 403. Another client's token → 403. Missing `identity_sync` role → 403. |
+| Descriptor | Shape, `application` matches, capabilities match the endpoints actually present |
+| Pagination | Full walk with `limit` 1, 7 and 100 covers every eligible account exactly once. Rising order. Empty cursor ends the walk. Bad cursor → 400. |
+| Linking | Link → 204. Repeat → 204. Other subject → 409. Same subject on another account → 409. Ineligible account → 404. Wrong issuer → 400. |
+| Sessions | Revoke → 204. Revoke again → 204. Unknown subject → 204. A session created before the revoke is rejected afterwards (via an app-provided probe hook in the test environment). |
+| Transport | `Cache-Control: no-store` on every response. No redirects. Body size limits. |
+| Retries | Covered by connector unit tests with a fault-injecting fake server |
+
+**Owned files:** `backend/core/identitysync/**` (except `accounts.go`, which
+Phase 0 owns) and `docs/integrations/identity-sync-adapter.md`.
+
+## Track E — application changes (CLIMS, POES)
+
+Each application, in its own repository:
+
+1. Implements 1.1: `GET /`, `limit`, `link` on accounts, `POST /sessions/revoke`.
+2. Adds the session probe hook used by the conformance suite. It is enabled only
+   in test builds or by an explicit test-environment flag.
+3. Verifies its OIDC callback against the contract's browser sign-in
+   requirements. It adds tests for: an account that isn't linked, a missing
+   access-role claim, a disabled local account, and a replayed handoff.
+4. Passes the conformance suite in its own CI.
+
+CLIMS's callback and handoff already exist (`backend/internal/features/auth/sso.go`).
+For CLIMS this track is about verification and tests, not new sign-in code.
+
+## Phase 2 — end-to-end environment
+
+`infra/compose/identity-sync-e2e/` starts a disposable stack:
+
+- **Keycloak:** imports `infra/keycloak/realm-export.json` plus synthetic test
+  users.
+- **Dashboard:** backend, Postgres (all migrations) and Redis.
+- **Applications:** CLIMS and POES backends, each with its own Postgres seeded
+  with synthetic accounts, plus their frontends for the browser flow.
+- **TLS:** Caddy with an internal CA, so every origin is HTTPS as the contract
+  requires. Test runners trust the CA.
+
+Test suites, run by `make identity-sync-e2e`:
+
+1. **Contract:** the conformance suite against CLIMS and POES.
+2. **Sync:** batch preview, approval of selected rows, a forced grant failure
+   followed by resume (the link is not recreated), and an invitation for a user
+   who has no Keycloak account.
+3. **Browser (Playwright):** sign in once and open both tiles, landing in the
+   right local accounts with existing permissions. An unlinked user is refused,
+   and so is a user without the access role.
+4. **Removal:** revoke CLIMS. New CLIMS sign-ins are refused, the existing CLIMS
+   session ends within the agreed window, POES keeps working, and the next sync
+   shows the account as `revoked` and doesn't re-grant.
+5. **Migrations:** `make migrations-check` (up, down and up again for 61–64).
+
+## Phase 3 — pilot runbook
+
+`docs/operations/identity-sync-pilot.md` (written after Phase 2) covers each step
+and rehearses it in the e2e environment first:
+
+1. Register the application and run `describe`.
+2. Read-only preview against production.
+3. Export rows for review.
+4. Approve a small batch and apply it.
+5. Check sign-in for those users.
+6. Rehearse removal on a pilot account.
+7. Check that failed rows and retry status are visible.
+8. Only then consider scheduled reconciliation, which will never auto-approve
+   `create` or `review` rows.
+
+## Track dependencies
+
+```text
+Phase 0 (contract + this design)
+  ├── A registry/CLI ──┬── B batch ──┐
+  │                    └── C removal ┤
+  ├── D module/conformance ──────────┼── Phase 2 e2e ── Phase 3 pilot
+  └── E apps (CLIMS, POES) ──────────┘
+```
+
+B and C build on A's registry. D and E depend only on the contract. Phase 2
+needs all five tracks.
