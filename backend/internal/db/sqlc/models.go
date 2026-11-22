@@ -930,6 +930,68 @@ type IhpApplicationNotification struct {
 	CreatedAt           time.Time     `json:"created_at"`
 }
 
+type IhpIdentitySyncIntegration struct {
+	ApplicationClientID string         `json:"application_client_id"`
+	Origin              string         `json:"origin"`
+	SyncClientID        string         `json:"sync_client_id"`
+	AccessRole          string         `json:"access_role"`
+	CredentialRef       string         `json:"credential_ref"`
+	AccountIDFormat     string         `json:"account_id_format"`
+	ContractVersion     sql.NullString `json:"contract_version"`
+	Enabled             bool           `json:"enabled"`
+	UpdatedBy           sql.NullString `json:"updated_by"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+}
+
+type IhpIdentitySyncRevocation struct {
+	ID                  uuid.UUID      `json:"id"`
+	ApplicationClientID string         `json:"application_client_id"`
+	Issuer              string         `json:"issuer"`
+	Subject             string         `json:"subject"`
+	RevokedBy           string         `json:"revoked_by"`
+	Reason              string         `json:"reason"`
+	RevokedAt           time.Time      `json:"revoked_at"`
+	RestoredBy          sql.NullString `json:"restored_by"`
+	RestoreReason       sql.NullString `json:"restore_reason"`
+	RestoredAt          sql.NullTime   `json:"restored_at"`
+	RoleRemoved         string         `json:"role_removed"`
+	ConsentsRevoked     string         `json:"consents_revoked"`
+	SessionsRevoked     string         `json:"sessions_revoked"`
+	Attempts            int32          `json:"attempts"`
+	LastError           sql.NullString `json:"last_error"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+}
+
+type IhpIdentitySyncRow struct {
+	ID              uuid.UUID      `json:"id"`
+	RunID           uuid.UUID      `json:"run_id"`
+	AccountID       string         `json:"account_id"`
+	EmailHint       string         `json:"email_hint"`
+	Proposal        string         `json:"proposal"`
+	ProposedSubject sql.NullString `json:"proposed_subject"`
+	Decision        string         `json:"decision"`
+	ReviewedBy      sql.NullString `json:"reviewed_by"`
+	ReviewedAt      sql.NullTime   `json:"reviewed_at"`
+	ReviewNote      sql.NullString `json:"review_note"`
+	UserStatus      string         `json:"user_status"`
+	LinkStatus      string         `json:"link_status"`
+	GrantStatus     string         `json:"grant_status"`
+	Attempts        int32          `json:"attempts"`
+	LastError       sql.NullString `json:"last_error"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+}
+
+type IhpIdentitySyncRun struct {
+	ID                  uuid.UUID `json:"id"`
+	ApplicationClientID string    `json:"application_client_id"`
+	Issuer              string    `json:"issuer"`
+	Status              string    `json:"status"`
+	CreatedBy           string    `json:"created_by"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+}
+
 type IhpPermission struct {
 	ID            uuid.UUID       `json:"id"`
 	PermissionKey string          `json:"permission_key"`
