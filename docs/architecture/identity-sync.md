@@ -32,7 +32,10 @@ CREATE TABLE ihp_identity_sync_integrations (
     sync_client_id        TEXT NOT NULL UNIQUE REFERENCES ihp_application_identities(oauth_client_id),
     access_role           TEXT NOT NULL,
     credential_ref        TEXT NOT NULL CHECK (credential_ref ~ '^(env:[A-Z][A-Z0-9_]*|file:/[^\s]+)$'),
-    contract_version      TEXT,          -- last version read from GET /; NULL until checked
+    account_id_format     TEXT NOT NULL CHECK (account_id_format IN ('uuid','positive-integer','opaque')),
+                                         -- used for 1.0 apps; a 1.1 descriptor's format wins
+    contract_version      TEXT CHECK (contract_version ~ '^1\.[0-9]+$'),
+                                         -- last version read from GET /; NULL until checked
     enabled               BOOLEAN NOT NULL DEFAULT FALSE,
     updated_by            TEXT,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -48,38 +51,85 @@ Enforced by trigger and in the service:
 - `access_role` must be one of the system's `ihp_system_access_roles` and must
   not be service-only.
 
+The trigger (`ihp_identity_sync_integration_guard`) raises `check_violation`
+with constraint `ihp_identity_sync_sync_client` or
+`ihp_identity_sync_access_role`. Disabling the service identity or removing the
+access role later is not blocked (an operator must be able to disable a
+compromised sync client at once); instead the registry service re-checks both
+bindings every time it builds a connector, and refuses to sync until they hold
+again.
+
 **Secrets.** The registry stores a reference, never a secret. `env:NAME` reads
-an environment variable, and `file:/path` reads a mounted secret file. Existing
-deployments register CLIMS as `env:CLIMS_SYNC_CLIENT_SECRET`, so nothing has to
-move.
+an environment variable, and `file:/path` reads a mounted secret file (one
+trailing newline is trimmed; an empty secret is refused; the secret is never
+logged or returned). The reference resolves in the process that uses it: the
+dashboard backend for the admin API's enable check, the CLI host for
+`identity-sync` commands. Existing deployments register CLIMS as
+`env:CLIMS_SYNC_CLIENT_SECRET`, so nothing has to move.
 
 **Admin API.** `PUT/GET/DELETE /api/v1/admin/platform/applications/:clientId/identity-sync`
 requires both `rbac:write` and `rbac:roles:write`, records each change and its
-reason in the audit log in the same transaction, and refuses to enable an
-integration until `GET /` (or a 1.0 fallback probe) succeeds.
+reason in the audit log (`application.identity_sync.updated|deleted`) in the
+same transaction, and refuses to enable an integration until `GET /` succeeds
+or returns 404 (a 1.0 application); the version read is stored in
+`contract_version`. PUT and DELETE take a JSON body with a required `reason`.
+Errors: 400 invalid input or binding, 404 unknown application or entry, 409
+still referenced, 422 the application could not be described.
+
+**Connector.** `identityreconcile.HTTPAccounts` implements both versions. It
+reads `GET /api/v1/internal/identity-sync` first and caches the descriptor
+(404 means 1.0 with the registry's `account_id_format`); it sends `limit` only
+to 1.1 applications, decodes `link`, validates IDs with the descriptor's format
+and cursors with the contract pattern (1.1) or the ID format (1.0), and offers
+`RevokeSessions`, which returns `identitysync.ErrUnsupported` unless the
+descriptor lists `sessions.revoke`. Retries follow the contract: network errors,
+timeouts, 429, 502, 503 and 504; up to 5 attempts; exponential backoff from
+500 ms (capped at 10 s) with jitter; `Retry-After` honoured up to 60 s (a longer
+one ends the call). Redirects are refused, responses are capped at 256 KiB and
+each request times out after 15 s.
 
 ### CLI
 
 ```text
 moh-sso identity-sync register   --app <id> --origin <https> --sync-client <id> --access-role <role> --credential env:NAME
+                                 --reason <text> [--account-id-format uuid|positive-integer|opaque] [--enable]
 moh-sso identity-sync describe   --app <id>                     # registry entry + live GET / descriptor
 moh-sso identity-sync preview    --app <id> [--after c] [--limit n]
-moh-sso identity-sync apply      --app <id> --account <id> --approved-subject <sub>
+moh-sso identity-sync apply      --app <id> --account <id> --approved-subject <sub> [--after c]
 moh-sso identity-sync conformance --app <id>                    # Track D
 ```
 
 `clims-identity-sync` and `poes-identity-sync` remain as deprecated aliases for
-one release (`identity-sync … --app clims` / `--app poesgo`). The connector
-validates account IDs using the format in the descriptor. A 1.0 application gets
-the existing per-app validation, which comes from a registry field and not from
-code.
+one release (`identity-sync … --app clims` / `--app poesgo`). They print a
+deprecation note to stderr. When the application has an enabled registry entry
+they use it; otherwise they keep the `<APP>_SYNC_*` environment configuration
+exactly as before. The connector validates account IDs using the format in the
+descriptor. A 1.0 application gets the existing per-app validation, which comes
+from a registry field and not from code.
+
+Registry commands read the database from the usual `app.env`/environment
+configuration and Keycloak settings from `KEYCLOAK_BASE_URL`, `KEYCLOAK_REALM`,
+`KEYCLOAK_EXTERNAL_URL` (public issuer) and the operator credentials. `apply`
+walks the eligible accounts to find the reviewed account, then re-checks that
+the directory still matches exactly the approved subject before linking.
+
+**Extension points for other tracks.** `newIdentitySyncCommand()` returns the
+parent `*cobra.Command`; a track adds its subcommand from its own file with
+`func init() { registerIdentitySyncSubcommand(newIdentitySyncRunCommand) }`.
+Subcommands open the registry with `openIdentitySyncRuntime(ctx)` and use
+`rt.Service(ctx, app)` (review service, connector and registry row) or
+`rt.Connector(ctx, app)`. In the server, `identityreconcile.RegistryService`
+(`NewRegistryService(&PostgresRegistry{DB: db}, tokenEndpoint)`) offers `Get`,
+`Save`, `Delete`, `Probe`, `Connector(ctx, app)` and `ConnectorFor(row)`.
 
 **Done when:** a new application such as Alerts Manager can be registered and
 previewed with no dashboard code change.
 
-**Owned files:** `backend/cmd/cli/identity_sync*.go`,
-`backend/internal/identityreconcile/registry*.go` (new), migration 62, and the
-registry admin handler in `backend/internal/features/platform/`.
+**Owned files:** `backend/cmd/cli/identity_sync*.go` (except
+`identity_sync_run.go`, `identity_sync_revoke.go` and
+`identity_sync_conformance.go`), `backend/internal/identityreconcile/registry*.go`,
+`backend/internal/identityreconcile/http_accounts*.go`, migration 62, and the
+registry admin handler in `backend/internal/features/platform/identity_sync*.go`.
 
 ## Track B — reviewed batch sync and invitations
 
