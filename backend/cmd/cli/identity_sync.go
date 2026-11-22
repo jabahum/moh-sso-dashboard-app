@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -22,6 +23,8 @@ type applicationDirectory struct {
 	admin    *keycloak.KeyAdminClient
 	issuer   string
 	clientID string
+	// accessRole is the application's Keycloak client role granted after linking.
+	accessRole string
 }
 
 func (d applicationDirectory) FindEmail(ctx context.Context, email string) ([]identitysync.Identity, error) {
@@ -57,6 +60,9 @@ func (applicationDirectory) EnsureUser(context.Context, identitysync.Account) (i
 }
 
 func (d applicationDirectory) GrantAccess(ctx context.Context, identity identitysync.Identity) error {
+	if d.accessRole == "" {
+		return errors.New("application access role is not configured")
+	}
 	client, err := d.admin.GetClientByClientID(d.clientID)
 	if err != nil {
 		return err
@@ -64,27 +70,39 @@ func (d applicationDirectory) GrantAccess(ctx context.Context, identity identity
 	if !client.Enabled || client.ClientID != d.clientID {
 		return errors.New("application Keycloak client is unavailable")
 	}
-	return d.admin.AssignClientRolesToUser(ctx, identity.Subject, d.clientID, client.ID, []string{d.clientID + "_access"})
+	return d.admin.AssignClientRolesToUser(ctx, identity.Subject, d.clientID, client.ID, []string{d.accessRole})
 }
 
+// newPOESSyncCommand is the deprecated alias for "identity-sync preview|apply --app poesgo".
 func newPOESSyncCommand() *cobra.Command {
-	return newIdentitySyncCommand("poes-identity-sync", "POES", "poesgo", identityreconcile.NewPOES)
+	return newLegacyIdentitySyncCommand("poes-identity-sync", "POES", "poesgo", identityreconcile.NewPOES)
 }
 
+// newCLIMSSyncCommand is the deprecated alias for "identity-sync preview|apply --app clims".
 func newCLIMSSyncCommand() *cobra.Command {
-	return newIdentitySyncCommand("clims-identity-sync", "CLIMS", "clims", identityreconcile.NewCLIMS)
+	return newLegacyIdentitySyncCommand("clims-identity-sync", "CLIMS", "clims", identityreconcile.NewCLIMS)
 }
 
-func newIdentitySyncCommand(name, app, clientID string, connect func(string, identityreconcile.AccessToken) (*identityreconcile.HTTPAccounts, error)) *cobra.Command {
+// newLegacyIdentitySyncCommand keeps the per-application commands working for
+// one release. When the application has an enabled registry row it uses the
+// registry; otherwise it uses the <APP>_SYNC_* environment configuration exactly
+// as before.
+func newLegacyIdentitySyncCommand(name, app, clientID string, connect func(string, identityreconcile.AccessToken) (*identityreconcile.HTTPAccounts, error)) *cobra.Command {
 	var cursor, accountID, subject string
 	var limit int
 	cmd := &cobra.Command{
 		Use:   name,
-		Short: "Preview " + app + " identity matches or apply one reviewed existing-user link",
+		Short: "Deprecated: use identity-sync preview|apply --app " + clientID,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			printDeprecation(cmd.ErrOrStderr(), name, clientID)
 			if (accountID == "") != (subject == "") {
 				return errors.New("apply requires both --apply-account and --approved-subject")
+			}
+			if service, issuer, ok := registeredIdentitySyncService(cmd.Context(), clientID); ok {
+				fmt.Fprintln(cmd.ErrOrStderr(), app+" identity sync uses the registry entry for "+clientID)
+				fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+issuer)
+				return runPagePreviewOrApply(cmd, app, service, cursor, limit, accountID, subject)
 			}
 			cfg, err := identitySyncConfigFromEnv(app, os.Getenv)
 			if err != nil {
@@ -99,31 +117,9 @@ func newIdentitySyncCommand(name, app, clientID string, connect func(string, ide
 				return err
 			}
 			fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+cfg.issuer)
-			ctx, cancel := context.WithTimeout(cmd.Context(), 90*time.Second)
-			defer cancel()
-			directory := applicationDirectory{admin: keycloak.NewAdminClient(cfg.adminBase, cfg.realm, cfg.adminID, cfg.adminSecret), issuer: cfg.issuer, clientID: clientID}
+			directory := applicationDirectory{admin: keycloak.NewAdminClient(cfg.adminBase, cfg.realm, cfg.adminID, cfg.adminSecret), issuer: cfg.issuer, clientID: clientID, accessRole: clientID + "_access"}
 			service := identityreconcile.Service{Accounts: accounts, Directory: directory, Issuer: cfg.issuer}
-			page, err := service.Preview(ctx, cursor, limit)
-			if err != nil {
-				return err
-			}
-			if accountID == "" {
-				return json.NewEncoder(cmd.OutOrStdout()).Encode(page)
-			}
-			for _, decision := range page.Decisions {
-				if decision.Account.ID != accountID {
-					continue
-				}
-				if decision.Action != identityreconcile.Reuse || decision.Identity.Subject != subject {
-					return errors.New("current match differs from the approved Keycloak subject")
-				}
-				if err := service.Apply(ctx, decision, decision.Account); err != nil {
-					return err
-				}
-				fmt.Fprintln(cmd.OutOrStdout(), app+" identity linked and access granted")
-				return nil
-			}
-			return errors.New("approved account is not eligible or is outside the requested page")
+			return runPagePreviewOrApply(cmd, app, service, cursor, limit, accountID, subject)
 		},
 	}
 	cmd.Flags().StringVar(&cursor, "after", "", "Resume from a preview cursor")
@@ -131,6 +127,34 @@ func newIdentitySyncCommand(name, app, clientID string, connect func(string, ide
 	cmd.Flags().StringVar(&accountID, "apply-account", "", "Apply one reviewed "+app+" account ID")
 	cmd.Flags().StringVar(&subject, "approved-subject", "", "Reviewed Keycloak subject for this account")
 	return cmd
+}
+
+// runPagePreviewOrApply previews one page, or applies one reviewed link for an
+// account within that page (the deprecated commands' behaviour).
+func runPagePreviewOrApply(cmd *cobra.Command, app string, service identityreconcile.Service, cursor string, limit int, accountID, subject string) error {
+	ctx, cancel := context.WithTimeout(cmd.Context(), 90*time.Second)
+	defer cancel()
+	page, err := service.Preview(ctx, cursor, limit)
+	if err != nil {
+		return err
+	}
+	if accountID == "" {
+		return json.NewEncoder(cmd.OutOrStdout()).Encode(page)
+	}
+	for _, decision := range page.Decisions {
+		if decision.Account.ID != accountID {
+			continue
+		}
+		if decision.Action != identityreconcile.Reuse || decision.Identity.Subject != subject {
+			return errors.New("current match differs from the approved Keycloak subject")
+		}
+		if err := service.Apply(ctx, decision, decision.Account); err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), app+" identity linked and access granted")
+		return nil
+	}
+	return errors.New("approved account is not eligible or is outside the requested page")
 }
 
 type identitySyncConfig struct {
@@ -143,16 +167,14 @@ type identitySyncConfig struct {
 	origin, syncClientID, syncClientSecret, staticToken string
 }
 
-func identitySyncConfigFromEnv(app string, getenv func(string) string) (identitySyncConfig, error) {
+// keycloakSyncConfigFromEnv reads the Keycloak settings every identity-sync
+// command needs: operator credentials, the public issuer and the token endpoint.
+func keycloakSyncConfigFromEnv(getenv func(string) string) (identitySyncConfig, error) {
 	cfg := identitySyncConfig{
-		adminBase:        strings.TrimRight(getenv("KEYCLOAK_BASE_URL"), "/"),
-		realm:            getenv("KEYCLOAK_REALM"),
-		adminID:          getenv("KEYCLOAK_ADMIN_CLIENT_ID"),
-		adminSecret:      getenv("KEYCLOAK_ADMIN_CLIENT_SECRET"),
-		origin:           getenv(app + "_SYNC_ORIGIN"),
-		syncClientID:     getenv(app + "_SYNC_CLIENT_ID"),
-		syncClientSecret: getenv(app + "_SYNC_CLIENT_SECRET"),
-		staticToken:      getenv(app + "_SYNC_ACCESS_TOKEN"),
+		adminBase:   strings.TrimRight(getenv("KEYCLOAK_BASE_URL"), "/"),
+		realm:       getenv("KEYCLOAK_REALM"),
+		adminID:     getenv("KEYCLOAK_ADMIN_CLIENT_ID"),
+		adminSecret: getenv("KEYCLOAK_ADMIN_CLIENT_SECRET"),
 	}
 	if !httpsBaseURL(cfg.adminBase) || cfg.realm == "" || url.PathEscape(cfg.realm) != cfg.realm ||
 		cfg.adminID == "" || cfg.adminSecret == "" {
@@ -166,6 +188,19 @@ func identitySyncConfigFromEnv(app string, getenv func(string) string) (identity
 	}
 	cfg.issuer = public + "/realms/" + cfg.realm
 	cfg.tokenEndpoint = cfg.adminBase + "/realms/" + cfg.realm + "/protocol/openid-connect/token"
+	return cfg, nil
+}
+
+// identitySyncConfigFromEnv adds the deprecated per-application <APP>_SYNC_* settings.
+func identitySyncConfigFromEnv(app string, getenv func(string) string) (identitySyncConfig, error) {
+	cfg, err := keycloakSyncConfigFromEnv(getenv)
+	if err != nil {
+		return identitySyncConfig{}, err
+	}
+	cfg.origin = getenv(app + "_SYNC_ORIGIN")
+	cfg.syncClientID = getenv(app + "_SYNC_CLIENT_ID")
+	cfg.syncClientSecret = getenv(app + "_SYNC_CLIENT_SECRET")
+	cfg.staticToken = getenv(app + "_SYNC_ACCESS_TOKEN")
 	return cfg, nil
 }
 
@@ -186,4 +221,9 @@ func identitySyncToken(app, tokenEndpoint, clientID, clientSecret, staticToken s
 		return func(context.Context) (string, error) { return staticToken, nil }, nil
 	}
 	return nil, fmt.Errorf("configure %[1]s_SYNC_CLIENT_ID and %[1]s_SYNC_CLIENT_SECRET (or %[1]s_SYNC_ACCESS_TOKEN)", app)
+}
+
+// printDeprecation writes the alias deprecation note to stderr.
+func printDeprecation(w io.Writer, name, clientID string) {
+	fmt.Fprintf(w, "Note: %s is deprecated and will be removed after one release; use 'moh-sso identity-sync preview|apply --app %s'.\n", name, clientID)
 }

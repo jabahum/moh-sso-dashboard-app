@@ -26,6 +26,8 @@ type Handler struct {
 	WorkerStaleAfter time.Duration
 	Repository       Repository
 	Verifier         TokenVerifier
+	// IdentitySync serves the identity-sync registry admin API; nil answers 503.
+	IdentitySync IdentitySyncRegistry
 }
 
 func (h *Handler) AuthenticateToken() gin.HandlerFunc {

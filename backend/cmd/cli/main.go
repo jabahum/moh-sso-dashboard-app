@@ -76,6 +76,7 @@ func main() {
 	rootCmd.AddCommand(createUserCmd)
 	rootCmd.AddCommand(listUsersCmd)
 	rootCmd.AddCommand(systemRBACCmd)
+	rootCmd.AddCommand(newIdentitySyncCommand())
 	rootCmd.AddCommand(newPOESSyncCommand())
 	rootCmd.AddCommand(newCLIMSSyncCommand())
 	rootCmd.AddCommand(doctorCmd)

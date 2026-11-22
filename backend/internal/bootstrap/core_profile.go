@@ -49,8 +49,9 @@ func buildCoreHandlers(deps handlerDependencies) handlers {
 			RBAC:           rbacfeature.NewHandler(deps.Services.RBAC),
 			HealthContexts: healthcontextfeature.NewHandler(deps.Services.HealthContexts, deps.Services.Audit),
 			Platform: &platformfeature.Handler{
-				Repository: &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
-				CoreReady:  health.CheckCore, RequiredWorkers: []string{}, DeliveryEnabled: &delivery,
+				Repository:   &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
+				IdentitySync: platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm),
+				CoreReady:    health.CheckCore, RequiredWorkers: []string{}, DeliveryEnabled: &delivery,
 				Verifier: &platformfeature.Introspector{
 					Endpoint: strings.TrimRight(deps.Config.KeycloakTokenBaseURL(), "/") + "/realms/" + deps.Config.KeycloakRealm + "/protocol/openid-connect/token/introspect",
 					Issuer:   strings.TrimRight(deps.Config.KeycloakExternalURL, "/") + "/realms/" + deps.Config.KeycloakRealm,
