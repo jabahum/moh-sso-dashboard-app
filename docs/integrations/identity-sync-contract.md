@@ -198,3 +198,49 @@ contract's checks against a registered application in a test environment:
 authorization refusals, pagination, idempotent linking, both conflict cases,
 session revocation, and the response headers and limits. Run it with synthetic
 accounts. Some checks create links.
+
+## Appendix: Test-only session probe
+
+This appendix is not part of the normative contract. Production deployments
+MUST NOT expose it. It lets the conformance suite and the end-to-end tests
+prove that `POST /sessions/revoke` really ends a session that existed before
+the call.
+
+- The probe is enabled only when the application's environment sets
+  `IDENTITY_SYNC_TEST_PROBE=1` (exactly `1`). Otherwise the routes MUST NOT
+  exist: an authorized request to them returns **404**.
+- Both routes use the same bearer authorization as every other identity-sync
+  endpoint, with the same 401/403 rules, and set `Cache-Control: no-store`.
+- `{base}` is `https://<origin>/api/v1/internal/identity-sync`.
+
+### `POST {base}/test/sessions`
+
+Body: `{"issuer": "<public issuer>", "subject": "<Keycloak user ID>"}`.
+
+Creates a real local session for the eligible account linked to this identity,
+through the same code path the OIDC callback uses after a successful sign-in,
+and returns an opaque token that identifies it:
+
+```json
+{"sessionToken": "<opaque>"}
+```
+
+| Outcome | Status |
+|---|---|
+| Session created | **201** with the body above |
+| `issuer` is not the configured issuer, or the body is malformed | **400** |
+| The identity is not linked to an eligible account | **404** |
+
+### `GET {base}/test/sessions/check`
+
+Header: `X-Test-Session: <sessionToken>`.
+
+| Outcome | Status |
+|---|---|
+| The session is still usable, as the application's own session middleware decides | **200** |
+| The session was revoked or has expired | **401** |
+| The header is missing or repeated | **400** |
+
+The Go adapter in `backend/core/identitysync/adapter` implements both routes
+when `Config.ProbeEnabled` is set; see the
+[adapter guide](identity-sync-adapter.md).

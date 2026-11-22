@@ -16,6 +16,10 @@ info:
     - 1.1: adds the contract descriptor, the `limit` parameter, each account's
       current link, and session revocation. 1.1 is backwards compatible: a 1.0
       client ignores the new fields.
+
+    Paths under /test are TEST ONLY (marked x-test-only). They exist only when
+    the application runs with IDENTITY_SYNC_TEST_PROBE=1 and are not part of
+    the normative contract.
 servers:
   - url: https://{applicationOrigin}/api/v1/internal/identity-sync
     variables:
@@ -157,6 +161,77 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/Unavailable"
+  /test/sessions:
+    post:
+      operationId: createTestSession
+      summary: "TEST ONLY: create a local session for a linked identity"
+      description: |
+        TEST ONLY. Not part of the normative contract (see the appendix
+        "Test-only session probe" in the contract document). The route exists
+        only when the application runs with IDENTITY_SYNC_TEST_PROBE=1 and MUST
+        NOT exist in production. Creates a real local session for the eligible
+        account linked to this identity.
+      x-test-only: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Identity"
+      responses:
+        "201":
+          description: Session created
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestSession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: The identity is not linked to an eligible account, or the probe is disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /test/sessions/check:
+    get:
+      operationId: checkTestSession
+      summary: "TEST ONLY: report whether a probe session is still usable"
+      description: |
+        TEST ONLY. Not part of the normative contract. Exists only when the
+        application runs with IDENTITY_SYNC_TEST_PROBE=1. The bearer token
+        authorizes the probe call; the session to check is in X-Test-Session.
+      x-test-only: true
+      parameters:
+        - name: X-Test-Session
+          in: header
+          required: true
+          description: The sessionToken returned by POST /test/sessions.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 4096
+      responses:
+        "200":
+          description: The session is still usable
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: The session was revoked or expired, or the bearer token is refused
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: The probe is disabled
 components:
   securitySchemes:
     identitySyncServiceAccount:
@@ -292,6 +367,16 @@ components:
           items:
             type: string
             enum: [accounts.list, identity.link, sessions.revoke]
+    TestSession:
+      type: object
+      description: TEST ONLY. Response of the test-only session probe.
+      required: [sessionToken]
+      properties:
+        sessionToken:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Opaque token identifying the local session.
     Error:
       type: object
       properties:
