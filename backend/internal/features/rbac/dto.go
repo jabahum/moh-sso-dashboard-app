@@ -48,13 +48,15 @@ type Permission struct {
 }
 
 type SystemRole struct {
-	ID          string       `json:"id"`
-	SystemID    string       `json:"systemId"`
-	ClientID    string       `json:"clientId"`
-	Name        string       `json:"name"`
-	DisplayName string       `json:"displayName,omitempty"`
-	Description string       `json:"description,omitempty"`
-	Enabled     bool         `json:"enabled"`
+	ID          string `json:"id"`
+	SystemID    string `json:"systemId"`
+	ClientID    string `json:"clientId"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName,omitempty"`
+	Description string `json:"description,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	// ServiceOnly roles belong to Keycloak service accounts and are never granted to people.
+	ServiceOnly bool         `json:"serviceOnly"`
 	Permissions []Permission `json:"permissions"`
 }
 
@@ -176,6 +178,8 @@ type RoleInput struct {
 	DisplayName string `json:"displayName"`
 	Description string `json:"description"`
 	Enabled     *bool  `json:"enabled"`
+	// ServiceOnly is left unchanged on update when omitted.
+	ServiceOnly *bool `json:"serviceOnly"`
 }
 
 type PermissionInput struct {

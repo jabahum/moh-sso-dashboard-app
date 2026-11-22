@@ -5136,6 +5136,9 @@ components:
           type: boolean
         name:
           type: string
+        serviceOnly:
+          nullable: true
+          type: boolean
       type: object
     rbac.RoleTemplate:
       properties:
@@ -5450,6 +5453,8 @@ components:
           items:
             $ref: '#/components/schemas/rbac.Permission'
           type: array
+        serviceOnly:
+          type: boolean
         systemId:
           type: string
       type: object
@@ -6666,6 +6671,8 @@ components:
           items:
             type: string
           type: array
+        serviceOnly:
+          type: boolean
       type: object
     system_rbac.SeedSystem:
       properties:

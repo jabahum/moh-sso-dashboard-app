@@ -1328,7 +1328,15 @@ export default function RbacManagementPage() {
                       onClick={() => setSelectedRoleId(role.id)}
                     >
                       <span>{role.displayName || role.name}</span>
-                      <small>{role.permissions.length} permissions</small>
+                      {role.serviceOnly ? (
+                        <small>
+                          <Tag size="sm" type="purple">
+                            Service only
+                          </Tag>
+                        </small>
+                      ) : (
+                        <small>{role.permissions.length} permissions</small>
+                      )}
                     </button>
                     <PermissionGuard permission={PERMISSIONS.rbacRolesWrite}>
                       <Button

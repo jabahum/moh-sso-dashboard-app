@@ -54,6 +54,8 @@ export type RbacSystemRole = {
   displayName?: string;
   description?: string;
   enabled: boolean;
+  /** Held only by Keycloak service accounts; never assignable to people. */
+  serviceOnly?: boolean;
   permissions: RbacPermission[];
 };
 

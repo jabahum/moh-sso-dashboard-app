@@ -45,9 +45,40 @@ type UpdateUserRequest struct {
 }
 
 type Service struct {
-	repo          Repository
-	notifications sharedservice.NotificationsService
-	cfg           *config.Config
+	repo             Repository
+	notifications    sharedservice.NotificationsService
+	cfg              *config.Config
+	serviceOnlyRoles ServiceOnlyRoleChecker
+}
+
+// ErrServiceOnlyRole is returned when an administrator tries to give a person a client
+// role reserved for Keycloak service accounts.
+var ErrServiceOnlyRole = errors.New("service-only system roles cannot be granted to people")
+
+// ServiceOnlyRoleChecker reports whether a client role is reserved for service accounts.
+type ServiceOnlyRoleChecker interface {
+	IsServiceOnlyRole(ctx context.Context, clientID string, roleName string) (bool, error)
+}
+
+// SetServiceOnlyRoleChecker enables the service-only role guard on direct client-role grants.
+func (s *Service) SetServiceOnlyRoleChecker(checker ServiceOnlyRoleChecker) {
+	s.serviceOnlyRoles = checker
+}
+
+func (s *Service) rejectServiceOnlyRoles(ctx context.Context, clientID string, roles []string) error {
+	if s.serviceOnlyRoles == nil {
+		return nil
+	}
+	for _, role := range roles {
+		serviceOnly, err := s.serviceOnlyRoles.IsServiceOnlyRole(ctx, clientID, role)
+		if err != nil {
+			return fmt.Errorf("check service-only role: %w", err)
+		}
+		if serviceOnly {
+			return fmt.Errorf("%w: %s/%s", ErrServiceOnlyRole, clientID, role)
+		}
+	}
+	return nil
 }
 
 func NewService(
@@ -842,6 +873,10 @@ func (s *Service) UpdateUserClientRoles(
 		return nil
 	}
 
+	if err := s.rejectServiceOnlyRoles(ctx, clientID, toAdd); err != nil {
+		return err
+	}
+
 	if len(toAdd) > 0 {
 		if err := s.repo.AddUserClientRoles(
 			ctx,
@@ -961,6 +996,10 @@ func (s *Service) AddUserClientRoles(
 
 	if len(roles) == 0 {
 		return nil
+	}
+
+	if err := s.rejectServiceOnlyRoles(ctx, clientID, roles); err != nil {
+		return err
 	}
 
 	if err := s.repo.AddUserClientRoles(

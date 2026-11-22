@@ -478,6 +478,11 @@ func (h *Handler) UpdateUserClientRoles(c *gin.Context) {
 			"reason":      "request failed",
 		})
 
+		if errors.Is(err, ErrServiceOnlyRole) {
+			response.Fail(c, http.StatusBadRequest, "SERVICE_ONLY_ROLE", ErrServiceOnlyRole.Error())
+			return
+		}
+
 		response.Fail(
 			c,
 			http.StatusInternalServerError,
@@ -543,6 +548,10 @@ func (h *Handler) AddUserClientRoles(c *gin.Context) {
 			"reason":      "request failed",
 		})
 
+		if errors.Is(err, ErrServiceOnlyRole) {
+			response.Fail(c, http.StatusBadRequest, "SERVICE_ONLY_ROLE", ErrServiceOnlyRole.Error())
+			return
+		}
 		response.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to add user client roles")
 		return
 	}

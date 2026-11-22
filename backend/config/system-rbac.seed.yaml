@@ -220,6 +220,7 @@ systems:
       - name: report_scheduler_service
         displayName: Report Scheduler Service
         description: Service-account access to Health BI generation APIs; no portal user permissions
+        serviceOnly: true
         permissions: []
       - name: report-scheduler_access
         displayName: Report Scheduler Access
@@ -568,6 +569,7 @@ systems:
       - name: identity_sync
         displayName: CLIMS Identity Sync
         description: Service-account access for the dashboard reconciler to list CLIMS accounts and record identity links; no portal user permissions
+        serviceOnly: true
         permissions: []
   - clientId: poesgo
     displayName: Poesgo
@@ -591,6 +593,7 @@ systems:
       - name: identity_sync
         displayName: Poesgo Identity Sync
         description: Service-account access for the dashboard reconciler to list Poesgo accounts and record identity links; no portal user permissions
+        serviceOnly: true
         permissions: []
   - clientId: digital-timesheets
     displayName: Health Workforce Portal

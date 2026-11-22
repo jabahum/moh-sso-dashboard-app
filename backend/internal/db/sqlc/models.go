@@ -1034,6 +1034,11 @@ type IhpRealmRoleSystemRole struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+type IhpServiceOnlyRolesBackup struct {
+	ID       bool            `json:"id"`
+	Snapshot json.RawMessage `json:"snapshot"`
+}
+
 type IhpStandardUserDefaultsBackup struct {
 	ID       bool            `json:"id"`
 	Snapshot json.RawMessage `json:"snapshot"`
@@ -1084,6 +1089,7 @@ type IhpSystemRole struct {
 	Metadata    json.RawMessage `json:"metadata"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
+	ServiceOnly bool            `json:"service_only"`
 }
 
 type IhpSystemRolePermission struct {

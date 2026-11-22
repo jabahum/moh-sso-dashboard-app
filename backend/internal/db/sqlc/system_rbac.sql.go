@@ -340,7 +340,7 @@ func (q *Queries) ListIHPPermissionsForSystemRoles(ctx context.Context, arg List
 }
 
 const listIHPSystemRoles = `-- name: ListIHPSystemRoles :many
-SELECT sr.id, sr.system_id, sr.role_name, sr.display_name, sr.description, sr.enabled, sr.metadata, sr.created_at, sr.updated_at
+SELECT sr.id, sr.system_id, sr.role_name, sr.display_name, sr.description, sr.enabled, sr.metadata, sr.created_at, sr.updated_at, sr.service_only
 FROM ihp_system_roles sr
 JOIN ihp_systems s ON s.id = sr.system_id
 WHERE s.client_id = $1
@@ -366,6 +366,7 @@ func (q *Queries) ListIHPSystemRoles(ctx context.Context, clientID string) ([]Ih
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ServiceOnly,
 		); err != nil {
 			return nil, err
 		}
@@ -649,7 +650,7 @@ ON CONFLICT (system_id, role_name) DO UPDATE SET
     enabled = EXCLUDED.enabled,
     metadata = EXCLUDED.metadata,
     updated_at = now()
-RETURNING id, system_id, role_name, display_name, description, enabled, metadata, created_at, updated_at
+RETURNING id, system_id, role_name, display_name, description, enabled, metadata, created_at, updated_at, service_only
 `
 
 type UpsertIHPSystemRoleParams struct {
@@ -681,6 +682,7 @@ func (q *Queries) UpsertIHPSystemRole(ctx context.Context, arg UpsertIHPSystemRo
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ServiceOnly,
 	)
 	return i, err
 }
