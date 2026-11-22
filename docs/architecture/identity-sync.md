@@ -139,69 +139,179 @@ registry admin handler in `backend/internal/features/platform/identity_sync*.go`
 CREATE TABLE ihp_identity_sync_runs (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     application_client_id TEXT NOT NULL REFERENCES ihp_identity_sync_integrations(application_client_id),
-    issuer                TEXT NOT NULL,
+    issuer                TEXT NOT NULL CHECK (issuer ~ '^https://'),
     status                TEXT NOT NULL CHECK (status IN ('previewed','applying','completed','failed','cancelled')),
-    created_by            TEXT NOT NULL,
+    created_by            TEXT NOT NULL CHECK (btrim(created_by) <> ''),
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()   -- also the apply heartbeat
 );
 
 CREATE TABLE ihp_identity_sync_rows (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     run_id           UUID NOT NULL REFERENCES ihp_identity_sync_runs(id) ON DELETE CASCADE,
-    account_id       TEXT NOT NULL,
+    account_id       TEXT NOT NULL,  -- contract ID pattern
     email_hint       TEXT NOT NULL DEFAULT '',
     proposal         TEXT NOT NULL CHECK (proposal IN ('reuse','create','review','linked','linked_no_access','revoked')),
-    proposed_subject TEXT,
+    proposed_subject TEXT,           -- for create rows, set once the user is invited
     decision         TEXT NOT NULL DEFAULT 'pending' CHECK (decision IN ('pending','approved','rejected')),
     reviewed_by      TEXT,
     reviewed_at      TIMESTAMPTZ,
-    review_note      TEXT,
+    review_note      TEXT,           -- at most 1000 characters
     user_status      TEXT NOT NULL DEFAULT 'not_required' CHECK (user_status IN ('not_required','pending','invited','failed')),
     link_status      TEXT NOT NULL DEFAULT 'pending' CHECK (link_status IN ('pending','linked','conflict','ineligible','failed')),
     grant_status     TEXT NOT NULL DEFAULT 'pending' CHECK (grant_status IN ('pending','granted','failed','not_required')),
     attempts         INT  NOT NULL DEFAULT 0,
-    last_error       TEXT,           -- stable code only, never upstream bodies
+    last_error       TEXT CHECK (last_error ~ '^[a-z][a-z0-9_]{0,63}$'),  -- stable code only, never upstream bodies
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (run_id, account_id)
+    UNIQUE (run_id, account_id),
+    CONSTRAINT ihp_identity_sync_rows_reviewer CHECK (decision = 'pending' OR (reviewed_by <> '' AND reviewed_at IS NOT NULL)),
+    CONSTRAINT ihp_identity_sync_rows_no_grant CHECK (NOT (proposal IN ('linked_no_access','revoked') AND grant_status = 'granted'))
 );
 ```
 
-**Proposals.**
+Runs reference their integration without cascading, so deleting a registry
+entry that has runs fails with 409 (`ErrIntegrationInUse`). Deleting a run
+removes its rows.
 
-| Proposal | Situation |
-|---|---|
-| `reuse` | One verified, enabled Keycloak user matches the email |
-| `create` | No Keycloak user matches |
-| `review` | Ambiguous, unverified or no email |
-| `linked` | The descriptor's `link` is already set and that Keycloak user holds the access role. Nothing to do. |
-| `linked_no_access` | The account is linked but its Keycloak user lacks the access role. Shown, never auto-granted (see Track C). |
-| `revoked` | The subject is in the revocation table. It can only be restored explicitly. |
+**Proposals.** `run start` walks every eligible account (an account listed twice
+is kept once) and proposes:
 
-**Apply state machine.** Each approved row moves through these steps:
+| Proposal | Situation | Initial statuses |
+|---|---|---|
+| `reuse` | One verified, enabled Keycloak user matches the email | link `pending`, grant `pending` |
+| `create` | No Keycloak user matches | user `pending` |
+| `review` | Ambiguous, unverified, no email, or linked under another issuer | |
+| `linked` | `link` is set for our issuer and that user holds the access role (effective roles). Nothing to do. | link `linked`, grant `granted` |
+| `linked_no_access` | Linked, but the user lacks the access role. Shown, never granted here (see Track C). | link `linked`, grant `not_required` |
+| `revoked` | The linked or matched subject is revoked (`RevocationChecker`). Only an explicit restore grants it again. | grant `not_required` |
 
-1. `create` rows only: `EnsureUser`, then `user_status=invited`. This creates
-   the Keycloak user with `VERIFY_EMAIL` and `UPDATE_PASSWORD` required actions,
-   sends the execute-actions email, and stores the attribute
-   `ihp_identity_sync_origin=<app>:<accountId>` so a retry reuses the same user.
-2. Re-run the directory lookup. The match must equal the reviewed subject,
-   otherwise the row goes back to `review`.
-3. `PUT` the link: `linked`, or `conflict` / `ineligible` / `failed`.
-4. Grant the access role: `granted` or `failed`.
+Starting a run is read-only on both sides. A listing, directory or revocation
+error stops it before anything is stored, so an unknown answer never becomes
+permission to invite or grant.
 
-Every step is idempotent. **Resume** re-processes rows that aren't finished:
-when `link_status=linked` and `grant_status=failed`, only the grant is retried
-and the link is never recreated. Retries follow the contract's backoff rules.
-The run records who approved each row and its final outcome. Approval and apply
-are separate actions, and apply refuses rows with no reviewer.
+**Review.** Only `reuse` and `create` rows can be approved. Approve and reject
+require a reviewer (non-blank, at most 200 characters, no control characters)
+and take an optional note. The reviewer, time and note are stored on the row. A
+decision can change until apply first touches the row (`attempts > 0` or the
+user was invited). After that it is part of the record.
 
-**Interfaces.** The same review flow is available from the CLI
-(`identity-sync run start|show|approve|reject|apply|resume`) and, later, from an
-admin page. Both call one service in `internal/identityreconcile/batch*.go`.
+**Apply state machine.** `apply` first claims the run (`status=applying`). A
+second apply gets `ErrRunBusy`, and a run left `applying` with no row activity
+for 15 minutes can be taken over. It then re-reads the application's eligible
+accounts once, for the rows that still need a link, and moves each approved row
+that was never attempted through the steps below. Each outcome is written in its
+own row transaction, which first re-checks that the row is still approved by a
+named reviewer.
+
+0. `attempts += 1`. A row no longer in the eligible list becomes `ineligible`
+   (`account_ineligible`). A row whose email changed since review goes back to
+   `review` (`account_changed`).
+1. `create` rows whose `user_status` is not `invited`: `EnsureUser` (see
+   Invitations), then `user_status=invited` and `proposed_subject` set to the new
+   user. On failure, `user_status=failed`.
+2. The subject must not be revoked. Otherwise the row becomes `revoked`
+   (`identity_revoked`) and is neither linked nor granted. Then re-run the
+   directory lookup. A `reuse` row needs the same single verified user. A
+   `create` row needs exactly the user it invited (unverified, or verified as
+   that subject). Otherwise the row goes back to `review` (`directory_changed`):
+   proposal `review`, decision `pending`, reviewer kept for the record. Only a
+   new run can handle such a row.
+3. Link. If a 1.1 application already reports exactly this link, no `PUT` is
+   sent. Otherwise `PUT` the link. The result is `linked`; `conflict`
+   (`link_conflict`) or `ineligible` (`account_ineligible`), both final; or
+   `failed` (`link_failed`).
+4. Re-check revocation, then grant the access role: `granted` or `failed`
+   (`grant_failed`).
+
+`resume` processes approved rows that were attempted but neither finished nor
+reached a final state. A row with `link_status=linked` skips steps 0–3: no
+account re-read, no directory lookup, no `PUT`. Only the revocation check and
+the grant run, so the link is never recreated. Within each call, HTTP retries
+follow the contract's backoff rules (the connector does this); across calls,
+resume is the retry. The run ends `completed`, or `failed` while an attempted,
+approved row still has work left.
+
+Rows proposed `linked_no_access` or `revoked`, and rows that become `revoked`,
+are never granted. Apply selects only approved `reuse`/`create` rows, and
+migration 63 rejects a `linked_no_access` or `revoked` row marked granted.
+
+Stable error codes: `account_ineligible`, `account_changed`,
+`directory_changed`, `directory_lookup_failed`, `invite_failed`,
+`invite_email_collision`, `invite_ambiguous`, `invite_origin_mismatch`,
+`invite_user_disabled`, `invite_attribute_not_stored`, `invite_email_failed`,
+`invalid_identity`, `link_conflict`, `link_failed`, `grant_failed`,
+`identity_revoked`, `revocation_check_failed`.
+
+### Invitations
+
+`identityreconcile.KeycloakDirectory` implements `Directory` for one
+application, plus the `AccessChecker` that separates `linked` from
+`linked_no_access`. `EnsureUser` is idempotent across timeouts:
+
+1. Search users by the attribute `ihp_identity_sync_origin=<app>:<accountId>`
+   (exact admin API `q=` query). A single marked user is reused if it is enabled
+   and still has the account's email. Otherwise the call fails with
+   `invite_origin_mismatch`, so a user who could set the attribute on
+   themselves cannot claim another account. If invitation actions are still
+   pending, the execute-actions email is sent again. Two marked users give
+   `invite_ambiguous`.
+2. Any other user with the account's email is unrelated:
+   `invite_email_collision`.
+3. Create the user: username = lower-cased email, email, enabled,
+   `emailVerified=false`, required actions `VERIFY_EMAIL` and `UPDATE_PASSWORD`,
+   and the marker attribute. No realm role is added. If the create times out or
+   returns 409, search for the marker again. A 409 with no marked user is a
+   collision.
+4. Read the user back. If the realm dropped the marker (Keycloak 24+ drops
+   attributes its user profile does not declare), delete the user just created
+   and fail with `invite_attribute_not_stored`. The realm can then be fixed and
+   the row resumed.
+5. Send the execute-actions email (`VERIFY_EMAIL`, `UPDATE_PASSWORD`). A failure
+   gives `invite_email_failed`. Resume reuses the user and sends it again.
+
+**Realm requirement.** The realm user profile must declare
+`ihp_identity_sync_origin` as an attribute that only administrators can view
+and edit, or enable unmanaged attributes with admin-only editing. Users must not
+be able to edit it.
+
+Keycloak admin client additions (`internal/keycloak/identity_sync_users.go`;
+their errors carry only the HTTP status):
+
+- `SearchUsers`: exact email and/or one attribute, full representations.
+- `CreateUserFromRequest`: returns `ErrUserConflict` on 409.
+- `GetUserRepresentation` and `GetEffectiveUserClientRoles`: return
+  `ErrUserNotFound` on 404.
+- `DeleteUserWithContext`.
+
+### Interfaces
+
+```text
+moh-sso identity-sync run start   --app <id>
+moh-sso identity-sync run show    --run <id> [--proposal p] [--decision d] [--summary] | --app <id>
+moh-sso identity-sync run approve --run <id> --account <id>[,<id>...] --reviewer <name> [--note text]
+moh-sso identity-sync run reject  --run <id> --account <id>[,<id>...] --reviewer <name> [--note text]
+moh-sso identity-sync run apply   --run <id>
+moh-sso identity-sync run resume  --run <id>
+```
+
+`apply` and `resume` exit non-zero while rows remain to resume. Every command
+calls `identityreconcile.BatchService` (`StartRun`, `GetRun`, `ListRuns`,
+`ApproveRows`, `RejectRows`, `Apply`, `Resume`). The service uses a
+`BatchRepository` (`PostgresBatchRepository`, or `MemoryBatchRepository` in
+tests). Start, apply and resume also take a `BatchTarget`: the registry
+connector plus a `KeycloakDirectory`. An admin page can call the same service
+later.
+
+**Revocations (Track C).** `BatchService.Revocations` is a
+`RevocationChecker { IsRevoked(ctx, application, issuer, subject) (bool, error) }`.
+Nil means nothing is revoked (`NoRevocations`). The CLI gets it from the package
+variable `identitySyncRevocations(ctx, rt)`, which Track C replaces from
+`identity_sync_revoke.go`.
 
 **Owned files:** `backend/internal/identityreconcile/batch*.go`,
-`backend/internal/identityreconcile/invite*.go`, migration 63, and the
-`identity-sync run` CLI subcommands.
+`backend/internal/identityreconcile/invite*.go`, migration 63,
+`backend/cmd/cli/identity_sync_run*.go`, and
+`backend/internal/keycloak/identity_sync_users.go`.
 
 ## Track C — access removal
 
