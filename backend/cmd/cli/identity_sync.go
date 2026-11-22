@@ -86,33 +86,23 @@ func newIdentitySyncCommand(name, app, clientID string, connect func(string, ide
 			if (accountID == "") != (subject == "") {
 				return errors.New("apply requires both --apply-account and --approved-subject")
 			}
-			origin := os.Getenv(app + "_SYNC_ORIGIN")
-			staticToken := os.Getenv(app + "_SYNC_ACCESS_TOKEN")
-			syncClientID := os.Getenv(app + "_SYNC_CLIENT_ID")
-			syncClientSecret := os.Getenv(app + "_SYNC_CLIENT_SECRET")
-			base := strings.TrimRight(os.Getenv("KEYCLOAK_BASE_URL"), "/")
-			realm := os.Getenv("KEYCLOAK_REALM")
-			adminID := os.Getenv("KEYCLOAK_ADMIN_CLIENT_ID")
-			secret := os.Getenv("KEYCLOAK_ADMIN_CLIENT_SECRET")
-			u, err := url.Parse(base)
-			if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" ||
-				u.Fragment != "" || realm == "" || url.PathEscape(realm) != realm ||
-				adminID == "" || secret == "" {
-				return errors.New("configure the HTTPS Keycloak base URL, realm and operator credentials")
-			}
-			issuer := base + "/realms/" + realm
-			token, err := identitySyncToken(app, issuer, syncClientID, syncClientSecret, staticToken)
+			cfg, err := identitySyncConfigFromEnv(app, os.Getenv)
 			if err != nil {
 				return err
 			}
-			accounts, err := connect(origin, token)
+			token, err := identitySyncToken(app, cfg.tokenEndpoint, cfg.syncClientID, cfg.syncClientSecret, cfg.staticToken)
 			if err != nil {
 				return err
 			}
+			accounts, err := connect(cfg.origin, token)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+cfg.issuer)
 			ctx, cancel := context.WithTimeout(cmd.Context(), 90*time.Second)
 			defer cancel()
-			directory := applicationDirectory{admin: keycloak.NewAdminClient(base, realm, adminID, secret), issuer: issuer, clientID: clientID}
-			service := identityreconcile.Service{Accounts: accounts, Directory: directory, Issuer: issuer}
+			directory := applicationDirectory{admin: keycloak.NewAdminClient(cfg.adminBase, cfg.realm, cfg.adminID, cfg.adminSecret), issuer: cfg.issuer, clientID: clientID}
+			service := identityreconcile.Service{Accounts: accounts, Directory: directory, Issuer: cfg.issuer}
 			page, err := service.Preview(ctx, cursor, limit)
 			if err != nil {
 				return err
@@ -143,12 +133,54 @@ func newIdentitySyncCommand(name, app, clientID string, connect func(string, ide
 	return cmd
 }
 
+type identitySyncConfig struct {
+	adminBase, realm, adminID, adminSecret string
+	// issuer is the public issuer written into application identity links. It must match
+	// the iss claim users' ID tokens carry, so it comes from KEYCLOAK_EXTERNAL_URL.
+	issuer string
+	// tokenEndpoint is reached through KEYCLOAK_BASE_URL, which may be an internal address.
+	tokenEndpoint                                       string
+	origin, syncClientID, syncClientSecret, staticToken string
+}
+
+func identitySyncConfigFromEnv(app string, getenv func(string) string) (identitySyncConfig, error) {
+	cfg := identitySyncConfig{
+		adminBase:        strings.TrimRight(getenv("KEYCLOAK_BASE_URL"), "/"),
+		realm:            getenv("KEYCLOAK_REALM"),
+		adminID:          getenv("KEYCLOAK_ADMIN_CLIENT_ID"),
+		adminSecret:      getenv("KEYCLOAK_ADMIN_CLIENT_SECRET"),
+		origin:           getenv(app + "_SYNC_ORIGIN"),
+		syncClientID:     getenv(app + "_SYNC_CLIENT_ID"),
+		syncClientSecret: getenv(app + "_SYNC_CLIENT_SECRET"),
+		staticToken:      getenv(app + "_SYNC_ACCESS_TOKEN"),
+	}
+	if !httpsBaseURL(cfg.adminBase) || cfg.realm == "" || url.PathEscape(cfg.realm) != cfg.realm ||
+		cfg.adminID == "" || cfg.adminSecret == "" {
+		return identitySyncConfig{}, errors.New("configure the HTTPS Keycloak base URL, realm and operator credentials")
+	}
+	public := strings.TrimRight(getenv("KEYCLOAK_EXTERNAL_URL"), "/")
+	if public == "" {
+		public = cfg.adminBase
+	} else if !httpsBaseURL(public) {
+		return identitySyncConfig{}, errors.New("KEYCLOAK_EXTERNAL_URL must be an HTTPS base URL")
+	}
+	cfg.issuer = public + "/realms/" + cfg.realm
+	cfg.tokenEndpoint = cfg.adminBase + "/realms/" + cfg.realm + "/protocol/openid-connect/token"
+	return cfg, nil
+}
+
+func httpsBaseURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil &&
+		u.RawQuery == "" && u.Fragment == ""
+}
+
 // identitySyncToken prefers the application's dedicated identity-sync service account
 // (<APP>_SYNC_CLIENT_ID / <APP>_SYNC_CLIENT_SECRET) and falls back to a pre-minted
 // <APP>_SYNC_ACCESS_TOKEN only when no service client is configured.
-func identitySyncToken(app, issuer, clientID, clientSecret, staticToken string) (identityreconcile.AccessToken, error) {
+func identitySyncToken(app, tokenEndpoint, clientID, clientSecret, staticToken string) (identityreconcile.AccessToken, error) {
 	if clientID != "" || clientSecret != "" {
-		return identityreconcile.ClientCredentials(issuer+"/protocol/openid-connect/token", clientID, clientSecret)
+		return identityreconcile.ClientCredentials(tokenEndpoint, clientID, clientSecret)
 	}
 	if staticToken != "" {
 		return func(context.Context) (string, error) { return staticToken, nil }, nil

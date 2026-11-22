@@ -47,9 +47,10 @@ Each application has a dedicated machine client in the realm exports: `clims-ide
 
 Configure the CLI with:
 
-- `KEYCLOAK_BASE_URL` (HTTPS), `KEYCLOAK_REALM`, `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET`: operator credentials used to look up users and grant `<clientId>_access`.
+- `KEYCLOAK_BASE_URL` (HTTPS), `KEYCLOAK_REALM`, `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET`: operator credentials used to look up users and grant `<clientId>_access`. `KEYCLOAK_BASE_URL` can be an internal address; admin API and token requests go there.
+- `KEYCLOAK_EXTERNAL_URL` (HTTPS): the public Keycloak URL. The issuer written into each identity link is `<KEYCLOAK_EXTERNAL_URL>/realms/<realm>`, which must equal the `iss` claim in users' ID tokens at the application. When it is unset the CLI falls back to `KEYCLOAK_BASE_URL`, which is only correct when that is the public URL. The CLI prints the issuer it uses on stderr; check it before applying links.
 - `CLIMS_SYNC_ORIGIN` / `POES_SYNC_ORIGIN`: the application's HTTPS origin, for example `https://clims.health.go.ug`.
-- `CLIMS_SYNC_CLIENT_ID` + `CLIMS_SYNC_CLIENT_SECRET` / `POES_SYNC_CLIENT_ID` + `POES_SYNC_CLIENT_SECRET`: the identity-sync client's credentials. The CLI requests tokens from `<KEYCLOAK_BASE_URL>/realms/<realm>/protocol/openid-connect/token` with the client-credentials grant and caches each one until 30 seconds before it expires.
+- `CLIMS_SYNC_CLIENT_ID` + `CLIMS_SYNC_CLIENT_SECRET` / `POES_SYNC_CLIENT_ID` + `POES_SYNC_CLIENT_SECRET`: the identity-sync client's credentials. The CLI requests tokens from `<KEYCLOAK_BASE_URL>/realms/<realm>/protocol/openid-connect/token` with the client-credentials grant and caches each one until 30 seconds before it expires. Run Keycloak with a fixed public hostname (`KC_HOSTNAME`) so these tokens carry the public issuer even when requested through the internal URL.
 - `CLIMS_SYNC_ACCESS_TOKEN` / `POES_SYNC_ACCESS_TOKEN` (optional fallback): a pre-minted token. It is used only when no sync client ID or secret is set.
 
 ```sh
