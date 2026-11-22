@@ -35,7 +35,7 @@ def main():
         subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/health_context', '-run', '^(TestGeographySyncAcrossDatabases|TestNationalDefaultPostgres)$', '-count=1', '-v', '-timeout=3m'],
                        cwd=ROOT / 'backend', env=env, check=True)
         env['MOH_REGISTRY_TEST_DATABASE_URL'] = env['TEST_MIGRATION_DATABASE_URL']
-        subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/rbac', '-run', '^TestApplicationRegistryPostgres$', '-count=1', '-v', '-timeout=5m'],
+        subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/rbac', '-run', '^(TestApplicationRegistryPostgres|TestServiceOnlyRolesPostgres)$', '-count=1', '-v', '-timeout=5m'],
                        cwd=ROOT / 'backend', env=env, check=True)
         subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/platform', '-run', '^TestPlatformPostgres$', '-count=1', '-v', '-timeout=5m'],
                        cwd=ROOT / 'backend', env=env, check=True)
