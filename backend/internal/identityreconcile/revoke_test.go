@@ -111,7 +111,7 @@ func (m *memoryRevocations) ListRevocations(_ context.Context, f RevocationFilte
 // Fake Keycloak admin API
 // ---------------------------------------------------------------------------
 
-type fakeKeycloak struct {
+type revokeFakeKeycloak struct {
 	t  *testing.T
 	mu sync.Mutex
 	// direct and inherited client roles of each user on the "alerts" client.
@@ -121,7 +121,7 @@ type fakeKeycloak struct {
 	requests  []string
 }
 
-func (k *fakeKeycloak) count(prefix string) int {
+func (k *revokeFakeKeycloak) count(prefix string) int {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	n := 0
@@ -133,13 +133,13 @@ func (k *fakeKeycloak) count(prefix string) int {
 	return n
 }
 
-func (k *fakeKeycloak) roles(user string) []string {
+func (k *revokeFakeKeycloak) roles(user string) []string {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	return append([]string(nil), k.direct[user]...)
 }
 
-func (k *fakeKeycloak) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (k *revokeFakeKeycloak) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	if r.URL.Path == "/realms/moh/protocol/openid-connect/token" {
@@ -284,7 +284,7 @@ func (a *fakeApp) snapshot() appCalls {
 	return appCalls{calls: a.calls, revoked: append([]identitysync.Identity(nil), a.revoked...)}
 }
 
-func (k *fakeKeycloak) update(f func(*fakeKeycloak)) {
+func (k *revokeFakeKeycloak) update(f func(*revokeFakeKeycloak)) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	f(k)
@@ -294,7 +294,7 @@ type revokeFixture struct {
 	service  *RevokeService
 	repo     *memoryRevocations
 	registry *fakeRegistryRepo
-	kc       *fakeKeycloak
+	kc       *revokeFakeKeycloak
 	app      *fakeApp
 }
 
@@ -307,7 +307,7 @@ func newRevokeFixture(t *testing.T) *revokeFixture {
 	integration.Enabled = true
 	registryRepo.rows = map[string]Integration{"alerts": integration}
 
-	kc := &fakeKeycloak{t: t,
+	kc := &revokeFakeKeycloak{t: t,
 		direct:    map[string][]string{revokeSubject: {"alerts_access", "alerts_viewer"}},
 		inherited: map[string][]string{},
 	}
@@ -413,7 +413,7 @@ func TestRevokeAppOutageStillRemovesRoleAndResumeCompletes(t *testing.T) {
 
 func TestRevokeKeycloakFailureStillEndsApplicationSessions(t *testing.T) {
 	f := newRevokeFixture(t)
-	f.kc.update(func(k *fakeKeycloak) { k.failRoles = true })
+	f.kc.update(func(k *revokeFakeKeycloak) { k.failRoles = true })
 	revocation, err := f.service.Revoke(context.Background(), "alerts", revokeSubject, "ops@example.test", "incident")
 	if err != nil {
 		t.Fatal(err)
@@ -530,7 +530,7 @@ func TestRestoreClearsRevocationWithoutGrantingAccess(t *testing.T) {
 
 func TestRevokeRecordsInheritedAccessRoleAsFailed(t *testing.T) {
 	f := newRevokeFixture(t)
-	f.kc.update(func(k *fakeKeycloak) { k.inherited[revokeSubject] = []string{"alerts_access"} })
+	f.kc.update(func(k *revokeFakeKeycloak) { k.inherited[revokeSubject] = []string{"alerts_access"} })
 	revocation, err := f.service.Revoke(context.Background(), "alerts", revokeSubject, "ops", "left")
 	if err != nil {
 		t.Fatal(err)
@@ -639,17 +639,19 @@ func TestPortalHookFiresOnlyForEnabledIntegrationAccessRole(t *testing.T) {
 	}
 
 	// The access role still held through a group: nothing was removed, no revocation.
-	f.kc.update(func(k *fakeKeycloak) { k.inherited[revokeSubject] = []string{"alerts_access"} })
+	f.kc.update(func(k *revokeFakeKeycloak) { k.inherited[revokeSubject] = []string{"alerts_access"} })
 	if err := hook.ClientRolesRemoved(ctx, revokeSubject, "alerts", []string{"alerts_access"}, "admin-1"); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.repo.rows) != 0 {
 		t.Fatal("hook revoked while access continues through a group")
 	}
-	f.kc.update(func(k *fakeKeycloak) { k.inherited[revokeSubject] = nil })
+	f.kc.update(func(k *revokeFakeKeycloak) { k.inherited[revokeSubject] = nil })
 
 	// The access role of an enabled integration: revoked, sessions ended.
-	f.kc.update(func(k *fakeKeycloak) { k.direct[revokeSubject] = remove(k.direct[revokeSubject], "alerts_access") }) // the portal already removed it
+	f.kc.update(func(k *revokeFakeKeycloak) {
+		k.direct[revokeSubject] = remove(k.direct[revokeSubject], "alerts_access")
+	}) // the portal already removed it
 	if err := hook.ClientRolesRemoved(ctx, revokeSubject, "alerts", []string{"alerts_viewer", "alerts_access"}, "admin-1"); err != nil {
 		t.Fatal(err)
 	}
@@ -719,5 +721,7 @@ func TestPortalHookSurvivesCancelledRequest(t *testing.T) {
 // portalRemovedAccessRole simulates the portal's own role removal, which runs
 // before the hook is called.
 func (f *revokeFixture) portalRemovedAccessRole() {
-	f.kc.update(func(k *fakeKeycloak) { k.direct[revokeSubject] = remove(k.direct[revokeSubject], "alerts_access") })
+	f.kc.update(func(k *revokeFakeKeycloak) {
+		k.direct[revokeSubject] = remove(k.direct[revokeSubject], "alerts_access")
+	})
 }

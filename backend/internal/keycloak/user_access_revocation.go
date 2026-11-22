@@ -13,9 +13,9 @@ import (
 )
 
 // Errors returned by the access-revocation helpers. Messages carry status codes
-// only, never Keycloak response bodies.
+// only, never Keycloak response bodies. ErrUserNotFound is shared with the
+// identity-sync user helpers (identity_sync_users.go).
 var (
-	ErrUserNotFound   = errors.New("keycloak user not found")
 	ErrClientNotFound = errors.New("keycloak client not found")
 )
 
