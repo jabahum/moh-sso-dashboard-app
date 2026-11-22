@@ -1,11 +1,140 @@
-import { getAvailablePeriods } from "../../../data-visualizer/src/pages/Constants.tsx";
+import type { PeriodOption } from "../types";
+
+export function getWeeksOfYear(
+  year: string = new Date().getFullYear().toString(),
+): PeriodOption[] {
+  const weeks: PeriodOption[] = [];
+  const startYear = parseInt(year, 10);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const formatDate = (date: Date) => {
+    const pad = (num: number) => String(num).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  };
+
+  const getISOWeekNumber = (date: Date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  };
+
+  const currentDate = new Date(startYear, 0, 1);
+  const dayOfWeek = currentDate.getDay();
+  const daysToAdjust = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  currentDate.setDate(currentDate.getDate() - daysToAdjust);
+  const yearEndMarker = new Date(startYear, 11, 31);
+
+  while (currentDate.getFullYear() <= startYear) {
+    if (currentDate.getFullYear() > startYear && currentDate.getDate() > 7) {
+      break;
+    }
+    const weekStart = new Date(currentDate);
+    const weekEnd = new Date(currentDate);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const finalEndDate = weekEnd > yearEndMarker ? yearEndMarker : weekEnd;
+
+    const weekNumber = getISOWeekNumber(weekStart);
+    const formattedWeek = String(weekNumber).padStart(2, "0");
+    const weekString = `Week ${weekNumber} - ${formatDate(weekStart)} - ${formatDate(finalEndDate)}`;
+    const isDisabled = finalEndDate >= now;
+
+    if (formatDate(finalEndDate) !== formatDate(yearEndMarker)) {
+      weeks.push({
+        id: `${year}W${formattedWeek}`,
+        label: weekString,
+        disabled: isDisabled,
+      });
+    }
+
+    currentDate.setDate(currentDate.getDate() + 7);
+  }
+
+  return weeks;
+}
+
+export function getMonthsOfYear(
+  year: string = new Date().getFullYear().toString(),
+): PeriodOption[] {
+  const months: PeriodOption[] = [];
+  const startYear = parseInt(year, 10);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthIndex = now.getMonth();
+
+  for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+    const monthNumber = monthIndex + 1;
+    const formattedMonth = String(monthNumber).padStart(2, "0");
+    const date = new Date(startYear, monthIndex, 1);
+    const monthName = date.toLocaleDateString("en-US", { month: "long" });
+    const isDisabled = startYear === currentYear && monthIndex > currentMonthIndex;
+
+    months.push({
+      id: `${startYear}${formattedMonth}`,
+      label: `${monthName} ${startYear}`,
+      disabled: isDisabled,
+    });
+  }
+
+  return months;
+}
+
+export function getQuarterlyPeriodsOfYear(
+  year: string = new Date().getFullYear().toString(),
+): PeriodOption[] {
+  const quarters: PeriodOption[] = [];
+  const startYear = parseInt(year, 10);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentQuarterNumber = Math.floor(now.getMonth() / 3) + 1;
+
+  for (let monthIndex = 0; monthIndex < 12; monthIndex += 3) {
+    const quarterNumber = monthIndex / 3 + 1;
+    const startMonthName = new Date(startYear, monthIndex, 1).toLocaleDateString("en-US", {
+      month: "long",
+    });
+    const endMonthName = new Date(startYear, monthIndex + 2, 1).toLocaleDateString("en-US", {
+      month: "long",
+    });
+    const isDisabled = startYear === currentYear && quarterNumber > currentQuarterNumber;
+
+    quarters.push({
+      id: `${startYear}Q${quarterNumber}`,
+      label: `${startMonthName} - ${endMonthName} ${startYear}`,
+      disabled: isDisabled,
+    });
+  }
+
+  return quarters;
+}
+
+export function getAvailablePeriods(
+  periodTypeValue: string,
+  year: string | number,
+): PeriodOption[] {
+  const yearStr = String(year);
+  if (periodTypeValue === "Weekly") {
+    return getWeeksOfYear(yearStr);
+  }
+  if (periodTypeValue === "Monthly") {
+    return getMonthsOfYear(yearStr);
+  }
+  if (periodTypeValue === "Quarterly") {
+    return getQuarterlyPeriodsOfYear(yearStr);
+  }
+  return [];
+}
 
 /**
  * Wraps getAvailablePeriods to ensure all periods (including future quarters/months)
  * are enabled for filtering issues.
  */
-export function fetchAvailablePeriods(periodType: string, year: string | number) {
-  const periods = getAvailablePeriods(periodType, year.toString());
+export function fetchAvailablePeriods(
+  periodTypeValue: string,
+  year: string | number,
+): PeriodOption[] {
+  const periods = getAvailablePeriods(periodTypeValue, year.toString());
   return periods.map((p) => ({ ...p, disabled: false }));
 }
 
@@ -17,7 +146,7 @@ export function fetchAvailablePeriods(periodType: string, year: string | number)
  */
 export function convertPeriodToCode(
   periodInput: unknown,
-  fallbackYear?: number | string
+  fallbackYear?: number | string,
 ): string {
   if (periodInput === null || periodInput === undefined || periodInput === "") {
     return "";
@@ -88,16 +217,32 @@ export function convertPeriodToCode(
     return `${year}Q${qWordMatch[1]}`;
   }
 
-  if (/jan(?:uary)?\s*-\s*mar(?:ch)?/i.test(clean) || /\bquarter\s*1\b/i.test(clean) || /\bq1\b/i.test(clean)) {
+  if (
+    /jan(?:uary)?\s*-\s*mar(?:ch)?/i.test(clean) ||
+    /\bquarter\s*1\b/i.test(clean) ||
+    /\bq1\b/i.test(clean)
+  ) {
     if (year) return `${year}Q1`;
   }
-  if (/apr(?:il)?\s*-\s*jun(?:e)?/i.test(clean) || /\bquarter\s*2\b/i.test(clean) || /\bq2\b/i.test(clean)) {
+  if (
+    /apr(?:il)?\s*-\s*jun(?:e)?/i.test(clean) ||
+    /\bquarter\s*2\b/i.test(clean) ||
+    /\bq2\b/i.test(clean)
+  ) {
     if (year) return `${year}Q2`;
   }
-  if (/jul(?:y)?\s*-\s*sep(?:tember)?/i.test(clean) || /\bquarter\s*3\b/i.test(clean) || /\bq3\b/i.test(clean)) {
+  if (
+    /jul(?:y)?\s*-\s*sep(?:tember)?/i.test(clean) ||
+    /\bquarter\s*3\b/i.test(clean) ||
+    /\bq3\b/i.test(clean)
+  ) {
     if (year) return `${year}Q3`;
   }
-  if (/oct(?:ober)?\s*-\s*dec(?:ember)?/i.test(clean) || /\bquarter\s*4\b/i.test(clean) || /\bq4\b/i.test(clean)) {
+  if (
+    /oct(?:ober)?\s*-\s*dec(?:ember)?/i.test(clean) ||
+    /\bquarter\s*4\b/i.test(clean) ||
+    /\bq4\b/i.test(clean)
+  ) {
     if (year) return `${year}Q4`;
   }
 
@@ -110,18 +255,30 @@ export function convertPeriodToCode(
 
   // Month text matching: e.g. "June 2026", "January 2026", "Jun 2026"
   const monthsMap: Record<string, string> = {
-    january: "01", jan: "01",
-    february: "02", feb: "02",
-    march: "03", mar: "03",
-    april: "04", apr: "04",
+    january: "01",
+    jan: "01",
+    february: "02",
+    feb: "02",
+    march: "03",
+    mar: "03",
+    april: "04",
+    apr: "04",
     may: "05",
-    june: "06", jun: "06",
-    july: "07", jul: "07",
-    august: "08", aug: "08",
-    september: "09", sep: "09", sept: "09",
-    october: "10", oct: "10",
-    november: "11", nov: "11",
-    december: "12", dec: "12",
+    june: "06",
+    jun: "06",
+    july: "07",
+    jul: "07",
+    august: "08",
+    aug: "08",
+    september: "09",
+    sep: "09",
+    sept: "09",
+    october: "10",
+    oct: "10",
+    november: "11",
+    nov: "11",
+    december: "12",
+    dec: "12",
   };
 
   const lowerClean = clean.toLowerCase();
@@ -141,7 +298,7 @@ export function convertPeriodToCode(
 export function isPeriodMatching(
   targetPeriodInput: unknown,
   issuePeriodInput: unknown,
-  fallbackYear?: number | string
+  fallbackYear?: number | string,
 ): boolean {
   if (!targetPeriodInput) return true; // No filter selected
 
@@ -210,14 +367,6 @@ const SIX_MONTH_NAMES: Record<string, string> = {
   "2": "July - December",
 };
 
-/**
- * Converts a reporting period (e.g., DHIS2 code, timestamp, or raw string)
- * into a human-readable month, week, or quarter plus year name:
- * - 2026Q3 -> "July - September 2026"
- * - 2026Q1 -> "January - March 2026"
- * - 202602 -> "February 2026"
- * - 2026W02 -> "Week 2 2026"
- */
 export function formatReportingPeriod(periodInput: unknown): string {
   if (periodInput === null || periodInput === undefined || periodInput === "") {
     return "";
@@ -235,7 +384,6 @@ export function formatReportingPeriod(periodInput: unknown): string {
 
   const clean = str.trim();
 
-  // 1. Quarterly: 2026Q3, 2026-Q3, 2026_Q3, 2026 Q3, 2026Q03, Q3 2026, Q3-2026, Q3/2026
   const qMatch =
     clean.match(/^(\d{4})[-_\s/]?[qQ]0?([1-4])$/) ||
     clean.match(/^[qQ]0?([1-4])[-_\s/]?(\d{4})$/);
@@ -254,7 +402,6 @@ export function formatReportingPeriod(periodInput: unknown): string {
     return `${QUARTER_NAMES[qNum]} ${year}`;
   }
 
-  // 2. Weekly: 2026W02, 2026W2, 2026-W02, W02 2026, Week 2 - 2026-01-05 - 2026-01-11
   const wMatch =
     clean.match(/^(\d{4})[-_\s/]?[wW]0?(\d{1,2})$/) ||
     clean.match(/^[wW]0?(\d{1,2})[-_\s/]?(\d{4})$/);
@@ -271,7 +418,6 @@ export function formatReportingPeriod(periodInput: unknown): string {
     return `Week ${wNum} ${year}`;
   }
 
-  // 3. Bi-monthly: 202601B, 2026B1
   const bMatch =
     clean.match(/^(\d{4})[-_\s]?[bB]0?([1-6])$/) ||
     clean.match(/^(\d{4})0([1-6])[bB]$/);
@@ -279,13 +425,11 @@ export function formatReportingPeriod(periodInput: unknown): string {
     return `${BI_MONTH_NAMES[bMatch[2]]} ${bMatch[1]}`;
   }
 
-  // 4. Six-monthly: 2026S1, 2026S2
   const sMatch = clean.match(/^(\d{4})[-_\s]?[sS]0?([1-2])$/);
   if (sMatch) {
     return `${SIX_MONTH_NAMES[sMatch[2]]} ${sMatch[1]}`;
   }
 
-  // 5. Full date (ISO YYYY-MM-DD): 2026-02-15 -> February 2026
   const dateMatch = clean.match(/^(\d{4})-(0[1-9]|1[0-2])-\d{2}$/);
   if (dateMatch) {
     const year = dateMatch[1];
@@ -293,7 +437,6 @@ export function formatReportingPeriod(periodInput: unknown): string {
     return `${MONTH_NAMES[mIdx]} ${year}`;
   }
 
-  // 6. Monthly code: 202602 (YYYYMM 6 digits)
   const mCodeMatch = clean.match(/^(\d{4})(0[1-9]|1[0-2])$/);
   if (mCodeMatch) {
     const year = mCodeMatch[1];
@@ -301,7 +444,6 @@ export function formatReportingPeriod(periodInput: unknown): string {
     return `${MONTH_NAMES[mIdx]} ${year}`;
   }
 
-  // 7. Monthly with separator: 2026-02, 2026/02, 02-2026, 02/2026, 2026-2
   const mDashMatch = clean.match(/^(\d{4})[-/](0?[1-9]|1[0-2])$/);
   if (mDashMatch) {
     const year = mDashMatch[1];
@@ -315,9 +457,8 @@ export function formatReportingPeriod(periodInput: unknown): string {
     return `${MONTH_NAMES[mIdx]} ${year}`;
   }
 
-  // 8. Quarter range text: e.g. "Jul - Sep 2026", "July - September 2026"
   const qTextMatch = clean.match(
-    /(jan(?:uary)?\s*-\s*mar(?:ch)?|apr(?:il)?\s*-\s*jun(?:e)?|jul(?:y)?\s*-\s*sep(?:tember)?|oct(?:ober)?\s*-\s*dec(?:ember)?)[,\s-]+(\d{4})/i
+    /(jan(?:uary)?\s*-\s*mar(?:ch)?|apr(?:il)?\s*-\s*jun(?:e)?|jul(?:y)?\s*-\s*sep(?:tember)?|oct(?:ober)?\s*-\s*dec(?:ember)?)[,\s-]+(\d{4})/i,
   );
   if (qTextMatch) {
     const t = qTextMatch[1].toLowerCase();
@@ -328,13 +469,12 @@ export function formatReportingPeriod(periodInput: unknown): string {
     if (t.includes("oct")) return `October - December ${year}`;
   }
 
-  // 9. Month name text: e.g. "Feb 2026", "February 2026", "2026 February"
   const monthWordMatch =
     clean.match(
-      /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b[,\s-]+(\d{4})/i
+      /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b[,\s-]+(\d{4})/i,
     ) ||
     clean.match(
-      /(\d{4})[,\s-]+\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i
+      /(\d{4})[,\s-]+\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i,
     );
   if (monthWordMatch) {
     const part1 = monthWordMatch[1];

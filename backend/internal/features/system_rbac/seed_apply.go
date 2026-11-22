@@ -325,11 +325,11 @@ func upsertSystem(ctx context.Context, tx *sql.Tx, system SeedSystem) (string, e
 		INSERT INTO ihp_systems (
 			client_id, display_name, description, icon, launch_url, category, owner_team, owner_name,
 			owner_email, support_url, documentation_url, environment, criticality,
-			system_type, display_in_launcher, display_in_sidenav, launch_mode, enabled, sort_order, metadata, integration_type
+			system_type, display_in_launcher, display_in_sidenav, launch_mode, lifecycle_status, enabled, sort_order, metadata, integration_type
 		) VALUES (
 			$1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''),
 			NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''),
-			NULLIF($13, ''), $14, $15, $16, $17, $18, $19, $20, CASE WHEN $14 = 'platform' THEN 'hosted_module' ELSE 'external' END
+			NULLIF($13, ''), $14, $15, $16, $17, CASE WHEN $18 THEN 'active' ELSE 'registered' END, $18, $19, $20, CASE WHEN $14 = 'platform' THEN 'hosted_module' ELSE 'external' END
 		)
 		ON CONFLICT (client_id) DO UPDATE SET
 			display_name = EXCLUDED.display_name,

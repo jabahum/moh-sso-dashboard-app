@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 
 	"github.com/moh-sso-dashboard/internal/cache"
 	"github.com/moh-sso-dashboard/internal/config"
@@ -65,19 +66,45 @@ func initDatabases(ctx context.Context, cfg *config.Config) (databases, error) {
 		return databases{}, err
 	}
 
-	dwhDB, err := db.InitDB(ctx, dbConfig(cfg.DwhDbSource()))
+	dwhCfg := dbConfig(cfg.DwhDbSource())
+	if cfg.IsDevelopment() {
+		dwhCfg.WaitTimeout = 6 * time.Second
+	}
+	dwhDB, err := db.InitDB(ctx, dwhCfg)
 	if err != nil {
-		primaryDB.Close()
-		remoteDB.Close()
-		return databases{}, err
+		if !cfg.IsDevelopment() {
+			primaryDB.Close()
+			remoteDB.Close()
+			return databases{}, err
+		}
+		log.Warn().
+			Err(err).
+			Str("dwh_host", cfg.DWHHost).
+			Str("dwh_db", cfg.DWHDBName).
+			Msg("DWH database unavailable in development; continuing without DWH connection")
+		dwhDB = nil
 	}
 
-	dqaDB, err := db.InitDB(ctx, dbConfig(cfg.DqaDbSource()))
-	if err != nil {
-		primaryDB.Close()
-		remoteDB.Close()
-		dwhDB.Close()
-		return databases{}, err
+	var dqaDB *sql.DB
+	if dwhDB != nil {
+		dqaCfg := dbConfig(cfg.DqaDbSource())
+		if cfg.IsDevelopment() {
+			dqaCfg.WaitTimeout = 6 * time.Second
+		}
+		dqaDB, err = db.InitDB(ctx, dqaCfg)
+		if err != nil {
+			if !cfg.IsDevelopment() {
+				primaryDB.Close()
+				remoteDB.Close()
+				dwhDB.Close()
+				return databases{}, err
+			}
+			log.Warn().
+				Err(err).
+				Str("dwh_host", cfg.DWHHost).
+				Msg("DQA database connection failed in development; falling back to DWH connection")
+			dqaDB = dwhDB
+		}
 	}
 
 	dbs := databases{Primary: primaryDB, Remote: remoteDB, DWH: dwhDB, DQA: dqaDB}
@@ -118,7 +145,7 @@ func (dbs databases) Close() {
 	if dbs.DWH != nil {
 		dbs.DWH.Close()
 	}
-	if dbs.DQA != nil {
+	if dbs.DQA != nil && dbs.DQA != dbs.DWH {
 		dbs.DQA.Close()
 	}
 }

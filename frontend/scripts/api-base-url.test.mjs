@@ -67,4 +67,16 @@ test("build-time origins and visualizer overrides retain their behavior", () => 
   });
   assert.equal(api.base, "http://localhost:9000/api/v1");
   assert.equal(api.visualizer.themes(), "/visualizer-proxy/visualizer/themes");
+  assert.equal(api.issue.list(), "/visualizer-proxy/issues");
+  assert.equal(
+    api.dataValidation.dqa.tables.list(),
+    "/visualizer-proxy/data-validation/dqa/tables",
+  );
+
+  const underscoreApi = loadAPI(undefined, {
+    VITE_API_BASE_URL: "http://localhost:9000",
+    VITE_VISUALIZER_API_BASE: "/visualizer_proxy/",
+  });
+  assert.equal(underscoreApi.visualizer.datasets(), "/visualizer_proxy/visualizer/datasets");
+  assert.equal(underscoreApi.issue.list(), "/visualizer_proxy/issues");
 });

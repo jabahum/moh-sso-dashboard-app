@@ -14,13 +14,22 @@ type AssignModalProps = {
   onSuccess?: () => void;
 };
 
-export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess }: AssignModalProps) => {
+export const AssignModal = ({
+  issueCodes,
+  isReassign = false,
+  onClose,
+  onSuccess,
+}: AssignModalProps) => {
   const [selectedGroup, setSelectedGroup] = useState<KeycloakGroup | null>(null);
   const [selectedMember, setSelectedMember] = useState<KeycloakGroupMember | null>(null);
   const [comment, setComment] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const { data: groups = [], isLoading: isLoadingGroups, error: groupsError } = useGetKeycloakGroupsQuery();
+  const {
+    data: groups = [],
+    isLoading: isLoadingGroups,
+    error: groupsError,
+  } = useGetKeycloakGroupsQuery();
 
   const selectedGroupId = selectedGroup?.id ?? "";
 
@@ -34,12 +43,20 @@ export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess
 
   const [assignIssues, { isLoading: isAssigning }] = useAssignIssuesMutation();
 
-  const handleGroupChange = ({ selectedItem }: { selectedItem?: KeycloakGroup | null }) => {
+  const handleGroupChange = ({
+    selectedItem,
+  }: {
+    selectedItem?: KeycloakGroup | null;
+  }) => {
     setSelectedGroup(selectedItem ?? null);
     setSelectedMember(null);
   };
 
-  const handleMemberChange = ({ selectedItem }: { selectedItem?: KeycloakGroupMember | null }) => {
+  const handleMemberChange = ({
+    selectedItem,
+  }: {
+    selectedItem?: KeycloakGroupMember | null;
+  }) => {
     setSelectedMember(selectedItem ?? null);
   };
 
@@ -65,18 +82,28 @@ export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess
 
       onSuccess?.();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to assign issue(s):", err);
-      setErrorMessage(
-        err?.data?.message ?? "Failed to assign issue(s). Please check Keycloak connection or try again.",
-      );
+      const apiMsg =
+        err &&
+        typeof err === "object" &&
+        "data" in err &&
+        err.data &&
+        typeof err.data === "object" &&
+        "message" in err.data &&
+        typeof err.data.message === "string"
+          ? err.data.message
+          : "Failed to assign issue(s). Please check Keycloak connection or try again.";
+      setErrorMessage(apiMsg);
     }
   };
 
   const isMultiple = issueCodes.length > 1;
   const actionWord = isReassign ? "Re-assign" : "Assign";
   const actionWordIng = isReassign ? "Re-assigning..." : "Assigning...";
-  const heading = isMultiple ? `${actionWord} ${issueCodes.length} Issues` : `${actionWord} Issue [${issueCodes[0] ?? ""}]`;
+  const heading = isMultiple
+    ? `${actionWord} ${issueCodes.length} Issues`
+    : `${actionWord} Issue [${issueCodes[0] ?? ""}]`;
 
   return (
     <Modal
@@ -88,7 +115,7 @@ export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess
       onRequestSubmit={handleSubmit}
       primaryButtonDisabled={!selectedMember?.email || isAssigning}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+      <div className="assign-modal-body">
         {errorMessage && (
           <InlineNotification
             kind="error"
@@ -98,8 +125,10 @@ export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess
           />
         )}
 
-        <p style={{ color: "#525252" }}>
-          Select a user group and choose a team member to {isReassign ? "re-assign" : "assign"} {isMultiple ? "these issues" : "this issue"} to.
+        <p className="assign-modal-description">
+          Select a user group and choose a team member to{" "}
+          {isReassign ? "re-assign" : "assign"}{" "}
+          {isMultiple ? "these issues" : "this issue"} to.
         </p>
 
         <ComboBox
@@ -108,7 +137,9 @@ export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess
           placeholder={isLoadingGroups ? "Loading user groups..." : "Select User Group"}
           items={groups}
           selectedItem={selectedGroup}
-          itemToString={(item: KeycloakGroup | null) => (item ? `${item.name} (${item.path})` : "")}
+          itemToString={(item: KeycloakGroup | null) =>
+            item ? `${item.name} (${item.path})` : ""
+          }
           onChange={handleGroupChange}
           disabled={isLoadingGroups || isAssigning}
           warn={Boolean(groupsError)}
@@ -130,7 +161,9 @@ export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess
           itemToString={(item: KeycloakGroupMember | null) => {
             if (!item) return "";
             const name = [item.firstName, item.lastName].filter(Boolean).join(" ");
-            return name ? `${name} (${item.email || item.username})` : item.email || item.username;
+            return name
+              ? `${name} (${item.email || item.username})`
+              : item.email || item.username;
           }}
           onChange={handleMemberChange}
           disabled={!selectedGroupId || isLoadingMembers || isAssigning}
@@ -139,16 +172,9 @@ export const AssignModal = ({ issueCodes, isReassign = false, onClose, onSuccess
         />
 
         {selectedMember && (
-          <div
-            style={{
-              padding: "0.75rem 1rem",
-              backgroundColor: "#f4f4f4",
-              borderRadius: "4px",
-              borderLeft: "4px solid #0f62fe",
-              fontSize: "0.875rem",
-            }}
-          >
-            <strong>Selected User Email:</strong> {selectedMember.email || "No email available"}
+          <div className="assign-modal-selected-banner">
+            <strong>Selected User Email:</strong>{" "}
+            {selectedMember.email || "No email available"}
           </div>
         )}
 

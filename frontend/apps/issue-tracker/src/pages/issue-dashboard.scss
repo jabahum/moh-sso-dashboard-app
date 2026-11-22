@@ -163,6 +163,22 @@
   margin: 0.5rem 0 0.25rem;
 }
 
+.kpi-value--critical {
+  color: #a2191f;
+}
+
+.kpi-value--open {
+  color: #da1e28;
+}
+
+.kpi-value--resolved {
+  color: #198038;
+}
+
+.kpi-value--rate {
+  color: #0f62fe;
+}
+
 .kpi-subtext {
   font-size: 0.75rem;
   color: #6f6f6f;
@@ -190,6 +206,10 @@
   background-color: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
+}
+
+.dashboard-filter-field {
+  min-width: 13.5rem;
 }
 
 .filter-active-indicator {
@@ -350,19 +370,29 @@
   min-width: 6rem;
 }
 
-.share-bar-bg {
+.share-progress {
   flex: 1;
   height: 6px;
+  appearance: none;
+  border: none;
+  border-radius: 3px;
   background-color: #e0e0e0;
-  border-radius: 3px;
   overflow: hidden;
-}
 
-.share-bar-fill {
-  height: 100%;
-  background-color: #0f62fe;
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  &::-webkit-progress-bar {
+    background-color: #e0e0e0;
+    border-radius: 3px;
+  }
+
+  &::-webkit-progress-value {
+    background-color: #0f62fe;
+    border-radius: 3px;
+  }
+
+  &::-moz-progress-bar {
+    background-color: #0f62fe;
+    border-radius: 3px;
+  }
 }
 
 .share-percent-text {
@@ -371,6 +401,50 @@
   font-weight: 500;
   min-width: 2.5rem;
   text-align: right;
+}
+
+.grand-total-percent {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.expanded-panel-subtitle {
+  font-size: 0.8125rem;
+  color: #525252;
+  margin: 0.25rem 0 0;
+}
+
+.expanded-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-text--critical {
+  color: #a2191f;
+  font-weight: 600;
+}
+
+.stat-text--open {
+  color: #da1e28;
+  font-weight: 600;
+}
+
+.stat-text--resolved {
+  color: #198038;
+  font-weight: 600;
+}
+
+.table-action-header {
+  width: 4rem;
+  text-align: center;
+}
+
+.facility-empty-note {
+  margin: 0.5rem 0;
+  color: #6f6f6f;
+  font-size: 0.8125rem;
 }
 
 /* Grand total row */
@@ -657,6 +731,1072 @@
   grid-column: 1 / -1;
 }
 
+.dashboard-chart-card--map {
+  padding: 1.25rem 1.5rem 1.25rem;
+}
+
+/* =========================================================
+   Visual Distribution Tabs
+   ========================================================= */
+.dashboard-visual-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 2px solid #e0e0e0;
+  background-color: #ffffff;
+  padding: 0 0.75rem;
+  border-radius: 6px 6px 0 0;
+  border-top: 1px solid #e0e0e0;
+  border-left: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
+}
+
+.dashboard-visual-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.125rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #525252;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: #161616;
+    background-color: #f8f9fa;
+  }
+
+  &.active {
+    color: #0f62fe;
+    font-weight: 600;
+    border-bottom-color: #0f62fe;
+    background-color: #f8fafe;
+  }
+}
+
+.dashboard-visual-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #edf5ff;
+  color: #0043ce;
+  border: 1px solid #d0e2ff;
+}
+
+.dashboard-visual-tab-badge--alert {
+  background-color: #fff1f1;
+  color: #da1e28;
+  border-color: #ffd7d9;
+}
+
+.dashboard-visual-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+/* =========================================================
+   District Choropleth Map Card
+   ========================================================= */
+.issue-choropleth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.issue-choropleth-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.issue-choropleth-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.issue-choropleth-title {
+  @include type.type-style("heading-02");
+  margin: 0;
+  color: #161616;
+  font-weight: 600;
+}
+
+.issue-choropleth-subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #525252;
+}
+
+.issue-choropleth-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.issue-choropleth-kpi {
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem 0.75rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e8e8e8;
+  border-left: 3px solid #0f62fe;
+  border-radius: 4px;
+  min-width: 6.5rem;
+
+  strong {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #161616;
+    line-height: 1.2;
+  }
+}
+
+.issue-choropleth-kpi--critical {
+  border-left-color: #a2191f;
+
+  strong {
+    color: #a2191f;
+  }
+}
+
+.issue-choropleth-kpi-label {
+  font-size: 0.6875rem;
+  color: #525252;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28px;
+}
+
+.issue-choropleth-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(260px, 1fr);
+  gap: 1.25rem;
+  align-items: stretch;
+  width: 100%;
+}
+
+.issue-choropleth-map-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.issue-choropleth-canvas {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+  background-color: #f4f7fb;
+}
+
+.issue-choropleth-leaflet {
+  width: 100%;
+  height: 100%;
+  background-color: #f4f7fb;
+}
+
+.issue-choropleth-loading,
+.issue-choropleth-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+  color: #525252;
+  font-size: 0.875rem;
+}
+
+.issue-choropleth-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+}
+
+.issue-choropleth-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.issue-choropleth-legend-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #393939;
+}
+
+.issue-choropleth-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: #525252;
+}
+
+.issue-choropleth-swatch {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1px solid rgba(22, 22, 22, 0.2);
+  flex-shrink: 0;
+}
+
+.issue-choropleth-swatch--0 {
+  background-color: #f2f4f8;
+}
+
+.issue-choropleth-swatch--1 {
+  background-color: #d0e2ff;
+}
+
+.issue-choropleth-swatch--2 {
+  background-color: #78a9ff;
+}
+
+.issue-choropleth-swatch--3 {
+  background-color: #4589ff;
+}
+
+.issue-choropleth-swatch--4 {
+  background-color: #0f62fe;
+}
+
+.issue-choropleth-swatch--5 {
+  background-color: #002d9c;
+}
+
+.issue-choropleth-swatch--critical {
+  background-color: #a2191f;
+}
+
+.issue-choropleth-swatch--open {
+  background-color: #da1e28;
+}
+
+.issue-choropleth-swatch--mixed {
+  background-color: #eb6200;
+}
+
+.issue-choropleth-swatch--resolved {
+  background-color: #198038;
+}
+
+.issue-choropleth-reset-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f62fe;
+  background-color: #ffffff;
+  border: 1px solid #d0e2ff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: #0f62fe;
+    color: #ffffff;
+    border-color: #0f62fe;
+  }
+}
+
+.issue-choropleth-sidebar {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #fbfcfe;
+  overflow: hidden;
+  max-height: 654px;
+}
+
+.issue-choropleth-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  background-color: #f4f4f4;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.issue-choropleth-sidebar-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #161616;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.issue-choropleth-sidebar-count {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #525252;
+}
+
+.issue-choropleth-sidebar-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6f6f6f;
+}
+
+.issue-choropleth-district-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.issue-choropleth-district-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: #f0f5ff;
+  }
+
+  &.active {
+    background-color: #e8f1ff;
+    border-left: 3px solid #0f62fe;
+  }
+}
+
+.issue-choropleth-district-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.issue-choropleth-district-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.issue-choropleth-district-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background-color: #e8e8e8;
+  color: #393939;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.issue-choropleth-district-name {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #161616;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.issue-choropleth-district-total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background-color: #161616;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.issue-choropleth-district-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: #525252;
+
+  .text-open {
+    color: #da1e28;
+    font-weight: 600;
+  }
+
+  .text-resolved {
+    color: #198038;
+    font-weight: 600;
+  }
+
+  .text-critical {
+    color: #a2191f;
+    font-weight: 700;
+  }
+}
+
+.issue-choropleth-district-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  background-color: #ffffff;
+  color: #525252;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: #0f62fe;
+    border-color: #0f62fe;
+    color: #ffffff;
+  }
+}
+
+.issue-choropleth-leaflet-tooltip {
+  background-color: rgba(22, 22, 22, 0.94) !important;
+  border: 1px solid #393939 !important;
+  border-radius: 6px !important;
+  color: #ffffff !important;
+  padding: 0.5rem 0.65rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+
+  .issue-choropleth-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 9.5rem;
+    font-size: 0.75rem;
+    color: #f4f4f4;
+
+    strong {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.15rem;
+    }
+  }
+}
+
+/* =========================================================
+   Unresolved Issue Aging & Actionable Queue Card
+   ========================================================= */
+.aging-visual-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.aging-visual-card--tab {
+  gap: 1.5rem;
+  padding: 1.75rem;
+}
+
+.aging-visual-chart-wrapper {
+  width: 100%;
+  min-width: 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.aging-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.aging-kpi-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 1.125rem 1.25rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #161616;
+  border-radius: 6px;
+  min-height: 102px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+}
+
+.aging-kpi-item--overdue {
+  border-left-color: #eb6200;
+
+  .aging-kpi-val {
+    color: #eb6200;
+  }
+}
+
+.aging-kpi-item--critical {
+  border-left-color: #a2191f;
+
+  .aging-kpi-val {
+    color: #a2191f;
+  }
+}
+
+.aging-kpi-item--unassigned {
+  border-left-color: #8a4f00;
+
+  .aging-kpi-val {
+    color: #8a4f00;
+  }
+}
+
+.aging-kpi-label {
+  font-size: 0.8125rem;
+  color: #525252;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.aging-kpi-val {
+  font-size: 1.85rem;
+  font-weight: 600;
+  color: #161616;
+  line-height: 1.15;
+}
+
+.aging-kpi-subtext {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+  font-weight: 400;
+}
+
+.aging-controls-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.aging-bucket-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aging-bucket-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 18px;
+  border: 1px solid #d0d0d0;
+  background-color: #ffffff;
+  color: #393939;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: #0f62fe;
+    background-color: #f0f5ff;
+  }
+
+  &.active {
+    background-color: #161616;
+    border-color: #161616;
+    color: #ffffff;
+  }
+}
+
+.aging-bucket-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.aging-bucket-dot--0-7 {
+  background-color: #0f62fe;
+}
+
+.aging-bucket-dot--8-14 {
+  background-color: #007d79;
+}
+
+.aging-bucket-dot--15-30 {
+  background-color: #d2a106;
+}
+
+.aging-bucket-dot--31-60 {
+  background-color: #eb6200;
+}
+
+.aging-bucket-dot--61-90 {
+  background-color: #da1e28;
+}
+
+.aging-bucket-dot--90plus {
+  background-color: #a2191f;
+}
+
+.aging-bucket-chip.active .aging-bucket-dot {
+  background-color: #ffffff;
+}
+
+.aging-triage-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aging-analytics-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.aging-summary-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background-color: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: #525252;
+
+  strong {
+    color: #161616;
+    font-weight: 600;
+  }
+}
+
+.aging-summary-indicator--overdue {
+  background-color: #fff2e8;
+  border-color: #ff832b;
+  color: #ba4e00;
+
+  strong {
+    color: #a2191f;
+  }
+}
+
+.aging-avg-text {
+  font-size: 0.8125rem;
+  color: #525252;
+}
+
+.aging-code-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aging-resolve-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.aging-triage-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.aging-triage-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aging-triage-btn {
+  padding: 0.45rem 0.95rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid #d0d0d0;
+  background-color: #ffffff;
+  color: #525252;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: #edf5ff;
+    border-color: #0f62fe;
+    color: #161616;
+  }
+
+  &.active {
+    background-color: #edf5ff;
+    border-color: #0f62fe;
+    color: #0f62fe;
+    font-weight: 600;
+  }
+}
+
+.aging-bulk-assign-btn {
+  min-height: 2.125rem !important;
+  padding: 0.35rem 0.95rem !important;
+  font-size: 0.8125rem !important;
+}
+
+.aging-actionable-queue {
+  flex: 1;
+  min-height: 240px;
+  max-height: 580px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.aging-empty-queue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: #525252;
+  font-size: 0.9375rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  gap: 0.75rem;
+
+  p {
+    margin: 0;
+  }
+}
+
+.aging-issue-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.aging-issue-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.125rem 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #0f62fe;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: #a6c8ff;
+    border-left-color: #0f62fe;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.aging-issue-card--critical {
+  border-left-color: #a2191f;
+
+  &:hover {
+    border-left-color: #a2191f;
+  }
+}
+
+.aging-issue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.aging-issue-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aging-issue-code-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f62fe;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.aging-critical-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: #ffd7d9;
+  color: #a2191f;
+}
+
+.aging-issue-element {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #161616;
+  line-height: 1.35;
+}
+
+.aging-issue-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: #525252;
+  line-height: 1.4;
+
+  strong {
+    color: #393939;
+    font-weight: 600;
+  }
+}
+
+.aging-issue-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.aging-issue-assignee-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.aging-issue-assignee-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6f6f6f;
+  text-transform: uppercase;
+  letter-spacing: 0.24px;
+}
+
+.aging-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.aging-pill--fresh {
+  background-color: #edf5ff;
+  color: #0043ce;
+  border: 1px solid #d0e2ff;
+}
+
+.aging-pill--recent {
+  background-color: #d9fbfb;
+  color: #005d5d;
+  border: 1px solid #9ef0f0;
+}
+
+.aging-pill--aging {
+  background-color: #fcf4d6;
+  color: #8a4f00;
+  border: 1px solid #f1c21b;
+}
+
+.aging-pill--overdue {
+  background-color: #fff2e8;
+  color: #ba4e00;
+  border: 1px solid #ff832b;
+}
+
+.aging-pill--stale {
+  background-color: #fff1f1;
+  color: #da1e28;
+  border: 1px solid #ffb3b8;
+}
+
+.aging-pill--critical {
+  background-color: #ffd7d9;
+  color: #a2191f;
+  border: 1px solid #fa4d56;
+}
+
+.aging-assignee-unassigned {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background-color: #fff8e1;
+  color: #8a4f00;
+  border: 1px solid #fdeaa4;
+}
+
+.aging-assignee-assigned {
+  display: inline-block;
+  max-width: 11rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8125rem;
+  color: #0f62fe;
+  font-weight: 600;
+}
+
+.aging-row-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.aging-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.aging-action-btn--assign {
+  background-color: #edf5ff;
+  color: #0f62fe;
+  border-color: #d0e2ff;
+
+  &:hover {
+    background-color: #0f62fe;
+    color: #ffffff;
+  }
+}
+
+.aging-action-btn--resolve {
+  background-color: #defbe6;
+  color: #198038;
+  border-color: #a7f0ba;
+
+  &:hover {
+    background-color: #198038;
+    color: #ffffff;
+  }
+}
+
+.aging-action-btn--view {
+  background-color: #f4f4f4;
+  color: #161616;
+  border-color: #e0e0e0;
+
+  &:hover {
+    background-color: #161616;
+    color: #ffffff;
+  }
+}
+
+.aging-resolve-modal-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  background-color: #f4f4f4;
+  border-left: 4px solid #198038;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: #161616;
+}
+
 /* =========================================================
    Loading & Empty States
    ========================================================= */
@@ -710,6 +1850,10 @@
   .dashboard-actions {
     justify-content: flex-start;
   }
+
+  .issue-choropleth-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 42rem) {
@@ -734,6 +1878,10 @@
 
   .dashboard-charts-grid {
     grid-template-columns: 1fr;
+  }
+
+  .aging-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

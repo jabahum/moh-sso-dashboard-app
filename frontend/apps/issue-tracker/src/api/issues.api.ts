@@ -1,4 +1,5 @@
 import { API } from "@moh-sso/config";
+import type { FeatureCollection } from "geojson";
 import type {
   Issue,
   IssuePayload,
@@ -10,7 +11,10 @@ import type {
   KeycloakGroup,
   KeycloakGroupMember,
   AssignIssuesPayload,
+  Dataset,
+  ThemeElement,
 } from "../types";
+import type { OrgUnitNodeData } from "../component/tree-node.component";
 
 import { baseApi } from "@moh-sso/api";
 
@@ -28,7 +32,9 @@ export const issuesApi = baseApi.injectEndpoints({
         if (params) {
           if (params.limit !== undefined) queryParams.append("limit", String(params.limit));
           if (params.offset !== undefined) queryParams.append("offset", String(params.offset));
-          if (params.program) queryParams.append("program", params.program);
+          if (params.program !== undefined && params.program !== "") {
+            queryParams.append("program", params.program);
+          }
           if (params.dataset) queryParams.append("dataset", params.dataset);
           if (params.dataElement) queryParams.append("data_element", params.dataElement);
           if (params.period) queryParams.append("period", params.period);
@@ -48,7 +54,10 @@ export const issuesApi = baseApi.injectEndpoints({
           credentials: "include",
         };
       },
-      transformResponse: (res: ApiEnvelope<Issue[]>, meta: any) => {
+      transformResponse: (
+        res: ApiEnvelope<Issue[]>,
+        meta: { response?: { headers?: { get: (name: string) => string | null } } } | undefined,
+      ) => {
         const totalHeader = meta?.response?.headers?.get("X-Total-Count");
         const totalCount = totalHeader ? parseInt(totalHeader, 10) : (res.data?.length ?? 0);
         return {
@@ -65,7 +74,7 @@ export const issuesApi = baseApi.injectEndpoints({
         method: "GET",
         credentials: "include",
       }),
-      transformResponse: (res: ApiEnvelope<IssueProgramSummary[]>) => res.data,
+      transformResponse: (res: ApiEnvelope<IssueProgramSummary[]>) => res.data ?? [],
       providesTags: ["Issues"],
     }),
 
@@ -103,7 +112,7 @@ export const issuesApi = baseApi.injectEndpoints({
         method: "GET",
         credentials: "include",
       }),
-      transformResponse: (res: ApiEnvelope<IssueTransaction[]>) => res.data,
+      transformResponse: (res: ApiEnvelope<IssueTransaction[]>) => res.data ?? [],
       providesTags: ["Transactions", "Issues"],
     }),
 
@@ -162,6 +171,50 @@ export const issuesApi = baseApi.injectEndpoints({
       transformResponse: (res: ApiEnvelope<IssueTransaction[]>) => res.data,
       invalidatesTags: ["Issues", "Transactions"],
     }),
+
+    getIssueGeoJson: builder.query<FeatureCollection, "geo_water" | "geo_districts">({
+      query: (name) => ({
+        url: `/geojson/${name}`,
+        method: "GET",
+        credentials: "include",
+      }),
+      transformResponse: (
+        res: ApiEnvelope<FeatureCollection> | FeatureCollection,
+      ) => (res && "data" in res ? res.data : res),
+      providesTags: (_result, _error, name) => [{ type: "GeoJson", id: name }],
+    }),
+
+    getIssueDataSets: builder.query<Dataset[], void>({
+      query: () => ({
+        url: API.visualizer.datasets(),
+        method: "GET",
+        credentials: "include",
+      }),
+      transformResponse: (res: ApiEnvelope<Dataset[]>) => res?.data ?? [],
+    }),
+
+    getIssueDataSetElements: builder.query<ThemeElement[], string | number>({
+      query: (id) => ({
+        url: `${API.visualizer.dataElements()}?data_set_id=${id}`,
+        method: "GET",
+        credentials: "include",
+      }),
+      providesTags: ["DataElements"],
+      transformResponse: (res: ApiEnvelope<ThemeElement[]>) => res?.data ?? [],
+    }),
+
+    getIssueOrgHierarchy: builder.query<OrgUnitNodeData[], void>({
+      query: () => ({
+        url: API.visualizer.hierarchy(),
+        method: "GET",
+        credentials: "include",
+      }),
+      transformResponse: (res: ApiEnvelope<OrgUnitNodeData[] | OrgUnitNodeData>) => {
+        const data = res?.data;
+        if (!data) return [];
+        return Array.isArray(data) ? data : [data];
+      },
+    }),
   }),
 });
 
@@ -178,4 +231,8 @@ export const {
   useGetKeycloakGroupsQuery,
   useGetKeycloakGroupMembersQuery,
   useAssignIssuesMutation,
+  useGetIssueGeoJsonQuery,
+  useGetIssueDataSetsQuery,
+  useLazyGetIssueDataSetElementsQuery,
+  useGetIssueOrgHierarchyQuery,
 } = issuesApi;

@@ -24,7 +24,8 @@ const API_VERSION = "v1";
 const API_BASE = `${API_ROOT}/${API_VERSION}`;
 
 // Use local proxy for visualizer endpoints in development if VITE_VISUALIZER_API_BASE is configured
-const VISUALIZER_API_BASE = import.meta.env.VITE_VISUALIZER_API_BASE || API_BASE;
+const VISUALIZER_API_BASE =
+  import.meta.env.VITE_VISUALIZER_API_BASE?.trim().replace(/\/+$/, "") || API_BASE;
 
 export const API = {
   serviceBase: API_BASE_URL,
@@ -119,45 +120,45 @@ export const API = {
   dataValidation: {
     dqa: {
       tables: {
-        list: () => `${API_BASE}/data-validation/dqa/tables`,
-        upsert: () => `${API_BASE}/data-validation/dqa/tables`,
-        remove: (tableId: string) => `${API_BASE}/data-validation/dqa/tables/${tableId}`,
+        list: () => `${VISUALIZER_API_BASE}/data-validation/dqa/tables`,
+        upsert: () => `${VISUALIZER_API_BASE}/data-validation/dqa/tables`,
+        remove: (tableId: string) => `${VISUALIZER_API_BASE}/data-validation/dqa/tables/${tableId}`,
       },
       columns: (table: string) =>
-        `${API_BASE}/data-validation/dqa/columns?table=${encodeURIComponent(table)}`,
+        `${VISUALIZER_API_BASE}/data-validation/dqa/columns?table=${encodeURIComponent(table)}`,
       rules: {
         list: (tableId?: string) =>
           tableId
-            ? `${API_BASE}/data-validation/dqa/rules?table_id=${encodeURIComponent(tableId)}`
-            : `${API_BASE}/data-validation/dqa/rules`,
-        upsert: () => `${API_BASE}/data-validation/dqa/rules`,
-        compile: () => `${API_BASE}/data-validation/dqa/rules/compile`,
+            ? `${VISUALIZER_API_BASE}/data-validation/dqa/rules?table_id=${encodeURIComponent(tableId)}`
+            : `${VISUALIZER_API_BASE}/data-validation/dqa/rules`,
+        upsert: () => `${VISUALIZER_API_BASE}/data-validation/dqa/rules`,
+        compile: () => `${VISUALIZER_API_BASE}/data-validation/dqa/rules/compile`,
         mapping: {
-          preview: () => `${API_BASE}/data-validation/dqa/rules/mapping/preview`,
-          apply: () => `${API_BASE}/data-validation/dqa/rules/mapping/apply`,
+          preview: () => `${VISUALIZER_API_BASE}/data-validation/dqa/rules/mapping/preview`,
+          apply: () => `${VISUALIZER_API_BASE}/data-validation/dqa/rules/mapping/apply`,
         },
         remove: (tableId: string, code: string) =>
-          `${API_BASE}/data-validation/dqa/rules/${encodeURIComponent(tableId)}/${encodeURIComponent(code)}`,
+          `${VISUALIZER_API_BASE}/data-validation/dqa/rules/${encodeURIComponent(tableId)}/${encodeURIComponent(code)}`,
       },
-      run: () => `${API_BASE}/data-validation/dqa/run`,
+      run: () => `${VISUALIZER_API_BASE}/data-validation/dqa/run`,
       schedules: {
-        create: () => `${API_BASE}/data-validation/dqa/schedules`,
+        create: () => `${VISUALIZER_API_BASE}/data-validation/dqa/schedules`,
         list: (status?: string) =>
           status
-            ? `${API_BASE}/data-validation/dqa/schedules?status=${encodeURIComponent(status)}`
-            : `${API_BASE}/data-validation/dqa/schedules`,
+            ? `${VISUALIZER_API_BASE}/data-validation/dqa/schedules?status=${encodeURIComponent(status)}`
+            : `${VISUALIZER_API_BASE}/data-validation/dqa/schedules`,
         cancel: (scheduleId: number | string) =>
-          `${API_BASE}/data-validation/dqa/schedules/${scheduleId}`,
+          `${VISUALIZER_API_BASE}/data-validation/dqa/schedules/${scheduleId}`,
       },
       runs: {
         list: (tableId?: string) =>
           tableId
-            ? `${API_BASE}/data-validation/dqa/runs?table_id=${encodeURIComponent(tableId)}`
-            : `${API_BASE}/data-validation/dqa/runs`,
+            ? `${VISUALIZER_API_BASE}/data-validation/dqa/runs?table_id=${encodeURIComponent(tableId)}`
+            : `${VISUALIZER_API_BASE}/data-validation/dqa/runs`,
         flags: (runId: number | string, severity?: string) =>
           severity
-            ? `${API_BASE}/data-validation/dqa/runs/${runId}/flags?severity=${encodeURIComponent(severity)}`
-            : `${API_BASE}/data-validation/dqa/runs/${runId}/flags`,
+            ? `${VISUALIZER_API_BASE}/data-validation/dqa/runs/${runId}/flags?severity=${encodeURIComponent(severity)}`
+            : `${VISUALIZER_API_BASE}/data-validation/dqa/runs/${runId}/flags`,
       },
     },
   },

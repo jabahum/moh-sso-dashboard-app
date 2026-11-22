@@ -3,6 +3,7 @@ package visualiser
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -24,6 +25,9 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r *postgresRepository) ListDatasets(ctx context.Context) ([]DatasetResponse, error) {
+	if r.db == nil {
+		return nil, errors.New("DWH connection is not configured")
+	}
 	query := `
 		SELECT dataset_key, dataset_id, display_name, is_current, create_date
 		FROM dwh.dim_dataset
@@ -49,6 +53,9 @@ func (r *postgresRepository) ListDatasets(ctx context.Context) ([]DatasetRespons
 }
 
 func (r *postgresRepository) ListDataElements(ctx context.Context, dataSetID *string) ([]DataElementResponse, error) {
+	if r.db == nil {
+		return nil, errors.New("DWH connection is not configured")
+	}
 	query := `
 		SELECT 
 			dim_data_element_map_key, 
@@ -90,6 +97,9 @@ func (r *postgresRepository) ListDataElements(ctx context.Context, dataSetID *st
 }
 
 func (r *postgresRepository) ListDataValues(ctx context.Context, req DataValuesRequest) (DataValuesResponse, error) {
+	if r.db == nil {
+		return DataValuesResponse{}, errors.New("DWH connection is not configured")
+	}
 	query, values := buildDataValuesQuery(req)
 
 	rows, err := r.db.QueryContext(ctx, query, values...)

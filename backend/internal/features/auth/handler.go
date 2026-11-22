@@ -216,6 +216,10 @@ func (h *Handler) HandleAuthGetMe(c *gin.Context) {
 		},
 	)
 
+	if h.isLocalDevEnvironment() {
+		h.setCookie(c, cookieAccessToken, accessToken, int(defaultSessionTTL.Seconds()), true)
+	}
+
 	response.OK(c, http.StatusOK, AuthMeResponse{User: user})
 }
 
@@ -405,6 +409,9 @@ func (h *Handler) HandleAuthCallback(c *gin.Context) {
 		int(ttl.Seconds()),
 		true,
 	)
+	if h.isLocalDevEnvironment() {
+		h.setCookie(c, cookieAccessToken, tokens.AccessToken, int(ttl.Seconds()), true)
+	}
 
 	redirectURL := returnTo
 	if redirectURL == "" {
@@ -553,6 +560,9 @@ func (h *Handler) HandleAuthRefreshToken(c *gin.Context) {
 		h.clearLegacyTokenCookies(c)
 		h.setCookie(c, cookieSession, newSessionID, int(ttl.Seconds()), true)
 	}
+	if h.isLocalDevEnvironment() {
+		h.setCookie(c, cookieAccessToken, tokens.AccessToken, int(ttl.Seconds()), true)
+	}
 
 	userID := utils.ExtractUserIDFromTokens(tokens.AccessToken, tokens.IDToken)
 	_ = h.auditService.TokenRefresh(
@@ -662,6 +672,15 @@ func (h *Handler) environment() string {
 	}
 
 	return strings.ToLower(env)
+}
+
+func (h *Handler) isLocalDevEnvironment() bool {
+	switch h.environment() {
+	case "development", "dev", "local":
+		return true
+	default:
+		return false
+	}
 }
 
 func (h *Handler) cookieSecure() bool {

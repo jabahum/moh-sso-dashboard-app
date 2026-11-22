@@ -1,5 +1,25 @@
 # @moh-sso/surveillance
 
+## 1.5.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+- Updated dependencies [e017093]
+  - @moh-sso/documents@1.5.1
+  - @moh-sso/api@1.6.0
+  - @moh-sso/auth@1.6.0
+  - @moh-sso/microfrontend@1.6.0
+  - @moh-sso/ui@1.6.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.5.0
 
 ### Minor Changes
@@ -16,6 +36,7 @@
   - @moh-sso/ui@1.5.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.4.0`.

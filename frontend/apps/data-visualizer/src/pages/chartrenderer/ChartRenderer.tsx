@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Loading } from "@carbon/react";
-import PivotTableUI from "react-pivottable/PivotTableUI";
-import createPlotlyRenderers from "react-pivottable/PlotlyRenderers";
-import TableRenderers from "react-pivottable/TableRenderers";
-import { aggregatorTemplates } from "react-pivottable/Utilities";
+import PivotTableUI from "@iakileng/react-pivottable/PivotTableUI";
+import createPlotlyRenderers from "@iakileng/react-pivottable/PlotlyRenderers";
+import TableRenderers from "@iakileng/react-pivottable/TableRenderers";
+import { aggregatorTemplates } from "@iakileng/react-pivottable/Utilities";
 import Plot from "react-plotly.js";
 
-import "react-pivottable/pivottable.css";
+import "@iakileng/react-pivottable/pivottable.css";
 import { useLazyGetDataValuesQuery } from "./ChartOptions.ts";
 
 const ChartRenderer = ({

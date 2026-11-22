@@ -123,14 +123,22 @@ func (h *Handler) CreateIssue(c *gin.Context) {
 		}
 	}
 
+	timePeriod := req.TimePeriod
+	if timePeriod == nil || strings.TrimSpace(*timePeriod) == "" {
+		timePeriod = req.TimePeriodAlt
+	}
+
 	issue, err := h.service.CreateIssue(c.Request.Context(), createIssueInput{
+		Program:     dqNullableString(req.Program),
 		Dataset:     dqNullableString(req.Dataset),
 		DataElement: dqNullableString(req.DataElement),
 		OrgUnit:     dqNullableString(req.OrgUnit),
 		Issue:       issueText,
 		IssueType:   dqNullableString(req.IssueType),
 		ReportedBy:  reportedBy,
-		TimePeriod:  dqNullableString(req.TimePeriod),
+		Priority:    dqNullableString(req.Priority),
+		Severity:    dqNullableString(req.Severity),
+		TimePeriod:  dqNullableString(timePeriod),
 	}, healthContextScopeFromRequest(c))
 	if err != nil {
 		response.Fail(c, http.StatusInternalServerError, "CREATE_ISSUE_FAILED", issueDBErrorMessage(err, "failed to create issue"))
@@ -235,7 +243,13 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 		return
 	}
 
-	if req.Dataset == nil &&
+	timePeriod := req.TimePeriod
+	if timePeriod == nil {
+		timePeriod = req.TimePeriodAlt
+	}
+
+	if req.Program == nil &&
+		req.Dataset == nil &&
 		req.DataElement == nil &&
 		req.OrgUnit == nil &&
 		req.Issue == nil &&
@@ -246,7 +260,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 		req.Priority == nil &&
 		req.Severity == nil &&
 		req.UpdatedBy == nil &&
-		req.TimePeriod == nil {
+		timePeriod == nil {
 		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "at least one field is required")
 		return
 	}
@@ -321,6 +335,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 
 	issue, err := h.service.UpdateIssue(c.Request.Context(), updateIssueInput{
 		IssueCode:    issueCode,
+		Program:      optionalTrimmedParam(req.Program, false),
 		Dataset:      optionalTrimmedParam(req.Dataset, false),
 		DataElement:  optionalTrimmedParam(req.DataElement, false),
 		OrgUnit:      optionalTrimmedParam(req.OrgUnit, false),
@@ -332,7 +347,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 		Severity:     severityParam,
 		UpdatedBy:    updatedByParam,
 		IssueType:    issueTypeParam,
-		TimePeriod:   optionalTrimmedParam(req.TimePeriod, false),
+		TimePeriod:   optionalTrimmedParam(timePeriod, false),
 	}, healthContextScopeFromRequest(c))
 	if err != nil {
 		if isNotFound(err) {

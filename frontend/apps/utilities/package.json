@@ -17,7 +17,7 @@
       "import": "./dist/routes.js"
     }
   },
-  "version": "1.5.0",
+  "version": "1.5.1",
   "license": "UNLICENSED",
   "module": "./dist/index.js",
   "files": [
@@ -34,8 +34,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@moh-sso/microfrontend": "^1.5.0",
-    "@moh-sso/ui": "^1.5.0"
+    "@moh-sso/microfrontend": "^1.6.0",
+    "@moh-sso/ui": "^1.6.0"
   },
   "peerDependencies": {
     "react-router-dom": "^7.9.6",

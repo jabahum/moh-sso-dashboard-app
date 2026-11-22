@@ -1,7 +1,16 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
 const { selectDeployment } = require('./select-deployment.cjs');
 const sha = 'a'.repeat(40);
+test('deployment subscribes to the current build and release workflow names', () => {
+  const workflowRoot = new URL('../../.github/workflows/', require('node:url').pathToFileURL(__filename));
+  const deployment = readFileSync(new URL('deploy-to-server.yaml', workflowRoot), 'utf8');
+  const subscriptions = JSON.parse(deployment.match(/^\s+workflows:\s*(\[.*\])/m)[1]);
+  const expected = ['build.yml', 'backend-release.yml', 'frontend-release.yml'].map(file =>
+    readFileSync(new URL(file, workflowRoot), 'utf8').match(/^name:\s*(.+)$/m)[1].trim());
+  assert.deepEqual(subscriptions, expected);
+});
 function fixture() {
   const run = { id: 123, run_attempt: 1, head_sha: sha, head_branch: 'main', conclusion: 'success',
     event: 'push', path: '.github/workflows/build.yml', head_repository: { full_name: 'org/repo' } };

@@ -1,5 +1,42 @@
 # @moh-sso/shell
 
+## 1.5.1
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+- Updated dependencies [e017093]
+  - @moh-sso/announcements@1.5.1
+  - @moh-sso/audit@1.5.1
+  - @moh-sso/clients@1.5.1
+  - @moh-sso/data-validation@1.5.1
+  - @moh-sso/data-visualizer@1.5.1
+  - @moh-sso/documents@1.5.1
+  - @moh-sso/e-services@1.5.1
+  - @moh-sso/email@1.5.1
+  - @moh-sso/issue-tracker@1.5.1
+  - @moh-sso/rbac@1.5.1
+  - @moh-sso/report-browser@1.5.1
+  - @moh-sso/report-scheduler@0.6.1
+  - @moh-sso/surveillance@1.5.1
+  - @moh-sso/users@1.5.1
+  - @moh-sso/utilities@1.5.1
+  - @moh-sso/api@1.6.0
+  - @moh-sso/auth@1.6.0
+  - @moh-sso/config@1.6.0
+  - @moh-sso/microfrontend@1.6.0
+  - @moh-sso/state@1.6.0
+  - @moh-sso/types@1.6.0
+  - @moh-sso/ui@1.6.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.0`.
+
+- feat(frontend): make desktop side panel docking configurable (#335) (`e017093`)
+
 ## 1.5.0
 
 ### Minor Changes
@@ -33,6 +70,7 @@
   - @moh-sso/ui@1.5.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.4.0`.

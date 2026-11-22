@@ -1,12 +1,179 @@
 import { createHash } from "node:crypto";
 import react from "@vitejs/plugin-react";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { moduleSelection, npmModulePlugin } from "./scripts/module-source.mjs";
 
 const pathFromRoot = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+
+function readEnvLocalOverrides(localEnvPath: string): Record<string, string> {
+  if (!existsSync(localEnvPath)) {
+    return {};
+  }
+  const overrides: Record<string, string> = {};
+  for (const rawLine of readFileSync(localEnvPath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+    const separator = line.indexOf("=");
+    if (separator <= 0) {
+      continue;
+    }
+    const key = line.slice(0, separator).trim();
+    let value = line.slice(separator + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    overrides[key] = value;
+  }
+  return overrides;
+}
+
+function normalizeVisualizerProxyCookie(rawCookie?: string): string | undefined {
+  const trimmed = rawCookie?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (/^bearer\s+/i.test(trimmed)) {
+    return `access_token=${trimmed.replace(/^bearer\s+/i, "").trim()}`;
+  }
+  if (trimmed.includes("=")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("eyJ") && trimmed.split(".").length === 3) {
+    return `access_token=${trimmed}`;
+  }
+  return `sso_session=${trimmed}`;
+}
+
+function parseCookieMap(cookieHeader?: string): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!cookieHeader) {
+    return map;
+  }
+  for (const part of cookieHeader.split(";")) {
+    const segment = part.trim();
+    const eq = segment.indexOf("=");
+    if (eq > 0) {
+      map.set(segment.slice(0, eq).trim(), segment.slice(eq + 1).trim());
+    }
+  }
+  return map;
+}
+
+function mergeCookies(existingCookie?: string, extraCookie?: string): string | undefined {
+  if (!existingCookie && !extraCookie) {
+    return undefined;
+  }
+  if (!existingCookie) {
+    return extraCookie;
+  }
+  if (!extraCookie) {
+    return existingCookie;
+  }
+  const merged = new Map<string, string>();
+  for (const source of [extraCookie, existingCookie]) {
+    for (const [key, value] of parseCookieMap(source).entries()) {
+      merged.set(key, value);
+    }
+  }
+  return Array.from(merged.entries())
+    .map(([key, value]) => `${key}=${value}`)
+    .join("; ");
+}
+
+const sessionAccessTokenCache = new Map<string, { token: string; expiresAt: number }>();
+
+async function resolveLocalSessionAccessToken(sessionId: string): Promise<string | undefined> {
+  const cached = sessionAccessTokenCache.get(sessionId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.token;
+  }
+
+  const localBackends = ["http://backend:9000", "http://127.0.0.1:9000", "http://localhost:9000"];
+  for (const base of localBackends) {
+    try {
+      let res = await fetch(`${base}/api/v1/auth/me`, {
+        method: "GET",
+        headers: { Cookie: `sso_session=${sessionId}` },
+      });
+      if (res.status === 401) {
+        res = await fetch(`${base}/api/v1/auth/refresh`, {
+          method: "POST",
+          headers: { Cookie: `sso_session=${sessionId}` },
+        });
+      }
+      const setCookies =
+        typeof res.headers.getSetCookie === "function"
+          ? res.headers.getSetCookie()
+          : [res.headers.get("set-cookie") ?? ""];
+      for (const header of setCookies) {
+        const match = header.match(/(?:^|;\s*)access_token=([^;]+)/);
+        if (match?.[1]) {
+          const token = decodeURIComponent(match[1].trim());
+          sessionAccessTokenCache.set(sessionId, {
+            token,
+            expiresAt: Date.now() + 60_000,
+          });
+          return token;
+        }
+      }
+      if (res.ok) {
+        break;
+      }
+    } catch {
+      // Try next local backend candidate
+    }
+  }
+  return undefined;
+}
+
+export function rewriteVisualizerProxyPath(path: string, target: string): string {
+  const stripped = path.replace(/^\/visualizer[-_]proxy/, "") || "/";
+  const normalizedPath = stripped.startsWith("/") ? stripped : `/${stripped}`;
+  const cleanTarget = target.trim().replace(/\/+$/, "");
+
+  if (cleanTarget.endsWith("/api/v1")) {
+    if (
+      normalizedPath === "/api/v1" ||
+      normalizedPath.startsWith("/api/v1/") ||
+      normalizedPath.startsWith("/api/v1?")
+    ) {
+      return normalizedPath.slice("/api/v1".length) || "/";
+    }
+    return normalizedPath;
+  }
+
+  if (cleanTarget.endsWith("/api")) {
+    if (
+      normalizedPath === "/api/v1" ||
+      normalizedPath.startsWith("/api/v1/") ||
+      normalizedPath.startsWith("/api/v1?")
+    ) {
+      return normalizedPath.slice("/api".length);
+    }
+    if (
+      normalizedPath === "/v1" ||
+      normalizedPath.startsWith("/v1/") ||
+      normalizedPath.startsWith("/v1?")
+    ) {
+      return normalizedPath;
+    }
+    return `/v1${normalizedPath}`;
+  }
+
+  if (normalizedPath === "/api" || normalizedPath.startsWith("/api/")) {
+    return normalizedPath;
+  }
+
+  return `/api/v1${normalizedPath}`;
+}
 
 const getDirectories = (source: string) =>
   readdirSync(pathFromRoot(source), { withFileTypes: true })
@@ -45,15 +212,43 @@ const dynamicAliases = [
 ];
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-  const modules = moduleSelection(mode === "production" ? "production" : "development", { ...env, ...process.env });
-  const visualizerProxyTarget = env.VITE_VISUALIZER_PROXY_TARGET?.trim();
-  const visualizerProxyCookie = env.VITE_VISUALIZER_PROXY_COOKIE?.trim();
+  const envDir = pathFromRoot(".");
+  const env = {
+    ...loadEnv(mode, envDir, ""),
+    ...loadEnv(mode, process.cwd(), ""),
+    ...readEnvLocalOverrides(pathFromRoot("./.env")),
+    ...readEnvLocalOverrides(pathFromRoot("./.env.local")),
+  };
+  const modules = moduleSelection(
+    mode === "production" ? "production" : "development",
+    { ...env, ...process.env },
+  );
+  const visualizerProxyTarget =
+    env.VITE_VISUALIZER_PROXY_TARGET?.trim() ||
+    (env.VITE_VISUALIZER_API_BASE?.trim()
+      ? env.VITE_API_BASE_URL?.trim() || "http://localhost:9000"
+      : undefined);
+  const normalizedVisualizerCookie = normalizeVisualizerProxyCookie(
+    env.VITE_VISUALIZER_PROXY_COOKIE,
+  );
+  const cleanVisualizerTarget = visualizerProxyTarget?.replace(/\/+$/, "");
+  const visualizerProxyEntry = cleanVisualizerTarget
+    ? {
+        target: cleanVisualizerTarget,
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path: string) => rewriteVisualizerProxyPath(path, cleanVisualizerTarget),
+        cookieDomainRewrite: {
+          "dashboards.health.go.ug": "localhost",
+        },
+      }
+    : undefined;
 
   return {
     cacheDir: pathFromRoot(`./node_modules/.vite/${modules.environment}-${modules.source}-${createHash("sha256").update(JSON.stringify(modules.versions)).digest("hex").slice(0, 12)}`),
     base: "/portal/",
     root: pathFromRoot("./apps/shell"),
+    envDir,
     publicDir: pathFromRoot("./public"),
 
   plugins: [
@@ -61,15 +256,47 @@ export default defineConfig(({ mode }) => {
     {
       name: "portal-base-redirect",
       configureServer(server) {
-        server.middlewares.use((request, response, next) => {
+        server.middlewares.use(async (request, response, next) => {
           const match = request.url?.match(/^\/portal(\?.*)?$/);
-          if (!match) {
-            next();
+          if (match) {
+            response.writeHead(302, { Location: `/portal/${match[1] ?? ""}` });
+            response.end();
             return;
           }
 
-          response.writeHead(302, { Location: `/portal/${match[1] ?? ""}` });
-          response.end();
+          if (request.url && /^\/visualizer[-_]proxy(?:\/|\?|$)/.test(request.url)) {
+            const browserSessionId = parseCookieMap(request.headers.cookie).get("sso_session");
+            const fallbackSessionId = parseCookieMap(normalizedVisualizerCookie).get("sso_session");
+            const mergedCookie = mergeCookies(
+              request.headers.cookie,
+              normalizedVisualizerCookie,
+            );
+            if (mergedCookie) {
+              request.headers.cookie = mergedCookie;
+            }
+            const cookies = parseCookieMap(request.headers.cookie);
+            let accessToken = cookies.get("access_token");
+            const sessionCandidates = Array.from(
+              new Set([browserSessionId, fallbackSessionId, cookies.get("sso_session")].filter(Boolean)),
+            ) as string[];
+            for (const sessionId of sessionCandidates) {
+              if (accessToken) {
+                break;
+              }
+              accessToken = await resolveLocalSessionAccessToken(sessionId);
+              if (accessToken) {
+                request.headers.cookie = mergeCookies(
+                  request.headers.cookie,
+                  `access_token=${accessToken}`,
+                );
+              }
+            }
+            if (accessToken && !request.headers.authorization) {
+              request.headers.authorization = `Bearer ${accessToken}`;
+            }
+          }
+
+          next();
         });
       },
     },
@@ -101,7 +328,12 @@ export default defineConfig(({ mode }) => {
       workbox: {
         navigateFallback: "/portal/index.html",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,json}"],
-        navigateFallbackDenylist: [/^\/api\//, /^\/realms\//, /^\/auth\//],
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/realms\//,
+          /^\/auth\//,
+          /^\/visualizer[-_]proxy\//,
+        ],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [
           {
@@ -169,22 +401,10 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 3000,
-      proxy: visualizerProxyTarget
+      proxy: visualizerProxyEntry
         ? {
-            "/visualizer-proxy": {
-              target: visualizerProxyTarget,
-              changeOrigin: true,
-              secure: false,
-              rewrite: (path) => path.replace(/^\/visualizer-proxy/, ""),
-              cookieDomainRewrite: {
-                "dashboards.health.go.ug": "localhost",
-              },
-              headers: visualizerProxyCookie
-                ? {
-                    Cookie: visualizerProxyCookie,
-                  }
-                : undefined,
-            },
+            "/visualizer-proxy": visualizerProxyEntry,
+            "/visualizer_proxy": visualizerProxyEntry,
           }
         : undefined,
     },

@@ -32,29 +32,35 @@ type issueResponse struct {
 }
 
 type createIssueRequest struct {
-	Dataset     *string `json:"dataset"`
-	DataElement *string `json:"data_element"`
-	OrgUnit     *string `json:"org_unit"`
-	Issue       string  `json:"issue" binding:"required"`
-	IssueType   *string `json:"issue_type"`
-	ReportedBy  *string `json:"reported_by"`
-	TimePeriod  *string `json:"time_Period"`
+	Program       *string `json:"program"`
+	Dataset       *string `json:"dataset"`
+	DataElement   *string `json:"data_element"`
+	OrgUnit       *string `json:"org_unit"`
+	Issue         string  `json:"issue" binding:"required"`
+	IssueType     *string `json:"issue_type"`
+	ReportedBy    *string `json:"reported_by"`
+	Priority      *string `json:"priority"`
+	Severity      *string `json:"severity"`
+	TimePeriod    *string `json:"time_Period"`
+	TimePeriodAlt *string `json:"time_period"`
 }
 
 type updateIssueRequest struct {
-	Dataset      *string `json:"dataset"`
-	DataElement  *string `json:"data_element"`
-	OrgUnit      *string `json:"org_unit"`
-	Issue        *string `json:"issue"`
-	IssueType    *string `json:"issue_type"`
-	DateReported *string `json:"date_reported"`
-	ReportedBy   *string `json:"reported_by"`
-	Status       *string `json:"status"`
-	Priority     *string `json:"priority"`
-	Severity     *string `json:"severity"`
-	UpdatedBy    *string `json:"updated_by"`
-	TimePeriod   *string `json:"time_Period"`
-	AssignedTo   *string `json:"assigned_to"`
+	Program       *string `json:"program"`
+	Dataset       *string `json:"dataset"`
+	DataElement   *string `json:"data_element"`
+	OrgUnit       *string `json:"org_unit"`
+	Issue         *string `json:"issue"`
+	IssueType     *string `json:"issue_type"`
+	DateReported  *string `json:"date_reported"`
+	ReportedBy    *string `json:"reported_by"`
+	Status        *string `json:"status"`
+	Priority      *string `json:"priority"`
+	Severity      *string `json:"severity"`
+	UpdatedBy     *string `json:"updated_by"`
+	TimePeriod    *string `json:"time_Period"`
+	TimePeriodAlt *string `json:"time_period"`
+	AssignedTo    *string `json:"assigned_to"`
 }
 
 type createIssueResolutionRequest struct {
@@ -143,17 +149,21 @@ type listIssuesFilter struct {
 }
 
 type createIssueInput struct {
+	Program     interface{}
 	Dataset     interface{}
 	DataElement interface{}
 	OrgUnit     interface{}
 	Issue       string
 	IssueType   interface{}
 	ReportedBy  interface{}
+	Priority    interface{}
+	Severity    interface{}
 	TimePeriod  interface{}
 }
 
 type updateIssueInput struct {
 	IssueCode    string
+	Program      interface{}
 	Dataset      interface{}
 	DataElement  interface{}
 	OrgUnit      interface{}

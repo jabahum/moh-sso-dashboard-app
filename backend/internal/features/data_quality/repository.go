@@ -52,6 +52,9 @@ func (r *postgresRepository) ensureSchema(ctx context.Context) {
 }
 
 func (r *postgresRepository) CreateIssue(ctx context.Context, input createIssueInput, scope healthContextScope) (issueResponse, error) {
+	if r.dwhDB == nil {
+		return issueResponse{}, errors.New("DWH connection is not configured")
+	}
 	row := r.dwhDB.QueryRowContext(
 		ctx,
 		`WITH next_issue AS (
@@ -60,6 +63,7 @@ func (r *postgresRepository) CreateIssue(ctx context.Context, input createIssueI
 		INSERT INTO hiv.issue (
 			issue_id,
 			issue_code,
+			program,
 			dataset,
 			data_element,
 			org_unit,
@@ -68,20 +72,25 @@ func (r *postgresRepository) CreateIssue(ctx context.Context, input createIssueI
 			date_reported,
 			reported_by,
 			status,
+			priority,
+			severity,
 			time_period
 		)
 		SELECT
 			n.issue_id,
 			'HMIS-' || LPAD(n.issue_id::text, 4, '0'),
-			$1, $2, $3, $4, $5, CURRENT_DATE, $6, 'OPEN', $7
+			$1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, 'OPEN', $8, $9, $10
 		FROM next_issue n
 		RETURNING issue_id, issue_code, COALESCE(NULLIF(BTRIM(program), ''), 'Unspecified') AS program, dataset, data_element, ''::text AS region, ''::text AS district, org_unit, ''::text AS level_of_care, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, assigned_to`,
+		input.Program,
 		input.Dataset,
 		input.DataElement,
 		input.OrgUnit,
 		input.Issue,
 		input.IssueType,
 		input.ReportedBy,
+		input.Priority,
+		input.Severity,
 		input.TimePeriod,
 	)
 	issue, err := scanIssue(row)
@@ -243,6 +252,9 @@ func (r *postgresRepository) ListIssues(ctx context.Context, filter listIssuesFi
 }
 
 func (r *postgresRepository) GetIssuesByCodes(ctx context.Context, issueCodes []string, scope healthContextScope) ([]issueResponse, error) {
+	if r.dwhDB == nil {
+		return nil, errors.New("DWH connection is not configured")
+	}
 	for _, code := range issueCodes {
 		if err := r.requireIssueInScope(ctx, code, scope); err != nil {
 			return nil, err
@@ -319,6 +331,9 @@ func (r *postgresRepository) ListIssueSummaryByProgram(ctx context.Context, limi
 }
 
 func (r *postgresRepository) UpdateIssue(ctx context.Context, input updateIssueInput, scope healthContextScope) (issueResponse, error) {
+	if r.dwhDB == nil {
+		return issueResponse{}, errors.New("DWH connection is not configured")
+	}
 	if err := r.requireIssueInScope(ctx, input.IssueCode, scope); err != nil {
 		return issueResponse{}, err
 	}
@@ -339,7 +354,8 @@ func (r *postgresRepository) UpdateIssue(ctx context.Context, input updateIssueI
 			updated_date = CURRENT_DATE,
 			updated_by = COALESCE($11, updated_by),
 			issue_type = COALESCE($12, issue_type),
-			time_period = COALESCE($13, time_period)
+			time_period = COALESCE($13, time_period),
+			program = COALESCE($14, program)
 		WHERE issue_code = $1
 		RETURNING issue_id, issue_code, COALESCE(NULLIF(BTRIM(program), ''), 'Unspecified') AS program, dataset, data_element, ''::text AS region, ''::text AS district, org_unit, ''::text AS level_of_care, issue, date_reported, reported_by, status, priority, severity, updated_date, updated_by, issue_type, time_period, assigned_to`,
 		input.IssueCode,
@@ -355,11 +371,15 @@ func (r *postgresRepository) UpdateIssue(ctx context.Context, input updateIssueI
 		input.UpdatedBy,
 		input.IssueType,
 		input.TimePeriod,
+		input.Program,
 	)
 	return scanIssue(row)
 }
 
 func (r *postgresRepository) ResolveIssue(ctx context.Context, input resolveIssueInput, scope healthContextScope) (issueStageResponse, error) {
+	if r.dwhDB == nil {
+		return issueStageResponse{}, errors.New("DWH connection is not configured")
+	}
 	if err := r.requireIssueInScope(ctx, input.IssueCode, scope); err != nil {
 		return issueStageResponse{}, err
 	}
@@ -483,6 +503,9 @@ func (r *postgresRepository) ResolveIssue(ctx context.Context, input resolveIssu
 }
 
 func (r *postgresRepository) AssignIssues(ctx context.Context, input assignIssuesInput, scope healthContextScope) ([]issueStageResponse, error) {
+	if r.dwhDB == nil {
+		return nil, errors.New("DWH connection is not configured")
+	}
 	for _, code := range input.IssueCodes {
 		if err := r.requireIssueInScope(ctx, code, scope); err != nil {
 			return nil, err
@@ -578,6 +601,9 @@ func (r *postgresRepository) AssignIssues(ctx context.Context, input assignIssue
 }
 
 func (r *postgresRepository) ListIssueResolutionTransactions(ctx context.Context, issueCode string, limit int, offset int, scope healthContextScope) ([]issueStageResponse, error) {
+	if r.dwhDB == nil {
+		return nil, errors.New("DWH connection is not configured")
+	}
 	if err := r.requireIssueInScope(ctx, issueCode, scope); err != nil {
 		return nil, err
 	}

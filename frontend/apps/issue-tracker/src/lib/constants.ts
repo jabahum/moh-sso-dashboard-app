@@ -1,6 +1,19 @@
-export const IssueTypes = ["Outliers", "Incomplete Data", "Invalid Formats", "Inconsistent Values"];
+export const IssueTypes = [
+  "Outliers",
+  "Incomplete Data",
+  "Invalid Formats",
+  "Inconsistent Values",
+];
 
-export const Priority = ["Low", "Moderate", "High"];
+export const Priority = ["Low", "Moderate", "High", "Critical"];
+
+export const Severity = ["Low", "Moderate", "High", "Critical"];
+
+export const periodType = [
+  { label: "Weekly", value: "Weekly" },
+  { label: "Monthly", value: "Monthly" },
+  { label: "Quarterly", value: "Quarterly" },
+];
 
 export const headers = [
   {
@@ -55,38 +68,15 @@ export const IMPORT_TEMPLATE_HEADERS = [
   "time_period",
 ];
 
-export const ORG_UNIT_DATA = [
-  {
-    id: "ug-1",
-    name: "MOH - Uganda",
-    children: [
-      {
-        id: "acholi-1",
-        name: "Acholi",
-        children: [
-          { id: "agago-1", name: "Agago District" },
-          { id: "amuru-1", name: "Amuru District" },
-          { id: "gulu-c", name: "Gulu City" },
-          { id: "gulu-d", name: "Gulu District" },
-          { id: "kitgum-d", name: "Kitgum District" },
-        ],
-      },
-      {
-        id: "ankole-1",
-        name: "Ankole",
-        children: [
-          { id: "mbarara-c", name: "Mbarara City" },
-          { id: "bushenyi-d", name: "Bushenyi District" },
-        ],
-      },
-      {
-        id: "bugisu-1",
-        name: "Bugisu",
-        children: [
-          { id: "mbale-c", name: "Mbale City" },
-          { id: "sironko-d", name: "Sironko District" },
-        ],
-      },
-    ],
-  },
+export const IMPORT_TEMPLATE_EXAMPLE_ROW = [
+  "Example Dataset",
+  "Example Data Element",
+  "Example Org Unit",
+  "Central Region",
+  "Kampala District",
+  "Example issue description",
+  "Outliers",
+  "High",
+  "Moderate",
+  "2025Q1",
 ];

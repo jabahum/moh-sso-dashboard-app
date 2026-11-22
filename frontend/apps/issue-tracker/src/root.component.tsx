@@ -1,10 +1,18 @@
-import { resolveRuntimeBasename, type MicrofrontendRuntimeProps } from "@moh-sso/microfrontend";
-import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import {
+  resolveRuntimeBasename,
+  type MicrofrontendRuntimeProps,
+} from "@moh-sso/microfrontend";
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 
 import IssueTracker from "./pages/issue-tracker.component";
 import IssueDashboard from "./pages/issue-dashboard.component";
 
-import { PageShell } from "@moh-sso/ui";
 import "./issue-tracker-shell.scss";
 
 const DEFAULT_ISSUE_TRACKER_BASE = "/apps/dwh/issue-tracker";
@@ -33,19 +41,14 @@ export function IssueTrackerRoot(props: MicrofrontendRuntimeProps) {
   return (
     <div className="moh-microfrontend-root issue-tracker-module">
       <BrowserRouter basename={basename}>
-        <PageShell
-          title="Issue Tracker"
-          subtitle="Monitor data quality, review summaries, and manage reported issues."
-        >
-          <Routes>
-            <Route path="dashboard/*" element={<IssueDashboard />} />
-            <Route path="dashboard" element={<IssueDashboard />} />
-            <Route path="issues/*" element={<IssueTracker />} />
-            <Route path="issues" element={<IssueTracker />} />
-            <Route index element={<IssueTrackerIndexRedirect />} />
-            <Route path="*" element={<IssueTracker />} />
-          </Routes>
-        </PageShell>
+        <Routes>
+          <Route path="dashboard/*" element={<IssueDashboard />} />
+          <Route path="dashboard" element={<IssueDashboard />} />
+          <Route path="issues/*" element={<IssueTracker />} />
+          <Route path="issues" element={<IssueTracker />} />
+          <Route index element={<IssueTrackerIndexRedirect />} />
+          <Route path="*" element={<IssueTracker />} />
+        </Routes>
       </BrowserRouter>
     </div>
   );

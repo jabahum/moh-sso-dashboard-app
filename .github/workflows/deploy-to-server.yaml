@@ -2,7 +2,7 @@ name: Deploy Verified Image Bundle
 
 on:
   workflow_run:
-    workflows: ["Build & Push Images", "Backend Release", "Frontend Release Notes"]
+    workflows: ["Build & Push Images", "Backend Release", "Frontend Release"]
     types: [completed]
   release:
     types: [published]

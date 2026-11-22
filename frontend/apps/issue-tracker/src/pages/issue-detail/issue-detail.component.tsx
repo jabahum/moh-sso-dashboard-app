@@ -1,19 +1,21 @@
-import { Button, Modal, TextArea, Tile } from "@carbon/react";
+import { Button, Modal, Tag, TextArea, Tile } from "@carbon/react";
 import { ArrowLeft } from "@carbon/react/icons";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
+import { TableStatusTag } from "@moh-sso/ui";
+import { PERMISSIONS, PermissionGuard, selectUser } from "@moh-sso/auth";
 
 import {
   useCreateTransactionMutation,
-  useGetIssuesQuery,
+  useGetIssueByCodeQuery,
   useGetTransactionsQuery,
 } from "../../api";
-import { PERMISSIONS, PermissionGuard, selectUser } from "@moh-sso/auth";
+import type { Issue } from "../../types";
+import { formatReportingPeriod } from "../../lib/periodUtils";
+import { IssueModal } from "../../component/issue-modal.component";
+import { AssignModal } from "../../component/assign-modal.component";
 
 import "./issue-detail.scss";
-import { formatReportingPeriod, type Issue } from "../issue-tracker.component.tsx";
-import { IssueModal } from "../../component/issue-modal.component.tsx";
-import { AssignModal } from "../../component/assign-modal.component.tsx";
 
 type ModalMode = "resolve" | "close" | "comment" | null;
 
@@ -23,16 +25,40 @@ type IssueDetailProps = {
   showBack?: boolean;
 };
 
+export function mapIssueStatusToTagKind(status?: string | null) {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (["resolved", "closed", "done", "completed"].includes(normalized)) {
+    return "green" as const;
+  }
+  if (["open", "new", "reopened"].includes(normalized)) {
+    return "red" as const;
+  }
+  if (["in_progress", "in progress", "assigned", "pending"].includes(normalized)) {
+    return "blue" as const;
+  }
+  return "gray" as const;
+}
+
+export function mapSeverityToTagKind(level?: string | null) {
+  const normalized = (level ?? "").trim().toLowerCase();
+  if (normalized === "critical") return "red" as const;
+  if (normalized === "high") return "magenta" as const;
+  if (normalized === "moderate" || normalized === "medium") return "warm-gray" as const;
+  if (normalized === "low") return "blue" as const;
+  return "gray" as const;
+}
+
 const IssueDetail = ({
   selectedIssue: initialIssue,
   goToBack,
   showBack = true,
 }: IssueDetailProps) => {
-  const { data: latestIssues } = useGetIssuesQuery();
+  const issueCode = initialIssue?.issue_code ?? "";
+  const { data: fetchedIssue } = useGetIssueByCodeQuery(issueCode, {
+    skip: !issueCode,
+  });
 
-  const selectedIssue =
-    latestIssues?.items?.find((issueItem: Issue) => issueItem?.issue_code === initialIssue?.issue_code) ??
-    initialIssue;
+  const selectedIssue = fetchedIssue ?? initialIssue;
 
   const [comment, setComment] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -40,15 +66,12 @@ const IssueDetail = ({
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [isViewModalResolution, setIsViewModalResolution] = useState(false);
 
-  const { data: transactions, isLoading: isLoadingTransactions } = useGetTransactionsQuery(
-    selectedIssue?.issue_code,
-    {
-      skip: !selectedIssue?.issue_code,
-    },
-  );
+  const { data: transactions = [], isLoading: isLoadingTransactions } =
+    useGetTransactionsQuery(issueCode, {
+      skip: !issueCode,
+    });
 
   const [createTransaction, { isLoading: isResolving }] = useCreateTransactionMutation();
-
   const user = useSelector(selectUser);
 
   const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -65,7 +88,6 @@ const IssueDetail = ({
     if (isResolving) {
       return;
     }
-
     setIsViewModalResolution(false);
     setModalMode(null);
     setComment("");
@@ -73,7 +95,6 @@ const IssueDetail = ({
 
   const handleUpdateAction = async () => {
     const trimmedComment = comment.trim();
-
     if (!trimmedComment || !modalMode || !selectedIssue?.issue_code) {
       return;
     }
@@ -85,17 +106,15 @@ const IssueDetail = ({
           ? "closed"
           : selectedIssue.status;
 
-    const payload = {
-      id: selectedIssue.issue_code,
-      body: {
-        resolution_action: trimmedComment,
-        resolved_by: user?.email || user?.username || "",
-        status,
-      },
-    };
-
     try {
-      await createTransaction(payload).unwrap();
+      await createTransaction({
+        id: selectedIssue.issue_code,
+        body: {
+          resolution_action: trimmedComment,
+          resolved_by: user?.email || user?.username || "",
+          status,
+        },
+      }).unwrap();
 
       setIsViewModalResolution(false);
       setModalMode(null);
@@ -106,10 +125,7 @@ const IssueDetail = ({
   };
 
   const getPrimaryButtonText = () => {
-    if (isResolving) {
-      return "Processing...";
-    }
-
+    if (isResolving) return "Processing...";
     switch (modalMode) {
       case "resolve":
         return "Confirm Resolution";
@@ -148,7 +164,10 @@ const IssueDetail = ({
     }
   };
 
-  const isFinalStatus = selectedIssue?.status?.toLowerCase() === "closed" || selectedIssue?.status?.toLowerCase() === "resolved";
+  const normalizedStatus = (selectedIssue?.status ?? "").trim().toLowerCase();
+  const isFinalStatus = normalizedStatus === "closed" || normalizedStatus === "resolved";
+  const formattedPeriod =
+    formatReportingPeriod(selectedIssue?.time_Period ?? selectedIssue?.time_period) || "—";
 
   const renderActionModal = () => {
     if (!isViewModalResolution || !modalMode) {
@@ -165,7 +184,7 @@ const IssueDetail = ({
         onRequestSubmit={handleUpdateAction}
         primaryButtonDisabled={!comment.trim() || isResolving || !selectedIssue?.issue_code}
       >
-        <p style={{ marginBottom: "1rem" }}>{getModalDescription()}</p>
+        <p className="issue-detail-modal-description">{getModalDescription()}</p>
 
         <TextArea
           data-modal-primary-focus
@@ -191,17 +210,14 @@ const IssueDetail = ({
         return (
           <PermissionGuard permission={PERMISSIONS.issueTrackerComment}>{modal}</PermissionGuard>
         );
-
       case "resolve":
         return (
           <PermissionGuard permission={PERMISSIONS.issueTrackerManage}>{modal}</PermissionGuard>
         );
-
       case "close":
         return (
           <PermissionGuard permission={PERMISSIONS.issueTrackerClose}>{modal}</PermissionGuard>
         );
-
       default:
         return null;
     }
@@ -209,205 +225,243 @@ const IssueDetail = ({
 
   return (
     <PermissionGuard permission={PERMISSIONS.issueTrackerRead}>
-      <>
+      <div className={`issue-detail-wrapper ${showBack ? "" : "issue-detail-wrapper--inline"}`}>
         {showBack && (
-          <div style={{ marginBottom: "1rem" }}>
-            <Button kind="tertiary" size="lg" renderIcon={ArrowLeft} onClick={goToBack}>
+          <div className="issue-detail-back-bar">
+            <Button kind="tertiary" size="md" renderIcon={ArrowLeft} onClick={goToBack}>
               Back to Issues
             </Button>
           </div>
         )}
 
         <div className="issue-detail-container">
-          <div style={{ width: "65%" }}>
+          <div className="issue-detail-main">
             <Tile className="issue-tile">
-              <div style={{ padding: "0.5rem" }}>
-                <div className="issue-label">Reported Issue: {selectedIssue?.issue_code}</div>
+              <div className="issue-detail-header">
+                <div>
+                  <h4 className="issue-label">
+                    Reported Issue: {selectedIssue?.issue_code || "—"}
+                  </h4>
+                  {selectedIssue?.program && (
+                    <span className="issue-detail-program-subtitle">
+                      Program: {selectedIssue.program}
+                    </span>
+                  )}
+                </div>
 
-                <p>
-                  <span className="issue-p">
-                    <strong>Issue Type:</strong> {selectedIssue?.issue_type}
-                  </span>
+                <div className="issue-detail-badges">
+                  {selectedIssue?.issue_type && (
+                    <Tag type="cool-gray" size="sm">
+                      {selectedIssue.issue_type}
+                    </Tag>
+                  )}
+                  {selectedIssue?.priority && (
+                    <Tag type={mapSeverityToTagKind(selectedIssue.priority)} size="sm">
+                      Priority: {selectedIssue.priority}
+                    </Tag>
+                  )}
+                  {selectedIssue?.severity && (
+                    <Tag type={mapSeverityToTagKind(selectedIssue.severity)} size="sm">
+                      Severity: {selectedIssue.severity}
+                    </Tag>
+                  )}
+                </div>
+              </div>
 
-                  <span className="issue-p">
-                    <strong>Priority:</strong> {selectedIssue?.priority ?? "<<Not set>>"}
-                  </span>
+              <dl className="issue-detail-meta-grid">
+                <div className="issue-detail-meta-item">
+                  <dt>Organisation Unit</dt>
+                  <dd>{selectedIssue?.org_unit || "—"}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>District</dt>
+                  <dd>{selectedIssue?.district || "—"}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>Region</dt>
+                  <dd>{selectedIssue?.region || "—"}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>Dataset</dt>
+                  <dd>{selectedIssue?.dataset || "—"}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>Data Element</dt>
+                  <dd>{selectedIssue?.data_element || "—"}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>Reporting Period</dt>
+                  <dd>{formattedPeriod}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>Issue Type</dt>
+                  <dd>{selectedIssue?.issue_type || "—"}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>Priority</dt>
+                  <dd>{selectedIssue?.priority || "—"}</dd>
+                </div>
+                <div className="issue-detail-meta-item">
+                  <dt>Severity</dt>
+                  <dd>{selectedIssue?.severity || "—"}</dd>
+                </div>
+              </dl>
 
-                  <span className="issue-p">
-                    <strong>Severity:</strong> {selectedIssue?.severity ?? "<<Not set>>"}
-                  </span>
+              <div className="issue-detail-description">
+                <span className="issue-detail-section-label">Description</span>
+                <p className="issue-detail-description-text">
+                  {selectedIssue?.issue || "No description provided."}
                 </p>
-
-                <p className="issue-p-top">
-                  <strong>Organization Unit:</strong> {selectedIssue?.org_unit}
-                </p>
-
-                {selectedIssue?.region && (
-                  <p className="issue-p-top">
-                    <strong>Region:</strong> {selectedIssue.region}
-                  </p>
-                )}
-
-                {selectedIssue?.district && (
-                  <p className="issue-p-top">
-                    <strong>District:</strong> {selectedIssue.district}
-                  </p>
-                )}
-
-                <p className="issue-p-top">
-                  <strong>Dataset:</strong> {selectedIssue?.dataset}
-                </p>
-
-                <p className="issue-p-top">
-                  <strong>Data Element:</strong> {selectedIssue?.data_element}
-                </p>
-
-                <p className="issue-p-top">
-                  <strong>Reporting Period:</strong>{" "}
-                  {formatReportingPeriod(selectedIssue?.time_Period ?? selectedIssue?.time_period) || "<<Not set>>"}
-                </p>
-
-                <p className="issue-p-top">
-                  <strong>Description:</strong>
-                </p>
-
-                <p>{selectedIssue?.issue}</p>
               </div>
             </Tile>
 
             <Tile className="issue-tile issue-history-container">
-              <div>
-                <div className="issue-label">Issue History / Transactions</div>
+              <h5 className="issue-detail-sub-heading">Issue History / Transactions</h5>
 
-                {isLoadingTransactions ? (
-                  <p>Loading history...</p>
-                ) : (
-                  <div className="transaction-list">
-                    {(transactions?.length ?? 0) > 0 ? (
-                      transactions?.map((transaction, index) => (
-                        <div
-                          key={transaction?.id ?? `${transaction?.resolution_date}-${index}`}
-                          className="transaction-item"
-                          style={{
-                            marginBottom: "1rem",
-                            fontSize: "0.875rem",
-                          }}
-                        >
-                          <div style={{ fontWeight: "bold" }}>
-                            {transaction?.resolution_date || "N/A"} - {transaction?.resolved_by || "System / Unknown"}
-                          </div>
+              {isLoadingTransactions ? (
+                <p className="issue-transaction-empty">Loading history...</p>
+              ) : transactions.length > 0 ? (
+                <div className="transaction-list">
+                  {transactions.map((transaction, index) => (
+                    <div
+                      key={transaction?.id ?? `${transaction?.resolution_date}-${index}`}
+                      className="transaction-item"
+                    >
+                      <div className="transaction-item-header">
+                        <span className="transaction-author">
+                          {transaction?.resolved_by || "System"}
+                        </span>
+                        <span className="transaction-date">
+                          {transaction?.resolution_date || "N/A"}
+                        </span>
+                      </div>
 
-                          <div style={{ color: "#525252" }}>
-                            {transaction?.resolution_action || "No comment provided"}
-                          </div>
+                      <div className="transaction-action">
+                        {transaction?.resolution_action || "No comment provided"}
+                      </div>
 
-                          {transaction?.assigned_to && (
-                            <div style={{ marginTop: "0.25rem", fontSize: "0.8125rem", color: "#0f62fe" }}>
-                              <strong>Assigned To:</strong> {transaction.assigned_to}
-                            </div>
-                          )}
+                      {transaction?.assigned_to && (
+                        <div className="transaction-assigned">
+                          <strong>Assigned To:</strong> {transaction.assigned_to}
                         </div>
-                      ))
-                    ) : (
-                      <p
-                        style={{
-                          fontStyle: "italic",
-                          color: "#6f6f6f",
-                        }}
-                      >
-                        No transactions found for this issue.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="issue-transaction-empty">
+                  No transactions recorded for this issue yet.
+                </p>
+              )}
             </Tile>
           </div>
 
-          <div className="issue-reporter-details" style={{ width: "30%" }}>
+          <div className="issue-reporter-details">
             <Tile className="issue-tile">
-              <div style={{ padding: "0.5rem" }}>
-                <p className="issue-p-top">
-                  <strong>Issue Status:</strong> <span className="issue-status">{selectedIssue?.status} </span>
-                </p>
-
-                <p>
-                  <strong>Assigned To:</strong>{" "}
-                  {selectedIssue?.assigned_to ? (
-                    <span style={{ color: "#0f62fe", fontWeight: 600 }}>{selectedIssue.assigned_to}</span>
-                  ) : (
-                    <em style={{ color: "#6f6f6f" }}>Unassigned</em>
-                  )}
-                </p>
-
-                <p>
-                  <strong>Reported By:</strong> {selectedIssue?.reported_by}
-                </p>
-
-                <p>
-                  <strong>Date:</strong> {selectedIssue?.date_reported}
-                </p>
-              </div>
+              <h5 className="issue-detail-sub-heading">Status &amp; Ownership</h5>
+              <dl className="issue-detail-sidebar-list">
+                <div className="issue-detail-sidebar-row">
+                  <dt>Issue Status</dt>
+                  <dd>
+                    <TableStatusTag
+                      status={selectedIssue?.status || "OPEN"}
+                      mapStatusToKind={mapIssueStatusToTagKind}
+                    />
+                  </dd>
+                </div>
+                <div className="issue-detail-sidebar-row">
+                  <dt>Assigned To</dt>
+                  <dd>
+                    {selectedIssue?.assigned_to ? (
+                      <span className="issue-assignee-text">{selectedIssue.assigned_to}</span>
+                    ) : (
+                      <span className="issue-unassigned-text">Unassigned</span>
+                    )}
+                  </dd>
+                </div>
+                <div className="issue-detail-sidebar-row">
+                  <dt>Reported By</dt>
+                  <dd>{selectedIssue?.reported_by || "—"}</dd>
+                </div>
+                <div className="issue-detail-sidebar-row">
+                  <dt>Date Reported</dt>
+                  <dd>{selectedIssue?.date_reported || "—"}</dd>
+                </div>
+                {selectedIssue?.updated_date && (
+                  <div className="issue-detail-sidebar-row">
+                    <dt>Last Updated</dt>
+                    <dd>{selectedIssue.updated_date}</dd>
+                  </div>
+                )}
+              </dl>
             </Tile>
 
             <Tile className="issue-tile issue-actions-container">
-              {!isFinalStatus && (
-                <PermissionGuard permission={PERMISSIONS.issueTrackerAssign}>
-                  <Button
-                    className="btn-issue btn-full-width"
-                    kind="tertiary"
-                    onClick={() => setIsAssignModalOpen(true)}
-                  >
-                    {selectedIssue?.assigned_to ? "Re-assign Issue" : "Assign Issue"}
-                  </Button>
-                </PermissionGuard>
-              )}
+              <h5 className="issue-detail-sub-heading">Actions</h5>
+              <div className="issue-actions-stack">
+                {!isFinalStatus && (
+                  <PermissionGuard permission={PERMISSIONS.issueTrackerAssign}>
+                    <Button
+                      className="btn-issue"
+                      size="md"
+                      kind="tertiary"
+                      onClick={() => setIsAssignModalOpen(true)}
+                    >
+                      {selectedIssue?.assigned_to ? "Re-assign Issue" : "Assign Issue"}
+                    </Button>
+                  </PermissionGuard>
+                )}
 
-              {!isFinalStatus && (
-                <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
+                {!isFinalStatus && (
+                  <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>
+                    <Button
+                      className="btn-issue"
+                      size="md"
+                      kind="primary"
+                      onClick={() => setIsEditModalOpen(true)}
+                    >
+                      Edit Issue
+                    </Button>
+                  </PermissionGuard>
+                )}
+
+                <PermissionGuard permission={PERMISSIONS.issueTrackerComment}>
                   <Button
-                    className="btn-issue btn-full-width"
+                    className="btn-issue"
                     size="md"
-                    kind="primary"
-                    onClick={() => setIsEditModalOpen(true)}
+                    kind="secondary"
+                    onClick={() => openActionModal("comment")}
                   >
-                    Edit Issue
+                    Add Comment
                   </Button>
                 </PermissionGuard>
-              )}
 
-              <PermissionGuard permission={PERMISSIONS.issueTrackerComment}>
-                <Button
-                  className="btn-issue btn-full-width"
-                  kind="secondary"
-                  onClick={() => openActionModal("comment")}
-                >
-                  Add Comment
-                </Button>
-              </PermissionGuard>
+                {!isFinalStatus && (
+                  <PermissionGuard permission={PERMISSIONS.issueTrackerManage}>
+                    <Button
+                      className="btn-issue"
+                      size="md"
+                      kind="primary"
+                      onClick={() => openActionModal("resolve")}
+                    >
+                      Resolve Issue
+                    </Button>
+                  </PermissionGuard>
+                )}
 
-              {!isFinalStatus && (
-                <PermissionGuard permission={PERMISSIONS.issueTrackerManage}>
-                  <Button
-                    className="btn-issue custom-btn-success btn-full-width"
-                    onClick={() => openActionModal("resolve")}
-                  >
-                    Resolve Issue
-                  </Button>
-                </PermissionGuard>
-              )}
-
-              {selectedIssue?.status?.toLowerCase() !== "closed" && (
-                <PermissionGuard permission={PERMISSIONS.issueTrackerClose}>
-                  <Button
-                    className="btn-issue btn-full-width"
-                    kind="danger--tertiary"
-                    onClick={() => openActionModal("close")}
-                  >
-                    Close Issue
-                  </Button>
-                </PermissionGuard>
-              )}
+                {normalizedStatus !== "closed" && (
+                  <PermissionGuard permission={PERMISSIONS.issueTrackerClose}>
+                    <Button
+                      className="btn-issue"
+                      size="md"
+                      kind="danger--tertiary"
+                      onClick={() => openActionModal("close")}
+                    >
+                      Close Issue
+                    </Button>
+                  </PermissionGuard>
+                )}
+              </div>
             </Tile>
           </div>
         </div>
@@ -429,7 +483,7 @@ const IssueDetail = ({
             />
           )}
         </PermissionGuard>
-      </>
+      </div>
     </PermissionGuard>
   );
 };

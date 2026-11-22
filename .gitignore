@@ -27,5 +27,5 @@ infra/scripts/__pycache__/
 frontend/playwright-report/
 frontend/test-results/
 
-# Generated Webpack build cache
-/.cache/webpack/
+# Local build caches
+.cache/

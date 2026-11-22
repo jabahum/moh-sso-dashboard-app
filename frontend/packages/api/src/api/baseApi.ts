@@ -28,31 +28,46 @@ type MeResponse = ApiEnvelope<{
  *
  * Browser sends cookies automatically because credentials is "include".
  */
+const prepareHeaders: NonNullable<Parameters<typeof fetchBaseQuery>[0]>["prepareHeaders"] = (
+  headers,
+  { getState },
+) => {
+  if (typeof window !== "undefined") {
+    const state = getState() as {
+      auth?: {
+        user?: Pick<AuthUser, "healthContexts" | "activeHealthContext"> | null;
+      };
+    };
+    const storedContextID = window.localStorage.getItem("moh.activeHealthContextId");
+    const contextID = storedContextID ?? state.auth?.user?.activeHealthContext?.id ?? null;
+    const contextBelongsToCurrentUser =
+      contextID &&
+      state.auth?.user?.healthContexts?.some((context) => context.id === contextID);
+
+    if (contextBelongsToCurrentUser) {
+      headers.set("X-Health-Context-ID", contextID);
+    } else {
+      headers.delete("X-Health-Context-ID");
+    }
+  }
+  return headers;
+};
+
 const transportBaseQuery = fetchBaseQuery({
   baseUrl: API.base,
   credentials: "include",
-  prepareHeaders: (headers, { getState }) => {
-    if (typeof window !== "undefined") {
-      const state = getState() as {
-        auth?: {
-          user?: Pick<AuthUser, "healthContexts" | "activeHealthContext"> | null;
-        };
-      };
-      const storedContextID = window.localStorage.getItem("moh.activeHealthContextId");
-      const contextID = storedContextID ?? state.auth?.user?.activeHealthContext?.id ?? null;
-      const contextBelongsToCurrentUser =
-        contextID &&
-        state.auth?.user?.healthContexts?.some((context) => context.id === contextID);
-
-      if (contextBelongsToCurrentUser) {
-        headers.set("X-Health-Context-ID", contextID);
-      } else {
-        headers.delete("X-Health-Context-ID");
-      }
-    }
-    return headers;
-  },
+  prepareHeaders,
 });
+
+const proxyTransportBaseQuery = fetchBaseQuery({
+  baseUrl: "",
+  credentials: "include",
+  prepareHeaders,
+});
+
+function isVisualizerProxyUrl(url: string): boolean {
+  return /^\/visualizer[-_]proxy(?:\/|\?|$)/.test(url);
+}
 
 // RTK Query joins root-relative URLs to baseUrl as endpoint fragments.
 // API constants already include API.base, so remove that prefix once before
@@ -64,6 +79,9 @@ const rawBaseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError
 ) => {
   const base = API.base.replace(/\/+$/, "");
   const url = typeof args === "string" ? args : args.url;
+  if (isVisualizerProxyUrl(url)) {
+    return proxyTransportBaseQuery(args, api, extraOptions);
+  }
   const hasApiPrefix =
     base.startsWith("/") &&
     (url === base || url.startsWith(`${base}/`) || url.startsWith(`${base}?`));
@@ -184,8 +202,11 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
   result = await rawBaseQuery(args, api, extraOptions);
 
   // A successful refresh does not guarantee the session is usable. Clear auth
-  // if the retry is still unauthorized so ProtectedRoute sends the user to login.
-  if (result.error?.status === 401) {
+  // if the retry is still unauthorized so ProtectedRoute sends the user to login,
+  // unless the request went through the local visualizer dev proxy (where a 401
+  // indicates an unauthenticated upstream proxy target rather than an expired
+  // local portal session).
+  if (result.error?.status === 401 && !isVisualizerProxyUrl(getUrl(args))) {
     api.dispatch(logout());
     return result;
   }

@@ -153,6 +153,8 @@ test("root-relative API constants are joined exactly once by the real RTK transp
     "users?search=test",
     "https://other.example.org/endpoint",
     "/ssobackend/api/v1?limit=1",
+    "/visualizer-proxy/visualizer/datasets",
+    "/visualizer_proxy/issues?limit=10",
   ]) {
     const result = await baseApi.baseQuery(args, api, {});
     assert.equal(result.error, undefined);
@@ -166,6 +168,8 @@ test("root-relative API constants are joined exactly once by the real RTK transp
       "http://100.83.41.39:8080/ssobackend/api/v1/users?search=test",
       "https://other.example.org/endpoint",
       "http://100.83.41.39:8080/ssobackend/api/v1?limit=1",
+      "http://100.83.41.39:8080/visualizer-proxy/visualizer/datasets",
+      "http://100.83.41.39:8080/visualizer_proxy/issues?limit=10",
     ],
   );
   assert.equal(requests[1].method, "POST");

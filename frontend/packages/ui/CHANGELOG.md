@@ -1,5 +1,24 @@
 # @moh-sso/ui
 
+## 1.6.0
+
+### Minor Changes
+
+- e017093: Dock shared side panels alongside portal content on desktop. Disable docking globally in runtime configuration or for an individual panel.
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/types@1.6.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.0`.
+
+- feat(frontend): make desktop side panel docking configurable (#335) (`e017093`)
+
 ## 1.5.0
 
 ### Minor Changes
@@ -12,6 +31,7 @@
   - @moh-sso/types@1.5.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.4.0`.

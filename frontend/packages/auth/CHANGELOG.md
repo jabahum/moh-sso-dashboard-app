@@ -1,5 +1,22 @@
 # @moh-sso/auth
 
+## 1.6.0
+
+### Patch Changes
+
+- Automatic patch release of all frontend apps and shared packages.
+- Updated dependencies
+  - @moh-sso/api@1.6.0
+  - @moh-sso/config@1.6.0
+  - @moh-sso/state@1.6.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.0`.
+
+- Fix/dashboard local errors (#332) (`5210efc`)
+
 ## 1.5.0
 
 ### Minor Changes
@@ -14,6 +31,7 @@
   - @moh-sso/state@1.5.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.4.0`.

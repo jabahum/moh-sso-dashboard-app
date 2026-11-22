@@ -28,21 +28,22 @@ export const OrgUnitNode = ({
   renderRecursive,
   idPrefix = "check",
 }: OrgUnitNodeProps) => {
-  const isNodeExpanded = Boolean(searchTerm) || (expandedNodes ? expandedNodes.has(node.id) : undefined);
+  const isNodeExpanded =
+    Boolean(searchTerm) || (expandedNodes ? expandedNodes.has(node.id) : undefined);
 
   return (
     <TreeNode
       key={node.id}
       id={node.id}
       isExpanded={isNodeExpanded}
-      onToggle={(_event: any, data?: { id?: string; isExpanded?: boolean }) => {
+      onToggle={(_event: unknown, data?: { id?: string; isExpanded?: boolean }) => {
         if (onToggleNode && node.id) {
           onToggleNode(node.id, Boolean(data?.isExpanded));
         }
       }}
       label={
         <div
-          style={{ display: "flex", alignItems: "center", width: "100%" }}
+          className="org-tree-node-label"
           onClick={(e) => e.stopPropagation()}
         >
           <Checkbox
@@ -54,9 +55,9 @@ export const OrgUnitNode = ({
         </div>
       }
     >
-      {node.children && node.children.length > 0 ? renderRecursive(node.children, idPrefix) : null}
+      {node.children && node.children.length > 0
+        ? renderRecursive(node.children, idPrefix)
+        : null}
     </TreeNode>
   );
 };
-
-

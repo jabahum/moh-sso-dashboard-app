@@ -1,7 +1,7 @@
 {
   "component": "both",
-  "bump": "minor",
-  "sourceCommit": "b5e025676ad3ca6150cf621df7a9b8c017055f30",
-  "backendVersion": "1.5.0",
-  "frontendVersion": "1.5.0"
+  "bump": "patch",
+  "sourceCommit": "e01709355e1b6d53873e4d674c24215b50b6932e",
+  "backendVersion": "1.5.1",
+  "frontendVersion": "1.5.1"
 }

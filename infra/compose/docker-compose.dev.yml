@@ -3,14 +3,14 @@
 name: moh-sso-dashboard-dev
 x-logging: &logging
   driver: json-file
-  options: {max-size: 10m, max-file: "3"}
+  options: { max-size: 10m, max-file: "3" }
 x-service: &service
   restart: unless-stopped
-  networks: [sso_network]
+  networks: [ sso_network ]
   logging: *logging
 
 networks:
-  sso_network: {driver: bridge}
+  sso_network: { driver: bridge }
 volumes:
   keycloak_data:
   backend_data:
@@ -30,9 +30,9 @@ services:
       POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
       POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
-    volumes: [keycloak_data:/var/lib/postgresql/data]
+    volumes: [ keycloak_data:/var/lib/postgresql/data ]
     healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      test: [ CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -41,7 +41,7 @@ services:
     <<: *service
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.0.5}
     container_name: keycloak # retained for infra/scripts/local-sso.py
-    command: [start-dev, --import-realm]
+    command: [ start-dev, --import-realm ]
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: keycloak-db
@@ -56,11 +56,11 @@ services:
     volumes:
       - ../keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
       - ../keycloak/themes:/opt/keycloak/themes:ro
-    ports: ["127.0.0.1:8081:8080"]
+    ports: [ "127.0.0.1:8081:8080" ]
     depends_on:
-      keycloak-db: {condition: service_healthy}
+      keycloak-db: { condition: service_healthy }
     healthcheck:
-      test: [CMD, bash, -ec, "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      test: [ CMD, bash, -ec, "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000" ]
       start_period: 60s
       interval: 10s
       timeout: 5s
@@ -77,9 +77,9 @@ services:
       - |
         if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi
         exec redis-server --appendonly yes
-    volumes: [redis_data:/data]
+    volumes: [ redis_data:/data ]
     healthcheck:
-      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      test: [ CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG' ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -87,7 +87,7 @@ services:
   mailhog:
     <<: *service
     image: mailhog/mailhog:v1.0.1
-    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+    ports: [ "127.0.0.1:1025:1025", "127.0.0.1:8025:8025" ]
 
   backend-db:
     <<: *service
@@ -96,10 +96,10 @@ services:
       POSTGRES_DB: ${DB_NAME:-sso_dashboard}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes: [backend_data:/var/lib/postgresql/data]
-    ports: ["127.0.0.1:5436:5432"]
+    volumes: [ backend_data:/var/lib/postgresql/data ]
+    ports: [ "127.0.0.1:5436:5432" ]
     healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      test: [ CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -111,10 +111,10 @@ services:
       POSTGRES_USER: ${REMOTE_DB_USER:-dev_uploads}
       POSTGRES_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
       POSTGRES_DB: ${REMOTE_DB_NAME:-file_upload}
-    volumes: [remote_pg_data:/var/lib/postgresql/data]
-    ports: ["127.0.0.1:5433:5432"]
+    volumes: [ remote_pg_data:/var/lib/postgresql/data ]
+    ports: [ "127.0.0.1:5433:5432" ]
     healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      test: [ CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -128,17 +128,17 @@ services:
       POSTGRES_USER: ${OBSERVATORY_DB_USER:-surveillance}
       POSTGRES_PASSWORD: ${OBSERVATORY_DB_PASSWORD:-dev_observatory_only}
       POSTGRES_DB: ${OBSERVATORY_DB_NAME:-observatory}
-    volumes: [observatory_data:/var/lib/postgresql/data]
-    ports: ["127.0.0.1:${OBSERVATORY_DB_LOCAL_PORT:-55434}:5432"]
+    volumes: [ observatory_data:/var/lib/postgresql/data ]
+    ports: [ "127.0.0.1:${OBSERVATORY_DB_LOCAL_PORT:-55434}:5432" ]
     healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      test: [ CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
       interval: 5s
       timeout: 3s
       retries: 20
 
   backend:
     <<: *service
-    build: {context: ../.., dockerfile: infra/docker/backend/Dockerfile.dev}
+    build: { context: ../.., dockerfile: infra/docker/backend/Dockerfile.dev }
     env_file:
       - path: ../env/dev.env.example
         required: true
@@ -164,19 +164,19 @@ services:
       REMOTE_DB_USER: ${REMOTE_DB_USER:-dev_uploads}
       REMOTE_DB_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
       REMOTE_DB_NAME: ${REMOTE_DB_NAME:-file_upload}
-      DWH_HOST: remote-postgres
-      DWH_PORT: "5432"
-      DWH_USERNAME: ${REMOTE_DB_USER:-dev_uploads}
-      DWH_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
-      DWH_DB: ${REMOTE_DB_NAME:-file_upload}
+      DWH_HOST: ${DWH_HOST:-remote-postgres}
+      DWH_PORT: ${DWH_PORT:-5432}
+      DWH_USERNAME: ${DWH_USERNAME:-${REMOTE_DB_USER:-dev_uploads}}
+      DWH_PASSWORD: ${DWH_PASSWORD:-${REMOTE_DB_PASSWORD:-dev_uploads_only}}
+      DWH_DB: ${DWH_DB:-${REMOTE_DB_NAME:-file_upload}}
       OBSERVATORY_DB_HOST: observatory-db
       OBSERVATORY_DB_PORT: "5432"
       OBSERVATORY_DB_NAME: ${OBSERVATORY_DB_NAME:-observatory}
       OBSERVATORY_DB_USER: ${OBSERVATORY_DB_USER:-surveillance}
       OBSERVATORY_DB_PASSWORD: ${OBSERVATORY_DB_PASSWORD:-dev_observatory_only}
       OBSERVATORY_DB_ENABLE_SSL: "false"
-      DQA_DB_USERNAME: ${REMOTE_DB_USER:-dev_uploads}
-      DQA_DB_PASSWORD: ${REMOTE_DB_PASSWORD:-dev_uploads_only}
+      DQA_DB_USERNAME: ${DQA_DB_USERNAME:-}
+      DQA_DB_PASSWORD: ${DQA_DB_PASSWORD:-}
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080
       KEYCLOAK_BASE_URL: http://keycloak:8080
       KEYCLOAK_EXTERNAL_URL: http://localhost:8081
@@ -198,16 +198,16 @@ services:
       - upload_data:/data/uploads
       - go_modules:/go/pkg/mod
       - go_build:/root/.cache/go-build
-    ports: ["127.0.0.1:9000:9000"]
+    ports: [ "127.0.0.1:9000:9000" ]
     depends_on:
-      backend-db: {condition: service_healthy}
-      remote-postgres: {condition: service_healthy}
-      observatory-db: {condition: service_healthy}
-      redis: {condition: service_healthy}
-      keycloak: {condition: service_healthy}
-      mailhog: {condition: service_started}
+      backend-db: { condition: service_healthy }
+      remote-postgres: { condition: service_healthy }
+      observatory-db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      mailhog: { condition: service_started }
     healthcheck:
-      test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:9000/health/ready || exit 1']
+      test: [ CMD-SHELL, 'wget -qO- http://127.0.0.1:9000/health/ready || exit 1' ]
       start_period: 120s
       interval: 15s
       timeout: 5s
@@ -215,7 +215,7 @@ services:
 
   frontend:
     <<: *service
-    build: {context: ../.., dockerfile: infra/docker/frontend/Dockerfile.dev}
+    build: { context: ../.., dockerfile: infra/docker/frontend/Dockerfile.dev }
     environment:
       API_BASE_URL: http://localhost:9000
       FRONTEND_MICROFRONTEND_MODE: local
@@ -225,8 +225,8 @@ services:
       FRONTEND_DEV_COMMAND: ${FRONTEND_DEV_COMMAND:-node scripts/frontend-modules.mjs dev}
       FRONTEND_MODULE_SOURCE: ${FRONTEND_MODULE_SOURCE:-}
       FRONTEND_MODULE_CONFIG: ${FRONTEND_MODULE_CONFIG:-module-sources.json}
-      VITE_VISUALIZER_API_BASE: /visualizer-proxy
-      VITE_VISUALIZER_PROXY_TARGET: http://backend:9000
+      VITE_VISUALIZER_API_BASE: ${VITE_VISUALIZER_API_BASE:-/visualizer-proxy}
+      VITE_VISUALIZER_PROXY_TARGET: ${VITE_VISUALIZER_PROXY_TARGET:-http://backend:9000}
       VITE_HEALTH_BI_BASE_URL: ${VITE_HEALTH_BI_BASE_URL:-http://localhost:8080}
     volumes:
       - ../../frontend:/app
@@ -235,7 +235,7 @@ services:
       - "127.0.0.1:3000:3000"
       - "127.0.0.1:4101-4115:4101-4115"
     healthcheck:
-      test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:3000/portal/ || exit 1']
+      test: [ CMD-SHELL, 'wget -qO- http://127.0.0.1:3000/portal/ || exit 1' ]
       start_period: 30s
       interval: 15s
       timeout: 5s

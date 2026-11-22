@@ -68,6 +68,9 @@ func (r *postgresRepository) ensureIssueOwnershipBackfill(ctx context.Context) e
 	if time.Since(r.ownershipBackfilledAt) < 5*time.Minute {
 		return nil
 	}
+	if r.dwhDB == nil {
+		return errors.New("DWH connection is not configured")
+	}
 
 	rows, err := r.dwhDB.QueryContext(ctx, `
 		SELECT issue_code
