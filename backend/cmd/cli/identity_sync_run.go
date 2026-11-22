@@ -28,8 +28,8 @@ var openIdentitySyncBatchRepository = func(ctx context.Context) (identityreconci
 }
 
 // identitySyncRevocations supplies the revocation checker used for proposals
-// and before every link and grant. Access removal (Track C) replaces it from
-// its own file; until then nothing is reported revoked.
+// and before every link and grant. identity_sync_wiring.go replaces this
+// default with Track C's revocation list (RevokeService.IsRevoked).
 var identitySyncRevocations = func(ctx context.Context, rt *identitySyncRuntime) (identityreconcile.RevocationChecker, error) {
 	return identityreconcile.NoRevocations{}, nil
 }
