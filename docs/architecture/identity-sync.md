@@ -315,29 +315,113 @@ variable `identitySyncRevocations(ctx, rt)`, which Track C replaces from
 
 ## Track C — access removal
 
+**Window: immediately.** When a person's access to one application is removed,
+their existing sessions in that application end at once: every step below runs
+synchronously in the request (portal) or command (CLI) that removes access.
+
 Removing a person's access to one application (`identity-sync revoke`, or
-removing `<app>_access` through portal RBAC) runs these idempotent steps:
+removing the application's registered access role, normally `<app>_access`,
+through portal RBAC or the users API) runs these idempotent steps:
 
 1. Record `(application, issuer, subject, revoked_by, reason)` in
    `ihp_identity_sync_revocations` (migration 64). Proposals then show
-   `revoked`, and no later sync grants access again.
-2. Remove the application's access role in Keycloak. The application's OIDC
-   callback then refuses new sign-ins, as the contract requires.
+   `revoked`, and no later sync grants access again until an explicit restore.
+2. Remove the application's access role (the direct client-role mapping) in
+   Keycloak. The application's OIDC callback then refuses new sign-ins, as the
+   contract requires. If the person still holds the role through a group or a
+   composite role, the step is recorded as `failed` with `access_role_inherited`.
+   A Keycloak user that no longer exists counts as removed.
 3. Revoke the user's consents and offline tokens for the application's
-   interactive client (`DELETE /admin/realms/{realm}/users/{id}/consents/{clientId}`).
-   The user's other applications and Keycloak SSO session are untouched.
-4. Call the application's `POST /sessions/revoke` (contract 1.1), retried with
-   backoff. For a 1.0 application, existing sessions last until their local
-   expiry. The CLI reports that window instead of claiming success.
-5. Record the outcome in the audit log.
+   interactive client only (`DELETE /admin/realms/{realm}/users/{id}/consents/{clientId}`;
+   a 404 counts as done). Nothing calls a user-wide logout or deletes SSO
+   sessions, so the user's other applications and Keycloak SSO session are
+   untouched.
+4. Call the application's `POST /sessions/revoke` through Track A's connector,
+   which retries transient failures under the contract policy (up to 5 attempts).
+   For a 1.0 application the step is `unsupported`: existing sessions last until
+   their local expiry. The CLI and the portal hook report that residual window
+   and never call it success.
+5. Record the outcome in the audit log (`ihp_rbac_audit_events`, resource type
+   `identity_sync_revocation`): `application.identity_sync.revocation_recorded`,
+   `…revocation_attempted` (step statuses, attempts, `last_error`) and
+   `…revocation_restored`.
 
-**Decision pending:** the agreed window for ending existing sessions. The design
-supports "immediately", meaning steps 2–4 run synchronously. The e2e tests
-assert whichever window is agreed.
+**An application outage never blocks removal.** Each step runs even when an
+earlier one failed, and its status is stored (`pending`, `done`, `failed`,
+`unsupported`) with `attempts` and a stable `last_error` code
+(`role_removal_failed`, `access_role_inherited`, `consent_revocation_failed`,
+`integration_disabled`, `connector_unavailable`, `sessions_app_unavailable`,
+`sessions_app_rejected`). `identity-sync revocations --resume` retries `pending`
+and `failed` steps of active revocations and never repeats a finished one; it
+does not retry `unsupported`. Repeating `revoke` for an active revocation reuses
+the row and re-asserts every step (for example, removes a role granted again by
+hand).
+
+### Table (migration 64)
+
+```sql
+CREATE TABLE ihp_identity_sync_revocations (
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    application_client_id TEXT NOT NULL REFERENCES ihp_identity_sync_integrations(application_client_id),
+    issuer                TEXT NOT NULL,
+    subject               TEXT NOT NULL,
+    revoked_by            TEXT NOT NULL,
+    reason                TEXT NOT NULL,
+    revoked_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    restored_by           TEXT,
+    restore_reason        TEXT,
+    restored_at           TIMESTAMPTZ,
+    role_removed          TEXT NOT NULL DEFAULT 'pending',  -- pending|done|failed|unsupported
+    consents_revoked      TEXT NOT NULL DEFAULT 'pending',
+    sessions_revoked      TEXT NOT NULL DEFAULT 'pending',
+    attempts              INT  NOT NULL DEFAULT 0,
+    last_error            TEXT,                             -- stable code only
+    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- one active revocation per (application, issuer, subject)
+CREATE UNIQUE INDEX ihp_identity_sync_revocations_active
+    ON ihp_identity_sync_revocations (application_client_id, issuer, subject) WHERE restored_at IS NULL;
+```
+
+Restore fills `restored_by`, `restore_reason` and `restored_at`; it never grants
+the access role. Rows are kept as history, so an integration with revocations
+cannot be deleted (the registry reports it as still referenced).
+
+### Interfaces
+
+- `identityreconcile.RevokeService` (`revoke.go`): `Revoke(ctx, app, subject,
+  revokedBy, reason)`, `Resume(ctx, app, actor)`, `Restore(ctx, app, subject,
+  restoredBy, reason)`, `List(ctx, filter)` and `IsRevoked(ctx, app, issuer,
+  subject) (bool, error)`, which matches Track B's `RevocationChecker`. Built with
+  `NewRevokeService(registry, &PostgresRevocations{DB: db},
+  KeycloakAccessDirectory{Admin: adminClient}, issuer)`.
+- Portal hook: `users.Service.SetAccessRoleRemovalHook` (nil-safe). The users
+  service calls it after `UpdateUserClientRoles` removes roles (the path portal
+  RBAC `UpdateUserAccess` uses for every system) and after
+  `RemoveUserClientRoles`. `identityreconcile.PortalRevocationHook` revokes only
+  when the client has an enabled integration, the removed roles include its
+  access role, and the person no longer holds it through a group. The role
+  removal always stands; an incomplete revocation is logged and visible in the
+  revocation status and audit log. Wired in `internal/bootstrap`
+  (`identity_sync_revocation.go`, both profiles).
+
+### CLI
+
+```text
+moh-sso identity-sync revoke      --app <id> --subject <keycloak user id> --reason <text> --revoker <who>
+moh-sso identity-sync restore     --app <id> --subject <keycloak user id> --reason <text> --restorer <who>
+moh-sso identity-sync revocations [--app <id>] [--all] [--unfinished] [--limit n]
+moh-sso identity-sync revocations --resume [--app <id>] [--actor <who>]
+```
+
+`revoke` and `revocations --resume` exit non-zero when a step is still pending
+or failed, and also when the application could not end sessions (1.0), so a
+script never mistakes a partial removal for success.
 
 **Owned files:** `backend/internal/identityreconcile/revoke*.go`, migration 64,
-and the hook in `internal/features/rbac` (the `UpdateUserAccess` path) that calls
-the revoke service when an `<app>_access` role is removed.
+`backend/cmd/cli/identity_sync_revoke.go`, the access-removal helpers in
+`backend/internal/keycloak/user_access_revocation.go`, the hook setter in
+`internal/features/users`, and `internal/bootstrap/identity_sync_revocation.go`.
 
 ## Track D — published Go module and conformance suite
 
@@ -410,7 +494,7 @@ Test suites, run by `make identity-sync-e2e`:
    right local accounts with existing permissions. An unlinked user is refused,
    and so is a user without the access role.
 4. **Removal:** revoke CLIMS. New CLIMS sign-ins are refused, the existing CLIMS
-   session ends within the agreed window, POES keeps working, and the next sync
+   session ends immediately, POES keeps working, and the next sync
    shows the account as `revoked` and doesn't re-grant.
 5. **Migrations:** `make migrations-check` (up, down and up again for 61–64).
 

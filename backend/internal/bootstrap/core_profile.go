@@ -22,6 +22,7 @@ func buildCoreServices(deps serviceDependencies) services {
 	notifications := service.NewNotificationsService(deps.Config, deps.Repositories.Notifications, nil, nil, nil)
 	audit := service.NewAuditService(deps.Store, deps.Cache, notifications, deps.Config)
 	users := userfeature.NewService(deps.Repositories.Users, notifications, deps.Config)
+	users.SetAccessRoleRemovalHook(newIdentitySyncRevocationHook(deps.Config, deps.Databases.Primary, deps.AdminKeycloak))
 	rbac := rbacfeature.NewService(deps.Repositories.RBAC, users)
 	rbac.SetKeycloakGroupMembershipManager(deps.AdminKeycloak)
 	rbac.SetFrontendBaseURL(deps.Config.FrontendBaseURL)
