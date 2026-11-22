@@ -112,6 +112,17 @@ func (rt *identitySyncRuntime) Service(ctx context.Context, app string) (identit
 	return identityreconcile.Service{Accounts: connector, Directory: directory, Issuer: kc.issuer}, connector, integration, nil
 }
 
+// guardRevoked makes service.Apply refuse identities whose access to app was
+// revoked (Track C), using the same revocation list as the batch run.
+func guardRevoked(ctx context.Context, rt *identitySyncRuntime, service identityreconcile.Service, app string) (identityreconcile.Service, error) {
+	revocations, err := identitySyncRevocations(ctx, rt)
+	if err != nil {
+		return identityreconcile.Service{}, fmt.Errorf("open the revocation list: %w", err)
+	}
+	service.Application, service.Revocations = app, revocations
+	return service, nil
+}
+
 // tokenEndpointFromEnv returns the Keycloak client-credentials endpoint
 // (through KEYCLOAK_BASE_URL, which may be internal).
 func tokenEndpointFromEnv(getenv func(string) string) (string, error) {
@@ -170,6 +181,9 @@ func registeredIdentitySyncService(ctx context.Context, app string) (identityrec
 		return identityreconcile.Service{}, "", false
 	}
 	service, _, _, err := rt.Service(ctx, app)
+	if err == nil {
+		service, err = guardRevoked(ctx, rt, service, integration.ApplicationClientID)
+	}
 	if err != nil {
 		rt.Close()
 		return identityreconcile.Service{}, "", false
@@ -327,8 +341,11 @@ func newIdentitySyncApplyCommand() *cobra.Command {
 				return err
 			}
 			defer rt.Close()
-			service, connector, _, err := rt.Service(cmd.Context(), app)
+			service, connector, integration, err := rt.Service(cmd.Context(), app)
 			if err != nil {
+				return err
+			}
+			if service, err = guardRevoked(cmd.Context(), rt, service, integration.ApplicationClientID); err != nil {
 				return err
 			}
 			fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+service.Issuer)

@@ -89,6 +89,12 @@ func fakeIdentitySyncRuntime(t *testing.T, rows map[string]identityreconcile.Int
 		return &identitySyncRuntime{Registry: registry, getenv: getenv}, nil
 	}
 	t.Cleanup(func() { openIdentitySyncRuntime = previous })
+	// The fake runtime has no database; nothing is revoked unless a test says so.
+	previousRevocations := identitySyncRevocations
+	identitySyncRevocations = func(context.Context, *identitySyncRuntime) (identityreconcile.RevocationChecker, error) {
+		return identityreconcile.NoRevocations{}, nil
+	}
+	t.Cleanup(func() { identitySyncRevocations = previousRevocations })
 	return repo, server.URL
 }
 

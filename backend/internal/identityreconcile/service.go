@@ -53,6 +53,34 @@ type Service struct {
 	Accounts  Accounts
 	Directory Directory
 	Issuer    string
+	// Application and Revocations, when Revocations is set, make Apply refuse
+	// an identity whose access to Application was revoked (Track C), checked
+	// before the link and again before the grant. Nil keeps the old behaviour
+	// (used only for applications outside the registry, which cannot have
+	// revocations).
+	Application string
+	Revocations RevocationChecker
+}
+
+// ErrIdentityRevoked reports that Apply refused an identity whose access to the
+// application was revoked and not restored.
+var ErrIdentityRevoked = errors.New("identity access to this application is revoked; restore it first")
+
+func (s Service) checkRevoked(ctx context.Context, identity identitysync.Identity) error {
+	if s.Revocations == nil {
+		return nil
+	}
+	if strings.TrimSpace(s.Application) == "" {
+		return errors.New("revocation check needs the application")
+	}
+	revoked, err := s.Revocations.IsRevoked(ctx, s.Application, identity.Issuer, identity.Subject)
+	if err != nil {
+		return fmt.Errorf("check revocation: %w", err)
+	}
+	if revoked {
+		return ErrIdentityRevoked
+	}
+	return nil
 }
 
 // Preview performs reads only. Directory errors stop the preview instead of
@@ -126,8 +154,14 @@ func (s Service) Apply(ctx context.Context, reviewed Decision, current identitys
 	if !s.valid(identity) {
 		return errors.New("directory returned an invalid identity")
 	}
+	if err := s.checkRevoked(ctx, identity); err != nil {
+		return err
+	}
 	if err := s.Accounts.LinkIdentity(ctx, current.ID, identity); err != nil {
 		return fmt.Errorf("link local account: %w", err)
+	}
+	if err := s.checkRevoked(ctx, identity); err != nil {
+		return err
 	}
 	if err := s.Directory.GrantAccess(ctx, identity); err != nil {
 		return fmt.Errorf("grant application access after linking: %w", err)
