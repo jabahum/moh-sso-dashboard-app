@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -49,6 +50,30 @@ type Service struct {
 	notifications    sharedservice.NotificationsService
 	cfg              *config.Config
 	serviceOnlyRoles ServiceOnlyRoleChecker
+	accessRemoval    AccessRoleRemovalHook
+}
+
+// AccessRoleRemovalHook is told, after the fact, that client roles were removed
+// from a person, so access to a registered identity-sync application can be ended
+// fully (its sessions included). An error never undoes the role removal; the
+// hook records the failure itself (audit and revocation status).
+type AccessRoleRemovalHook interface {
+	ClientRolesRemoved(ctx context.Context, userID, clientID string, roles []string, actorID string) error
+}
+
+// SetAccessRoleRemovalHook enables identity-sync revocation on client-role removal.
+// A nil hook disables it.
+func (s *Service) SetAccessRoleRemovalHook(hook AccessRoleRemovalHook) {
+	s.accessRemoval = hook
+}
+
+func (s *Service) clientRolesRemoved(ctx context.Context, userID, clientID string, roles []string, adminID uuid.UUID) {
+	if s == nil || s.accessRemoval == nil || len(roles) == 0 {
+		return
+	}
+	if err := s.accessRemoval.ClientRolesRemoved(ctx, userID, clientID, roles, adminID.String()); err != nil {
+		log.Printf("WARN: client roles removed from user %s on %s, but access removal is incomplete: %v", userID, clientID, err)
+	}
 }
 
 // ErrServiceOnlyRole is returned when an administrator tries to give a person a client
@@ -899,6 +924,7 @@ func (s *Service) UpdateUserClientRoles(
 		); err != nil {
 			return fmt.Errorf("remove user client roles: %w", err)
 		}
+		s.clientRolesRemoved(ctx, userID.String(), clientID, toRemove, adminID)
 	}
 
 	user, err := s.repo.GetUserByID(userID)
@@ -1084,6 +1110,7 @@ func (s *Service) RemoveUserClientRoles(
 	); err != nil {
 		return fmt.Errorf("remove user client roles: %w", err)
 	}
+	s.clientRolesRemoved(ctx, userID.String(), clientID, roles, adminID)
 
 	user, err := s.repo.GetUserByID(userID)
 	if err != nil {
