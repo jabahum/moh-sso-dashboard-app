@@ -27,4 +27,5 @@ func RegisterRoutes(api, protected *gin.RouterGroup, h *Handler, limiter *rateli
 	admin.GET("/applications/:clientId/operations", middleware.RequirePermission(authz.PermissionRBACRead), h.GetOperations)
 	admin.Use(middleware.RequireAllPermissions(authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite))
 	admin.PUT("/applications/:clientId/identities/:oauthClientId", ratelimit.MiddlewareForPolicy(limiter, ratelimit.RBACSensitiveWritePolicy()), h.SaveIdentity)
+	registerIdentitySyncRoutes(admin, h, limiter)
 }

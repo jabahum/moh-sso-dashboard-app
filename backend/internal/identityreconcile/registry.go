@@ -20,6 +20,9 @@ var (
 	ErrIntegrationNotFound = errors.New("identity sync integration not found")
 	ErrIntegrationDisabled = errors.New("identity sync integration is disabled")
 	ErrInvalidIntegration  = errors.New("invalid identity sync integration")
+	// ErrDescriptorUnavailable reports that an integration could not be enabled
+	// because its credential, token or GET / descriptor check failed.
+	ErrDescriptorUnavailable = errors.New("identity sync application could not be described")
 )
 
 // Integration is one row of ihp_identity_sync_integrations. CredentialRef is a
@@ -185,7 +188,7 @@ func (s *RegistryService) Save(ctx context.Context, integration Integration, act
 		}
 		descriptor, err := s.Probe(ctx, integration)
 		if err != nil {
-			return Integration{}, fmt.Errorf("enable identity sync for %s: %w", integration.ApplicationClientID, err)
+			return Integration{}, fmt.Errorf("%w: enable %s: %v", ErrDescriptorUnavailable, integration.ApplicationClientID, err)
 		}
 		integration.ContractVersion = descriptor.Version
 	}

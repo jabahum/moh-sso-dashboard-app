@@ -239,7 +239,7 @@ func TestRegistrySaveRefusesToEnableUnreachableOrMismatchedApplication(t *testin
 			integration := validIntegration()
 			integration.Origin = origin
 			integration.Enabled = true
-			if _, err := service.Save(context.Background(), integration, "operator", "try"); err == nil {
+			if _, err := service.Save(context.Background(), integration, "operator", "try"); !errors.Is(err, ErrDescriptorUnavailable) {
 				t.Fatal("enabled an application that could not be described")
 			}
 			if len(repo.saves) != 0 {
