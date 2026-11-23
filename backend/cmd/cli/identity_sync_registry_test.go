@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -210,7 +211,9 @@ func TestDeprecatedAliasFallsBackToEnvironmentWithoutRegistry(t *testing.T) {
 	previous := openIdentitySyncRuntime
 	t.Cleanup(func() { openIdentitySyncRuntime = previous })
 	openIdentitySyncRuntime = func(context.Context) (*identitySyncRuntime, error) {
-		return nil, errors.New("no database")
+		// No registry configured at all (a configured registry that cannot be
+		// opened fails closed: TestDeprecatedAliasFailsClosedWhenTheRegistryCannotBeOpened).
+		return nil, fmt.Errorf("%w: no database", errRegistryNotConfigured)
 	}
 	for _, env := range []string{"KEYCLOAK_BASE_URL", "KEYCLOAK_REALM", "KEYCLOAK_ADMIN_CLIENT_ID", "KEYCLOAK_ADMIN_CLIENT_SECRET"} {
 		t.Setenv(env, "")

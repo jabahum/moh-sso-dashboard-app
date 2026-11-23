@@ -99,10 +99,14 @@ func newLegacyIdentitySyncCommand(name, app, clientID string, connect func(strin
 			if (accountID == "") != (subject == "") {
 				return errors.New("apply requires both --apply-account and --approved-subject")
 			}
-			if service, issuer, ok := registeredIdentitySyncService(cmd.Context(), clientID); ok {
+			registered, err := registeredIdentitySyncService(cmd.Context(), clientID)
+			if err != nil {
+				return err
+			}
+			if registered != nil && registered.service.Accounts != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), app+" identity sync uses the registry entry for "+clientID)
-				fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+issuer)
-				return runPagePreviewOrApply(cmd, app, service, cursor, limit, accountID, subject)
+				fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+registered.service.Issuer)
+				return runPagePreviewOrApply(cmd, app, registered.service, cursor, limit, accountID, subject)
 			}
 			cfg, err := identitySyncConfigFromEnv(app, os.Getenv)
 			if err != nil {
@@ -119,6 +123,11 @@ func newLegacyIdentitySyncCommand(name, app, clientID string, connect func(strin
 			fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+cfg.issuer)
 			directory := applicationDirectory{admin: keycloak.NewAdminClient(cfg.adminBase, cfg.realm, cfg.adminID, cfg.adminSecret), issuer: cfg.issuer, clientID: clientID, accessRole: clientID + "_access"}
 			service := identityreconcile.Service{Accounts: accounts, Directory: directory, Issuer: cfg.issuer}
+			if registered != nil {
+				// A disabled registry row: revocations recorded for the
+				// application still apply to the environment-configured run.
+				service.Application, service.Revocations = registered.application, registered.revocations
+			}
 			return runPagePreviewOrApply(cmd, app, service, cursor, limit, accountID, subject)
 		},
 	}

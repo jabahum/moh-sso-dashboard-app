@@ -134,15 +134,20 @@ func tokenEndpointFromEnv(getenv func(string) string) (string, error) {
 	return base + "/realms/" + realm + "/protocol/openid-connect/token", nil
 }
 
+// errRegistryNotConfigured marks a runtime that could not be opened because no
+// registry is configured at all (no database settings, no Keycloak base URL).
+// Only then may the deprecated aliases fall back to <APP>_SYNC_* settings.
+var errRegistryNotConfigured = errors.New("the identity-sync registry is not configured")
+
 // openIdentitySyncDB opens the dashboard database from the usual app.env /
 // environment configuration. Tests replace it.
 var openIdentitySyncDB = func(ctx context.Context) (*sql.DB, error) {
 	cfg, err := config.LoadConfig(".")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", errRegistryNotConfigured, err)
 	}
 	if cfg.DBUser == "" {
-		return nil, errors.New("DB_USER is not configured")
+		return nil, fmt.Errorf("%w: DB_USER is not configured", errRegistryNotConfigured)
 	}
 	return openToolDB(ctx, cfg)
 }
@@ -151,7 +156,7 @@ var openIdentitySyncDB = func(ctx context.Context) (*sql.DB, error) {
 var openIdentitySyncRuntime = func(ctx context.Context) (*identitySyncRuntime, error) {
 	endpoint, err := tokenEndpointFromEnv(os.Getenv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", errRegistryNotConfigured, err)
 	}
 	db, err := openIdentitySyncDB(ctx)
 	if err != nil {
@@ -164,32 +169,59 @@ var openIdentitySyncRuntime = func(ctx context.Context) (*identitySyncRuntime, e
 	}, nil
 }
 
-// registeredIdentitySyncService is used by the deprecated aliases: it returns a
-// registry-based service only when the application has an enabled registry
-// row. Any failure (no database, no row, disabled row) means "not registered",
-// and the alias keeps its environment-based behaviour.
-func registeredIdentitySyncService(ctx context.Context, app string) (identityreconcile.Service, string, bool) {
+// aliasRegistry is what the deprecated aliases learn from the registry.
+type aliasRegistry struct {
+	// service is set when the application has an enabled registry row.
+	service identityreconcile.Service
+	// revocations is set when the application has a registry row (enabled or
+	// not): the environment fallback for a disabled row must still refuse
+	// revoked identities.
+	revocations identityreconcile.RevocationChecker
+	application string
+}
+
+// registeredIdentitySyncService is used by the deprecated aliases. It fails
+// closed: the environment fallback is allowed only when no registry is
+// configured (errRegistryNotConfigured) or the application has no row. A
+// registry that is configured but cannot be opened, a failed lookup, or an
+// application with a row whose revocation list cannot be opened is an error.
+func registeredIdentitySyncService(ctx context.Context, app string) (*aliasRegistry, error) {
 	lookupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rt, err := openIdentitySyncRuntime(lookupCtx)
+	if errors.Is(err, errRegistryNotConfigured) {
+		return nil, nil
+	}
 	if err != nil {
-		return identityreconcile.Service{}, "", false
+		return nil, fmt.Errorf("the identity-sync registry is configured but could not be opened (refusing the %s environment fallback, which has no revocation checks): %w", app, err)
 	}
 	integration, err := rt.Registry.Get(lookupCtx, app)
-	if err != nil || !integration.Enabled {
+	if errors.Is(err, identityreconcile.ErrIntegrationNotFound) {
 		rt.Close()
-		return identityreconcile.Service{}, "", false
-	}
-	service, _, _, err := rt.Service(ctx, app)
-	if err == nil {
-		service, err = guardRevoked(ctx, rt, service, integration.ApplicationClientID)
+		return nil, nil
 	}
 	if err != nil {
 		rt.Close()
-		return identityreconcile.Service{}, "", false
+		return nil, fmt.Errorf("read the identity-sync registry entry for %s: %w", app, err)
 	}
 	// The process exits after the command; the connection is released then.
-	return service, service.Issuer, true
+	revocations, err := identitySyncRevocations(ctx, rt)
+	if err != nil {
+		rt.Close()
+		return nil, fmt.Errorf("%s has a registry entry but its revocation list could not be opened: %w", app, err)
+	}
+	result := &aliasRegistry{revocations: revocations, application: integration.ApplicationClientID}
+	if !integration.Enabled {
+		return result, nil
+	}
+	service, _, _, err := rt.Service(ctx, app)
+	if err != nil {
+		rt.Close()
+		return nil, err
+	}
+	service.Application, service.Revocations = integration.ApplicationClientID, revocations
+	result.service = service
+	return result, nil
 }
 
 func identitySyncActor() string {
