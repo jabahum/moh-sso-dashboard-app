@@ -145,24 +145,22 @@ export default function ClientsPage() {
     setTypeFilter("all");
   };
 
+  const hasActiveFilters = search.trim() !== "" || statusFilter !== "all" || typeFilter !== "all";
+  const canOnboard = can("clients:write");
+
+  const openOnboardPanel = () =>
+    openPanel({
+      title: "Onboard application",
+      content: <ClientFormPanel mode="create" onSuccess={closePanel} />,
+      size: "md",
+    });
+
   return (
     <DataTableShell
       title="Clients"
       description="Registered applications and services integrated with the platform."
       topContent={
-        can("clients:write") ? (
-          <Button
-            onClick={() =>
-              openPanel({
-                title: "Onboard application",
-                content: <ClientFormPanel mode="create" onSuccess={closePanel} />,
-                size: "md",
-              })
-            }
-          >
-            Onboard application
-          </Button>
-        ) : undefined
+        canOnboard ? <Button onClick={openOnboardPanel}>Onboard application</Button> : undefined
       }
       rows={rows}
       headers={headers}
@@ -185,15 +183,26 @@ export default function ClientsPage() {
         !isLoading && !isError ? `${filteredClients.length} of ${clients.length} clients` : undefined
       }
       emptyActions={
-        <Button kind="ghost" onClick={clearFilters}>
-          Clear filters
-        </Button>
+        clients.length === 0 ? (
+          canOnboard ? (
+            <Button onClick={openOnboardPanel}>Onboard application</Button>
+          ) : undefined
+        ) : hasActiveFilters ? (
+          <Button kind="ghost" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        ) : undefined
       }
-      emptyTitle="No clients found"
-      emptyDescription="No clients match the selected filters."
+      emptyTitle={clients.length === 0 ? "No clients yet" : "No matching clients"}
+      emptyDescription={
+        clients.length === 0
+          ? "Applications onboarded to the platform will appear here."
+          : "No clients match the current search or filters."
+      }
       filters={
         <ClientFilters
           onReset={clearFilters}
+          hasActiveFilters={hasActiveFilters}
           status={statusFilter}
           type={typeFilter}
           statusOptions={STATUS_OPTIONS}

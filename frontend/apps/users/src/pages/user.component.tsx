@@ -47,6 +47,13 @@ const headers = [
   { key: "raw", header: "" },
 ];
 
+/* Lower-priority columns are hidden on narrow screens so Status stays visible. */
+const RESPONSIVE_COLUMN_CLASS: Record<string, string | undefined> = {
+  email: "users-table__col--hide-sm",
+  verified: "users-table__col--hide-md",
+  lastLogin: "users-table__col--hide-md",
+};
+
 type BulkAction = "enable" | "disable" | null;
 
 export default function UsersPage() {
@@ -147,6 +154,9 @@ export default function UsersPage() {
     setNeverLoggedIn(false);
   };
 
+  const hasActiveFilters =
+    search.trim() !== "" || statusFilter !== "all" || roleFilter !== "all" || neverLoggedIn;
+
   return (
     <DataTableShell
       title="Users"
@@ -172,12 +182,18 @@ export default function UsersPage() {
         !isLoading && !isError ? `${filteredUsers.length} of ${users.length} users` : undefined
       }
       emptyActions={
-        <Button kind="ghost" onClick={clearFilters}>
-          Clear filters
-        </Button>
+        users.length > 0 && hasActiveFilters ? (
+          <Button kind="ghost" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        ) : undefined
       }
-      emptyTitle="No users found"
-      emptyDescription="No users match the selected filters."
+      emptyTitle={users.length === 0 ? "No users yet" : "No matching users"}
+      emptyDescription={
+        users.length === 0
+          ? "Users will appear here once they are created or synced."
+          : "No users match the current search or filters."
+      }
       filters={
         <UserFilters
           onReset={clearFilters}
@@ -185,6 +201,7 @@ export default function UsersPage() {
           roles={roles}
           selectedRole={roleFilter}
           neverLoggedIn={neverLoggedIn}
+          hasActiveFilters={hasActiveFilters}
           onStatusChange={setStatusFilter}
           onRoleChange={setRoleFilter}
           onToggleNeverLoggedIn={() => {
@@ -266,7 +283,12 @@ export default function UsersPage() {
                       {headers
                         .filter((h) => h.key !== "raw")
                         .map((h) => (
-                          <TableHeader {...getHeaderProps({ header: h })}>{h.header}</TableHeader>
+                          <TableHeader
+                            {...getHeaderProps({ header: h })}
+                            className={RESPONSIVE_COLUMN_CLASS[h.key]}
+                          >
+                            {h.header}
+                          </TableHeader>
                         ))}
                     </TableRow>
                   </TableHead>
@@ -384,7 +406,14 @@ export default function UsersPage() {
                               );
                             }
 
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>;
+                            return (
+                              <TableCell
+                                key={cell.id}
+                                className={RESPONSIVE_COLUMN_CLASS[cell.info.header]}
+                              >
+                                {cell.value}
+                              </TableCell>
+                            );
                           })}
                         </TableRow>
                       );

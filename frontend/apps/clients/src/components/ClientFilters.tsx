@@ -12,6 +12,7 @@ interface Option {
 
 interface ClientFiltersProps {
   onReset: () => void;
+  hasActiveFilters?: boolean;
   status: StatusFilter;
   type: TypeFilter;
   statusOptions: readonly Option[];
@@ -22,6 +23,7 @@ interface ClientFiltersProps {
 
 export function ClientFilters({
   onReset,
+  hasActiveFilters = true,
   status,
   type,
   statusOptions,
@@ -58,7 +60,7 @@ export function ClientFilters({
           onTypeChange(selectedItem?.id as TypeFilter);
         }}
       />
-      <Button kind="ghost" size="md" onClick={onReset}>
+      <Button kind="ghost" size="md" disabled={!hasActiveFilters} onClick={onReset}>
         Clear filters
       </Button>
     </Stack>

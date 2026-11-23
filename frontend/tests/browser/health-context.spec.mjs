@@ -79,7 +79,7 @@ for (const width of [1440, 390, 320]) {
     await page.goto("/portal/admin/clients");
     const selector = page.getByLabel("Health context", { exact: true });
     await expect(selector).toHaveValue(national);
-    await expect(page.getByRole("heading", { name: "No clients found", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No clients yet", exact: true })).toBeVisible();
     const refreshed = page.waitForRequest(
       (request) =>
         new URL(request.url()).pathname.endsWith("/clients") &&
