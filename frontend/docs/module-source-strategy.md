@@ -1,5 +1,7 @@
 # Selecting frontend module versions
 
+This page explains how development and production builds choose between workspace modules and pinned npm modules, and how to change, verify and roll back that selection. It is for frontend developers and release maintainers.
+
 Development and production independently choose workspace modules or published npm modules in [`module-sources.json`](../module-sources.json). The shell is always built from this checkout. Development defaults to workspace modules. Production defaults to published npm modules with exact pins and a committed dependency lock.
 
 To use npm in either environment, change that environment's `source` to `"npm"` and set its `versions` map to the exact published version of every app and shared package. The file includes all 23 modules, so development can test new package versions while production keeps older pins. Ranges, tags such as `latest`, missing modules and incompatible internal dependencies are rejected.

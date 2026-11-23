@@ -1,10 +1,18 @@
 # Onboarding screenshot index
 
+This index is for maintainers of the [onboarding handbook](../../platform-onboarding.md).
+It lists each screenshot, the handbook section it illustrates, its capture state,
+and how to refresh the images.
+
+## Capture context
+
 These are actual, unedited screenshots captured from the local development portal
 on 3 November 2026, while reviewing `platform/phase-1-application-registry` after
 merge commit `4c223829`. The footer displays the inherited frontend `1.1.0`
 version and backend `dev`; it does not mean the platform additions were already
 in the published `1.1.0` release. No production system was used.
+
+## Screenshot list
 
 | File                                                                 | Screen and handbook location                   | Capture state                                                           |
 | -------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
@@ -29,6 +37,8 @@ in the published `1.1.0` release. No production system was used.
 5. Inspect each saved image, update the adjacent caption and this index, and
    verify its relative Markdown link. Refresh any stale field values or labels.
 6. Discard all unsaved drafts and restore the original browser display afterward.
+
+## Keycloak admin console screenshots
 
 Keycloak admin-console labels depend on the installed version. The handbook links
 to the official administration guide for that console rather than presenting

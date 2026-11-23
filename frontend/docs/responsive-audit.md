@@ -1,6 +1,6 @@
-# Responsive Audit
+# Responsive audit
 
-This audit captures the current mobile hardening work for the MOH Integrated Health Portal.
+This audit captures the current mobile hardening work for the MOH Integrated Health Portal: the viewports to test, the fixes already applied, and what still needs manual QA. It is for frontend developers and testers.
 
 ## Viewports
 
@@ -13,7 +13,7 @@ Use these viewports when checking the portal:
 - 1024px tablet landscape
 - desktop
 
-## Shared Fixes Applied
+## Shared fixes applied
 
 - Admin and user side navigation now behaves as an overlay drawer below tablet width.
 - Mobile side navigation includes a backdrop, Escape-to-close, and route-change close behavior.
@@ -32,7 +32,7 @@ Use these viewports when checking the portal:
 - Data visualizer, RBAC, surveillance, and issue tracker now have additional
   mobile containment rules for dense controls, maps, popovers, and wide tables.
 
-## Areas To Manually Check
+## Areas to check manually
 
 - Public news page: `/portal/`
 - Admin users: `/portal/admin/users`
@@ -48,7 +48,7 @@ Use these viewports when checking the portal:
 - Surveillance: `/portal/apps/dwh/surveillance`
 - Utilities/settings: `/portal/apps/utilities/self-service`
 
-## Remaining Manual QA
+## Remaining manual QA
 
 - Check the listed routes manually at 320, 375, 430, 768, and 1024px.
 - Confirm data visualizer chart and pivot-table widgets remain usable with real
@@ -61,7 +61,7 @@ Use these viewports when checking the portal:
   statuses, users, and IDs.
 - Confirm focus returns to the trigger after closing mobile drawers and panels.
 
-## Acceptance Checklist
+## Acceptance checklist
 
 - Navigation can open, close, and route on mobile.
 - No page content is hidden behind the footer.

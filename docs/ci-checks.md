@@ -1,5 +1,10 @@
 # CI checks and local verification
 
+This page lists the pull request checks that CI runs and how to run the same checks
+locally before you push. It is for developers and reviewers.
+
+## Workflow jobs
+
 `PR Quality Checks` runs on pull requests to `main` and is reused by the image
 build before publishing. Jobs are independent: a frontend install failure does
 not suppress backend, migration, workflow or deployment recovery results.

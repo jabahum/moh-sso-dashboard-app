@@ -1,8 +1,8 @@
-# Non-React Microfrontends
+# Non-React microfrontends
 
-Future apps can use Vue, Angular, Svelte, or plain JavaScript as long as they expose the same lifecycle contract.
+Future apps can use Vue, Angular, Svelte, or plain JavaScript as long as they expose the same lifecycle contract. This page lists the required exports, adapters and rules for those apps. See also [multi-framework apps](multi-framework-apps.md).
 
-## Required Exports
+## Required exports
 
 ```ts
 export async function bootstrap(props) {}
@@ -12,7 +12,7 @@ export async function unmount(props) {}
 
 Each app should accept `MicrofrontendRuntimeProps` from `@moh-sso/microfrontend`.
 
-## Framework Adapters
+## Framework adapters
 
 - Vue: `single-spa-vue`
 - Angular: `single-spa-angular`

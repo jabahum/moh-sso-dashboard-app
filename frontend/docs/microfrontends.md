@@ -1,12 +1,14 @@
 # Microfrontends
 
+This page describes how frontend apps run as single-spa microfrontends: the loading modes, the app contract, route ownership, shell integration and the root page layout. It is for frontend developers.
+
 The frontend retains single-spa lifecycles. Local development defaults to hybrid
 mode, where apps resolve through workspace imports. The checked-in production
 configuration selects remote/import-map loading with single-spa orchestration.
 See the [onboarding handbook](../../docs/platform-onboarding.md#8-add-a-hosted-single-spa-module)
 for the complete integration and verification checklist.
 
-## Current Modes
+## Current modes
 
 - Hybrid local mode: default. Shell uses local workspace app lifecycles.
 - Remote mode: enabled by runtime/env config. Shell can load app bundles through import maps.
@@ -35,7 +37,15 @@ window.__APP_CONFIG__.microfrontendMode = "remote";
 window.__APP_CONFIG__.microfrontendMountMode = "orchestrated";
 ```
 
-## App Contract
+## Local vs remote
+
+Local mode uses workspace imports and local lifecycle modules.
+
+Remote mode uses import maps. The shell loads `@moh-sso/<app>` bundle URLs from the import map.
+
+For true `registerApplication` mode, the shell creates one DOM container per app under `#microfrontend-orchestrated-root`.
+
+## App contract
 
 Every standalone app exposes:
 
@@ -55,7 +65,7 @@ export async function unmount(props) {}
 
 React apps use `createReactMicrofrontendLifecycle` from `@moh-sso/microfrontend`.
 
-## Runtime Props
+## Runtime props
 
 Apps accept runtime props from `@moh-sso/microfrontend`:
 
@@ -67,7 +77,7 @@ Apps accept runtime props from `@moh-sso/microfrontend`:
 
 `basename` is important for nested routes inside each app.
 
-## Route Ownership
+## Route ownership
 
 Examples:
 
@@ -96,7 +106,7 @@ Utilities owns:
 - `/apps/utilities/self-service/absence-requests`
 - `/apps/utilities/self-service/absence-dashboard`
 
-## Shell Integration
+## Shell integration
 
 `SingleSpaApp` lives at:
 
@@ -119,7 +129,7 @@ Related files:
 - `lifecycles.ts`: local lifecycle imports
 - `containers.ts`: shell-owned DOM containers for orchestrated mode
 
-## Launcher Entries And System Ownership
+## Launcher entries and system ownership
 
 A deployable microfrontend and a Keycloak client are related but not identical concepts. One registered platform system may own several route-level microfrontends or modules. Its `ui.navigation` metadata can mark selected items with `displayInLauncher: true`, allowing those modules to appear as separate launcher cards without changing the system registry or Keycloak model.
 
@@ -133,15 +143,7 @@ Module launcher entries:
 
 Existing systems are unchanged unless navigation metadata explicitly opts a module into the launcher.
 
-## Local Vs Remote
-
-Local mode uses workspace imports and local lifecycle modules.
-
-Remote mode uses import maps. The shell loads `@moh-sso/<app>` bundle URLs from the import map.
-
-For true `registerApplication` mode, the shell creates one DOM container per app under `#microfrontend-orchestrated-root`.
-
-## Non-React Apps
+## Non-React apps
 
 Future Vue, Angular, Svelte, or plain JavaScript apps can participate by exposing the same lifecycle contract:
 

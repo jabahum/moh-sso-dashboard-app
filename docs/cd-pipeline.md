@@ -1,5 +1,9 @@
 # Continuous delivery and server setup
 
+This runbook describes how GitHub Actions builds, packages, deploys and rolls back
+the portal, and the one-time server, proxy and GitHub setup operators must do first.
+For runtime settings and Compose modes, see [deployment configuration](deployment.md).
+
 ## Pipeline and responsibility boundaries
 
 ```mermaid
@@ -52,6 +56,8 @@ Compose project and container names are fixed, so separate directories on one
 Docker daemon do not isolate the environments. Main images currently target
 Linux amd64; enable matching multi-architecture publishing before using arm64.
 
+### Server requirements
+
 Use a supported Linux server, for example Ubuntu 24.04 amd64, with:
 
 - Docker Engine and Compose plugin 2.24.4+ from the [official installation instructions](https://docs.docker.com/engine/install/ubuntu/).
@@ -59,6 +65,8 @@ Use a supported Linux server, for example Ubuntu 24.04 amd64, with:
 - Disk space for old/new images, PostgreSQL/uploads and deployment snapshots.
 - Access to external Keycloak, upload-management DB, warehouse, SMTP and other enabled providers.
 - An SSH route from the deployment runner. For private-only hosts, connect hosted runners through Tailscale (see below), or configure a dedicated network-connected runner using `DEPLOY_RUNNER_LABELS`. Hosted runners cannot route directly to a private IP without network setup.
+
+### Install packages and copy setup files
 
 On Ubuntu, after installing Docker from its documented repository:
 
@@ -83,6 +91,8 @@ ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/moh-cd-production" -C moh-cd-producti
 scp "$HOME/.ssh/moh-cd-production.pub" admin@APP_SERVER:/tmp/moh-deploy.pub
 ```
 
+### Run the bootstrap script
+
 On the application server as the administrator:
 
 ```bash
@@ -97,6 +107,8 @@ Defaults: user `mohdeploy`, root `/opt/moh-sso`. Override `DEPLOY_USER` and
 are retained. Docker-group membership permits host administration; reserve this
 account/key for protected deployment jobs. Start a fresh login to use its group.
 The script does not install Docker, modify public Nginx/TLS, or fill credentials.
+
+### Harden SSH and verify the host key
 
 Optionally install `infra/server/sshd-mohdeploy.conf.example` as an SSH drop-in,
 matching the chosen username. Validate with `sudo sshd -t` before reloading SSH.
@@ -129,6 +141,8 @@ edit tags to select a CD release. Deployment references use
 release version. Image bytes are still selected by digest, and OCI version/commit
 labels are verified before rollout.
 
+### Choose a topology
+
 Select one topology in `deploy.json`:
 
 - `prod`: host Nginx reaches localhost ports 3000/9000.
@@ -140,6 +154,8 @@ staging host. Keep `verify_public_edge=true` after TLS/DNS/proxy setup; redirect
 readiness, Swagger and the API version are checked there. Configured backend and
 frontend versions/commits are checked inside the application network as well.
 Read [deployment configuration](deployment.md) for runtime setting details.
+
+### Log in to the container registry
 
 Log in to GHCR as the deployment account, not root, if packages are private:
 
@@ -154,6 +170,8 @@ The GitHub deploy job does not upload application or registry credentials.
 
 ## 3. Configure Nginx, DNS, network and SSO separately
 
+### Proxy and firewall
+
 On the proxy machine, install the host snippets from `infra/nginx/host/`. For
 remote Nginx replace its upstream file with `infra/nginx/remote/http.conf` and set
 both example application IPs. Include the HTTP-context and portal-location files
@@ -167,6 +185,8 @@ proxy's actual private source IP; account for Docker's forwarded traffic. Keep
 private HTTP hops inside a private/VPN network. None of these proxy/firewall
 changes are silently applied during an application rollout.
 
+### Keycloak callback and connectivity
+
 Set Keycloak's exact web-client callback to the environment's
 `https://PUBLIC_DOMAIN/ssobackend/api/v1/auth/callback`; match `LOGIN_URL`,
 `FRONTEND_BASE_URL`, allowed return origins and cookie domain in the server env.
@@ -179,6 +199,8 @@ Create **staging** and **production** environments in repository Settings.
 Configure [environment protection](https://docs.github.com/en/actions/concepts/workflows-and-actions/deployment-environments), including required production reviewers where supported and allowed branches
 restricted to `main`. Protect `main` with required quality/contract/infrastructure
 checks and PR review. Protect workflow/CD changes through repository review rules.
+
+### Environment secrets and variables
 
 Per-environment secrets:
 
@@ -200,6 +222,8 @@ Per-environment variables:
 | `DEPLOY_CONFIG` | `/etc/moh-sso/deploy.json` |
 | `DEPLOY_PYTHON` | `python3`; override with `python3.9` where the default interpreter is older than Python 3.9. Used by deployment and rollback. |
 | `DEPLOY_TAILSCALE` | Set literal `true` to connect deploy/rollback runners to Tailscale before SSH. Disabled by default. |
+
+### Repository variables
 
 Repository variables:
 
@@ -285,6 +309,8 @@ checkout or Git credentials requirement on the server.
 
 ## 6. Backups and rollback
 
+### Backup hook
+
 Install and test a backup hook before routine production updates. The provided
 `backup-primary.sh.example` is only for the bundled primary Postgres; install it
 at `/etc/moh-sso/backup-primary.sh` with mode 0700 and set `pre_deploy_hook` in
@@ -293,6 +319,8 @@ separately. A hook failure blocks rollout before the new API can migrate data.
 For first bootstrap, provision the DB/backup procedure before enabling the hook;
 it expects an existing database container.
 
+### Automatic rollback on failure
+
 On failed rollout, CD restores the previous recorded image pair **and** its
 infrastructure/env snapshot, then verifies it. The first managed deployment has
 no verified previous release, including when adopting existing containers; back
@@ -300,6 +328,8 @@ up that installation and retain its previous configuration/images before adoptio
 Its first failure is reported without claiming rollback.
 Database schema/data and external secret rotation are not reverted. Review
 migration compatibility and test restore procedures independently.
+
+### Deliberate rollback
 
 For a deliberate revert, run **Roll Back Verified Deployment** for the selected
 environment. It uses the same protected environment and concurrency group as CD.
@@ -312,14 +342,20 @@ python3 /opt/moh-sso/current/infra/scripts/cd_server.py rollback --actor operato
 ```
 
 The scripts default to `/etc/moh-sso/deploy.json`; pass `--config` for a custom path.
+
+### Pending state and retention
+
 When a rollout/rollback process is killed or rollback fails, `state/pending.json`
 blocks a new deployment until operator rollback recovers the previous verified
 release. The rollback workflow uploads its recovery helper, so recovery of a
 previously verified installation works even when the candidate was never activated.
-Keep `current`, the previous
-release directory, their env snapshots, and corresponding images. Do not prune
-those resources during rollback retention. Audit history is `state/history.jsonl`.
-Credential snapshots are private; do not upload the state directory as an artifact.
+
+Keep `current`, the previous release directory, their env snapshots, and
+corresponding images. Do not prune those resources during rollback retention.
+Audit history is `state/history.jsonl`. Credential snapshots are private; do not
+upload the state directory as an artifact.
+
+### Interrupted first installation
 
 An interrupted **first installation** has no previous release to restore. Inspect
 `state/pending.json` and container status as the deploy account. After confirming

@@ -1,4 +1,6 @@
-# Frontend Development
+# Frontend development
+
+This page explains how to set up and run the frontend locally, switch runtime modes and run the checks expected before a pull request. It is for frontend developers.
 
 ## Prerequisites
 
@@ -29,7 +31,7 @@ cd frontend
 npm install
 ```
 
-## Shell-Only Development
+## Shell-only development
 
 ```bash
 npm run dev:shell
@@ -37,7 +39,7 @@ npm run dev:shell
 
 This starts the shell on port `3000` and resolves apps through the local workspace.
 
-## Remote Microfrontend Development
+## Remote microfrontend development
 
 Run shell plus selected app dev servers:
 
@@ -65,37 +67,21 @@ npm run remote:preview:surveillance
 npm run remote:preview:all
 ```
 
-## Ports
+## Docker development
 
-- shell: `3000`
-- users: `4101`
-- clients: `4102`
-- announcements: `4103`
-- audit: `4104`
-- email: `4105`
-- documents: `4106`
-- surveillance: `4107`
-- data-visualizer: `4108`
-- issue-tracker: `4109`
-- report-browser: `4110`
-- e-services: `4111`
-- utilities: `4112`
-- rbac: `4113`
-- data-validation: `4114`
+Shell-only:
 
-## Environment Variables
+```bash
+docker compose -f infra/compose/docker-compose.dev.yml up frontend
+```
 
-- `VITE_SINGLE_SPA_ORCHESTRATION`: set to `true` to enable single-spa registration.
-- `VITE_MICROFRONTEND_MODE`: `local` uses workspace imports; `remote` uses import maps/runtime imports.
-- `VITE_MICROFRONTEND_MOUNT_MODE`: `hybrid` by default; `orchestrated` enables true `registerApplication` mode.
-- `VITE_VISUALIZER_API_BASE`: optional override for visualizer and issue-tracker API calls. Use `/visualizer-proxy` (or `/visualizer_proxy`) for local proxying.
-- `VITE_VISUALIZER_PROXY_TARGET`: optional Vite dev proxy target. When unset, `/visualizer-proxy` is not created unless `VITE_VISUALIZER_API_BASE` is set.
-- `VITE_VISUALIZER_PROXY_COOKIE`: optional cookie header forwarded by the local Vite proxy. Keep this in `.env.local`, not source control.
-- `FRONTEND_DEV_COMMAND`: Docker dev command override.
+All remote app dev servers:
 
-For local-only visualizer proxying, copy `infra/env/frontend.env.example` to `frontend/.env.local` and set the cookie there if needed.
+```bash
+FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
+```
 
-## Runtime Config
+## Runtime config
 
 `public/config.js` is the active runtime config file.
 
@@ -120,21 +106,18 @@ If the frontend behaves like production locally, reset it:
 npm run config:dev
 ```
 
-## Docker Development
+## Desktop side panels
 
-Shell-only:
+Side panels dock alongside the page at desktop widths by default. To use overlays for every panel, set
+`FRONTEND_SIDE_PANEL_DOCKING=false` in the Docker Compose environment,
+`frontend.sidePanelDocking: false` in Helm values, or `sidePanelDocking: false` in the served
+`config.js` for static hosting. A panel caller can also use `openPanel({ ..., dockOnDesktop: false })`
+for an individual overlay. Small screens and maximized panels use overlays.
 
-```bash
-docker compose -f infra/compose/docker-compose.dev.yml up frontend
-```
+Build from the workspace with `FRONTEND_MODULE_SOURCE=workspace` to test the current checkout.
+Builds that use npm module pins need a published `@moh-sso/ui` version that includes docking.
 
-All remote app dev servers:
-
-```bash
-FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
-```
-
-## Dependency Audit
+## Dependency audit
 
 ```bash
 npm run audit:packages
@@ -146,7 +129,7 @@ Run this after:
 - moving code between apps/packages
 - editing any app/package `package.json`
 
-## Daily Checks
+## Daily checks
 
 Use these before opening a PR or handing off work:
 
@@ -159,13 +142,32 @@ npm run build:shell
 
 Run app/package builds when changing shared package exports, app entrypoints, route ownership, or package metadata.
 
-### Desktop side panels
+## Ports
 
-Side panels dock alongside the page at desktop widths by default. To use overlays for every panel, set
-`FRONTEND_SIDE_PANEL_DOCKING=false` in the Docker Compose environment,
-`frontend.sidePanelDocking: false` in Helm values, or `sidePanelDocking: false` in the served
-`config.js` for static hosting. A panel caller can also use `openPanel({ ..., dockOnDesktop: false })`
-for an individual overlay. Small screens and maximized panels use overlays.
+- shell: `3000`
+- users: `4101`
+- clients: `4102`
+- announcements: `4103`
+- audit: `4104`
+- email: `4105`
+- documents: `4106`
+- surveillance: `4107`
+- data-visualizer: `4108`
+- issue-tracker: `4109`
+- report-browser: `4110`
+- e-services: `4111`
+- utilities: `4112`
+- rbac: `4113`
+- data-validation: `4114`
 
-Build from the workspace with `FRONTEND_MODULE_SOURCE=workspace` to test the current checkout.
-Builds that use npm module pins need a published `@moh-sso/ui` version that includes docking.
+## Environment variables
+
+- `VITE_SINGLE_SPA_ORCHESTRATION`: set to `true` to enable single-spa registration.
+- `VITE_MICROFRONTEND_MODE`: `local` uses workspace imports; `remote` uses import maps/runtime imports.
+- `VITE_MICROFRONTEND_MOUNT_MODE`: `hybrid` by default; `orchestrated` enables true `registerApplication` mode.
+- `VITE_VISUALIZER_API_BASE`: optional override for visualizer and issue-tracker API calls. Use `/visualizer-proxy` (or `/visualizer_proxy`) for local proxying.
+- `VITE_VISUALIZER_PROXY_TARGET`: optional Vite dev proxy target. When unset, `/visualizer-proxy` is not created unless `VITE_VISUALIZER_API_BASE` is set.
+- `VITE_VISUALIZER_PROXY_COOKIE`: optional cookie header forwarded by the local Vite proxy. Keep this in `.env.local`, not source control.
+- `FRONTEND_DEV_COMMAND`: Docker dev command override.
+
+For local-only visualizer proxying, copy `infra/env/frontend.env.example` to `frontend/.env.local` and set the cookie there if needed.

@@ -1,8 +1,8 @@
-# RBAC Usage
+# RBAC usage
 
-The dashboard uses dynamic, system-aware RBAC.
+The dashboard uses dynamic, system-aware RBAC. This page sets out the rules developers follow when protecting backend routes, frontend routes and launcher entries, and how administrators manage and debug access.
 
-## Source of Truth
+## Source of truth
 
 The frontend reads access from `/auth/me`:
 
@@ -18,7 +18,7 @@ Keycloak clients are the source candidates for portal systems. Use `system-rbac 
 
 For the full operator workflow, including startup sync, new client onboarding, permission mapping, and troubleshooting, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md). For group-based assignments and inherited access behavior, see [RBAC Groups](./rbac-groups.md).
 
-## Backend Rules
+## Backend rules
 
 Backend routes must enforce permissions with middleware from `backend/internal/middleware`.
 
@@ -32,7 +32,7 @@ Use:
 
 Do not protect new APIs with raw role checks unless the business rule is specifically role-based.
 
-## Frontend Rules
+## Frontend rules
 
 Use helpers from `@moh-sso/auth`:
 
@@ -46,7 +46,35 @@ Use helpers from `@moh-sso/auth`:
 
 Use `PermissionRoute` for shell route boundaries. Use `PermissionGuard` for page actions and buttons.
 
-## Admin Management UI
+## Microfrontend metadata
+
+Every standalone app route should declare access metadata in `frontend/apps/<app>/src/routes.tsx`.
+
+Example:
+
+```ts
+export const surveillanceRoute = {
+  appName: "@moh-sso/surveillance",
+  path: "/apps/dwh/surveillance",
+  requiredAnyPermissions: ["surveillance:read", "outbreak:access"],
+  requiredSystems: ["outbreak-management"],
+};
+```
+
+The shell uses this metadata to guard routes. `npm run rbac:doctor` checks that route metadata exists.
+
+## System launching
+
+App launcher and side navigation should use:
+
+- `systems:launch`
+- `accessibleSystems`
+
+A Keycloak client should not appear only because it exists. It must be mapped through portal RBAC and assigned to the user.
+
+Selected modules within an accessible system may appear as separate launcher cards when their `ui.navigation` item sets `displayInLauncher: true`. They do not become separate systems and do not receive separate Keycloak clients. The shell filters those cards using `permission`, `requiredPermissions`, and `requiredAnyPermissions`, while route guards continue to enforce access when a URL is opened directly. See [System Onboarding](./system-onboarding.md#launch-and-navigation-model) for the complete metadata contract.
+
+## Admin management UI
 
 Portal RBAC can be managed from:
 
@@ -80,34 +108,6 @@ The RBAC page also includes an Effective Access section. Use it to search by use
 - the role or system role that granted each permission
 
 Group-derived access is read-only from the user access panel. Change inherited access by editing the Keycloak group, group membership, or portal group permission mapping.
-
-## Microfrontend Metadata
-
-Every standalone app route should declare access metadata in `frontend/apps/<app>/src/routes.tsx`.
-
-Example:
-
-```ts
-export const surveillanceRoute = {
-  appName: "@moh-sso/surveillance",
-  path: "/apps/dwh/surveillance",
-  requiredAnyPermissions: ["surveillance:read", "outbreak:access"],
-  requiredSystems: ["outbreak-management"],
-};
-```
-
-The shell uses this metadata to guard routes. `npm run rbac:doctor` checks that route metadata exists.
-
-## System Launching
-
-App launcher and side navigation should use:
-
-- `systems:launch`
-- `accessibleSystems`
-
-A Keycloak client should not appear only because it exists. It must be mapped through portal RBAC and assigned to the user.
-
-Selected modules within an accessible system may appear as separate launcher cards when their `ui.navigation` item sets `displayInLauncher: true`. They do not become separate systems and do not receive separate Keycloak clients. The shell filters those cards using `permission`, `requiredPermissions`, and `requiredAnyPermissions`, while route guards continue to enforce access when a URL is opened directly. See [System Onboarding](./system-onboarding.md#launch-and-navigation-model) for the complete metadata contract.
 
 ## Debugging
 

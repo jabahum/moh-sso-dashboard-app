@@ -1,8 +1,8 @@
-# Cross-Application SSO
+# Cross-application SSO
 
-The Integrated Health Portal uses Keycloak for identity and a backend-managed `sso_session` cookie for its application session. Opening `/portal/` directly is intentionally public and does not create that backend session.
+This page explains how other applications launch the Integrated Health Portal with an authenticated session, for developers of launching applications and the operators who configure the portal. The portal uses Keycloak for identity and a backend-managed `sso_session` cookie for its application session. Opening `/portal/` directly is intentionally public and does not create that backend session.
 
-## Production Route Ownership
+## Production route ownership
 
 `dashboards.health.go.ug` is a shared origin. Report Browser owns the origin root;
 the Integrated Health Portal does not:
@@ -19,7 +19,7 @@ Consequently, `https://dashboards.health.go.ug/` and
 expected. Portal links must begin with `/portal`. Portal authentication links must
 begin with `/ssobackend` after runtime resolution.
 
-## Launch Contract
+## Launch contract
 
 Applications that launch the portal and need an authenticated destination must use the registry's `authenticatedLaunchUrl`:
 
@@ -41,7 +41,7 @@ An external launcher must not navigate directly to the registry value
 It must resolve the value against the portal API base first, producing the
 `/ssobackend/api/v1/...` URL shown above.
 
-## Registry Metadata
+## Registry metadata
 
 The `dashboard-web` system should define:
 
@@ -52,13 +52,13 @@ authenticatedLaunchUrl: /api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews
 
 The equivalent Keycloak client attributes are `ui.launchUrl` and `ui.authenticatedLaunchUrl`. Portal administrators can edit both values through Systems or RBAC Management. Report Browser and other external launchers should consume this metadata instead of hardcoding `/portal/`.
 
-## Redirect Security
+## Redirect security
 
 `returnTo` accepts `/portal` paths and optional query strings or fragments. Absolute URLs require an exact origin in `AUTH_RETURN_URL_ALLOWED_ORIGINS`. The backend rejects foreign origins, credentials, unsupported schemes, scheme-relative URLs, control characters, encoded separators, double encoding, and dot-segment traversal. The target is bound to OAuth state in a short-lived HttpOnly, SameSite=Lax cookie and is cleared after success or terminal failure.
 
 HTTP `Referer` is never used as a redirect target.
 
-## Environment Configuration
+## Environment configuration
 
 Development:
 
@@ -87,6 +87,8 @@ The portal and the launching application must use the same Keycloak realm and br
 4. Confirm the browser arrives at `/portal/apps/news`.
 5. Confirm `/ssobackend/api/v1/auth/me` returns the authenticated user.
 6. Confirm portal menus reflect that user's effective RBAC permissions.
+
+## Troubleshooting
 
 If the public News page appears unauthenticated, inspect the launcher URL first. A direct `/portal/` link bypasses portal session creation by design.
 

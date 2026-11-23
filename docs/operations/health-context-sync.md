@@ -1,4 +1,6 @@
-# Health Context Sync
+# Health context sync
+
+This page covers how health contexts and group mappings are seeded at startup and reconciled with Keycloak groups, including the operating procedure, rollback and troubleshooting. It is for operators and administrators.
 
 ## Startup seed
 
@@ -38,10 +40,14 @@ members of those groups; health context does not become an identity provider.
 9. Test a denied sibling context before enabling feature enforcement.
 10. Audit the mapping and assignment changes.
 
+### Reconciliation behaviour
+
 Missing, renamed, deleted, and unmapped Keycloak groups should be reviewed
 before destructive reconciliation. Applying mappings is non-destructive by
 default. `replaceExisting` replaces mappings only for groups explicitly present
 in that request; it does not globally delete mappings for omitted groups.
+
+### Drift report
 
 The drift endpoint reports missing Keycloak links, disabled groups, unmapped
 groups, inactive contexts, and mappings that are in sync. Apply operations are

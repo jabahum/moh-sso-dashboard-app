@@ -1,4 +1,6 @@
-# Health Context Audit
+# Health context audit
+
+This page records the audit of existing location hierarchies, the query surfaces that lacked a contextual-authorization boundary, the integration decision, and the rollout status of health-context enforcement. It is for developers and architects planning feature adoption; the contract itself is in [Health context architecture](./health-context.md).
 
 ## Existing hierarchy models
 

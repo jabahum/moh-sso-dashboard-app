@@ -1,4 +1,6 @@
-# Health Context Architecture
+# Health context architecture
+
+This page describes the health-context model, the request and feature integration contracts, and how health context relates to RBAC and the observatory database. It is for developers adding context-scoped features. Administrators should also read [Health context administration](../admin/health-context-management.md).
 
 Health context describes where, for whom, or over which health data a user may
 act. It complements RBAC:
@@ -45,6 +47,8 @@ without assignments retain legacy behavior while rollout is in progress. A
 feature must still load the resource, resolve its context, and apply ownership
 checks in its service or repository. The header is untrusted input.
 
+### Document ownership
+
 Documents created with a selected context store that context as immutable
 ownership metadata. Document list, detail, edit, delete, download, preview,
 process history, reprocess, and statistics operations apply the selected node
@@ -83,6 +87,21 @@ requests. Single-spa applications also receive the active and available
 contexts through `MicrofrontendRuntimeProps`; independently deployed modules
 must consume that public contract rather than importing shell internals.
 
+## Observatory database integration
+
+Health-context ownership, aliases, assignments, and closure remain in the primary
+portal database. Surveillance geography and metrics remain in observatory.
+Geography aliases are synchronized through the two application database connections
+when context geography is requested, with a one-minute cache. Existing context IDs
+are retained when names or parents change. Source/synchronization failures return
+an error instead of falling back to unrestricted data access.
+
+Scoped surveillance queries receive authorized UUID lists resolved in the primary
+database; they do not join primary tables or call primary functions in observatory.
+Hierarchy selectors may include ancestors, while metric and alert queries use only
+the selected scope and its permitted descendants. The new primary migrations use
+versions 54–58, after the current upstream history, to avoid version collisions.
+
 ## Observability contract
 
 Context changes and sync operations are audited, and contextual denials are
@@ -101,18 +120,3 @@ Context IDs, user IDs, facility codes, district names, and group paths must
 never be metric labels. These names are the stable instrumentation contract;
 the current business metrics feature is not used as a substitute for a
 Prometheus/OpenTelemetry exporter.
-
-## Observatory database integration
-
-Health-context ownership, aliases, assignments, and closure remain in the primary
-portal database. Surveillance geography and metrics remain in observatory.
-Geography aliases are synchronized through the two application database connections
-when context geography is requested, with a one-minute cache. Existing context IDs
-are retained when names or parents change. Source/synchronization failures return
-an error instead of falling back to unrestricted data access.
-
-Scoped surveillance queries receive authorized UUID lists resolved in the primary
-database; they do not join primary tables or call primary functions in observatory.
-Hierarchy selectors may include ancestors, while metric and alert queries use only
-the selected scope and its permitted descendants. The new primary migrations use
-versions 54–58, after the current upstream history, to avoid version collisions.

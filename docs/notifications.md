@@ -1,17 +1,19 @@
 # Notifications
 
+This page describes the notification and delivery model, the admin delivery dashboard, its API, and the audit and metrics rules. It is for developers and administrators; operators handling failures should use the [Notification Delivery Runbook](./operations/notification-delivery-runbook.md).
+
 The portal notification system stores a notification record and one or more delivery records.
 The notification record is the user-facing message; delivery records track channel-specific work
 such as in-app display, email, SMS, or future webhook delivery.
 
-## Delivery Channels
+## Delivery channels
 
 - `in_app`: stored for the portal notification center.
 - `email`: processed by the notification email delivery worker.
 - `sms`: processed by the notification SMS delivery worker.
 - `webhook`: reserved for future integrations.
 
-## Delivery Statuses
+## Delivery statuses
 
 - `PENDING`: queued and ready when `scheduled_at` is due.
 - `PROCESSING`: claimed by a worker.
@@ -20,7 +22,7 @@ such as in-app display, email, SMS, or future webhook delivery.
 - `RETRY`: failed once and scheduled for another attempt.
 - `CANCELLED`: manually cancelled before completion.
 
-## Admin Dashboard
+## Admin dashboard
 
 Admins with `notifications:read` can open:
 
@@ -83,7 +85,7 @@ status-derived counts.
 
 Do not add phone numbers, user IDs, emails, notification IDs, or provider message IDs as metric labels.
 
-## Related Docs
+## Related docs
 
 - [SMS Delivery](./sms-delivery.md)
 - [Notification Delivery Runbook](./operations/notification-delivery-runbook.md)

@@ -1,25 +1,30 @@
-# System Onboarding
+# System onboarding
 
-Use this flow when a new Keycloak client/system is added to the Integrated Health Portal.
-
-For the complete UI walkthrough with screenshots, field values, Keycloak setup,
-role mapping, activation, and acceptance tests, start with the
+This page is the CLI/seed and navigation reference for administrators and developers
+adding a new Keycloak client/system to the Integrated Health Portal. For the complete
+UI walkthrough with screenshots, field values, Keycloak setup, role mapping,
+activation, and acceptance tests, start with the
 [Application and system onboarding handbook](platform-onboarding.md).
-This page retains the CLI/seed and navigation reference. Registering a system
-does not create its OAuth client, deploy an external application, or install a
-hosted frontend module.
 
-For the full RBAC and Keycloak sync operating model, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
+Registering a system does not create its OAuth client, deploy an external
+application, or install a hosted frontend module. For the full RBAC and Keycloak
+sync operating model, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
 
 ## Application lifecycle
 
 New systems now enter the registry as `registered` and disabled, including systems discovered by Keycloak sync or imported from a seed. Configure metadata and access roles, then validate, approve, and activate the application in `/admin/rbac`. Existing records retain their access when migration 48 is applied. See [Platform development](platform-development.md) for transitions, permissions, API examples, rollout, and rollback.
 
-## Launch And Navigation Model
+## Launch and navigation model
+
+### System types and launch modes
 
 Portal systems explicitly declare `systemType` (`platform` or `external`), `displayInLauncher`, `displayInSideNav`, and `launchMode` (`internal`, `new_tab`, or `same_tab`). Platform systems use an internal `/portal` or `/apps` path and may provide navigation. External systems require an absolute HTTP or HTTPS URL and never provide portal side navigation.
 
+### Module launcher cards
+
 A single platform system may also expose selected navigation modules as individual application-launcher cards. These entries remain modules of the parent Keycloak client: do not create a Keycloak client or duplicate roles for each module. The user's access to the parent system still comes from `accessibleSystems`; module visibility is then filtered by the module's permission metadata.
+
+### Navigation item fields
 
 Navigation items accept these optional fields:
 
@@ -47,6 +52,8 @@ Navigation items accept these optional fields:
 - `launchMode` accepts `internal`, `new_tab`, or `same_tab`.
 - Nested `children` use the same contract and are evaluated recursively.
 
+### Display combinations
+
 Useful display combinations are:
 
 - System card only: system `displayInLauncher: true`; no module has `displayInLauncher: true`.
@@ -56,13 +63,15 @@ Useful display combinations are:
 
 The shell assigns module cards stable synthetic IDs in the form `<clientId>:<moduleId>`, but activates the parent client when a module is launched. Direct routes remain protected by the route permission guards; launcher visibility is not an authorization boundary.
 
+### Keycloak client attributes
+
 Keycloak clients must set `portal.system=true` for automatic enrollment. Configure `portal.accessRoles` as a comma-separated list of roles that expose the system, plus `ui.systemType`, `ui.displayInLauncher`, `ui.displayInSideNav`, `ui.launchMode`, `ui.launchUrl`, `ui.icon`, `ui.category`, and optional `ui.navigation`.
 
 For the Integrated Health Portal itself, keep the ordinary public URL in `ui.launchUrl` and configure `ui.authenticatedLaunchUrl` separately. External applications should use the authenticated launch URL when they do not already hold a portal backend session. See [Cross-Application SSO](./cross-application-sso.md).
 
 Newly discovered roles remain inert until they are explicitly configured as access roles. Development fixtures demonstrate all modes through `demo-platform-system`, `demo-external-new-tab`, and `demo-external-same-tab`; they are absent from the production realm export.
 
-## 1. Create or Confirm Keycloak Client
+## 1. Create or confirm the Keycloak client
 
 Create the client in Keycloak using the admin UI or CLI. Add the client roles that represent the system's access model.
 
@@ -74,7 +83,7 @@ Examples:
 - `manager`
 - `admin`
 
-## 2. Draft Portal RBAC Mapping
+## 2. Draft the portal RBAC mapping
 
 From `backend/`, draft from a checked-in or exported Keycloak realm file:
 
@@ -99,19 +108,19 @@ The sync treats non-Keycloak-internal clients as candidate systems and imports t
 
 Review the draft and assign permissions to each system role. A generated role without permissions is intentionally inert until mapped. This is deliberate: Keycloak says which role a user has, while portal RBAC says what that role can do inside the Integrated Health Portal.
 
-## 3. Validate the Seed
+## 3. Validate the seed
 
 ```sh
 go run ./cmd/cli system-rbac validate --file /tmp/system-rbac.seed.yaml
 ```
 
-## 4. Apply to the Portal Database
+## 4. Apply the seed to the portal database
 
 ```sh
 go run ./cmd/cli system-rbac seed --file /tmp/system-rbac.seed.yaml
 ```
 
-## 5. Manage or Adjust in the Admin UI
+## 5. Manage or adjust in the admin UI
 
 After the first seed, portal administrators can manage system metadata, access roles, system roles, and permission mappings at:
 
@@ -121,7 +130,7 @@ After the first seed, portal administrators can manage system metadata, access r
 
 The signed-in administrator needs `rbac:read` to open the page. Write actions require `rbac:write`, `rbac:roles:write`, or `rbac:permissions:write` depending on the operation.
 
-## 6. Explain a User's Expected Access
+## 6. Explain a user's expected access
 
 ```sh
 go run ./cmd/cli system-rbac explain \
@@ -129,7 +138,7 @@ go run ./cmd/cli system-rbac explain \
   --client-role outbreak-management:viewer
 ```
 
-## 7. Check for Drift
+## 7. Check for drift
 
 Against a realm export:
 

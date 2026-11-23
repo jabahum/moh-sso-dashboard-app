@@ -1,6 +1,7 @@
 # Developing and expanding distribution modules
 
-Start with [the coverage guide](module-coverage.md). It lists every backend
+This page is for backend and frontend developers who move features into compiled
+registry modules or independently published packages. Start with [the coverage guide](module-coverage.md). It lists every backend
 feature and publishable frontend workspace, its current stage and the next
 boundary to resolve. The machine-readable source is `module-catalog.json`.
 The catalogue covers code owned by this repository; externally hosted applications
@@ -14,6 +15,8 @@ are registered through application manifests and the database application regist
 | planned | Existing feature wiring remains active; extraction work is tracked | Backend release |
 | registry-hosted | Compiled registry controls routes and owned workers; implementation still lives in the host | Backend build metadata |
 | published | Independent package artifacts are selected through reviewed dependency pins | Selected Go/npm package version |
+
+### Current expansion examples
 
 Audit read APIs and GeoJSON are the first expansion after Metrics. Their
 constructors, cache/storage adapters and migration ownership remain in the host.
@@ -34,17 +37,6 @@ Portable implementation tests live in the module. Host integration tests cover
 HTTP authorization, queue conversion, and registry integration. Verify changes
 with `make -C backend modules-check` and
 `python3 infra/scripts/test-report-scheduler-package.py`.
-
-
-## Verify published backend versions
-
-Update the exact module pin in `backend/go.mod` and commit both checksums
-recorded in `backend/go.sum`. Run
-`python3 infra/scripts/backend_module_pins.py` with the backend Go toolchain
-available. It checks the selected dependency, rejects replacements, and compares
-the downloaded module and manifest checksums with the reviewed values.
-Distribution metadata, runtime inventory checks, and standalone release
-fixtures all read the expected versions from the backend pins.
 
 ## Add a compiled registry integration
 
@@ -109,6 +101,62 @@ replacement. Release directory-prefixed tags such as
 standalone package. Verify a separate consumer can download and use that exact
 version, then update host `go.mod`/`go.sum` and mark the catalogue entry published.
 
+## Verify published backend versions
+
+Update the exact module pin in `backend/go.mod` and commit both checksums
+recorded in `backend/go.sum`. Run
+`python3 infra/scripts/backend_module_pins.py` with the backend Go toolchain
+available. It checks the selected dependency, rejects replacements, and compares
+the downloaded module and manifest checksums with the reviewed values.
+Distribution metadata, runtime inventory checks, and standalone release
+fixtures all read the expected versions from the backend pins.
+
+## Published implementation ownership
+
+After publication, a backend module must not retain an implementation directory
+under `backend/internal/features`. Its versioned implementation belongs in
+`backend/modules/<module-id>`; the dashboard consumes its reviewed version and
+checksums without a local replacement.
+
+For modules still using `integration: adapter`, dashboard HTTP authorization/
+routes, SQLC mappings and shared provider adapters belong under
+`backend/internal/adapters/modules/<feature-id>`. These transitional adapters
+delegate domain behavior to the selected package. Core event recording,
+primary migrations, shared identity/health-context and provider lifecycle stay
+with the host when they are shared capabilities.
+
+The catalogue checks this layout for every published module. Architecture
+tests reject retained feature trees/imports, require each adapter to use its
+published package, and continue enforcing approved cross-feature dependencies
+for adapters. Keep module-owned algorithms and lifecycle policy in the package,
+not in a second host feature implementation.
+
+## Self-contained module integration
+
+A `published` module with `integration: self-contained` owns its handlers,
+models, persistence implementation, assets and module-specific workers/schema
+where applicable. Its host integration is registration/dependency composition,
+without an `internal/features` or `internal/adapters/modules` implementation.
+Catalogue schema 2 records this distinction explicitly and checks ownership.
+
+Use standard-library HTTP handlers and shared platform callbacks rather than
+requiring application-specific wrappers. `internal/modulehttp` translates the
+structural HTTP registration contract into Gin once for all modules, preserving
+the existing authentication context, request ID, route mount and declared
+method surface. A module must require authorization; the shared callback reads
+only verified context and fails closed. Headers do not become identity claims.
+
+Modules can provide `OpenAPI() []byte` as a structural contract. API generation
+merges their declared operations only for actual registered routes, alongside
+existing typed Gin operations. GeoJSON v0.2.0 is the first integrated example.
+Keep the published operation metadata and actual permission checks aligned.
+
+Review and commit the package, publish an immutable directory-prefixed tag,
+verify the downloaded artifact/checksums from a fresh cache and an independent
+consumer, then pin it and remove the host-specific adapter and asset copies.
+Shared platform infrastructure and migration history remain host-owned unless
+an explicit module migration transition has been reviewed.
+
 ## Frontend packages and hosted applications
 
 Existing frontend applications export their single-spa lifecycle through public
@@ -146,50 +194,3 @@ Commit each reviewed migration independently on a feature branch. Include the
 catalogue and regenerated coverage guide with each stage change. CI rejects
 untracked backend features, missing frontend packages, invalid relationships,
 stale generated coverage and disagreement with the compiled module inventory.
-
-## Published implementation ownership
-
-After publication, a backend module must not retain an implementation directory
-under `backend/internal/features`. Its versioned implementation belongs in
-`backend/modules/<module-id>`; the dashboard consumes its reviewed version and
-checksums without a local replacement.
-
-For modules still using `integration: adapter`, dashboard HTTP authorization/
-routes, SQLC mappings and shared provider adapters belong under
-`backend/internal/adapters/modules/<feature-id>`. These transitional adapters
-delegate domain behavior to the selected package. Core event recording,
-primary migrations, shared identity/health-context and provider lifecycle stay
-with the host when they are shared capabilities.
-
-The catalogue checks this layout for every published module. Architecture
-tests reject retained feature trees/imports, require each adapter to use its
-published package, and continue enforcing approved cross-feature dependencies
-for adapters. Keep module-owned algorithms and lifecycle policy in the package,
-not in a second host feature implementation.
-
-
-## Self-contained module integration
-
-A `published` module with `integration: self-contained` owns its handlers,
-models, persistence implementation, assets and module-specific workers/schema
-where applicable. Its host integration is registration/dependency composition,
-without an `internal/features` or `internal/adapters/modules` implementation.
-Catalogue schema 2 records this distinction explicitly and checks ownership.
-
-Use standard-library HTTP handlers and shared platform callbacks rather than
-requiring application-specific wrappers. `internal/modulehttp` translates the
-structural HTTP registration contract into Gin once for all modules, preserving
-the existing authentication context, request ID, route mount and declared
-method surface. A module must require authorization; the shared callback reads
-only verified context and fails closed. Headers do not become identity claims.
-
-Modules can provide `OpenAPI() []byte` as a structural contract. API generation
-merges their declared operations only for actual registered routes, alongside
-existing typed Gin operations. GeoJSON v0.2.0 is the first integrated example.
-Keep the published operation metadata and actual permission checks aligned.
-
-Review and commit the package, publish an immutable directory-prefixed tag,
-verify the downloaded artifact/checksums from a fresh cache and an independent
-consumer, then pin it and remove the host-specific adapter and asset copies.
-Shared platform infrastructure and migration history remain host-owned unless
-an explicit module migration transition has been reviewed.

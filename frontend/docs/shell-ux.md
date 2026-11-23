@@ -2,7 +2,7 @@
 
 This refinement preserves the existing Carbon design and the portal's routes,
 permissions, typography and branding. It changes shell navigation and shared
-shell components; individual application screens remain separate work.
+shell components; individual application screens remain separate work. This page describes the resulting shell navigation, header, launcher and notification behaviour, and how it is tested. It is for frontend developers and testers.
 
 ## Navigation
 
@@ -53,18 +53,9 @@ shell components; individual application screens remain separate work.
 - The menu fits the viewport on mobile and scrolls internally when needed.
   Tile animation respects the reduced-motion preference.
 
-## Verification
-
-`tests/browser/shell.spec.mjs` covers both shell layouts, mobile navigation,
-viewport transitions, keyboard links, launcher filtering and clearing, account
-panel access, overlay hand-off, and the narrow-screen public header. Grouped launcher
-checks cover section order, custom categories and item overrides, duplicate
-destinations, permission filtering, category search, and internal/external launching
-on desktop and mobile. The existing
-root-page and portal browser suites continue to validate application mounting
-and content alignment beneath the shell.
-
 ## Notifications
+
+### Notifications overview
 
 The overview uses a full-width Carbon table consistent with Announcements. It
 provides text search, Status and Severity filters, a reset action, and pagination
@@ -72,6 +63,9 @@ with 5/10/20 rows per page. Notification titles and the row's View details actio
 open the detail drawer. Unread rows also offer Mark as read. The query loads the
 latest 100 records; filters and table counts apply to that recent batch, and the
 heading identifies the limit when reached. The unread badge is the server total.
+Overview welcome, application and quick-action tiles use compact spacing and natural-height content.
+
+### Header drawer
 
 The header drawer retains its compact feed and subscribes inside its content, so
 read/delete mutations refresh the visible list and badge without closing it.
@@ -86,6 +80,8 @@ interactive controls are avoided. Deleting requires inline confirmation, with
 focus moving to the safe Keep action and returning on cancellation. Removed items
 return keyboard focus to the remaining feed controls.
 
+### Notification details
+
 Details provide Back navigation, live read status and a mark-read action. Returning
 preserves the recent feed scroll position and restores focus. Event identifiers,
 target roles and JSON metadata are available in collapsed Technical details.
@@ -93,8 +89,17 @@ Delivery history separates channel names, attempt counts, statuses and timestamp
 retry controls retain their existing permission checks. Load/action failures show
 explicit errors and retry options, and failed mutations do not imply success.
 
+## Verification
+
+`tests/browser/shell.spec.mjs` covers both shell layouts, mobile navigation,
+viewport transitions, keyboard links, launcher filtering and clearing, account
+panel access, overlay hand-off, and the narrow-screen public header. Grouped launcher
+checks cover section order, custom categories and item overrides, duplicate
+destinations, permission filtering, category search, and internal/external launching
+on desktop and mobile. The existing
+root-page and portal browser suites continue to validate application mounting
+and content alignment beneath the shell.
+
 `tests/browser/notifications.spec.mjs` covers normal/maximized/mobile layout,
 live cache updates, keyboard navigation, delete confirmation, empty/error recovery,
 overview table filters, pagination, row actions and delivery retry permissions using disposable API data.
-
-The header drawer opens directly to the ten most recent notifications, including read updates. Its compact card list fills the available panel height and scrolls beneath the activity summary. Overview welcome, application and quick-action tiles use compact spacing and natural-height content.

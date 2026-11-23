@@ -1,27 +1,35 @@
 # MOH platform development
 
-For administrator/developer onboarding, use the illustrated
+This page describes how the MOH platform governs applications: the application
+registry and lifecycle, identity and notification contracts, onboarding tooling
+and operations. It is for developers and administrators who implement or
+maintain platform integrations. For the click-by-click administrator/developer
+flow, use the illustrated
 [Application and system onboarding handbook](platform-onboarding.md) and its
 [acceptance record](templates/application-onboarding-record.md). This document
 describes the implementation and contracts rather than the click-by-click flow.
 
-All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–5 are implemented as separate commits. Production identity-provider/SMTP configuration and rollout remain deployment tasks. No additional phase branches are required.
+## Platform capabilities
 
-| Phase | Commit subject | Scope |
+| Capability | What it provides | Reference |
 | --- | --- | --- |
-| 1 | `feat(platform): add governed application registry and lifecycle` | Application registry, lifecycle, validation, governance, audit |
-| 2 | `feat(platform): define application identity and authorization contracts` | External sign-in, hosted-module identity, scoped machine identities, revocation |
-| 3 | `feat(platform): expose application-scoped notification services` | Versioned notifications API, application isolation, idempotency, delivery tracking |
-| 4 | `feat(platform): add developer onboarding and integration examples` | Integration guide, external example, hosted starter, validation command |
-| 5 | `feat(platform): add application operations and rollout guidance` | Application-aware monitoring, support, compatibility, rollout and rollback |
+| Application registry and lifecycle | Governed application catalog, lifecycle state machine, configuration validation, audit | [Application registry and lifecycle](#application-registry-and-lifecycle) |
+| Identity contracts | Authenticated Keycloak introspection, application-specific user access decisions, scoped machine bindings, audited grant revocation | [Application identity contract](platform-identity.md) |
+| Shared notifications | Versioned notifications API with application ownership, scoped access, atomic queue/audit insertion, idempotency, rolling database quotas and delivery-state tracking through the existing workers; the first adapter supports plain-text email | [Shared notification API](platform-notifications.md) |
+| Developer onboarding | Independent Python application pilot, reference client, integration verifier and hosted-module template | [Platform examples](../examples/platform/README.md) |
+| Platform operations | Authenticated worker readiness, read-only application operations metrics, worker heartbeats, request/application correlation, SMTP log redaction | [Platform runbook](operations/platform-runbook.md) |
 
-Each phase commit describes the delivered implementation, compatibility and validation. Live deployment tasks remain explicitly separate from repository implementation.
+Required migrations: 48 (registry lifecycle), 49 (identity contracts, before
+enabling platform endpoints), 50 (shared notifications) and 51 (operations,
+before starting the updated workers).
 
-## Phase 1: registry and lifecycle
+## Application registry and lifecycle
 
 The existing `ihp_systems` registry remains the application catalog. Existing ownership fields (`ownerTeam`, `ownerName`, `ownerEmail`), support and documentation URLs, environment, navigation, and launcher configuration are reused.
 
-New fields:
+### Registry fields
+
+The registry adds these fields:
 
 - `lifecycleStatus`: controlled through the lifecycle endpoint, never the metadata payload.
 - `integrationType`: `external` or `hosted_module`; validation requires agreement with `systemType` (`external` or `platform`).
@@ -53,7 +61,7 @@ Validation, approval, and activation check saved configuration for:
 - Valid platform/external launch and navigation behavior under the existing onboarding contract.
 - At least one access role backed by an enabled system role.
 
-This is registry configuration validation. It does not perform remote endpoint probes, verify a Keycloak client's redirect URIs, or certify the application's own authorization implementation. Those integration contracts belong to phase 2.
+This is registry configuration validation. It does not perform remote endpoint probes, verify a Keycloak client's redirect URIs, or certify the application's own authorization implementation. Those integration contracts are defined by the [application identity contract](platform-identity.md).
 
 Suspension requires a new configuration/validation/approval/activation cycle before access can return. Retirement is terminal. The enabled flag remains a separate operational switch for active applications.
 
@@ -110,9 +118,9 @@ A database trigger enforces disabled status for every non-active application, in
 
 The database authorization resolver already filters disabled systems from system-role permissions and accessible systems. Effective-access explanations now do the same. An empty database authorization result is authoritative, and a database error fails closed; static fallback cannot revive disabled access. Explicit development/static resolver mode remains available when no database resolver is configured.
 
-These controls govern access resolved by the portal. Existing independently issued Keycloak tokens, external application sessions, and service credentials are not revoked by this phase. External backends must enforce their own authorization; phase 2 will define the identity and revocation integration contract. Portal launcher visibility alone never secures an external application.
+These controls govern access resolved by the portal. Existing independently issued Keycloak tokens, external application sessions, and service credentials are not revoked by the registry lifecycle controls. External backends must enforce their own authorization; the [application identity contract](platform-identity.md) defines the identity and revocation integration contract. Portal launcher visibility alone never secures an external application.
 
-### Verification and rollout
+## Verification
 
 Run from `backend/`:
 
@@ -134,26 +142,46 @@ It creates and removes its own random schema. It checks migration compatibility,
 
 From `frontend/`, run type checking, lint on the changed RBAC files, and the RBAC app build. Use the repository-supported Node version.
 
+## Rollout and rollback
+
 Apply migration 48 before starting the new backend. On a fresh installation, a realm administrator with registry and role-management permissions must activate the initial applications after seed/sync. For an existing installation, automatic startup sync preserves approved application configuration. Review ownership/launch configuration before explicitly applying administrative metadata imports or sync changes, which still require renewed onboarding.
 
 For a phase-1-only rollback, stop the new backend, roll back migration 48, and deploy the previous backend/frontend. For the complete platform rollout, follow the ordered rollback procedure in the [platform runbook](operations/platform-runbook.md). The down migration preserves enabled flags so suspended/retired applications stay disabled immediately after rollback. The previous release's ordinary seed/sync behavior can re-enable them later; retain operational controls during rollback. Lifecycle history remains in the existing audit table, but lifecycle and integration columns are removed.
 
-## Phase 2: identity contracts
-
-Implemented the [application identity contract](platform-identity.md), authenticated Keycloak introspection, application-specific user access decisions, scoped machine bindings, and audited grant revocation. Migration 49 is required before enabling platform endpoints.
-
-## Phase 3: shared notifications
-
-Implemented the [shared notification API](platform-notifications.md) with application ownership, scoped access, atomic queue/audit insertion, idempotency, rolling database quotas and delivery-state tracking through the existing workers. Migration 50 is required. The first adapter supports plain-text email.
-
-## Phase 4: developer onboarding
-
-Added an [independent Python application pilot, reference client, integration verifier, and hosted-module template](../examples/platform/README.md). The onboarding guide covers registration, interactive and service clients, activation, launcher integration, test notifications, suspension/revocation, and verification commands. The examples are opt-in and are not installed in the production shell.
-
-## Phase 5: platform operations
-
-Added authenticated worker readiness, read-only application operations metrics, successful-queue-poll worker heartbeats, bounded request IDs, async request/application correlation and platform SMTP log redaction. The [platform runbook](operations/platform-runbook.md) covers support ownership, alerting, deployment, compatibility, credential rotation, retention and rollback. Migration 51 is required before starting the updated workers.
-
 ## Deployment boundary
 
 The implementation includes all five planned phases. Live Keycloak clients/audience/scope mappers, application activation, external deployments, SMTP credentials, operational alert thresholds and production rollout must be configured in the target environment. No live user grants, production deployments or real mail deliveries are created by repository tests. The reference web pilot is an integration example rather than a production OIDC/session framework.
+
+## Development history
+
+All phases continue on `platform/phase-1-application-registry`. Each phase is delivered as a separate commit with a descriptive subject and a body covering the problem, implementation, compatibility/migrations, validation, and remaining limitations. Phases 1–5 are implemented as separate commits. Production identity-provider/SMTP configuration and rollout remain deployment tasks. No additional phase branches are required.
+
+| Phase | Commit subject | Scope |
+| --- | --- | --- |
+| 1 | `feat(platform): add governed application registry and lifecycle` | Application registry, lifecycle, validation, governance, audit |
+| 2 | `feat(platform): define application identity and authorization contracts` | External sign-in, hosted-module identity, scoped machine identities, revocation |
+| 3 | `feat(platform): expose application-scoped notification services` | Versioned notifications API, application isolation, idempotency, delivery tracking |
+| 4 | `feat(platform): add developer onboarding and integration examples` | Integration guide, external example, hosted starter, validation command |
+| 5 | `feat(platform): add application operations and rollout guidance` | Application-aware monitoring, support, compatibility, rollout and rollback |
+
+Each phase commit describes the delivered implementation, compatibility and validation. Live deployment tasks remain explicitly separate from repository implementation.
+
+### Phase 1: registry and lifecycle
+
+Introduced the application registry fields, lifecycle state machine, configuration validation, governance permissions, audit and migration 48 described in [Application registry and lifecycle](#application-registry-and-lifecycle).
+
+### Phase 2: identity contracts
+
+Implemented the [application identity contract](platform-identity.md), authenticated Keycloak introspection, application-specific user access decisions, scoped machine bindings, and audited grant revocation. Migration 49 is required before enabling platform endpoints.
+
+### Phase 3: shared notifications
+
+Implemented the [shared notification API](platform-notifications.md) with application ownership, scoped access, atomic queue/audit insertion, idempotency, rolling database quotas and delivery-state tracking through the existing workers. Migration 50 is required. The first adapter supports plain-text email.
+
+### Phase 4: developer onboarding
+
+Added an [independent Python application pilot, reference client, integration verifier, and hosted-module template](../examples/platform/README.md). The onboarding guide covers registration, interactive and service clients, activation, launcher integration, test notifications, suspension/revocation, and verification commands. The examples are opt-in and are not installed in the production shell.
+
+### Phase 5: platform operations
+
+Added authenticated worker readiness, read-only application operations metrics, successful-queue-poll worker heartbeats, bounded request IDs, async request/application correlation and platform SMTP log redaction. The [platform runbook](operations/platform-runbook.md) covers support ownership, alerting, deployment, compatibility, credential rotation, retention and rollback. Migration 51 is required before starting the updated workers.

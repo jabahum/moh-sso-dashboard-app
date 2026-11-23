@@ -1,8 +1,8 @@
 # Verification
 
-Run verification from `frontend/`.
+This page lists the frontend checks to run before handing off work, and the acceptance checklist they satisfy. It is for frontend developers. Run verification from `frontend/`.
 
-## Standard Checks
+## Standard checks
 
 ```bash
 npm run audit:packages
@@ -16,7 +16,7 @@ npm run generate:versions
 npm run build:docker
 ```
 
-## Manual Direct Commands
+## Manual direct commands
 
 These are the commands used by CI-style checks and are useful when debugging workspace script issues.
 
@@ -41,7 +41,7 @@ docker build -f infra/docker/frontend/Dockerfile.nginx .
 docker build -f infra/docker/frontend/Dockerfile.dev .
 ```
 
-## Compatibility Import Check
+## Compatibility import check
 
 Old aliases should not appear in frontend source or root config:
 
@@ -51,7 +51,7 @@ rg "@/features|@/store|@/shared|@/lib|@/ui|@/utils" frontend/apps frontend/packa
 
 Expected result: no matches.
 
-## Staged Dist Check
+## Staged dist check
 
 After `npm run build:docker`, confirm:
 
@@ -61,7 +61,7 @@ dist/mf/*/single-spa.js
 dist/packages/*/index.js
 ```
 
-## Acceptance Checklist
+## Acceptance checklist
 
 - dependency audit passes
 - typecheck passes

@@ -1,6 +1,8 @@
 # Troubleshooting
 
-## Dev Login Opens External Keycloak
+This page lists common frontend development, build and remote-mode problems with their causes and fixes. It is for frontend developers. See also [development](development.md).
+
+## Dev login opens external Keycloak
 
 The local stack should navigate from `http://localhost:3000/portal/` to
 `http://localhost:9000/api/v1/auth/login`, then to Keycloak at
@@ -17,7 +19,7 @@ Reload the portal after correcting the HTML; use a hard refresh if an older tab
 still loads stale assets. Run `node --test scripts/runtime-config-path.test.mjs`
 from `frontend/` to verify the script URL in development and production output.
 
-## Vite Warns About Node Version
+## Vite warns about Node version
 
 Vite 7 expects Node `20.19+` or `22.12+`.
 
@@ -37,7 +39,7 @@ If the `20` alias is unavailable in your local `nvm`, use an exact installed ver
 nvm use v20.20.1
 ```
 
-## Failed To Resolve `single-spa-react`
+## Failed to resolve `single-spa-react`
 
 Fix:
 
@@ -47,7 +49,7 @@ npm install
 
 The React lifecycle helper has a manual fallback, but the package should still be installed for normal single-spa React behavior.
 
-## `npm ci` Fails
+## `npm ci` fails
 
 Cause: `package.json` and `package-lock.json` are out of sync.
 
@@ -60,7 +62,7 @@ npm install
 
 Commit the updated lockfile.
 
-## Docker Build Fails At `npm ci`
+## Docker build fails at `npm ci`
 
 Same cause as local `npm ci` failure.
 
@@ -73,7 +75,7 @@ npm install
 
 Commit `package-lock.json`, then rerun Docker.
 
-## App Build Fails Due Missing Dependency
+## App build fails due to a missing dependency
 
 Run:
 
@@ -83,7 +85,7 @@ npm run audit:packages
 
 Add the missing dependency or peer dependency to the app/package manifest.
 
-## Remote Mode Loads A Blank App
+## Remote mode loads a blank app
 
 Check:
 
@@ -100,7 +102,7 @@ Run:
 npm run audit:import-map
 ```
 
-## Local Dev Looks Like Production Mode
+## Local dev looks like production mode
 
 Cause: `public/config.js` may still contain production or local-remote settings.
 
@@ -112,7 +114,7 @@ npm run config:dev
 
 Then restart the dev server.
 
-## Duplicate React Or Invalid Hook Call
+## Duplicate React or invalid hook call
 
 Likely cause: remote bundles are loading more than one React instance.
 
@@ -122,7 +124,7 @@ Fix:
 - share React through the import map
 - avoid bundling duplicate React into remote apps
 
-## Route Works In Shell But Fails In Remote App
+## Route works in shell but fails in remote app
 
 Check:
 
@@ -131,7 +133,7 @@ Check:
 - shell route path
 - `MicrofrontendRuntimeProps.basename`
 
-## Docker Dev Only Starts Shell
+## Docker dev only starts shell
 
 Default Docker dev runs shell-only mode.
 
@@ -141,11 +143,11 @@ Use:
 FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
-## Import Map Points To Missing Vendor Files
+## Import map points to missing vendor files
 
 The current production import map uses pinned CDN ESM URLs. If using self-hosted vendor files, make sure those files exist and are served.
 
-## Local Import Map Cannot Load `/single-spa.js`
+## Local import map cannot load `/single-spa.js`
 
 Vite dev mode may not serve library build output at `/single-spa.js`.
 

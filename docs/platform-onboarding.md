@@ -5,25 +5,6 @@ single-spa module, or expose another module of an existing system. It is written
 for application owners, portal administrators, identity administrators, and
 frontend/backend developers. Start in a test environment with a pilot user.
 
-**Registration, sign-in, authorization, and deployment are separate steps.** A
-launcher card does not install an application, create its Keycloak client, or
-authorize its backend. Completing the registry lifecycle does not publish code.
-
-Existing portal integrations are grandfathered into `active`/enabled access by
-migration 59 when they were held in an onboarding state. Existing suspended or
-retired integrations, and active integrations explicitly disabled by an
-administrator, remain unchanged. Startup and Keycloak discovery of established
-clients defaults to `active`; explicitly disabled source clients stay disabled.
-Editing a grandfathered integration does not restart onboarding.
-
-New registrations created through the administration workflow, and newly discovered
-clients marked with a `portal.onboarding.profile`, still start
-`registered` and disabled and must complete configuration, validation, approval,
-and activation. Their lifecycle review remains mandatory after material
-configuration changes. The internal `lifecycle_managed` flag records this
-provenance and cannot be cleared by ordinary configuration updates. Keycloak's
-OAuth enabled flag is separate and is not changed by this database migration.
-
 ## Contents
 
 1. [Choose an integration path](#1-choose-an-integration-path)
@@ -68,6 +49,39 @@ flowchart LR
   E --> A[Application backend authorization]
   H --> A
 ```
+
+### 1.1 Sections to follow for each path
+
+| You are adding…                           | Follow these sections                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| An independently deployed web application | 2, 3, 4, 5, 6 and 7; 10 if its backend uses shared services; then 11                                   |
+| A hosted single-spa module                | 2; 3 where the parent system needs Keycloak client roles; 4, 5, 6 and 8; 10 if needed; then 11         |
+| A module of an existing system            | 9 (and 8 if the route is new frontend code); 6 to repeat approval after saving; then 11                |
+
+Section 12 lists common failures and section 13 lists the APIs and commands used.
+
+### 1.2 Registration is not deployment
+
+**Registration, sign-in, authorization, and deployment are separate steps.** A
+launcher card does not install an application, create its Keycloak client, or
+authorize its backend. Completing the registry lifecycle does not publish code.
+
+### 1.3 Existing and new registrations
+
+Existing portal integrations are grandfathered into `active`/enabled access by
+migration 59 when they were held in an onboarding state. Existing suspended or
+retired integrations, and active integrations explicitly disabled by an
+administrator, remain unchanged. Startup and Keycloak discovery of established
+clients defaults to `active`; explicitly disabled source clients stay disabled.
+Editing a grandfathered integration does not restart onboarding.
+
+New registrations created through the administration workflow, and newly discovered
+clients marked with a `portal.onboarding.profile`, still start
+`registered` and disabled and must complete configuration, validation, approval,
+and activation. Their lifecycle review remains mandatory after material
+configuration changes. The internal `lifecycle_managed` flag records this
+provenance and cannot be cleared by ordinary configuration updates. Keycloak's
+OAuth enabled flag is separate and is not changed by this database migration.
 
 ## 2. Gather prerequisites and agree identifiers
 
@@ -319,6 +333,8 @@ acceptance-test user; also test an ordinary authorized user and an unauthorized 
 
 ## 6. Validate, approve, and activate
 
+### 6.1 Run the lifecycle actions
+
 Use the **Application lifecycle** panel for the selected system. Enter a meaningful
 **Reason for status change** before each action. The reason must contain 1–2000
 characters and becomes part of the audit record.
@@ -354,16 +370,26 @@ From `validated` or `approved`, **Configure** also allows a return to configurat
 Retirement is allowed from the non-retired states supported by the UI. A suspended
 application must go through Configure → Validate → Approve → Activate again.
 
+### 6.2 What validation does not check
+
 **Validation checks saved registry configuration.** It does not probe the remote
 application, verify all Keycloak callback settings, or certify backend authorization.
 Supply that evidence during the integration tests below. Review the audit events
 using the application filter in the governance tools or the audit API.
+
+### 6.3 Enable access after activation
 
 After activation, check **Enabled (active applications only)**. If an active
 system remains disabled, enable it and save, then verify effective access. Do not
 attempt to bypass the lifecycle by toggling enabled on an inactive system.
 
 ## 7. Verify an external application
+
+An external application may use any supported language/framework. It retains its
+own deployment, backend, domain data, login callback, and session. It does not
+have to become a single-spa module to appear in the portal launcher.
+
+### 7.1 Optional shared MOH header
 
 External React apps can also display the portal's shared MOH header with their
 own application name, app switcher, profile and logout actions. Follow
@@ -372,9 +398,7 @@ it in the external frontend. This requires an application code change and a UI
 package version containing the new component; registry activation alone does not
 add the header.
 
-An external application may use any supported language/framework. It retains its
-own deployment, backend, domain data, login callback, and session. It does not
-have to become a single-spa module to appear in the portal launcher.
+### 7.2 Launch, access, and logout tests
 
 1. Sign in to the portal as the ordinary pilot user.
 2. Find the new application card and launch it in the configured tab mode.
@@ -388,6 +412,8 @@ have to become a single-spa module to appear in the portal launcher.
 8. Check logout: end the application's own local session and follow its OIDC
    logout flow. Portal logout alone cannot erase independently managed sessions.
 
+### 7.3 Optional portal access decision
+
 The optional user access-decision call is:
 
 ```http
@@ -398,6 +424,8 @@ Authorization: Bearer <pilot-user-access-token>
 Use the user's token issued to `pilot`, with the audience/scope/subject claims
 described above. Make a fresh decision for every protected operation if immediate
 portal suspension enforcement is required; fail closed when the decision fails.
+
+### 7.4 Python pilot example
 
 For a concrete integration, follow the [Python pilot](../examples/platform/README.md).
 It demonstrates the HTTP contracts without importing backend internals. Its
@@ -520,6 +548,8 @@ Use this path when adding another feature under a parent such as `data-statistic
 Keep its parent client/access-role model. Do not create duplicate Keycloak clients
 or system registrations just to get additional launcher cards.
 
+### 9.1 Add the navigation entry
+
 In the parent's **Navigation JSON**, add an entry like this, using an existing
 implemented route and its actual backend permission:
 
@@ -551,6 +581,8 @@ _Figure 6 — A readable, unsaved Issue Tracker entry under the existing
 launcher flag is off. The simplified draft was discarded after capture; preserve
 all existing navigation entries when making a real change._
 
+### 9.2 Choose launcher and side-navigation display
+
 | Desired display            | Parent `displayInLauncher` | Module `displayInLauncher` | Module `displayInSideNav` |
 | -------------------------- | -------------------------- | -------------------------- | ------------------------- |
 | Parent card only           | `true`                     | `false`                    | As needed                 |
@@ -564,6 +596,8 @@ permissions, and `requiredAnyPermissions` requires at least one. Parent-system
 access remains required. Use `children` for nested entries under the same contract.
 The shell uses synthetic launcher IDs such as `data-statistics:issue-tracker`,
 while activating the parent `data-statistics` system.
+
+### 9.3 Add code for a new route
 
 Navigation JSON does not create the route. If it is a new hosted package/screen,
 complete section 8's code integration too. For an existing screen, changing only
@@ -694,6 +728,8 @@ publishes the backend at `/ssobackend`, prepend that configured public prefix;
 do not append `/api/v1` twice. Portal RBAC APIs use existing admin authentication;
 platform service APIs use Bearer access tokens.
 
+### 13.1 Endpoints
+
 | Method/path                                                            | Purpose                                                       |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `POST /admin/rbac/systems`                                             | Register metadata including `clientId`                        |
@@ -716,7 +752,9 @@ Consult the [OpenAPI contract](../backend/docs/openapi.yaml) for exact role,
 permission, registration and response schemas. The examples in the
 [platform development reference](platform-development.md) show full metadata payloads.
 
-Repository verification (run from repo root unless stated otherwise):
+### 13.2 Repository verification
+
+Run from the repository root unless stated otherwise:
 
 ```sh
 make contracts-check

@@ -1,26 +1,29 @@
-# SMS Delivery
+# SMS delivery
 
 SMS is implemented as a notification delivery channel. Application features should create
-notifications with an `sms` delivery request instead of calling an SMS provider directly.
+notifications with an `sms` delivery request instead of calling an SMS provider directly. This page is for developers
+and operators who configure SMS providers or queue SMS from features; see [Notifications](./notifications.md) for the
+wider delivery model.
 
-## Environment Variables
+## User preferences
 
-```env
-SMS_ENABLED=false
-SMS_PROVIDER=mock
-SMS_DEFAULT_COUNTRY_CODE=+256
-SMS_FROM_NAME=MOH
-SMS_MAX_LENGTH=160
-SMS_SEND_TIMEOUT=10s
+SMS delivery requires:
 
-AFRICASTALKING_USERNAME=
-AFRICASTALKING_API_KEY=
-AFRICASTALKING_SENDER_ID=
+- user notification preferences with `sms_enabled=true`
+- a valid phone number
+- a feature flow that queues an SMS delivery
 
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_FROM_NUMBER=
-```
+Announcement SMS uses the announcement audience resolver first, then filters recipients by SMS
+preference and phone availability.
+
+## Announcement SMS workflow
+
+1. Admin creates or edits an announcement.
+2. Admin enables SMS notification and optionally writes an SMS-specific message.
+3. On publish or due scheduled publish, the backend queues notification deliveries.
+4. The SMS delivery worker claims `PENDING` or `RETRY` SMS deliveries.
+5. The worker sends through the configured provider.
+6. The delivery becomes `SENT`, `RETRY`, or `FAILED`.
 
 ## Providers
 
@@ -67,27 +70,26 @@ TWILIO_FROM_NUMBER=...
 
 Do not enable Twilio in production until a Twilio provider adapter is completed and verified.
 
-## User Preferences
+## Environment variables
 
-SMS delivery requires:
+```env
+SMS_ENABLED=false
+SMS_PROVIDER=mock
+SMS_DEFAULT_COUNTRY_CODE=+256
+SMS_FROM_NAME=MOH
+SMS_MAX_LENGTH=160
+SMS_SEND_TIMEOUT=10s
 
-- user notification preferences with `sms_enabled=true`
-- a valid phone number
-- a feature flow that queues an SMS delivery
+AFRICASTALKING_USERNAME=
+AFRICASTALKING_API_KEY=
+AFRICASTALKING_SENDER_ID=
 
-Announcement SMS uses the announcement audience resolver first, then filters recipients by SMS
-preference and phone availability.
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+```
 
-## Announcement SMS Workflow
-
-1. Admin creates or edits an announcement.
-2. Admin enables SMS notification and optionally writes an SMS-specific message.
-3. On publish or due scheduled publish, the backend queues notification deliveries.
-4. The SMS delivery worker claims `PENDING` or `RETRY` SMS deliveries.
-5. The worker sends through the configured provider.
-6. The delivery becomes `SENT`, `RETRY`, or `FAILED`.
-
-## Admin Test SMS
+## Admin test SMS
 
 Use:
 
@@ -106,7 +108,7 @@ Body:
 
 The admin dashboard exposes this as **Send test SMS**.
 
-## Production Checklist
+## Production checklist
 
 - Confirm `SMS_ENABLED=true`.
 - Confirm the provider credentials are present in the runtime secret store.

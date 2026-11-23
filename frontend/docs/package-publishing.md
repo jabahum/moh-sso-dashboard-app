@@ -1,10 +1,10 @@
-# Package Publishing
+# Package publishing
 
-Every frontend app and shared package has npm-style metadata so it can build and be published independently.
+Every frontend app and shared package has npm-style metadata so it can build and be published independently. This page lists the package requirements, dependency rules and publishing commands; it is for frontend developers and release maintainers.
 
 Changesets controls normal version bumps. Do not manually edit app/package versions unless doing an emergency/manual release.
 
-## Package Requirements
+## Package requirements
 
 Each app/package should have:
 
@@ -25,7 +25,7 @@ Current internal version convention:
 @moh-sso/* -> 0.1.0
 ```
 
-## Dependency Rules
+## Dependency rules
 
 - Shared platform dependencies are peer dependencies:
   - `react`
@@ -46,21 +46,50 @@ npm run audit:packages
 npm run audit:publishability
 ```
 
-## Build A Package
+## Lockfile rule
+
+After changing any app/package `package.json`, update the lockfile:
+
+```bash
+npm install
+```
+
+Commit both `package.json` and `package-lock.json`. Docker uses `npm ci`, so stale lockfiles will fail builds.
+
+## Build a package
 
 ```bash
 npm run build -w @moh-sso/api
 npm run build -w @moh-sso/ui
 ```
 
-## Build An App
+## Build an app
 
 ```bash
 npm run build -w @moh-sso/users
 npm run build -w @moh-sso/documents
 ```
 
-## Publish Dry Run
+## Registry and authentication
+
+Configure npm before publishing:
+
+```bash
+npm login
+npm config set registry <registry-url>
+```
+
+For private scoped packages, keep:
+
+```json
+{
+  "publishConfig": {
+    "access": "restricted"
+  }
+}
+```
+
+## Publish dry run
 
 Run release checks before any publish attempt:
 
@@ -85,36 +114,7 @@ The preferred release command is:
 npm run release:packages
 ```
 
-## Registry And Auth
-
-Configure npm before publishing:
-
-```bash
-npm login
-npm config set registry <registry-url>
-```
-
-For private scoped packages, keep:
-
-```json
-{
-  "publishConfig": {
-    "access": "restricted"
-  }
-}
-```
-
-## Lockfile Rule
-
-After changing any app/package `package.json`, update the lockfile:
-
-```bash
-npm install
-```
-
-Commit both `package.json` and `package-lock.json`. Docker uses `npm ci`, so stale lockfiles will fail builds.
-
-## Changesets Commands
+## Changesets commands
 
 ```bash
 npm run changeset
@@ -129,4 +129,4 @@ Install Changesets first if needed:
 npm install -D @changesets/cli
 ```
 
-More detail: [Versioning And Releases](versioning.md).
+More detail: [Versioning and releases](versioning.md).

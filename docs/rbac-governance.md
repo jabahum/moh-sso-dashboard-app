@@ -1,8 +1,12 @@
-# RBAC Governance
+# RBAC governance
+
+This page describes how portal RBAC is governed: onboarding systems, drift detection, seed import, export and promotion, approvals, auditing and access troubleshooting. It is for administrators and operators who manage system access.
 
 The MOH SSO Dashboard uses Keycloak as the identity manager and keeps portal RBAC as the application authorization layer.
 
 For the practical Keycloak sync and system onboarding runbook, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
+
+## Ownership
 
 Keycloak owns:
 - users
@@ -20,7 +24,7 @@ Portal RBAC owns:
 - access request and RBAC change request governance
 - drift detection, seed import/export, and environment promotion
 
-## Onboarding A System
+## Onboarding a system
 
 1. Create or confirm the Keycloak client.
 2. Create client roles in Keycloak.
@@ -59,7 +63,7 @@ A service-only role is never granted to people:
 
 Seed validation, the RBAC and users services, and database triggers (migration 61) all enforce these rules. Seed apply can mark a role service-only but never clears the flag. To clear it, update the role explicitly. A role can only be marked service-only once its permissions and person-facing grants are removed. Removing a service-only role from a person who already holds it still works.
 
-## Drift Detection
+## Drift detection
 
 Use the admin UI or CLI to compare Keycloak with portal RBAC.
 
@@ -74,7 +78,7 @@ The UI supports:
 - sync preview
 - sync apply
 
-## Import And Export
+## Import and export
 
 Export the current database state:
 
@@ -93,17 +97,7 @@ The RBAC console can also:
 
 Use the CLI for source-controlled promotion and the UI for operational review or emergency inspection.
 
-## Permission Catalog
-
-The permission catalog in `/admin/rbac` is searchable by key, label, description, category, and status.
-
-Each permission shows usage counts for:
-- mapped system roles
-- mapped realm roles
-
-Use these counts before renaming, disabling, or removing a permission. A permission with active role mappings can affect existing users even when the permission itself is not directly visible in Keycloak.
-
-## Promotion Flow
+## Promotion flow
 
 Recommended flow:
 
@@ -125,7 +119,17 @@ Recommended flow:
    system-rbac promote --file approved-rbac.yaml --apply
    ```
 
-## Approvals And Requests
+## Permission catalog
+
+The permission catalog in `/admin/rbac` is searchable by key, label, description, category, and status.
+
+Each permission shows usage counts for:
+- mapped system roles
+- mapped realm roles
+
+Use these counts before renaming, disabling, or removing a permission. A permission with active role mappings can affect existing users even when the permission itself is not directly visible in Keycloak.
+
+## Approvals and requests
 
 Access requests let users request system roles. Admins can approve, reject, or cancel requests in the RBAC console.
 
@@ -162,20 +166,7 @@ The audit view supports filtering by:
 
 Use these filters when reviewing sensitive changes, access request decisions, and environment sync/import operations.
 
-## Troubleshooting Access
-
-Use Effective Access in `/admin/rbac` to explain access for a user.
-
-Check:
-- Keycloak realm roles
-- Keycloak client roles
-- portal permission mappings
-- accessible systems
-- grant sources for each permission
-
-If a user has a Keycloak role but no portal access, confirm that the role is mapped to portal permissions and that the system is enabled.
-
-## Policy Simulation
+## Policy simulation
 
 The policy simulator can evaluate both a raw role set and a real user's current access.
 
@@ -194,3 +185,16 @@ The result includes:
 - warnings for incomplete inputs or unknown mappings
 
 Use this before approving broad role changes or permission remaps.
+
+## Troubleshooting access
+
+Use Effective Access in `/admin/rbac` to explain access for a user.
+
+Check:
+- Keycloak realm roles
+- Keycloak client roles
+- portal permission mappings
+- accessible systems
+- grant sources for each permission
+
+If a user has a Keycloak role but no portal access, confirm that the role is mapped to portal permissions and that the system is enabled.
