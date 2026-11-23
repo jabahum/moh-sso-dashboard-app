@@ -26,7 +26,8 @@ test(`admin reviews and provisions a disabled client at ${viewport.width}px`, as
   });
   await page.goto('/portal/admin/clients');
   const main = page.locator('#main-content');
-  const openOnboarding = page.getByRole('button', { name: 'Onboard application', exact: true });
+  // The empty state repeats this action when no clients exist; use the page-header one.
+  const openOnboarding = page.getByRole('button', { name: 'Onboard application', exact: true }).first();
   await expect(openOnboarding).toBeVisible();
   const initialWidth = (await main.boundingBox()).width;
   await openOnboarding.click();
@@ -115,7 +116,7 @@ for (const scenario of ["missing-api", "wrong-realm"]) {
       });
     });
     await page.goto("/portal/admin/clients");
-    await page.getByRole("button", { name: "Onboard application", exact: true }).click();
+    await page.getByRole("button", { name: "Onboard application", exact: true }).first().click();
     await expect(
       page.getByText(
         scenario === "missing-api"

@@ -244,18 +244,18 @@ for (const width of [1440, 390]) {
       ).toBeVisible();
       await main.getByRole("combobox", { name: "Status", exact: true }).click();
       await main
-        .getByRole("option", { name: resource === "users" ? "active" : "Enabled", exact: true })
+        .getByRole("option", { name: resource === "users" ? "Active" : "Enabled", exact: true })
         .click();
-      await expect(main.getByRole("heading", { name: `No ${resource} found` })).toBeVisible();
+      await expect(main.getByRole("heading", { name: `No matching ${resource}` })).toBeVisible();
       await main.getByRole("button", { name: "Clear filters", exact: true }).first().click();
       await expect(main.getByRole("status")).toContainText(`15 of 15 ${resource}`);
       await expect(
         main.getByRole("searchbox", { name: `Search ${resource}`, exact: true }),
       ).toHaveValue("");
       if (resource === "users") {
-        const toggle = main.getByRole("button", { name: "Never logged in" });
-        await toggle.click();
-        await expect(toggle).toHaveAttribute("aria-pressed", "true");
+        const toggle = main.getByRole("checkbox", { name: "Never logged in" });
+        await toggle.check({ force: true });
+        await expect(toggle).toBeChecked();
       }
       const overflowing = await main.evaluate(
         (element) => element.scrollWidth > element.clientWidth + 1,
