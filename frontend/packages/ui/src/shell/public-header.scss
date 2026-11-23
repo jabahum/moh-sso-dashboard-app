@@ -81,3 +81,24 @@
     display: none;
   }
 }
+
+.moh-header-logo-link {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 100%;
+  padding-inline-end: 0.5rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus, #0f62fe);
+    outline-offset: -2px;
+  }
+}
+
+// Below md the signed-in header keeps only the logo (which stays a home link);
+// the title text would otherwise truncate to a stray glyph next to the actions.
+@media (max-width: 672px) {
+  .moh-shell-header--signed-in .moh-header-name {
+    display: none;
+  }
+}

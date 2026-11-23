@@ -21,6 +21,7 @@ export type UserHeaderProps = {
   username?: string | null;
   appMenu?: ReactNode;
   contextSelector?: ReactNode;
+  notifications?: ReactNode;
   onNavigateHome?: () => void;
   onLogout?: () => void;
   onProfile?: () => void;
@@ -35,6 +36,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({
   username,
   appMenu,
   contextSelector,
+  notifications,
   onNavigateHome,
   onLogout,
   onProfile,
@@ -42,8 +44,15 @@ const UserHeader: React.FC<UserHeaderProps> = ({
   onToggleNavigation,
   onGlobalAction,
 }) => {
+  const handleHomeClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (onNavigateHome && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      onNavigateHome();
+    }
+  };
+
   return (
-    <Header aria-label={`MOH ${appName}`} className="moh-shell-header">
+    <Header aria-label={`MOH ${appName}`} className="moh-shell-header moh-shell-header--signed-in">
       <SkipToContent />
       {onToggleNavigation && (
         <HeaderMenuButton
@@ -56,22 +65,18 @@ const UserHeader: React.FC<UserHeaderProps> = ({
         />
       )}
 
-      <img src={imagePath} className="moh-image-style" alt="Uganda coat of arms" />
+      <a
+        href={homeHref}
+        className="moh-header-logo-link"
+        aria-label={`MOH ${appName} home`}
+        onClick={handleHomeClick}
+      >
+        <img src={imagePath} className="moh-image-style" alt="" aria-hidden="true" />
+      </a>
       <HeaderName
         prefix="MOH"
         href={homeHref}
-        onClick={(event) => {
-          if (
-            onNavigateHome &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            !event.shiftKey &&
-            !event.altKey
-          ) {
-            event.preventDefault();
-            onNavigateHome();
-          }
-        }}
+        onClick={handleHomeClick}
         className="moh-header-name"
         title={appName}
       >
@@ -79,7 +84,9 @@ const UserHeader: React.FC<UserHeaderProps> = ({
       </HeaderName>
 
       <HeaderGlobalBar onClickCapture={onGlobalAction}>
+        {/* Keep this order in sync with the admin layout header actions. */}
         {contextSelector}
+        {notifications}
         {appMenu ?? <AppMenuAction />}
         <HeaderGlobalAction
           aria-label={`Signed in as ${username ?? "user"}`}

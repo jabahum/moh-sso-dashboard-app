@@ -7,6 +7,7 @@ import { UserHeader, useHeaderPanel } from "@moh-sso/ui";
 
 import { ConnectedAccountPanel } from "./ConnectedAccountPanel";
 import { ConnectedAppMenu } from "./ConnectedAppMenu";
+import { ConnectedNotificationsAction } from "./ConnectedNotificationsAction";
 import { HealthContextSelector } from "./HealthContextSelector";
 
 type Props = {
@@ -32,6 +33,7 @@ export function ConnectedUserHeader({
     <UserHeader
       username={user?.username}
       contextSelector={<HealthContextSelector />}
+      notifications={<ConnectedNotificationsAction />}
       navigationExpanded={navigationExpanded}
       onToggleNavigation={onToggleNavigation}
       onGlobalAction={onGlobalAction}

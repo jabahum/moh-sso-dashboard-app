@@ -33,7 +33,6 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { HeaderPanelProvider, PublicFooter, useHeaderPanel, useFocusTrap } from "@moh-sso/ui";
 
 import { API } from "@moh-sso/config";
-import { useGetUnreadNotificationsCountQuery } from "../../api";
 import { PERMISSIONS, selectUser, useAuthorization } from "@moh-sso/auth";
 import type { Permission } from "@moh-sso/auth";
 
@@ -43,7 +42,7 @@ import { useShellNavigation } from "../useShellNavigation";
 import { RouteBreadcrumbBar } from "@/app/navigation/RouteBreadcrumbBar";
 import { useVersionInfo } from "@/app/version/useVersionInfo";
 import { HealthContextSelector } from "@/app/ui-containers/HealthContextSelector";
-import { useOpenNotifications } from "@/app/ui-containers/ConnectedNotificationsPanel";
+import { ConnectedNotificationsAction } from "@/app/ui-containers/ConnectedNotificationsAction";
 
 import { PanelRouteReset } from "../PanelRouteReset";
 import "./admin-layout.scss";
@@ -167,34 +166,17 @@ function HeaderActions() {
   const user = useSelector(selectUser);
   const { openPanel } = useHeaderPanel();
 
-  const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery();
-
-  const safeUnreadCount = Number(unreadCount) || 0;
-
   const handleLogout = () => {
     window.location.replace(API.auth.logout());
   };
 
-  const handleOpenNotifications = useOpenNotifications();
-
+  // Keep this order in sync with UserHeader (packages/ui/src/shell/UserHeader.component.tsx):
+  // context selector, notifications, app switcher, account, logout.
   return (
     <>
       <HealthContextSelector />
-      <HeaderGlobalAction
-        aria-label={
-          safeUnreadCount > 0 ? `Notifications, ${safeUnreadCount} unread` : "Notifications"
-        }
-        tooltipAlignment="end"
-        onClick={() => handleOpenNotifications()}
-      >
-        <Notification size={20} />
-
-        {safeUnreadCount > 0 && (
-          <span className="admin-notification-badge">
-            {safeUnreadCount > 99 ? "99+" : safeUnreadCount}
-          </span>
-        )}
-      </HeaderGlobalAction>
+      <ConnectedNotificationsAction />
+      <ConnectedAppMenu />
 
       <HeaderGlobalAction
         aria-label={`Signed in as ${user?.username ?? "user"}`}
@@ -352,7 +334,9 @@ export default function AdminLayout() {
   const versionInfo = useVersionInfo();
 
   return (
-    <div className={`admin-layout app-side-panel-layout${isSideNavVisible ? "" : " admin-layout--sidenav-hidden"}`}>
+    <div
+      className={`admin-layout app-side-panel-layout${isSideNavVisible ? "" : " admin-layout--sidenav-hidden"}`}
+    >
       <HeaderPanelProvider>
         <PanelRouteReset />
         <Header aria-label="MOH Integrated Health Portal" className="admin-layout__header">
@@ -392,7 +376,6 @@ export default function AdminLayout() {
           <HeaderGlobalBar
             onClickCapture={navigation.compact ? () => navigation.setVisible(false) : undefined}
           >
-            <ConnectedAppMenu />
             <HeaderActions />
           </HeaderGlobalBar>
         </Header>
