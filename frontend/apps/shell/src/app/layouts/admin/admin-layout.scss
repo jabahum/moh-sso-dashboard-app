@@ -11,6 +11,8 @@
 
 .admin-layout {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   --moh-footer-left-offset: var(--moh-admin-sidenav-width);
   --moh-panel-header-offset: var(--moh-admin-header-height);
   background: var(--cds-background, #ffffff);
@@ -260,7 +262,7 @@
 
 .admin-layout__content-shell {
   min-width: 0;
-  min-height: 100vh;
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   margin-left: var(--moh-admin-sidenav-width);
@@ -272,13 +274,27 @@
   min-width: 0;
   flex: 1;
   padding: 1.5rem;
-  padding-bottom: 4.5rem;
   overflow-x: hidden;
   background: var(--cds-background, #ffffff);
 }
 
 .admin-layout__content.cds--content {
   margin: 0;
+}
+
+/*
+ * Keep the footer in page flow. Production builds the shell against the
+ * published @moh-sso/ui, so this must not depend on the PublicFooter.scss
+ * version: older releases pin the footer with position: fixed.
+ */
+.admin-layout .public-footer {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: auto;
+  flex-shrink: 0;
+  margin-left: var(--moh-footer-left-offset, 0);
+  width: calc(100% - var(--moh-footer-left-offset, 0px) - var(--moh-panel-space, 0px));
 }
 
 /* Breadcrumb strip alignment */
@@ -513,7 +529,7 @@ body {
 
 @media (max-width: 672px) {
   .admin-layout__content {
-    padding: 1rem 0.75rem 5rem;
+    padding: 1rem 0.75rem;
   }
 
   .admin-layout__brand-name {
