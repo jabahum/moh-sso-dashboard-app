@@ -1,12 +1,16 @@
 export default {
   // Group guides by reader task while retaining their existing document IDs and URLs.
+  // Each category starts with the page a new reader should open first.
+  // frontend/docs/import-map-strategy and microfrontend-strategy are kept only so
+  // older links resolve; they are deliberately left out of the sidebar.
   guides: [
     'documentation/pages/index',
     {
       type: 'category',
       label: 'Getting started',
       items: [
-        'docs/platform-development',
+        'docs/getting-started',
+        'docs/configuration',
         'docs/local-healthbi-startup',
         'docs/make',
         'docs/tooling',
@@ -39,17 +43,29 @@ export default {
           id: 'docs/platform-identity',
           label: 'Identity and authorization contract',
         },
-        'docs/rbac-usage',
-        'docs/rbac-governance',
-        'docs/rbac-groups',
-        'docs/rbac-keycloak-sync',
-        'docs/standard-user-defaults',
-        'docs/architecture/health-context',
-        'docs/admin/health-context-management',
-        'docs/integrations/health-context-mapping',
-        'docs/operations/health-context-sync',
-        'docs/security/contextual-authorization',
-        'docs/architecture/health-context-audit',
+        {
+          type: 'category',
+          label: 'Roles and permissions (RBAC)',
+          items: [
+            'docs/rbac-usage',
+            'docs/rbac-governance',
+            'docs/rbac-groups',
+            'docs/rbac-keycloak-sync',
+            'docs/standard-user-defaults',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Health context',
+          items: [
+            'docs/architecture/health-context',
+            'docs/admin/health-context-management',
+            'docs/integrations/health-context-mapping',
+            'docs/operations/health-context-sync',
+            'docs/security/contextual-authorization',
+            'docs/architecture/health-context-audit',
+          ],
+        },
       ],
     },
     {
@@ -57,8 +73,6 @@ export default {
       label: 'Platform architecture & modules',
       items: [
         'docs/platform-core',
-        'docs/modular-distribution',
-        'docs/module-coverage',
         {
           type: 'doc',
           id: 'docs/module-development',
@@ -69,7 +83,14 @@ export default {
           id: 'docs/module-operations',
           label: 'Module operations',
         },
+        'docs/modular-distribution',
+        'docs/module-coverage',
         'docs/backend-microservice-readiness',
+        {
+          type: 'doc',
+          id: 'docs/platform-development',
+          label: 'Platform development phases',
+        },
       ],
     },
     {
@@ -84,9 +105,7 @@ export default {
           label: 'Microfrontends',
           items: [
             'frontend/docs/microfrontends',
-            'frontend/docs/microfrontend-strategy',
             'frontend/docs/import-maps',
-            'frontend/docs/import-map-strategy',
             'frontend/docs/module-source-strategy',
             'frontend/docs/multi-framework-apps',
             'frontend/docs/non-react-microfrontends',
@@ -104,11 +123,15 @@ export default {
         },
         {
           type: 'category',
-          label: 'Build, release & verification',
+          label: 'Build, publish & verify',
           items: [
             'frontend/docs/build-and-deployment',
             'frontend/docs/package-publishing',
-            'frontend/docs/versioning',
+            {
+              type: 'doc',
+              id: 'frontend/docs/versioning',
+              label: 'Frontend versioning',
+            },
             'frontend/docs/release-ci',
             'frontend/docs/verification',
             'frontend/docs/troubleshooting',
@@ -124,11 +147,25 @@ export default {
         'docs/operations/platform-runbook',
         'docs/operations/portal-hardening',
         'docs/cd-pipeline',
-        'docs/ci-checks',
-        'docs/versioning',
-        'docs/releasing',
-        'docs/releasing-backend',
         'docs/rollback',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Releases & CI',
+      items: [
+        'docs/releasing',
+        {
+          type: 'doc',
+          id: 'docs/releasing-backend',
+          label: 'Backend releases',
+        },
+        {
+          type: 'doc',
+          id: 'docs/versioning',
+          label: 'Versioning and image tags',
+        },
+        'docs/ci-checks',
       ],
     },
     {
@@ -140,6 +177,7 @@ export default {
         'docs/operations/notification-delivery-runbook',
         'docs/sms-delivery',
         'docs/scheduler-configuration',
+        'docs/scheduler-backend',
       ],
     },
     {

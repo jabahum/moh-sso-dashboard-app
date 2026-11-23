@@ -21,6 +21,7 @@ frontend/
     issue-tracker/
     rbac/
     report-browser/
+    report-scheduler/
     surveillance/
     users/
     utilities/
