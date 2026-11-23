@@ -76,6 +76,9 @@ class IdentitySyncUserProfile(unittest.TestCase):
         names = [a['name'] for a in profile['attributes']]
         for builtin in ('username', 'email', 'firstName', 'lastName'):
             self.assertIn(builtin, names, where + ': the default attributes must stay declared')
+        # district/facility (token mappers), user_type (dashboard) and the access_* attributes are
+        # not declared; without this policy a fresh Keycloak 24+ import silently drops them.
+        self.assertEqual(profile.get('unmanagedAttributePolicy'), 'ADMIN_EDIT', where)
 
     def test_exports_declare_the_origin_attribute_admin_only(self):
         root = Path(__file__).resolve().parents[2]
