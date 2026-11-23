@@ -30,7 +30,17 @@ const (
 	Review Action = "review"
 	Reuse  Action = "reuse"
 	Create Action = "create"
+	// Linked: the account is already linked for the configured issuer. Single
+	// apply never grants it (the batch's linked / linked_no_access rule).
+	Linked Action = "linked"
+	// Revoked: the matched or linked identity has an active revocation for the
+	// application; only an explicit restore lets a later sync grant it.
+	Revoked Action = "revoked"
 )
+
+// ErrAccountAlreadyLinked reports that single apply refused an account that is
+// already linked for the configured issuer.
+var ErrAccountAlreadyLinked = errors.New("account is already linked")
 
 type Decision struct {
 	Account  identitysync.Account
@@ -104,8 +114,32 @@ func (s Service) Preview(ctx context.Context, cursor string, limit int) (Preview
 	return result, nil
 }
 
+// isRevoked reports an active revocation; false when no revocation list is set.
+func (s Service) isRevoked(ctx context.Context, identity identitysync.Identity) (bool, error) {
+	err := s.checkRevoked(ctx, identity)
+	if errors.Is(err, ErrIdentityRevoked) {
+		return true, nil
+	}
+	return false, err
+}
+
 func (s Service) propose(ctx context.Context, account identitysync.Account) (Decision, error) {
 	decision := Decision{Account: account, Action: Review}
+	if account.Link != (identitysync.Identity{}) {
+		// Linked to another issuer: a person must look at it.
+		if !s.valid(account.Link) {
+			return decision, nil
+		}
+		decision.Action, decision.Identity = Linked, account.Link
+		revoked, err := s.isRevoked(ctx, account.Link)
+		if err != nil {
+			return Decision{}, err
+		}
+		if revoked {
+			decision.Action = Revoked
+		}
+		return decision, nil
+	}
 	if account.ID == "" || strings.TrimSpace(account.Email) == "" {
 		return decision, nil
 	}
@@ -120,6 +154,13 @@ func (s Service) propose(ctx context.Context, account identitysync.Account) (Dec
 		if s.valid(matches[0]) {
 			decision.Action = Reuse
 			decision.Identity = matches[0]
+			revoked, err := s.isRevoked(ctx, matches[0])
+			if err != nil {
+				return Decision{}, err
+			}
+			if revoked {
+				decision.Action = Revoked
+			}
 		}
 	}
 	return decision, nil
@@ -131,6 +172,15 @@ func (s Service) propose(ctx context.Context, account identitysync.Account) (Dec
 func (s Service) Apply(ctx context.Context, reviewed Decision, current identitysync.Account) error {
 	if current != reviewed.Account || (reviewed.Action != Reuse && reviewed.Action != Create) {
 		return errors.New("decision requires a fresh review")
+	}
+	// An account the application already reports as linked is never granted
+	// here: it is either linked with access (nothing to do) or linked without
+	// access (linked_no_access), and access removed on purpose must stay removed.
+	if current.Link != (identitysync.Identity{}) {
+		return fmt.Errorf("%w: account %s is linked to %s %s; single apply never grants a linked account. "+
+			"If it has no access, that is linked_no_access: restore access explicitly (grant the access role in the portal, "+
+			"which also clears an active revocation, or 'identity-sync restore' followed by a reviewed grant)",
+			ErrAccountAlreadyLinked, current.ID, current.Link.Issuer, current.Link.Subject)
 	}
 	identity := reviewed.Identity
 	if reviewed.Action == Create {

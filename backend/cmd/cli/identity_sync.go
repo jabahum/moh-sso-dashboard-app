@@ -145,6 +145,13 @@ func runPagePreviewOrApply(cmd *cobra.Command, app string, service identityrecon
 		if decision.Account.ID != accountID {
 			continue
 		}
+		switch decision.Action {
+		case identityreconcile.Revoked:
+			return identityreconcile.ErrIdentityRevoked
+		case identityreconcile.Linked:
+			return fmt.Errorf("%w: account %s is linked to %s; single apply never grants a linked account (restore access explicitly)",
+				identityreconcile.ErrAccountAlreadyLinked, decision.Account.ID, decision.Identity.Subject)
+		}
 		if decision.Action != identityreconcile.Reuse || decision.Identity.Subject != subject {
 			return errors.New("current match differs from the approved Keycloak subject")
 		}

@@ -306,8 +306,12 @@ func newIdentitySyncPreviewCommand() *cobra.Command {
 				return err
 			}
 			defer rt.Close()
-			service, _, _, err := rt.Service(cmd.Context(), app)
+			service, _, integration, err := rt.Service(cmd.Context(), app)
 			if err != nil {
+				return err
+			}
+			// Revoked identities are shown as revoked, never proposed for reuse.
+			if service, err = guardRevoked(cmd.Context(), rt, service, integration.ApplicationClientID); err != nil {
 				return err
 			}
 			fmt.Fprintln(cmd.ErrOrStderr(), app+" identity links use issuer "+service.Issuer)
