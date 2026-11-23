@@ -13,8 +13,6 @@ import (
 // Database-only identity-sync subcommands must not demand Keycloak admin
 // credentials from the root PersistentPreRunE.
 func TestDatabaseOnlyIdentitySyncCommandsNeedNoKeycloakAdmin(t *testing.T) {
-	root := &cobra.Command{Use: "moh-sso"}
-	root.AddCommand(newIdentitySyncCommand())
 	for args, wantLocal := range map[string]bool{
 		"run show":             true,
 		"run approve":          true,
@@ -27,6 +25,10 @@ func TestDatabaseOnlyIdentitySyncCommandsNeedNoKeycloakAdmin(t *testing.T) {
 		"revoke":               false,
 		"restore":              false,
 	} {
+		// A fresh tree per case: parsed flags persist on a cobra command, so
+		// "revocations --resume" would otherwise leak into "revocations".
+		root := &cobra.Command{Use: "moh-sso"}
+		root.AddCommand(newIdentitySyncCommand())
 		fields := append([]string{"identity-sync"}, strings.Fields(args)...)
 		sub, rest, err := root.Find(fields)
 		if err != nil {
