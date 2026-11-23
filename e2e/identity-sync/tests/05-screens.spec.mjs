@@ -15,18 +15,23 @@ const ADMIN_ACTOR = "portal:e2e.admin@e2e.test";
 
 test.afterAll(closeBrowser);
 
-/** Opens the RBAC workspace's Identity sync section for an application. */
+/**
+ * Opens the RBAC workspace's Identity sync section for an application: the
+ * "This application" scope, the application selector, then the section tab.
+ */
 async function openIdentitySync(page, clientId = "clims") {
   await page.goto(`${DASHBOARD}/portal/admin/rbac`);
+  const scope = page.getByRole("button", { name: "This application", exact: true });
+  await expect(scope).toBeVisible({ timeout: 60_000 });
+  if ((await scope.getAttribute("aria-pressed")) !== "true") await scope.click();
   const app = page.getByRole("combobox", { name: "Selected application" });
-  await expect(app).toBeVisible({ timeout: 60_000 });
   await app.fill(clientId);
   await page.getByRole("option", { name: new RegExp(`\\(${clientId}\\)$`) }).click();
-  const section = page.getByRole("button", { name: "Identity sync", exact: true });
-  if (!(await section.isVisible())) {
-    await page.getByRole("button", { name: "Operations" }).click();
-  }
-  await section.click();
+  await expect(app).toHaveValue(new RegExp(`\\(${clientId}\\)$`));
+  await page
+    .getByRole("tablist", { name: "Application sections" })
+    .getByRole("tab", { name: "Identity sync", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: "Integration" })).toBeVisible();
 }
 
