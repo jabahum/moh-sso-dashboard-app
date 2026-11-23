@@ -1,6 +1,314 @@
 # Modular distribution
 
-## Phase 1 implementation
+This page describes how the dashboard backend and frontend are split into
+independently versioned modules and composed into one distribution: the module
+contract, module stages, packaging and release, installation, disablement and
+verification. It is for developers extending or releasing modules and for
+operators building and deploying the distribution. Step-by-step developer
+procedures are in [Developer workflows](module-development.md), runtime procedures
+are in [Operator workflows](module-operations.md), and the mandatory platform
+foundation is described in [Platform core boundaries](platform-core.md). The
+[Development history](#development-history) at the end records how the current
+design was reached, phase by phase.
+
+## Overview
+
+Optional backend applications are compiled modules. Each one is registered with
+a module registry at startup, appears in a runtime inventory and can be disabled
+by configuration. A module's portable implementation lives in its own nested Go
+module under `backend/modules/<module-id>`, is released with an immutable,
+directory-prefixed tag and is consumed by the dashboard through a reviewed pin in
+`backend/go.mod`. Frontend applications and shared libraries are published npm
+packages consumed through reviewed production pins and a committed npm lock.
+
+The registry runs trusted, compiled code. It is not a sandbox and does not
+download code at runtime: changing a module version means building and deploying
+a new backend image.
+
+Mandatory platform capabilities (identity and sessions, authorization,
+application governance, contextual policy, audit recording and operations) are
+not optional modules and cannot be disabled. See
+[Platform core boundaries](platform-core.md).
+
+## Module contract
+
+The public module contract is in `backend/module`. It is a Gin adapter: it keeps
+route registration in the host and delegates inventory, validation and lifecycle
+management to the standard-library-only runtime in `backend/core`
+(`core.Runtime`). Composition lives in `backend/internal/api/modules.go`.
+Bootstrap constructs and initializes the registry before starting background
+workers or serving HTTP traffic.
+
+Each definition supplies identity, version, enabled state and optional dependency
+IDs, initialization and route registration callbacks. Dependencies are injected
+through constructors and closures. Public signatures use standard library and
+Gin types so future module consumers can import the contract without importing
+the host's internal packages.
+
+Register definitions in explicit dependency order. The registry validates IDs,
+versions, duplicate IDs, missing or incorrectly ordered dependencies and disabled
+dependencies before initialization. It preserves this order for startup and route
+registration. Disabled definitions appear in inventory but their callbacks are
+skipped.
+
+Initialization runs once. An initializer must return only after readiness and
+return cleanup even when it fails after partially acquiring resources. Workers
+must observe the supplied context. Cleanup must wait for them within its supplied
+shutdown context. On failure the registry cancels module contexts, then calls
+acquired cleanup callbacks in reverse order with a fresh bounded context. Normal
+shutdown also cancels module contexts and runs cleanup once in reverse order,
+before bootstrap closes database connections. Failed registries are discarded.
+
+Routes receive public, protected and admin groups that inherit host middleware.
+The public group has no authentication; its routes must validate their own
+access tokens and apply appropriate rate limits. The admin group is a URL
+namespace. Each module must apply the appropriate resource permissions or
+administrator requirement to its endpoints.
+
+### Composition and registration
+
+`NewModuleRegistry` in `backend/internal/api/modules.go` registers six module
+definitions, in this order: `metrics`, `audit`, `geojson`, `report-scheduler`,
+`announcements` and `admin-units`. Each reports the version of its selected Go
+dependency.
+
+Self-contained modules own their HTTP handlers, request/response DTOs, OpenAPI
+metadata and persistence. The host mounts them through the generic
+`internal/modulehttp` registrar, which bridges verified identity, request IDs and
+shared security capabilities into the module's standard HTTP request context.
+The registrar mounts every method/path pattern a module declares. Only operations
+whose OpenAPI security declaration is explicitly anonymous are public; missing or
+null security stays protected, and missing or invalid declarations reject
+registration. API generation merges module-owned operations and component
+schemas into the generated contract and rejects schema collisions.
+
+Only enabled modules are constructed. The host supplies caller-owned database
+pools and shared platform capabilities (verified administrator and permission
+checks, request IDs, per-user rate limits, core audit recording, storage and
+notification providers as each module requires). Required capabilities reject
+construction when missing and fail closed at runtime.
+
+## Module stages
+
+`docs/module-catalog.json` (catalogue schema 2) tracks every backend feature and
+every publishable frontend package. [Module coverage](module-coverage.md) is
+generated from it and from the reviewed production npm pins; use it for the
+per-module table of stage, integration, dependencies, workers, migration owner
+and next work.
+
+| Stage | Meaning |
+| --- | --- |
+| `core` | Stays in the trusted host as part of the mandatory platform. Cannot be disabled through `DISABLED_MODULES`. |
+| `planned` | Still uses legacy host wiring. Its workers and migrations have not been transferred to the registry. |
+| `registry-hosted` | Uses the compiled registry (inventory, disablement, lifecycle) but ships inside the host and reports the host build version. |
+| `published` | Has an independently versioned package artifact that the host consumes through a reviewed pin. |
+
+The catalogue also records each entry's integration: `host` for core and planned
+features, `adapter` when a published package is still wrapped by host adapters
+in `backend/internal/adapters/modules/<feature>`, and `self-contained` when the
+package owns its HTTP, persistence and API contract and no host feature or
+adapter tree is retained. Published modules must not retain directories in
+`backend/internal/features`.
+
+### Current status
+
+At the time of writing the catalogue lists 23 backend features and 23 frontend
+packages:
+
+- Six backend modules are `published` and `self-contained`: `admin_units`,
+  `announcements`, `audit`, `geojson`, `metrics` and `report_scheduler`.
+- Seven backend features are `core`: `auth`, `authsession`, `sessions`, `rbac`,
+  `system_rbac`, `health_context` and `platform`.
+- The remaining ten backend features are `planned`. No feature is currently
+  `registry-hosted`.
+- All 23 frontend packages are `published`.
+
+Selected backend module versions in `backend/go.mod`:
+
+| Go module | Selected version |
+| --- | --- |
+| `backend/modules/admin-units` | `v0.2.0` |
+| `backend/modules/announcements` | `v0.2.0` |
+| `backend/modules/audit` | `v0.2.0` |
+| `backend/modules/geojson` | `v0.2.0` |
+| `backend/modules/metrics` | `v0.2.0` |
+| `backend/modules/report-scheduler` | `v0.1.1-0.20261120164120-d9bb6f8c819f` |
+
+`backend/core` is consumed from the repository through a local `replace`
+directive rather than a published tag. Check `backend/go.mod` and
+[Module coverage](module-coverage.md) for the authoritative current values.
+
+## Packaging, publishing and pinning
+
+### Package layout
+
+Each published module has the module path
+`github.com/mohuganda/moh-sso-dashboard/backend/modules/<module-id>` and imports
+no dashboard implementation packages. Packages keep small, reviewed dependency
+graphs: GeoJSON and Administrative Units use only the standard library, Audit
+adds only UUID, Announcements and Report Scheduler use UUID and lib/pq, and
+Metrics uses Gin, UUID and lib/pq. Database drivers used only for testing belong to separate consumer
+modules. Packages report their dependency version, returning `dev` for local
+workspace or replacement builds.
+
+### Schema and migration ownership
+
+Published modules ship no migrations. They read and write tables in the shared
+primary schema, which the platform owns. Core migrations complete before module
+initialization, using the existing golang-migrate locking and dirty-state
+handling. Packages receive caller-owned pools; they neither open nor close
+infrastructure nor run migrations. Where a package depends on host-owned schema,
+it records that explicitly (for example, Report Scheduler's
+`schema-contract.json` records host ownership of scheduler migrations 40 through
+47). A future module that owns tables must define a migration stream before it
+can be extracted.
+
+### Local development
+
+For local development, create a Go workspace from `backend` with
+`go work init . ./modules/metrics` (substituting the module you are changing). If
+a workspace already exists, use `go work use ./modules/metrics`. Local workspace
+files are ignored by Git. Workspace builds report the module version as `dev`.
+Use `GOWORK=off` to verify the tagged dependency. There is no production
+filesystem replacement for published modules in the distribution dependency
+configuration.
+
+### Release a module version
+
+1. Verify the module's standalone tests and its dashboard integration using a
+   local workspace.
+2. Run the isolated package verifier (`infra/scripts/test-<module>-package.py`
+   and, where present, its HTTP or PostgreSQL consumer variants). These copy the
+   module outside the repository with an empty or private module cache,
+   workspaces and downloads disabled, check the exact dependency graph, run
+   build, vet and uncached race tests and build a separate consumer.
+3. Commit the module changes, create the directory-prefixed semantic version tag
+   (for example `backend/modules/metrics/v0.2.0`) and push that tag to the
+   upstream repository. Tags are immutable.
+4. Verify the public download from a separate consumer with `GOWORK=off`. The
+   release verifiers (`infra/scripts/test-<module>-release.py`) download the
+   version into a fresh module cache, check reviewed checksums, reject
+   replacements, build and run an independent consumer and compare the complete
+   published artifact with the local module. They need network access.
+5. Update the pinned dependency with `go get`, record checksums in
+   `backend/go.sum`, regenerate API contracts and commit the distribution
+   integration.
+
+Publishing a tag does not change a running deployment. Build a new backend image
+to consume a release. The compiled inventory reports the selected dependency
+version, and deployment bundle metadata records the exact pin.
+
+`make -C backend modules-check` discovers every direct `backend/modules/*/go.mod`
+package automatically and vets and tests it. The normal backend test command and
+backend release/PR checks include this step because `go test ./...` on the host
+does not traverse nested Go modules.
+
+### Frontend packages
+
+Production consumes released npm modules using a committed npm lock and
+integrity-checked `npm ci` installation. Development uses workspace modules. CI
+validates catalogue coverage against source directories, publishable workspaces,
+production pins/lock and the generated coverage guide.
+
+## Manifests and hosted applications
+
+The Systems page provides administrator-only manifest upload, validation,
+preview and import against the Postgres system registry, navigation model,
+access-role tables and lifecycle workflow. External applications use their
+deployed URLs. Internal applications reference an enabled compiled module.
+Separately hosted single-spa applications use `/apps/extensions/<application-id>`
+routes and a browser module entry URL; the runtime endpoint checks application
+access and activation before returning that entry point. The schema, examples,
+API contracts and configuration ownership rules are documented in
+`examples/manifests/README.md`.
+
+## Distribution packaging and installation
+
+- **Images.** The specialized frontend Dockerfile caches toolchain and published
+  module installation before copying source; BuildKit keeps the Go and npm
+  download caches across builds. Backend builds use the published Go
+  dependencies with `GOWORK=off` and checksum verification.
+- **Compose distribution.** The distribution Compose entry point reuses the
+  production gateway and services, builds versioned application images,
+  persists core, Observatory, Redis and upload data, and supports an external
+  Keycloak. See `infra/distribution.md`.
+- **Release.** The GHCR image workflow builds both images and runs the
+  distribution installation gate. Component version/SHA tags and the image-pair
+  deployment bundle are the release mechanism. Bundles record the compiled
+  module versions, exact frontend versions and hashes of `go.mod`, `go.sum` and
+  the production npm lock.
+- **Deployment.** Distribution server deployments use digest-pinned images with
+  no source-build settings. Runtime verification compares the complete frontend
+  module set with the approved pins. Use
+  `infra/server/deploy.distribution.json.example` for separate staging and
+  production configurations; the trusted-build selector and GitHub environment
+  deployment workflow promote the same successful main-build bundle by run ID.
+
+## Disablement and inventory
+
+Set `DISABLED_MODULES` to a comma-separated list of optional module IDs
+(`metrics`, `audit`, `geojson`, `report-scheduler`, `announcements`,
+`admin-units`) to omit those modules at startup. The default empty value enables
+all of them. The setting takes effect on restart. Unknown IDs and mandatory core
+feature IDs fail startup. `PLATFORM_PROFILE=core` disables all six packaged
+modules; see [Platform core boundaries](platform-core.md#startup-profiles).
+
+Disabled modules are not constructed, their routes are not registered and their
+workers do not run, but data is retained and becomes available again when the
+module is re-enabled. Notable effects:
+
+- Disabling `audit` removes the seven read routes; core security/event recording
+  continues.
+- Disabling `report-scheduler` removes its public delivery-download routes,
+  protected routes and worker.
+- Disabling `announcements` removes all 26 endpoints, including public listings
+  and attachment downloads. Previously queued notifications are not cancelled.
+- Disabling `admin-units` removes all nine `/api/v1/visualizer/adminunits/*`
+  routes.
+
+`GET /api/v1/admin/modules` returns the normal success envelope with an array of
+module IDs, versions and enabled states. The endpoint inherits session
+authentication, audit and rate limiting middleware and requires administrator
+access. Frontend navigation is managed by the application registry and
+Keycloak metadata. See [Operator workflows](module-operations.md) for affected
+applications, rollout and recovery.
+
+## Verification
+
+Run from `backend`.
+
+```sh
+make modules-check
+go test ./module ./internal/api/... ./internal/bootstrap ./internal/config ./internal/architecture
+go test -race ./module ./internal/api
+(cd modules/metrics && GOWORK=off go test -race ./...)
+go run ./cmd/cli openapi generate
+go test ./internal/apidocgen
+go build ./cmd/server
+```
+
+Other checks used for module work:
+
+- `python3 infra/scripts/check-module-catalog.py --write` regenerates
+  [Module coverage](module-coverage.md); CI validates the catalogue and a Go
+  architecture test checks it against the compiled inventory.
+- `infra/scripts/test-<module>-package.py` and `test-<module>-release.py` verify
+  standalone packages and published releases (see
+  [Release a module version](#release-a-module-version)).
+- `python3 infra/scripts/test-platform-core.py` verifies the portable core in
+  isolation.
+- The real-Keycloak distribution fixture
+  (`infra/scripts/test-distribution-auth.py`, full and core profiles) checks
+  module inventory, permissions, disablement and re-enablement, backup/restore,
+  restart and full -> core -> full data preservation.
+
+## Development history
+
+The records below are kept in chronological order. They describe the state at
+the time of each phase; statements such as "next" or "remains" refer to that
+point, not to the current design described above.
+
+### Phase 1 implementation
 
 The backend now has a public module contract in `backend/module`. Composition
 lives in `backend/internal/api/modules.go`. Bootstrap constructs and initializes
@@ -23,33 +331,11 @@ module IDs, versions and enabled states. The endpoint inherits session
 authentication, audit and rate limiting middleware and requires administrator
 access.
 
-## Module contract
+The module contract introduced in this phase (definitions, dependency order,
+initialization, cleanup and route groups) is described in
+[Module contract](#module-contract); the public route group was added later.
 
-Each definition supplies identity, version, enabled state and optional dependency
-IDs, initialization and route registration callbacks. Dependencies are injected
-through constructors and closures. Public signatures use standard library and
-Gin types so future module consumers can import the contract without importing
-the host's internal packages.
-
-Register definitions in explicit dependency order. The registry validates IDs,
-versions, duplicate IDs, missing or incorrectly ordered dependencies and disabled
-dependencies before initialization. It preserves this order for startup and route
-registration. Disabled definitions appear in inventory but their callbacks are
-skipped.
-
-Initialization runs once. An initializer must return only after readiness and
-return cleanup even when it fails after partially acquiring resources. Workers
-must observe the supplied context. Cleanup must wait for them within its supplied
-shutdown context. On failure the registry cancels module contexts, then calls
-acquired cleanup callbacks in reverse order with a fresh bounded context. Normal
-shutdown also cancels module contexts and runs cleanup once in reverse order,
-before bootstrap closes database connections. Failed registries are discarded.
-
-Routes receive protected and admin groups that inherit host middleware. The
-admin group is a URL namespace. Each module must apply the appropriate resource
-permissions or administrator requirement to its endpoints.
-
-## Repository audit and next phases
+### Repository audit and next phases
 
 | Area | Current integration | Next work |
 | --- | --- | --- |
@@ -62,7 +348,7 @@ permissions or administrator requirement to its endpoints.
 | Access and navigation | Keycloak, permission middleware and reviewed manifests in the existing system registry | Preserve authorization and lifecycle governance during each extraction |
 | Deployment | Versioned images, immutable deployment bundles and staging promotion | Follow the documented release, compatibility and recovery workflow |
 
-## Phase 2 packaging
+### Phase 2 packaging
 
 Metrics has the public module path
 `github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics`. It contains
@@ -109,19 +395,9 @@ update the pinned dependency with `go get`, regenerate API contracts and commit
 the distribution integration. See `backend/modules/metrics/README.md` for the
 public constructor and route contracts.
 
-## Verification
+#### Phase 2 verification
 
-Run from `backend`.
-
-```sh
-make modules-check
-go test ./module ./internal/api/... ./internal/bootstrap ./internal/config ./internal/architecture
-go test -race ./module ./internal/api
-(cd modules/metrics && GOWORK=off go test -race ./...)
-go run ./cmd/cli openapi generate
-go test ./internal/apidocgen
-go build ./cmd/server
-```
+Phase 2 used the commands listed under [Verification](#verification).
 
 Lifecycle regression tests cover composition validation, partial initialization
 rollback, cancellation, disabled callbacks and idempotent cleanup. Router tests
@@ -139,7 +415,7 @@ source paths.
 Full Docker image and database-backed runtime checks remain pending because the
 local Docker daemon was unavailable during Phase 2 verification.
 
-## Phase 3 manifests
+### Phase 3 manifests
 
 The Systems page now provides administrator-only manifest upload, validation,
 preview and import. The implementation uses the current Postgres system registry,
@@ -174,7 +450,7 @@ The published-npm production build could not resolve the existing pinned
 verification; published-npm deployment verification requires that release to be
 available. Live Keycloak provisioning and production deployment were not run.
 
-## Phase 4 distribution packaging
+### Phase 4 distribution packaging
 
 Production now consumes released npm modules (`1.3.2`, with report-scheduler
 `0.4.2`) using a committed npm lock and integrity-checked `npm ci` installation.
@@ -201,7 +477,7 @@ mounts, database/Redis readiness, module versions and core database persistence
 across container recreation. It cleaned up its own containers and volumes.
 Authenticated external Keycloak and production deployment were not exercised.
 
-## Phase 5 release and installation verification
+### Phase 5 release and installation verification
 
 The existing GHCR image workflow now builds the frontend with the pinned npm
 Dockerfile. Its validation dependency includes the new distribution installation
@@ -234,7 +510,7 @@ Temporary test resources were removed. These are local verification results;
 publishing images and deploying to real staging/production require the merged
 workflows and configured operator environments and were not triggered here.
 
-## Phase 6 expansion and module workflows
+### Phase 6 expansion and module workflows
 
 The next bounded expansion integrates audit read APIs and GeoJSON serving into
 the compiled registry. Their implementations remain hosted by the backend and
@@ -273,7 +549,7 @@ checks, including enabled/disabled audit and GeoJSON APIs and continued core aud
 recording. Temporary fixture resources were removed. No additional independent
 Go package release or live deployment was performed in this expansion step.
 
-## Report Scheduler extraction: lifecycle phase
+### Report Scheduler extraction: lifecycle phase
 
 The scheduler now appears as `report-scheduler` in the compiled module inventory.
 Its dependency ports and host adapters were isolated in the first extraction
@@ -293,7 +569,7 @@ disablement. The authenticated container fixture also checks scheduler role acce
 heartbeat preservation while disabled and a fresh worker when re-enabled.
 Standalone packaging, publication and a pinned dependency remain the next phases.
 
-## Report Scheduler extraction: standalone package phase
+### Report Scheduler extraction: standalone package phase
 
 `backend/modules/report-scheduler` now contains a standalone Go module with public
 types, service, worker, dependency ports, Health BI client and PostgreSQL adapters.
@@ -312,7 +588,7 @@ dependency can be selected. The catalogue accurately keeps the runtime stage as
 registry-hosted. Phase 4 publishes/verifies an immutable version and replaces the
 retained host implementation with package adapters and a reviewed dependency pin.
 
-## Report Scheduler extraction: released dependency integration
+### Report Scheduler extraction: released dependency integration
 
 Report Scheduler `v0.1.0` is published under the immutable nested module tag
 `backend/modules/report-scheduler/v0.1.0`. A clean-cache download verified its
@@ -333,8 +609,7 @@ tag does not change a running deployment. The runtime fixture verifies the actua
 compiled version, real Keycloak permissions, public/protected route disablement,
 stopped heartbeat and worker restart/re-enablement.
 
-
-## Audit extraction: released dependency integration
+### Audit extraction: released dependency integration
 
 Audit `v0.1.0` is published under `backend/modules/audit/v0.1.0`, pointing to
 release commit `bd1bc5d095eaf5db66fccc108b0f1686defb897c`. A clean download in
@@ -389,8 +664,7 @@ records were removed; existing application volumes were not changed.
 The integration branch has been pushed to origin. Building or pushing source
 does not publish this image to a registry or deploy a running installation.
 
-
-## GeoJSON extraction: asset boundary phase
+### GeoJSON extraction: asset boundary phase
 
 GeoJSON is the next extraction after Audit. It already participates in registry
 enablement/disablement and has no worker or migration lifecycle. Phase 1
@@ -415,8 +689,7 @@ current. Regression coverage includes all three permission alternatives, denial
 before storage access, actual bundled files, conditional/range requests and
 stream closure on failure.
 
-
-## GeoJSON extraction: portable service phase
+### GeoJSON extraction: portable service phase
 
 Phase 2 moves the fixed public layer-to-filename mapping into `ResolveLayer`
 and portable read orchestration into `Service.Open`. The service accepts the
@@ -444,8 +717,7 @@ GeoJSON/API/bootstrap race tests, vet, existing standalone module checks,
 catalogue validation and its seven tests also passed. All 366 OpenAPI routes
 remain current.
 
-
-## GeoJSON extraction: standalone package phase
+### GeoJSON extraction: standalone package phase
 
 The standalone release candidate at `backend/modules/geojson` declares
 `github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson` and Go 1.25.4.
@@ -477,8 +749,7 @@ host implementation byte for byte. Existing module checks, the full backend
 suite, vet, all 366 OpenAPI routes, catalogue validation and its seven tests,
 and workflow actionlint checks also passed.
 
-
-## GeoJSON extraction: released dependency integration
+### GeoJSON extraction: released dependency integration
 
 GeoJSON `v0.1.0` is published under the immutable nested module tag
 `backend/modules/geojson/v0.1.0`, pointing to release commit
@@ -522,8 +793,7 @@ core audit recording and scheduler stop/resume. Disposable fixture containers
 and volumes were removed on completion. The library release and source push
 do not publish this image to a registry or deploy a running installation.
 
-
-## Announcements extraction: dependency boundary phase
+### Announcements extraction: dependency boundary phase
 
 Announcements is the next selected extraction. Storage Locations, Document
 Templates and Documents are deferred and unchanged. Phase 1 introduces
@@ -558,8 +828,7 @@ filtering, both client identifiers, cancellation before legacy calls, attachment
 checksums and cleanup, notification payload forwarding, and permission denial
 before dependency access.
 
-
-## Announcements extraction: portable models and delivery phase
+### Announcements extraction: portable models and delivery phase
 
 Phase 2 introduces 20 feature-owned persistence model/input types, local enum
 values, service inputs and a 53-method repository contract without SQLC or host
@@ -863,7 +1132,7 @@ re-enablement with data parity, backup/restore, core audit recording and
 scheduler stop/resume. Warehouse SQL, migrations and worker ownership are
 unchanged. The release tag is upstream; publication does not deploy the backend.
 
-### Platform Core phase 1 — contracts and dependency boundaries
+### Platform core phase 1 — contracts and dependency boundaries
 
 Created `feat/platform-core` from the completed Administrative Units integration.
 `backend/core` now owns the framework-independent compiled-module inventory,
@@ -903,7 +1172,7 @@ attachments, backup/restore, clean shutdown/restart, module disablement/
 re-enablement, continued audit recording and scheduler worker stop/resume.
 No release was published, deployment performed or minimal-core boot claimed.
 
-### Platform Core phase 2 — identity/session and authorization contracts
+### Platform core phase 2 — identity/session and authorization contracts
 
 Added standard-library-only verified-claim identity, generic session-store,
 authorization-resolver/access and system metadata contracts to core. No token
@@ -944,7 +1213,7 @@ and the existing permissions, governance, warehouse, attachment, backup/restore,
 shutdown/restart, disablement, audit and scheduler recovery checks. No token/
 cookie format, schema, published dependency pin, release or deployment changed.
 
-### Platform Core phase 3 — application governance and contextual policy
+### Platform core phase 3 — application governance and contextual policy
 
 Added portable application registry/metadata, lifecycle and review-authority
 contracts. RBAC adapts its authoritative registry to the core descriptor while
@@ -979,7 +1248,7 @@ lifecycle activation and idempotence, warehouse/announcement/GeoJSON access,
 backup/restore, clean shutdown/restart, module disablement/re-enablement,
 continued core audit recording and scheduler worker stop/resume.
 
-### Platform Core phase 4 — core-only startup and optional-provider wiring
+### Platform core phase 4 — core-only startup and optional-provider wiring
 
 Added explicit `PLATFORM_PROFILE=full|core` selection with the full distribution
 as default. Core composes mandatory identity/session, authorization/governance,

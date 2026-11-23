@@ -1,8 +1,10 @@
-# Backend Microservice Readiness
+# Backend microservice readiness
+
+This page sets the rules that keep backend feature boundaries explicit: allowed imports, feature contracts, dependency direction, event and observability expectations, and the criteria a feature must meet before extraction. It is for backend developers adding or changing features. For how optional features are packaged and released as independently versioned modules, see [Modular distribution](modular-distribution.md).
 
 The backend is intentionally still a modular monolith. Phase 12 makes those module boundaries explicit so individual features can be extracted later without a rushed rewrite.
 
-## Current Architecture Rule
+## Current architecture rule
 
 Feature packages live under:
 
@@ -19,7 +21,7 @@ A feature may import:
 
 A feature should not import another feature unless the dependency is listed as an approved exception.
 
-## Enforced Boundary Check
+## Enforced boundary check
 
 The backend has an architecture test:
 
@@ -45,7 +47,7 @@ Approved cross-feature imports today:
 
 When adding a new cross-feature import, first ask whether the shared concept should become a small shared package or an explicit interface passed through bootstrap. Add a boundary exception only when the coupling is intentional and documented.
 
-## Feature Contracts
+## Feature contracts
 
 Each extractable feature should expose stable contracts at the HTTP and service boundary:
 
@@ -58,7 +60,7 @@ Each extractable feature should expose stable contracts at the HTTP and service 
 
 Handlers must return DTOs and safe API errors. They should not return sqlc rows, database models, Keycloak admin payloads, or raw internal error strings.
 
-## Dependency Direction
+## Dependency direction
 
 Keep the dependency direction boring:
 
@@ -76,7 +78,7 @@ Avoid:
 - repositories calling handlers or services
 - shared packages importing feature packages
 
-## Event And Outbox Readiness
+## Event and outbox readiness
 
 Do not add a broker yet. Shape business events as explicit in-process events so they can later become outbox rows or messages.
 
@@ -117,7 +119,7 @@ type Event struct {
 
 Start with in-process publishing behind an interface. Add a persistent outbox only when retry guarantees and service extraction require it.
 
-## Observability Contract
+## Observability contract
 
 Every extracted service should preserve:
 
@@ -141,7 +143,7 @@ Current HTTP observability behavior:
 
 When adding async work, pass `context.Context` through so event publishers, logs, and audit records keep the same correlation ID.
 
-## Extraction Order
+## Extraction order
 
 Recommended extraction order when the monolith boundaries are stable:
 
@@ -160,7 +162,7 @@ Recommended extraction order when the monolith boundaries are stable:
 
 Do not split `auth` until session, cookie, refresh, and Keycloak callback behavior is fully covered by tests.
 
-## Database Split Risks
+## Database split risks
 
 The current database is shared. Before extracting a feature:
 
@@ -172,7 +174,7 @@ The current database is shared. Before extracting a feature:
 
 Avoid splitting the database before table ownership is clear.
 
-## Acceptance For Future Extraction
+## Acceptance for future extraction
 
 A feature is ready to extract when:
 

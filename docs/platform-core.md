@@ -1,11 +1,19 @@
 # Platform core boundaries
 
+This page defines the mandatory platform core: which capabilities it owns, the
+portable contracts in `backend/core`, dependency rules, startup profiles and
+verification. It is for backend developers and operators working on the core or
+on optional modules; module packaging and release are covered in
+[Modular distribution](modular-distribution.md).
+
 The platform core is the mandatory foundation used by optional applications.
 Separately packaged capabilities can still be mandatory. The module inventory
 and `DISABLED_MODULES` describe optional compiled applications, not a switch for
 authentication, authorization or governance.
 
 ## Current implementation: phases 1–4
+
+### Module runtime (phase 1)
 
 `backend/core` owns framework-independent module inventory, composition
 validation, initialization, cancellation, rollback and cleanup. It uses only
@@ -36,6 +44,8 @@ health-context selection middleware and infrastructure. Phases 2–3 share exist
 access predicates and decision rules through portable contracts. The core runtime runs trusted compiled
 code; it is not a sandbox or runtime code downloader.
 
+### Identity, sessions and authorization (phase 2)
+
 Phase 2 adds portable `Identity`, `SessionStore[T]`, `AuthorizationResolver`,
 `Access` and `SystemAccess` contracts. Identity carries verified subject/role
 claims rather than credentials. The generic session payload type belongs to the
@@ -63,6 +73,8 @@ fallback, session TTL algorithm or persistence implementation moved into core.
 Authorization contracts do not authenticate a caller: the host must verify
 credentials and apply its authentication/context guards first.
 
+### Application governance (phase 3)
+
 Phase 3 adds `Application` and a read-only `ApplicationRegistry` contract.
 The RBAC adapter preserves registry identity, launch/navigation metadata,
 ownership/support information, lifecycle/integration/version, visibility and
@@ -78,6 +90,8 @@ requires reconfiguration/review before activation. The host still normalizes
 requests, validates launch/navigation behavior and enabled access roles, and
 serializes lifecycle/configuration changes with audit events in one transaction.
 Reviewed manifest import, review tokens and provisioning remain host-owned.
+
+### Contextual authorization (phase 3)
 
 `ContextAuthorization[ID]`, `ContextAccessResolver[ID,E]` and
 `ContextDecision[E]` describe combined functional/system/context decisions.
@@ -259,7 +273,6 @@ make -C backend modules-check contracts-check
 python3 infra/scripts/test-distribution-auth.py --backend-image <candidate> --profile core
 python3 infra/scripts/test-distribution-auth.py --backend-image <candidate> --profile full
 ```
-
 
 ## Self-contained HTTP modules
 
