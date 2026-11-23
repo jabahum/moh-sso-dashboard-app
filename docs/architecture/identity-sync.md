@@ -290,7 +290,9 @@ named reviewer.
 `resume` processes approved rows that were attempted but neither finished nor
 reached a final state. A row with `link_status=linked` skips steps 0–3: no
 account re-read, no directory lookup, no `PUT`. Only the revocation check and
-the grant run, so the link is never recreated. Within each call, HTTP retries
+the grant run, so the link is never recreated. Every apply or resume call that
+processes a row still adds one to its `attempts`, so a row granted on its
+first resume shows `attempts=2`. Within each call, HTTP retries
 follow the contract's backoff rules (the connector does this); across calls,
 resume is the retry. The run ends `completed`, or `failed` while an attempted,
 approved row still has work left.

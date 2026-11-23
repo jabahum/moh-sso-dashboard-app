@@ -147,7 +147,7 @@ test("POES: invitation for an account without a Keycloak user, reuse, and idempo
   ({ rows } = showRun(runId));
   expect(showRun(runId).run.status).toBe("completed");
   expect(rows["3"]).toMatchObject({ linkStatus: "linked", grantStatus: "granted", attempts: 1 });
-  expect(rows["3"].proposedSubject ?? kcId(202)).toBe(kcId(202));
+  expect(rows["3"].proposedSubject).toBe(kcId(202));
   expect(rows["6"]).toMatchObject({ userStatus: "invited", linkStatus: "linked", grantStatus: "granted", attempts: 1 });
 
   // Keycloak: one new user, unverified, with the invitation actions and the origin marker.
