@@ -60,10 +60,14 @@ def check_metadata(version):
         fail(f'backend/core/go.mod must declare module {MODULE}')
     if re.search(r'^\s*require\b', gomod, re.M):
         fail('backend/core/go.mod must have no require lines (standard library only)')
+    # The module is zipped from backend/core alone, so its license must live there.
+    license_file = CORE / 'LICENSE'
+    if not license_file.is_file() or 'Permission is hereby granted' not in license_file.read_text():
+        fail('backend/core/LICENSE is missing; the published module would carry no license')
     changelog = (CORE / 'CHANGELOG.md').read_text()
     if not re.search(r'^## ' + re.escape(version) + r'\b', changelog, re.M):
         fail(f'backend/core/CHANGELOG.md has no "## {version}" section')
-    print(f'PASS: version {version}, module path, no requirements, changelog section')
+    print(f'PASS: version {version}, module path, no requirements, license, changelog section')
 
 
 def check_local(version):
