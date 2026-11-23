@@ -45,9 +45,10 @@ exercises database and upload restoration with fixture data.
 
 The existing `Build & Push Images` workflow now uses the pinned npm Dockerfile
 for the frontend and runs the distribution installation gate before publishing.
-Main builds produce SHA-tagged GHCR images and a `deployment-bundle` containing
-their verified digests. Component release tags continue to publish their numeric
-image versions through the existing release workflows.
+Main builds produce GHCR images tagged `sha-<short commit>` and `latest`, and a
+`deployment-bundle` containing their verified digests. Pushing a component release
+tag (`backend/v*` or `frontend/v*`) runs the same workflow, which publishes that
+component's numeric image version.
 
 After merging the implementation, use a successful main build's run ID with
 `Deploy Verified Image Bundle`, selecting `staging`. Configure that GitHub

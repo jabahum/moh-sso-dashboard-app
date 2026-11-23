@@ -24,11 +24,11 @@ go run ./cmd/cli openapi validate
 
 ## Frontend tooling
 
-Run frontend commands from `frontend/`. With `nvm`, use the project Node version first:
+Run frontend commands from `frontend/`. With `nvm`, use the project Node version first. `nvm use` reads `frontend/.nvmrc` (currently 20.20.1); CI, the release workflows and the frontend Docker images use Node 22.
 
 ```sh
 source ~/.nvm/nvm.sh
-nvm use 22
+nvm use
 ```
 
 Useful checks:
@@ -38,7 +38,7 @@ npm run config:validate
 npm run architecture:check
 npm run mf:doctor
 npm run deploy:doctor
-npm run version:check
+npm run version:audit
 npm run audit:packages
 npm run audit:import-map
 npm run audit:publishability
@@ -77,7 +77,7 @@ Frontend:
 
 ```sh
 source ~/.nvm/nvm.sh
-nvm use 22
+nvm use
 npm run typecheck
 npm run lint
 npm run build:shell

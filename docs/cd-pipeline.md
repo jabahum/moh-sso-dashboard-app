@@ -126,7 +126,7 @@ its corresponding known-host entry in GitHub. Do not blindly trust a key scan.
 | `/etc/moh-sso/secrets/db_password.txt` | Primary database credential. |
 | `/etc/moh-sso/secrets/keycloak_admin_client_secret.txt` | Keycloak service-account client secret. |
 | `/etc/moh-sso/secrets/keycloak_web_client_secret.txt` | Browser-login client secret. |
-| `/etc/moh-sso/trusted-proxies.conf` | Used only for `mode=gateway`; exact trusted HTTPS proxy addresses. Overrides the bundled default mount. |
+| `/etc/moh-sso/trusted-proxies.conf` | Used only for `mode=gateway` and `mode=distribution`; exact trusted HTTPS proxy addresses. Overrides the bundled default mount. |
 | `/opt/moh-sso/incoming` | Uploaded public release bundles and extraction helpers. |
 | `/opt/moh-sso/releases` | Versioned public deployment infrastructure, one directory per build. |
 | `/opt/moh-sso/state` | Restricted runtime env snapshots, lock, current/previous deployment records, pending recovery state and audit history. |
@@ -148,6 +148,7 @@ Select one topology in `deploy.json`:
 - `prod`: host Nginx reaches localhost ports 3000/9000.
 - `remote`: Nginx on another machine reaches only the application's private IP.
 - `gateway`: container gateway exposes its configured listener; applications have no host ports.
+- `distribution`: the modular distribution stack with managed core and Observatory databases (`docker-compose.distribution.release.yml`); start from `infra/server/deploy.distribution.json.example` and see `infra/server/README.md`. It also needs `OBSERVATORY_DB_PASSWORD_SECRET_FILE` in `secret_files`.
 
 Use a valid `public_base_url` for that environment, e.g. a staging domain on the
 staging host. Keep `verify_public_edge=true` after TLS/DNS/proxy setup; redirects,

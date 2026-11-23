@@ -9,8 +9,8 @@ This page records the authentication, configuration and deployment hardening app
 - Refresh returns `503 SESSION_UNAVAILABLE` if Redis cannot read or persist the session. Read outages preserve the browser session without exchanging tokens. Failed writes after token rotation clear the session and legacy token cookies, preserving in-flight OAuth cookies. A successful refresh audit is recorded only after persistence succeeds.
 - The shell loads the selected `config.js` through Vite's base path. Hostname no longer overrides the selected microfrontend mode. `npm run config:dev`, `config:local-remote`, and `config:prod` select the runtime explicitly. Production builds continue to use the existing production API URL.
 - PR checks include architecture/configuration checks and an independent production frontend build with import-map, staged-runtime, and bundle-budget checks.
-- Deployment requires backend readiness, validates frontend release tags, and checks the served shell, runtime config, all portal app/package entrypoints, and shell assets. The verifier rejects missing assets and SPA HTML fallbacks. The existing Node-based frontend image supplies its runtime. This is an asset smoke check, not a browser login test or a public reverse-proxy check.
-- Deployment failures, including restart failures, trigger rollback through an exit trap. A previously successful deployment must have recorded its image tags for automatic rollback to be possible.
+- Deployment verification (`verify` in `infra/scripts/cd_server.py`) requires backend `/health/ready`, matches the backend `/version` and frontend `/portal/version-manifest.json` version and commit against the deployment manifest, and runs `infra/scripts/verify-frontend-deployment.mjs` against the served shell, runtime config, import map, all portal app/package entrypoints and shell assets. The verifier rejects missing assets and SPA HTML fallbacks; it runs in a separate `node:22-alpine` container on the frontend container's network. When `verify_public_edge` is enabled, the public `/portal/`, `/ssobackend/health/ready`, `/ssobackend/swagger/openapi.json` and `/ssobackend/version` URLs are also checked. None of this is a browser login test.
+- A failed rollout is rolled back by the CD transaction in `infra/scripts/cd_server.py`: it restores the previous verified release (image digests plus infrastructure/env snapshot) recorded in `state/deployment.json`. The first managed deployment has no previous release to restore. See [backend rollback](../rollback.md).
 
 ## Verification
 
@@ -53,7 +53,7 @@ FRONTEND_SMOKE_URL=http://127.0.0.1:3000/portal/ node infra/scripts/verify-front
 
 Use `npm run config:dev` before returning to local development. Configuration selection writes `frontend/public/config.js`.
 
-Implementation-session verification: the five isolated Node verifier tests passed, and the edited workflows passed YAML parsing and shell syntax checks. Go tests, the frontend build, and browser flows were not executed because the connected workspace did not expose a command runner. CI must pass before release.
+CI (see [CI checks](../ci-checks.md)) must pass before release.
 
 ## Remaining reliability work
 

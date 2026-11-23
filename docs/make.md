@@ -13,8 +13,8 @@ root Makefile; use `make -C backend help` for the backend's own commands.
   requires a running Docker daemon.
 - API generation/check/export: Go matching `backend/go.mod`, with Go modules
   available. A running application or production credentials are not required.
-- Frontend manifests: Node 22, npm and installed frontend dependencies (`cd
-  frontend && npm ci`).
+- Frontend manifests: Node at the version in `frontend/.nvmrc` (20.20.1; CI uses
+  Node 22), npm and installed frontend dependencies (`cd frontend && npm ci`).
 - Infrastructure contracts: Python 3, Docker Compose CLI and jq.
 - Runtime/Nginx checks: a running Docker daemon; the Nginx suite also uses OpenSSL.
   Runtime checks may download images/packages to build their disposable fixtures.
@@ -31,6 +31,7 @@ root Makefile; use `make -C backend help` for the backend's own commands.
 | `gateway` | Production plus container Nginx; app ports remain unpublished | `infra/env/prod.env` |
 | `remote` | Production reachable from Nginx on another machine | `infra/env/prod.env` plus `infra/env/remote-proxy.env` |
 | `external` | Development with external Keycloak | `infra/env/external-dev.env` |
+| `distribution` | Pinned-module distribution stack (`infra/compose/docker-compose.distribution.yml`); see [modular distribution](../infra/distribution.md). Not listed by `make help`. | `infra/env/prod.env` |
 
 Prepare private files from the corresponding examples and edit them before use:
 
