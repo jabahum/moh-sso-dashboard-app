@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
 	documenttemplates "github.com/moh-sso-dashboard/internal/features/document_templates"
-	documentRepo "github.com/moh-sso-dashboard/internal/features/documents"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	logger "github.com/moh-sso-dashboard/internal/log"
 	"github.com/moh-sso-dashboard/internal/model"
+	documentRepo "github.com/moh-sso-dashboard/internal/repository/document_imports"
 	processRepo "github.com/moh-sso-dashboard/internal/repository/processes"
 
 	"github.com/moh-sso-dashboard/internal/storage"

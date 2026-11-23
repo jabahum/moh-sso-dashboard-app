@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	adminunits "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcements "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	audit "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	documents "github.com/mohuganda/moh-sso-dashboard/backend/modules/documents"
 	geojson "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metrics "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportScheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -80,6 +82,12 @@ func documentationHandlers() router.HandlerSet {
 	}
 	var err error
 	handlers.StorageLocations, err = storagelocations.NewModule(storagelocations.Dependencies{Database: new(sql.DB)})
+	if err != nil {
+		panic(err)
+	}
+	handlers.Documents, err = documents.NewModule(documents.Dependencies{
+		Database: new(sql.DB), StorageLocations: inertDocumentLocations{}, FileStores: inertDocumentStores{},
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -177,4 +185,16 @@ func moduleOperations(definitions object) (map[string]object, error) {
 		}
 	}
 	return contracts, nil
+}
+
+type inertDocumentLocations struct{}
+
+func (inertDocumentLocations) GetByID(context.Context, string) (documents.Location, error) {
+	return documents.Location{}, errors.New("documentation handler")
+}
+
+type inertDocumentStores struct{}
+
+func (inertDocumentStores) Get(string) (documents.FileStore, error) {
+	return nil, errors.New("documentation handler")
 }

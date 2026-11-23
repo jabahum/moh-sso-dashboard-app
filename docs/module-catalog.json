@@ -126,9 +126,9 @@
     },
     {
       "id": "documents",
-      "stage": "planned",
+      "stage": "published",
       "scope": "Document ingestion, metadata and processing",
-      "moduleId": "",
+      "moduleId": "documents",
       "dependencies": [
         "storage_locations",
         "blob-storage",
@@ -137,11 +137,11 @@
         "notifications"
       ],
       "workers": [
-        "host document processing worker"
+        "registry-owned document processing worker"
       ],
       "migrations": "core and upload database",
-      "next": "Move job claims, cancellation, readiness and shutdown with the domain; define storage and processor ports first.",
-      "integration": "host"
+      "next": "Built from the repository through a local replace until backend/core v0.2.0 and this module are tagged; then pin the release in backend/go.mod.",
+      "integration": "self-contained"
     },
     {
       "id": "email",

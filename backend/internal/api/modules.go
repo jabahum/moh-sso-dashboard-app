@@ -16,6 +16,7 @@ import (
 	adminunitsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcementmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	auditmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	documentsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/documents"
 	geojsonmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	schedulermodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -118,6 +119,19 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 		},
 		Register: func(routes module.Routes) {
 			modulehttp.Register(routes.Protected, handlers.StorageLocations)
+		},
+	}, module.Definition{
+		Info:     module.Info{ID: documentsmodule.ID, Version: documentsmodule.Version(), Enabled: enabled[documentsmodule.ID]},
+		Requires: []string{storagelocationsmodule.ID},
+		Initialize: func(ctx context.Context) (module.Stop, error) {
+			if handlers.Documents == nil {
+				return nil, errors.New("documents module is required")
+			}
+			// Runs the document processing worker until shutdown.
+			return handlers.Documents.Initialize(ctx)
+		},
+		Register: func(routes module.Routes) {
+			modulehttp.Register(routes.ContextScoped, handlers.Documents)
 		},
 	})
 }

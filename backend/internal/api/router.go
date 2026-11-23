@@ -18,7 +18,6 @@ import (
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
 	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
 	documenttemplatesfeature "github.com/moh-sso-dashboard/internal/features/document_templates"
-	documentsfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
@@ -37,6 +36,7 @@ import (
 	adminunitsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcementfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	auditfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	documentsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/documents"
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -63,7 +63,7 @@ type HandlerSet struct {
 	Metrics                 *metricsfeature.Module
 	Audit                   *auditfeature.Module
 	Notifications           *notificationsfeature.Handler
-	Documents               *documentsfeature.Handler
+	Documents               *documentsmodule.Module
 	DocumentTemplates       *documenttemplatesfeature.Handler
 	DocumentTemplateSheets  *documenttemplatesfeature.SheetHandler
 	DocumentTemplateColumns *documenttemplatesfeature.ColumnHandler
