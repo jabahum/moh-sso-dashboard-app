@@ -57,7 +57,7 @@ infra-help:
 	@echo ''
 	@echo 'Identity-sync e2e (disposable, synthetic data; see infra/compose/identity-sync-e2e/README.md):'
 	@echo '  make identity-sync-e2e-up                  Build, start and seed the stack; prove health [CLIMS_REPO= POES_REPO=]'
-	@echo '  make identity-sync-e2e-test                Run the e2e suites against the running stack'
+	@echo '  make identity-sync-e2e-test                Fresh stack, all e2e suites, migrations-check, then down -v'
 	@echo '  make identity-sync-e2e-down                Stop it and delete its volumes (docker compose down -v)'
 
 compose-config:
@@ -350,17 +350,22 @@ IDSYNC_E2E_COMPOSE = CLIMS_REPO="$(CLIMS_REPO)" POES_REPO="$(POES_REPO)" $(DOCKE
 identity-sync-e2e-up:
 	@test -d "$(CLIMS_REPO)/backend" || { echo "CLIMS_REPO=$(CLIMS_REPO) is not a CLIMS checkout"; exit 1; }
 	@test -d "$(POES_REPO)/backend" || { echo "POES_REPO=$(POES_REPO) is not a poesGo checkout"; exit 1; }
-	$(IDSYNC_E2E_COMPOSE) up -d --build --wait
+	"$(IDSYNC_E2E_DIR)/scripts/build-portal.sh"
+	# No --wait: it races with the one-shot jobs (a job that exits during the wait
+	# fails it). registry-seed starts last, after every long-running service is
+	# healthy, and "wait" returns its exit code.
+	$(IDSYNC_E2E_COMPOSE) up -d --build
 	$(IDSYNC_E2E_COMPOSE) wait registry-seed
 	CLIMS_REPO="$(CLIMS_REPO)" POES_REPO="$(POES_REPO)" "$(IDSYNC_E2E_DIR)/scripts/smoke.sh"
 
 identity-sync-e2e-smoke:
 	CLIMS_REPO="$(CLIMS_REPO)" POES_REPO="$(POES_REPO)" "$(IDSYNC_E2E_DIR)/scripts/smoke.sh"
 
-# Stage 2 fills this with the contract, sync, browser and removal suites.
-identity-sync-e2e-test: identity-sync-e2e-smoke
-	@echo "identity-sync e2e suites are not implemented yet; only the smoke checks ran." >&2
-	@exit 1
+# Every suite against a freshly started stack (down -v, up), then migrations-check,
+# then down -v. Exits non-zero when any suite fails. IDSYNC_E2E_KEEP=1 leaves the
+# stack up afterwards. See e2e/identity-sync/README.md.
+identity-sync-e2e-test:
+	CLIMS_REPO="$(CLIMS_REPO)" POES_REPO="$(POES_REPO)" "$(REPO_ROOT)/e2e/identity-sync/run-all.sh"
 
 identity-sync-e2e-down:
 	$(IDSYNC_E2E_COMPOSE) --profile tools down -v --remove-orphans

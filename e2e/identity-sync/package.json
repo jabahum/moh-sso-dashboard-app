@@ -1,0 +1,15 @@
+{
+  "name": "identity-sync-e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end suites for identity sync against the disposable idsync-e2e stack (infra/compose/identity-sync-e2e)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
