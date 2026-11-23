@@ -1,0 +1,2446 @@
+{
+  "components": {
+    "schemas": {
+      "document_templates.ColumnResponse": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "allowed_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "archived_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "column_key": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          },
+          "column_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "default_value": {
+            "nullable": true,
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_unique": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.ColumnRuntimeResponse": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "allowed_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "column_key": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          },
+          "column_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "default_value": {
+            "nullable": true,
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_unique": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.ColumnStructureResponse": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "allowed_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "column_key": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          },
+          "column_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "default_value": {
+            "nullable": true,
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_unique": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.SheetResponse": {
+        "properties": {
+          "allow_duplicate_headers": {
+            "type": "boolean"
+          },
+          "allow_extra_columns": {
+            "type": "boolean"
+          },
+          "archived_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "header_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "start_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "template_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.SheetRuntimeResponse": {
+        "properties": {
+          "allow_duplicate_headers": {
+            "type": "boolean"
+          },
+          "allow_extra_columns": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "columns": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/document_templates.ColumnRuntimeResponse"
+            },
+            "type": "object"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "header_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "start_row": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.SheetStructureResponse": {
+        "properties": {
+          "allow_duplicate_headers": {
+            "type": "boolean"
+          },
+          "allow_extra_columns": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/document_templates.ColumnStructureResponse"
+            },
+            "type": "array"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "header_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "start_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "template_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.TemplateResponse": {
+        "properties": {
+          "archived_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.TemplateRuntimeResponse": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "sheets": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/document_templates.SheetRuntimeResponse"
+            },
+            "type": "object"
+          },
+          "version": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "document_templates.TemplateStructureResponse": {
+        "properties": {
+          "sheets": {
+            "items": {
+              "$ref": "#/components/schemas/document_templates.SheetStructureResponse"
+            },
+            "type": "array"
+          },
+          "template": {
+            "$ref": "#/components/schemas/document_templates.TemplateResponse"
+          }
+        },
+        "type": "object"
+      },
+      "model.CreateColumnRequest": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "allowed_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "column_key": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          },
+          "column_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "default_value": {
+            "nullable": true,
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "is_unique": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "model.CreateSheetRequest": {
+        "properties": {
+          "allow_duplicate_headers": {
+            "type": "boolean"
+          },
+          "allow_extra_columns": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "header_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "start_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "template_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "model.CreateTemplateRequest": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "created_by": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "model.CreateTemplateSheetWithColumnsRequest": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/model.CreateColumnRequest"
+            },
+            "type": "array"
+          },
+          "sheet": {
+            "$ref": "#/components/schemas/model.CreateSheetRequest"
+          }
+        },
+        "type": "object"
+      },
+      "model.CreateTemplateStructureRequest": {
+        "properties": {
+          "sheets": {
+            "items": {
+              "$ref": "#/components/schemas/model.CreateTemplateSheetWithColumnsRequest"
+            },
+            "type": "array"
+          },
+          "template": {
+            "$ref": "#/components/schemas/model.CreateTemplateRequest"
+          }
+        },
+        "type": "object"
+      },
+      "model.DocumentTemplate": {
+        "properties": {
+          "archived_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "model.TemplateColumnStructure": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "allowed_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "column_key": {
+            "type": "string"
+          },
+          "column_name": {
+            "type": "string"
+          },
+          "column_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "default_value": {
+            "nullable": true,
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_unique": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "model.TemplateSheetStructure": {
+        "properties": {
+          "allow_duplicate_headers": {
+            "type": "boolean"
+          },
+          "allow_extra_columns": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/model.TemplateColumnStructure"
+            },
+            "type": "array"
+          },
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "header_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sheet_order": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "start_row": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "template_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "model.TemplateStructure": {
+        "properties": {
+          "sheets": {
+            "items": {
+              "$ref": "#/components/schemas/model.TemplateSheetStructure"
+            },
+            "type": "array"
+          },
+          "template": {
+            "$ref": "#/components/schemas/model.DocumentTemplate"
+          }
+        },
+        "type": "object"
+      },
+      "model.UpdateTemplateRequest": {
+        "properties": {
+          "configuration": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "description": {
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "paths": {
+    "/document-templates": {
+      "get": {
+        "description": "Explicit route permission: document_templates:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_document-templates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/model.DocumentTemplate"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Templates",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).ListTemplates",
+        "x-route-permissions": [
+          "document_templates:read"
+        ]
+      },
+      "post": {
+        "description": "Explicit route permission: document_templates:write. Additional group/system access checks may apply.",
+        "operationId": "post_api_v1_document-templates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/model.CreateTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/document_templates.TemplateResponse"
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Create Template",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).CreateTemplate",
+        "x-route-permissions": [
+          "document_templates:write"
+        ]
+      }
+    },
+    "/document-templates/code/{code}/has-data": {
+      "get": {
+        "description": "Explicit route permission: document_templates:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_document-templates_code_code_has-data",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "has_data": {
+                          "type": "boolean"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Has Data",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).HasData",
+        "x-route-permissions": [
+          "document_templates:read"
+        ]
+      }
+    },
+    "/document-templates/code/{code}/structure": {
+      "get": {
+        "description": "Explicit route permission: document_templates:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_document-templates_code_code_structure",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/document_templates.TemplateStructureResponse"
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Template Structure",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).GetTemplateStructure",
+        "x-route-permissions": [
+          "document_templates:read"
+        ]
+      }
+    },
+    "/document-templates/structure": {
+      "post": {
+        "description": "Explicit route permission: document_templates:write. Additional group/system access checks may apply.",
+        "operationId": "post_api_v1_document-templates_structure",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/model.CreateTemplateStructureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/document_templates.TemplateStructureResponse"
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Create Template With Structure",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).CreateTemplateWithStructure",
+        "x-route-permissions": [
+          "document_templates:write"
+        ]
+      }
+    },
+    "/document-templates/{id}": {
+      "delete": {
+        "description": "Explicit route permission: document_templates:write. Additional group/system access checks may apply.",
+        "operationId": "delete_api_v1_document-templates_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Delete Template",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).DeleteTemplate",
+        "x-route-permissions": [
+          "document_templates:write"
+        ]
+      },
+      "get": {
+        "description": "Explicit route permission: document_templates:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_document-templates_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/document_templates.TemplateRuntimeResponse"
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Template",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).GetTemplate",
+        "x-route-permissions": [
+          "document_templates:read"
+        ]
+      },
+      "put": {
+        "description": "Explicit route permission: document_templates:write. Additional group/system access checks may apply.",
+        "operationId": "put_api_v1_document-templates_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/model.UpdateTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/document_templates.TemplateResponse"
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Update Template",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).UpdateTemplate",
+        "x-route-permissions": [
+          "document_templates:write"
+        ]
+      }
+    },
+    "/document-templates/{id}/archive": {
+      "post": {
+        "description": "Explicit route permission: document_templates:publish. Additional group/system access checks may apply.",
+        "operationId": "post_api_v1_document-templates_id_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Archive Template",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).ArchiveTemplate",
+        "x-route-permissions": [
+          "document_templates:publish"
+        ]
+      }
+    },
+    "/document-templates/{id}/publish": {
+      "post": {
+        "description": "Explicit route permission: document_templates:publish. Additional group/system access checks may apply.",
+        "operationId": "post_api_v1_document-templates_id_publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Publish Template",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).PublishTemplate",
+        "x-route-permissions": [
+          "document_templates:publish"
+        ]
+      }
+    },
+    "/document-templates/{id}/sheets": {
+      "get": {
+        "description": "Explicit route permission: document_templates:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_document-templates_id_sheets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/document_templates.SheetResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Sheets",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).ListSheets",
+        "x-route-permissions": [
+          "document_templates:read"
+        ]
+      }
+    },
+    "/document-templates/{id}/sheets/{sheetId}/columns": {
+      "get": {
+        "description": "Explicit route permission: document_templates:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_document-templates_id_sheets_sheetId_columns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sheetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/document_templates.ColumnResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Columns",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).ListColumns",
+        "x-route-permissions": [
+          "document_templates:read"
+        ]
+      }
+    },
+    "/document-templates/{id}/structure": {
+      "get": {
+        "description": "Explicit route permission: document_templates:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_document-templates_id_structure",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/document_templates.TemplateStructureResponse"
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Template Structure",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).GetTemplateStructure",
+        "x-route-permissions": [
+          "document_templates:read"
+        ]
+      },
+      "put": {
+        "description": "Explicit route permission: document_templates:write. Additional group/system access checks may apply.",
+        "operationId": "put_api_v1_document-templates_id_structure",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "sheets": {
+                    "items": {
+                      "$ref": "#/components/schemas/model.CreateTemplateSheetWithColumnsRequest"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/model.TemplateStructure"
+                        }
+                      ],
+                      "nullable": true
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Replace Structure",
+        "tags": [
+          "document-templates"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/document_templates.(*Handler).ReplaceStructure",
+        "x-route-permissions": [
+          "document_templates:write"
+        ]
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-package document_templates
+package documenttemplates
 
 import (
 	"context"
@@ -11,11 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/moh-sso-dashboard/internal/config"
-	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	"github.com/moh-sso-dashboard/internal/model"
-	sharedservice "github.com/moh-sso-dashboard/internal/service"
-	"github.com/moh-sso-dashboard/internal/utils"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
+	db "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates/internal/postgres"
 )
 
 var (
@@ -25,39 +22,32 @@ var (
 )
 
 type ColumnService interface {
-	CreateColumn(ctx context.Context, req model.CreateColumnRequest) (*model.DocumentTemplateColumn, error)
-	GetColumn(ctx context.Context, id uuid.UUID) (*model.DocumentTemplateColumn, error)
-	ListColumns(ctx context.Context, sheetID uuid.UUID) ([]model.DocumentTemplateColumn, error)
-	ListRequiredColumns(ctx context.Context, sheetID uuid.UUID) ([]model.DocumentTemplateColumn, error)
-	ListUniqueColumns(ctx context.Context, sheetID uuid.UUID) ([]model.DocumentTemplateColumn, error)
-	UpdateColumn(ctx context.Context, req model.UpdateColumnRequest) (*model.DocumentTemplateColumn, error)
+	CreateColumn(ctx context.Context, req CreateColumnRequest) (*DocumentTemplateColumn, error)
+	GetColumn(ctx context.Context, id uuid.UUID) (*DocumentTemplateColumn, error)
+	ListColumns(ctx context.Context, sheetID uuid.UUID) ([]DocumentTemplateColumn, error)
+	ListRequiredColumns(ctx context.Context, sheetID uuid.UUID) ([]DocumentTemplateColumn, error)
+	ListUniqueColumns(ctx context.Context, sheetID uuid.UUID) ([]DocumentTemplateColumn, error)
+	UpdateColumn(ctx context.Context, req UpdateColumnRequest) (*DocumentTemplateColumn, error)
 	ArchiveColumn(ctx context.Context, id uuid.UUID) error
 	DeleteColumn(ctx context.Context, id uuid.UUID) error
 
 	// runtime processing
-	Handle(ctx context.Context, col model.DocumentTemplateColumn, value any) (*model.ProcessedColumnValue, error)
+	Handle(ctx context.Context, col DocumentTemplateColumn, value any) (*ProcessedColumnValue, error)
 }
 
 type documentTemplateColumnService struct {
-	repo          ColumnRepository
-	notifications sharedservice.NotificationsService
-	cfg           *config.Config
+	repo ColumnRepository
+	alerts
 }
 
 func NewColumnService(
 	repo ColumnRepository,
-	notifications sharedservice.NotificationsService,
-	cfg ...*config.Config,
+	notifier modulekit.Notifier,
+	platform modulekit.Platform,
 ) ColumnService {
-	var appConfig *config.Config
-	if len(cfg) > 0 {
-		appConfig = cfg[0]
-	}
-
 	return &documentTemplateColumnService{
-		repo:          repo,
-		notifications: notifications,
-		cfg:           appConfig,
+		repo:   repo,
+		alerts: alerts{notifier: notifier, platform: platform},
 	}
 }
 
@@ -67,8 +57,8 @@ func NewColumnService(
 
 func (s *documentTemplateColumnService) CreateColumn(
 	ctx context.Context,
-	req model.CreateColumnRequest,
-) (*model.DocumentTemplateColumn, error) {
+	req CreateColumnRequest,
+) (*DocumentTemplateColumn, error) {
 	if s == nil {
 		return nil, errors.New("document template column service is nil")
 	}
@@ -141,13 +131,13 @@ func (s *documentTemplateColumnService) CreateColumn(
 	mapped := mapColumn(col)
 
 	// In-app only.
-	s.notify(ctx, model.Notification{
+	s.notify(ctx, modulekit.Notification{
 		Type:       "DOCUMENT_TEMPLATE_COLUMN_CREATED",
 		Title:      "Template column created",
 		Severity:   "info",
 		Message:    "Document template column created",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"column_id":    mapped.ID.String(),
 			"sheet_id":     mapped.SheetID.String(),
 			"column_key":   mapped.ColumnKey,
@@ -165,7 +155,7 @@ func (s *documentTemplateColumnService) CreateColumn(
 func (s *documentTemplateColumnService) GetColumn(
 	ctx context.Context,
 	id uuid.UUID,
-) (*model.DocumentTemplateColumn, error) {
+) (*DocumentTemplateColumn, error) {
 	if s == nil {
 		return nil, errors.New("document template column service is nil")
 	}
@@ -189,7 +179,7 @@ func (s *documentTemplateColumnService) GetColumn(
 func (s *documentTemplateColumnService) ListColumns(
 	ctx context.Context,
 	sheetID uuid.UUID,
-) ([]model.DocumentTemplateColumn, error) {
+) ([]DocumentTemplateColumn, error) {
 	if s == nil {
 		return nil, errors.New("document template column service is nil")
 	}
@@ -207,7 +197,7 @@ func (s *documentTemplateColumnService) ListColumns(
 		return nil, fmt.Errorf("list document template columns: %w", err)
 	}
 
-	out := make([]model.DocumentTemplateColumn, 0, len(items))
+	out := make([]DocumentTemplateColumn, 0, len(items))
 	for _, c := range items {
 		out = append(out, *mapColumn(c))
 	}
@@ -218,7 +208,7 @@ func (s *documentTemplateColumnService) ListColumns(
 func (s *documentTemplateColumnService) ListRequiredColumns(
 	ctx context.Context,
 	sheetID uuid.UUID,
-) ([]model.DocumentTemplateColumn, error) {
+) ([]DocumentTemplateColumn, error) {
 	if s == nil {
 		return nil, errors.New("document template column service is nil")
 	}
@@ -236,7 +226,7 @@ func (s *documentTemplateColumnService) ListRequiredColumns(
 		return nil, fmt.Errorf("list required document template columns: %w", err)
 	}
 
-	out := make([]model.DocumentTemplateColumn, 0, len(items))
+	out := make([]DocumentTemplateColumn, 0, len(items))
 	for _, c := range items {
 		out = append(out, *mapColumn(c))
 	}
@@ -247,7 +237,7 @@ func (s *documentTemplateColumnService) ListRequiredColumns(
 func (s *documentTemplateColumnService) ListUniqueColumns(
 	ctx context.Context,
 	sheetID uuid.UUID,
-) ([]model.DocumentTemplateColumn, error) {
+) ([]DocumentTemplateColumn, error) {
 	if s == nil {
 		return nil, errors.New("document template column service is nil")
 	}
@@ -265,7 +255,7 @@ func (s *documentTemplateColumnService) ListUniqueColumns(
 		return nil, fmt.Errorf("list unique document template columns: %w", err)
 	}
 
-	out := make([]model.DocumentTemplateColumn, 0, len(items))
+	out := make([]DocumentTemplateColumn, 0, len(items))
 	for _, c := range items {
 		out = append(out, *mapColumn(c))
 	}
@@ -275,8 +265,8 @@ func (s *documentTemplateColumnService) ListUniqueColumns(
 
 func (s *documentTemplateColumnService) UpdateColumn(
 	ctx context.Context,
-	req model.UpdateColumnRequest,
-) (*model.DocumentTemplateColumn, error) {
+	req UpdateColumnRequest,
+) (*DocumentTemplateColumn, error) {
 	if s == nil {
 		return nil, errors.New("document template column service is nil")
 	}
@@ -326,13 +316,13 @@ func (s *documentTemplateColumnService) UpdateColumn(
 	mapped := mapColumn(col)
 
 	// In-app only.
-	s.notify(ctx, model.Notification{
+	s.notify(ctx, modulekit.Notification{
 		Type:       "DOCUMENT_TEMPLATE_COLUMN_UPDATED",
 		Title:      "Template column updated",
 		Severity:   "info",
 		Message:    "Document template column updated",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"column_id":    mapped.ID.String(),
 			"sheet_id":     mapped.SheetID.String(),
 			"column_name":  mapped.ColumnName,
@@ -368,13 +358,13 @@ func (s *documentTemplateColumnService) ArchiveColumn(ctx context.Context, id uu
 	if col.ID != uuid.Nil {
 		mapped := mapColumn(col)
 
-		notification := model.Notification{
+		notification := modulekit.Notification{
 			Type:       "DOCUMENT_TEMPLATE_COLUMN_ARCHIVED",
 			Title:      "Template column archived",
 			Severity:   "warning",
 			Message:    "Document template column archived",
 			TargetRole: "admin",
-			Metadata: utils.MustJSON(map[string]any{
+			Metadata: mustJSON(map[string]any{
 				"column_id":   mapped.ID.String(),
 				"sheet_id":    mapped.SheetID.String(),
 				"column_key":  mapped.ColumnKey,
@@ -434,13 +424,13 @@ func (s *documentTemplateColumnService) DeleteColumn(ctx context.Context, id uui
 	if col.ID != uuid.Nil {
 		mapped := mapColumn(col)
 
-		notification := model.Notification{
+		notification := modulekit.Notification{
 			Type:       "DOCUMENT_TEMPLATE_COLUMN_DELETED",
 			Title:      "Template column deleted",
 			Severity:   "critical",
 			Message:    "Document template column deleted",
 			TargetRole: "admin",
-			Metadata: utils.MustJSON(map[string]any{
+			Metadata: mustJSON(map[string]any{
 				"column_id":   mapped.ID.String(),
 				"sheet_id":    mapped.SheetID.String(),
 				"column_key":  mapped.ColumnKey,
@@ -484,10 +474,10 @@ func (s *documentTemplateColumnService) DeleteColumn(ctx context.Context, id uui
 
 func (s *documentTemplateColumnService) Handle(
 	ctx context.Context,
-	col model.DocumentTemplateColumn,
+	col DocumentTemplateColumn,
 	value any,
-) (*model.ProcessedColumnValue, error) {
-	result := &model.ProcessedColumnValue{
+) (*ProcessedColumnValue, error) {
+	result := &ProcessedColumnValue{
 		ColumnKey: col.ColumnKey,
 		RawValue:  value,
 		IsValid:   true,
@@ -497,7 +487,7 @@ func (s *documentTemplateColumnService) Handle(
 	if isEmptyValue(value) {
 		if col.Required {
 			result.IsValid = false
-			result.Error = &model.ColumnError{
+			result.Error = &ColumnError{
 				Code:    "REQUIRED_FIELD",
 				Message: col.ColumnName + " is required",
 			}
@@ -518,7 +508,7 @@ func (s *documentTemplateColumnService) Handle(
 		v, err := strconv.ParseInt(strings.TrimSpace(fmt.Sprintf("%v", value)), 10, 64)
 		if err != nil {
 			result.IsValid = false
-			result.Error = &model.ColumnError{
+			result.Error = &ColumnError{
 				Code:    "INVALID_INTEGER",
 				Message: col.ColumnName + " must be a valid integer",
 			}
@@ -530,7 +520,7 @@ func (s *documentTemplateColumnService) Handle(
 		v, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprintf("%v", value)), 64)
 		if err != nil {
 			result.IsValid = false
-			result.Error = &model.ColumnError{
+			result.Error = &ColumnError{
 				Code:    "INVALID_DECIMAL",
 				Message: col.ColumnName + " must be a valid decimal number",
 			}
@@ -542,7 +532,7 @@ func (s *documentTemplateColumnService) Handle(
 		v, ok := parseBool(value)
 		if !ok {
 			result.IsValid = false
-			result.Error = &model.ColumnError{
+			result.Error = &ColumnError{
 				Code:    "INVALID_BOOLEAN",
 				Message: col.ColumnName + " must be a valid boolean value",
 			}
@@ -562,7 +552,7 @@ func (s *documentTemplateColumnService) Handle(
 		}
 		if !valid {
 			result.IsValid = false
-			result.Error = &model.ColumnError{
+			result.Error = &ColumnError{
 				Code:    "INVALID_ENUM_VALUE",
 				Message: col.ColumnName + " has an unsupported value",
 			}
@@ -576,7 +566,7 @@ func (s *documentTemplateColumnService) Handle(
 
 	default:
 		result.IsValid = false
-		result.Error = &model.ColumnError{
+		result.Error = &ColumnError{
 			Code:    "INVALID_TYPE",
 			Message: "unsupported type",
 		}
@@ -596,8 +586,8 @@ func validateDataType(t string) error {
 	}
 }
 
-func mapColumn(c db.DocumentTemplateColumn) *model.DocumentTemplateColumn {
-	return &model.DocumentTemplateColumn{
+func mapColumn(c db.DocumentTemplateColumn) *DocumentTemplateColumn {
+	return &DocumentTemplateColumn{
 		ID:          c.ID,
 		SheetID:     c.SheetID,
 		ColumnKey:   c.ColumnKey,
@@ -614,126 +604,6 @@ func mapColumn(c db.DocumentTemplateColumn) *model.DocumentTemplateColumn {
 
 		Configuration: mustMap(c.Configuration),
 	}
-}
-
-func (s *documentTemplateColumnService) notify(
-	ctx context.Context,
-	notification model.Notification,
-) {
-	if s == nil || s.notifications == nil {
-		return
-	}
-
-	if strings.TrimSpace(notification.TargetRole) == "" {
-		notification.TargetRole = "admin"
-	}
-
-	_, _ = s.notifications.Notify(ctx, notification)
-}
-
-func (s *documentTemplateColumnService) attachAdminEmailDelivery(
-	notification *model.Notification,
-	templateName string,
-	subject string,
-	textBody string,
-	templateData map[string]any,
-) {
-	if notification == nil {
-		return
-	}
-
-	adminEmail := strings.TrimSpace(s.systemAdminEmail())
-	if adminEmail == "" {
-		return
-	}
-
-	if templateData == nil {
-		templateData = map[string]any{}
-	}
-
-	if _, ok := templateData["Name"]; !ok {
-		templateData["Name"] = s.systemAdminName()
-	}
-
-	if _, ok := templateData["Platform"]; !ok {
-		templateData["Platform"] = s.platformName()
-	}
-
-	if _, ok := templateData["ActionURL"]; !ok {
-		templateData["ActionURL"] = s.adminTemplatesURL()
-	}
-
-	notification.Deliveries = []model.NotificationDeliveryRequest{
-		{
-			Channel: model.NotificationChannelInApp,
-			Recipient: map[string]any{
-				"target_role": notification.TargetRole,
-			},
-			Payload: map[string]any{
-				"title":    notification.Title,
-				"message":  notification.Message,
-				"type":     notification.Type,
-				"severity": notification.Severity,
-			},
-			MaxAttempts: 1,
-		},
-		{
-			Channel: model.NotificationChannelEmail,
-			Recipient: map[string]any{
-				"name":  s.systemAdminName(),
-				"email": adminEmail,
-			},
-			TemplateName: templateName,
-			TemplateData: templateData,
-			Payload: map[string]any{
-				"subject":   subject,
-				"text_body": textBody,
-			},
-			MaxAttempts: 5,
-		},
-	}
-}
-
-func (s *documentTemplateColumnService) platformName() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.PlatformName) != "" {
-		return strings.TrimSpace(s.cfg.Notification.PlatformName)
-	}
-
-	return "MOH Integrated Health Portal"
-}
-
-func (s *documentTemplateColumnService) systemAdminName() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.SystemAdminName) != "" {
-		return strings.TrimSpace(s.cfg.Notification.SystemAdminName)
-	}
-
-	return "System Administrator"
-}
-
-func (s *documentTemplateColumnService) systemAdminEmail() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.SystemAdminEmail) != "" {
-		return strings.TrimSpace(s.cfg.Notification.SystemAdminEmail)
-	}
-
-	return ""
-}
-
-func (s *documentTemplateColumnService) adminDashboardURL() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.AdminDashboardURL) != "" {
-		return strings.TrimSpace(s.cfg.Notification.AdminDashboardURL)
-	}
-
-	return "http://localhost:3000/admin/home"
-}
-
-func (s *documentTemplateColumnService) adminTemplatesURL() string {
-	base := strings.TrimRight(s.adminDashboardURL(), "/")
-
-	if strings.HasSuffix(base, "/admin/home") {
-		return strings.TrimSuffix(base, "/admin/home") + "/admin/document-templates"
-	}
-
-	return base + "/document-templates"
 }
 
 func toString(ns sql.NullString) string {

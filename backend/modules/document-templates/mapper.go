@@ -1,8 +1,6 @@
-package document_templates
+package documenttemplates
 
-import "github.com/moh-sso-dashboard/internal/model"
-
-func toTemplateResponse(template *model.DocumentTemplate) *TemplateResponse {
+func toTemplateResponse(template *DocumentTemplate) *TemplateResponse {
 	if template == nil {
 		return nil
 	}
@@ -23,7 +21,7 @@ func toTemplateResponse(template *model.DocumentTemplate) *TemplateResponse {
 	}
 }
 
-func toTemplateResponses(templates []model.DocumentTemplate) []TemplateResponse {
+func toTemplateResponses(templates []DocumentTemplate) []TemplateResponse {
 	out := make([]TemplateResponse, 0, len(templates))
 	for _, template := range templates {
 		item := toTemplateResponse(&template)
@@ -34,7 +32,7 @@ func toTemplateResponses(templates []model.DocumentTemplate) []TemplateResponse 
 	return out
 }
 
-func toSheetResponse(sheet *model.DocumentTemplateSheet) *SheetResponse {
+func toSheetResponse(sheet *DocumentTemplateSheet) *SheetResponse {
 	if sheet == nil {
 		return nil
 	}
@@ -57,7 +55,7 @@ func toSheetResponse(sheet *model.DocumentTemplateSheet) *SheetResponse {
 	}
 }
 
-func toSheetResponses(sheets []model.DocumentTemplateSheet) []SheetResponse {
+func toSheetResponses(sheets []DocumentTemplateSheet) []SheetResponse {
 	out := make([]SheetResponse, 0, len(sheets))
 	for _, sheet := range sheets {
 		item := toSheetResponse(&sheet)
@@ -68,7 +66,7 @@ func toSheetResponses(sheets []model.DocumentTemplateSheet) []SheetResponse {
 	return out
 }
 
-func toColumnResponse(column *model.DocumentTemplateColumn) *ColumnResponse {
+func toColumnResponse(column *DocumentTemplateColumn) *ColumnResponse {
 	if column == nil {
 		return nil
 	}
@@ -92,7 +90,7 @@ func toColumnResponse(column *model.DocumentTemplateColumn) *ColumnResponse {
 	}
 }
 
-func toColumnResponses(columns []model.DocumentTemplateColumn) []ColumnResponse {
+func toColumnResponses(columns []DocumentTemplateColumn) []ColumnResponse {
 	out := make([]ColumnResponse, 0, len(columns))
 	for _, column := range columns {
 		item := toColumnResponse(&column)
@@ -103,7 +101,7 @@ func toColumnResponses(columns []model.DocumentTemplateColumn) []ColumnResponse 
 	return out
 }
 
-func toTemplateRuntimeResponse(runtime *model.TemplateRuntime) *TemplateRuntimeResponse {
+func toTemplateRuntimeResponse(runtime *TemplateRuntime) *TemplateRuntimeResponse {
 	if runtime == nil {
 		return nil
 	}
@@ -123,7 +121,7 @@ func toTemplateRuntimeResponse(runtime *model.TemplateRuntime) *TemplateRuntimeR
 	return out
 }
 
-func toSheetRuntimeResponse(sheet *model.TemplateSheetRuntime) *SheetRuntimeResponse {
+func toSheetRuntimeResponse(sheet *TemplateSheetRuntime) *SheetRuntimeResponse {
 	if sheet == nil {
 		return nil
 	}
@@ -150,7 +148,7 @@ func toSheetRuntimeResponse(sheet *model.TemplateSheetRuntime) *SheetRuntimeResp
 	return out
 }
 
-func toColumnRuntimeResponse(column *model.TemplateColumnRuntime) *ColumnRuntimeResponse {
+func toColumnRuntimeResponse(column *TemplateColumnRuntime) *ColumnRuntimeResponse {
 	if column == nil {
 		return nil
 	}
@@ -170,7 +168,7 @@ func toColumnRuntimeResponse(column *model.TemplateColumnRuntime) *ColumnRuntime
 	}
 }
 
-func toTemplateStructureResponse(structure *model.TemplateStructure) *TemplateStructureResponse {
+func toTemplateStructureResponse(structure *TemplateStructure) *TemplateStructureResponse {
 	if structure == nil {
 		return nil
 	}
@@ -187,7 +185,7 @@ func toTemplateStructureResponse(structure *model.TemplateStructure) *TemplateSt
 	return out
 }
 
-func toSheetStructureResponse(sheet model.TemplateSheetStructure) SheetStructureResponse {
+func toSheetStructureResponse(sheet TemplateSheetStructure) SheetStructureResponse {
 	out := SheetStructureResponse{
 		ID:                    sheet.ID,
 		TemplateID:            sheet.TemplateID,
@@ -209,7 +207,7 @@ func toSheetStructureResponse(sheet model.TemplateSheetStructure) SheetStructure
 	return out
 }
 
-func toColumnStructureResponse(column model.TemplateColumnStructure) ColumnStructureResponse {
+func toColumnStructureResponse(column TemplateColumnStructure) ColumnStructureResponse {
 	return ColumnStructureResponse{
 		ID:            column.ID,
 		SheetID:       column.SheetID,
@@ -225,24 +223,4 @@ func toColumnStructureResponse(column model.TemplateColumnStructure) ColumnStruc
 		Aliases:       column.Aliases,
 		Configuration: column.Configuration,
 	}
-}
-
-func toProcessedColumnValueResponse(value *model.ProcessedColumnValue) *ProcessedColumnValueResponse {
-	if value == nil {
-		return nil
-	}
-	out := &ProcessedColumnValueResponse{
-		ColumnKey: value.ColumnKey,
-		RawValue:  value.RawValue,
-		Value:     value.Value,
-		IsValid:   value.IsValid,
-	}
-	if value.Error != nil {
-		out.Error = &ColumnErrorResponse{
-			Code:         value.Error.Code,
-			Message:      value.Error.Message,
-			InvalidValue: value.Error.InvalidValue,
-		}
-	}
-	return out
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	documenttemplates "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentRepo "github.com/moh-sso-dashboard/internal/features/documents"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	logger "github.com/moh-sso-dashboard/internal/log"
@@ -15,6 +14,7 @@ import (
 	processRepo "github.com/moh-sso-dashboard/internal/repository/processes"
 
 	"github.com/moh-sso-dashboard/internal/storage"
+	documenttemplates "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
 )
 
 type Service struct {

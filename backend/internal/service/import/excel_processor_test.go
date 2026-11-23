@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/moh-sso-dashboard/internal/model"
+	documenttemplates "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -16,7 +16,7 @@ func TestResolveWorkbookSheetNameMatchesNormalizedTemplateIdentifiers(t *testing
 		t.Fatalf("rename default sheet: %v", err)
 	}
 
-	sheet := model.TemplateSheetStructure{
+	sheet := documenttemplates.TemplateSheetStructure{
 		Code:        "nms_stock_issues",
 		Name:        "nms_stock_issues",
 		DisplayName: "NMS Stock Issues",
@@ -40,7 +40,7 @@ func TestResolveWorkbookSheetNamePrefersExactTemplateIdentifier(t *testing.T) {
 		t.Fatalf("create exact sheet: %v", err)
 	}
 
-	sheet := model.TemplateSheetStructure{
+	sheet := documenttemplates.TemplateSheetStructure{
 		Code:        "nms_stock_issues",
 		DisplayName: "NMS Stock Issues",
 	}

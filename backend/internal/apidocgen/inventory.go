@@ -19,6 +19,7 @@ import (
 	adminunits "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcements "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	audit "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	documenttemplates "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
 	geojson "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metrics "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportScheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -80,6 +81,10 @@ func documentationHandlers() router.HandlerSet {
 	}
 	var err error
 	handlers.StorageLocations, err = storagelocations.NewModule(storagelocations.Dependencies{Database: new(sql.DB)})
+	if err != nil {
+		panic(err)
+	}
+	handlers.DocumentTemplates, err = documenttemplates.NewModule(documenttemplates.Dependencies{Database: new(sql.DB), Warehouse: new(sql.DB)})
 	if err != nil {
 		panic(err)
 	}

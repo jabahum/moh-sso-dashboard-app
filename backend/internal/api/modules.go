@@ -16,6 +16,7 @@ import (
 	adminunitsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcementmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	auditmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	documenttemplatesmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
 	geojsonmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	schedulermodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -118,6 +119,19 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 		},
 		Register: func(routes module.Routes) {
 			modulehttp.Register(routes.Protected, handlers.StorageLocations)
+		},
+	}, module.Definition{
+		Info: module.Info{ID: documenttemplatesmodule.ID, Version: documenttemplatesmodule.Version(), Enabled: enabled[documenttemplatesmodule.ID]},
+		Initialize: func(context.Context) (module.Stop, error) {
+			if handlers.DocumentTemplates == nil {
+				return nil, errors.New("document templates module is required")
+			}
+			return nil, nil
+		},
+		Register: func(routes module.Routes) {
+			// Behind the data-statistics system check and health-context
+			// selection, where the host registered these routes before.
+			modulehttp.Register(routes.ContextScoped, handlers.DocumentTemplates)
 		},
 	})
 }

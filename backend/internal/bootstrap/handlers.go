@@ -14,7 +14,6 @@ import (
 	"github.com/moh-sso-dashboard/internal/features/authsession"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
 	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
-	documenttemplatesfeature "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentsfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
@@ -169,20 +168,6 @@ func buildHandlers(deps handlerDependencies) handlers {
 		surveillanceHandler.SetAvailabilityCheck(deps.Databases.observatory.Ready)
 	}
 
-	documentTemplateHandler := documenttemplatesfeature.NewHandler(
-		deps.Services.DocumentTemplates,
-		deps.Services.DocumentTemplateSheets,
-		deps.Services.DocumentTemplateColumns,
-		deps.Databases.Primary,
-		deps.Databases.Remote,
-	)
-	documentTemplateSheetHandler := documenttemplatesfeature.NewSheetHandler(
-		deps.Services.DocumentTemplateSheets,
-	)
-	documentTemplateColumnHandler := documenttemplatesfeature.NewColumnHandler(
-		deps.Services.DocumentTemplateColumns,
-	)
-
 	healthHandler := handler.NewHealthHandler(
 		func(ctx context.Context) error {
 			return db.PingDB(ctx, deps.Databases.Primary)
@@ -212,28 +197,26 @@ func buildHandlers(deps handlerDependencies) handlers {
 					Audience: deps.Config.PlatformAuthAudience, ClientID: deps.Config.PlatformAuthClientID, Secret: deps.Config.PlatformAuthClientSecret,
 				},
 			},
-			Auth:                    authHandler,
-			Clients:                 clientHandler,
-			Users:                   userHandler,
-			Metrics:                 metricsHandler,
-			Audit:                   auditHandler,
-			Notifications:           notificationsHandler,
-			Documents:               documentHandler,
-			DocumentTemplates:       documentTemplateHandler,
-			DocumentTemplateSheets:  documentTemplateSheetHandler,
-			DocumentTemplateColumns: documentTemplateColumnHandler,
-			StorageLocations:        deps.Services.StorageLocationsModule,
-			Sessions:                sessionHandler,
-			DataQuality:             dataQualityHandler,
-			Announcements:           announcementHandler,
-			AdminUnits:              adminunitsHandler,
-			Visualiser:              visualiserHandler,
-			Surveillance:            surveillanceHandler,
-			GeoJSON:                 geoJSONHandler,
-			Email:                   emailHandler,
-			RBAC:                    rbacHandler,
-			HealthContexts:          healthContextHandler,
-			ReportScheduler:         router.NewReportSchedulerModule(deps.Services.ReportScheduler),
+			Auth:              authHandler,
+			Clients:           clientHandler,
+			Users:             userHandler,
+			Metrics:           metricsHandler,
+			Audit:             auditHandler,
+			Notifications:     notificationsHandler,
+			Documents:         documentHandler,
+			DocumentTemplates: deps.Services.DocumentTemplatesModule,
+			StorageLocations:  deps.Services.StorageLocationsModule,
+			Sessions:          sessionHandler,
+			DataQuality:       dataQualityHandler,
+			Announcements:     announcementHandler,
+			AdminUnits:        adminunitsHandler,
+			Visualiser:        visualiserHandler,
+			Surveillance:      surveillanceHandler,
+			GeoJSON:           geoJSONHandler,
+			Email:             emailHandler,
+			RBAC:              rbacHandler,
+			HealthContexts:    healthContextHandler,
+			ReportScheduler:   router.NewReportSchedulerModule(deps.Services.ReportScheduler),
 		},
 		Health: healthHandler,
 	}

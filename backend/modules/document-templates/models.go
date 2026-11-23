@@ -1,4 +1,4 @@
-package model
+package documenttemplates
 
 import "github.com/google/uuid"
 

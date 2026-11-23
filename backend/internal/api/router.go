@@ -17,7 +17,6 @@ import (
 	"github.com/moh-sso-dashboard/internal/features/authsession"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
 	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
-	documenttemplatesfeature "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentsfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
@@ -37,6 +36,7 @@ import (
 	adminunitsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcementfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	auditfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	documenttemplatesfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -56,29 +56,27 @@ type RouterDependencies struct {
 }
 
 type HandlerSet struct {
-	Platform                *platformfeature.Handler
-	Auth                    *authfeature.Handler
-	Clients                 *clientfeature.Handler
-	Users                   *userfeature.Handler
-	Metrics                 *metricsfeature.Module
-	Audit                   *auditfeature.Module
-	Notifications           *notificationsfeature.Handler
-	Documents               *documentsfeature.Handler
-	DocumentTemplates       *documenttemplatesfeature.Handler
-	DocumentTemplateSheets  *documenttemplatesfeature.SheetHandler
-	DocumentTemplateColumns *documenttemplatesfeature.ColumnHandler
-	StorageLocations        *storagelocationfeature.Module
-	Sessions                *sessionfeature.Handler
-	DataQuality             *dataqualityfeature.Handler
-	Announcements           *announcementfeature.Module
-	AdminUnits              *adminunitsfeature.Module
-	Visualiser              *visualiserfeature.Handler
-	Surveillance            *surveillancefeature.Handler
-	GeoJSON                 *geojsonfeature.Module
-	Email                   *emailfeature.Handler
-	RBAC                    *rbacfeature.Handler
-	HealthContexts          *healthcontextfeature.Handler
-	ReportScheduler         *reportschedulerfeature.HTTPModule
+	Platform          *platformfeature.Handler
+	Auth              *authfeature.Handler
+	Clients           *clientfeature.Handler
+	Users             *userfeature.Handler
+	Metrics           *metricsfeature.Module
+	Audit             *auditfeature.Module
+	Notifications     *notificationsfeature.Handler
+	Documents         *documentsfeature.Handler
+	DocumentTemplates *documenttemplatesfeature.Module
+	StorageLocations  *storagelocationfeature.Module
+	Sessions          *sessionfeature.Handler
+	DataQuality       *dataqualityfeature.Handler
+	Announcements     *announcementfeature.Module
+	AdminUnits        *adminunitsfeature.Module
+	Visualiser        *visualiserfeature.Handler
+	Surveillance      *surveillancefeature.Handler
+	GeoJSON           *geojsonfeature.Module
+	Email             *emailfeature.Handler
+	RBAC              *rbacfeature.Handler
+	HealthContexts    *healthcontextfeature.Handler
+	ReportScheduler   *reportschedulerfeature.HTTPModule
 }
 
 type RateLimits struct {
@@ -98,28 +96,26 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 	r.Use(cors.New(corsConfig(deps.Config)))
 
 	routeDeps := routes.Dependencies{
-		Modules:                 deps.Modules,
-		Limiter:                 deps.Limiter,
-		Auth:                    deps.Handlers.Auth,
-		Clients:                 deps.Handlers.Clients,
-		Users:                   deps.Handlers.Users,
-		Metrics:                 deps.Handlers.Metrics,
-		Audit:                   deps.Handlers.Audit,
-		Notifications:           deps.Handlers.Notifications,
-		Documents:               deps.Handlers.Documents,
-		DocumentTemplates:       deps.Handlers.DocumentTemplates,
-		DocumentTemplateSheets:  deps.Handlers.DocumentTemplateSheets,
-		DocumentTemplateColumns: deps.Handlers.DocumentTemplateColumns,
-		StorageLocations:        deps.Handlers.StorageLocations,
-		Sessions:                deps.Handlers.Sessions,
-		DataQuality:             deps.Handlers.DataQuality,
-		AdminUnits:              deps.Handlers.AdminUnits,
-		Visualiser:              deps.Handlers.Visualiser,
-		Surveillance:            deps.Handlers.Surveillance,
-		GeoJSON:                 deps.Handlers.GeoJSON,
-		Email:                   deps.Handlers.Email,
-		RBAC:                    deps.Handlers.RBAC,
-		HealthContexts:          deps.Handlers.HealthContexts,
+		Modules:           deps.Modules,
+		Limiter:           deps.Limiter,
+		Auth:              deps.Handlers.Auth,
+		Clients:           deps.Handlers.Clients,
+		Users:             deps.Handlers.Users,
+		Metrics:           deps.Handlers.Metrics,
+		Audit:             deps.Handlers.Audit,
+		Notifications:     deps.Handlers.Notifications,
+		Documents:         deps.Handlers.Documents,
+		DocumentTemplates: deps.Handlers.DocumentTemplates,
+		StorageLocations:  deps.Handlers.StorageLocations,
+		Sessions:          deps.Handlers.Sessions,
+		DataQuality:       deps.Handlers.DataQuality,
+		AdminUnits:        deps.Handlers.AdminUnits,
+		Visualiser:        deps.Handlers.Visualiser,
+		Surveillance:      deps.Handlers.Surveillance,
+		GeoJSON:           deps.Handlers.GeoJSON,
+		Email:             deps.Handlers.Email,
+		RBAC:              deps.Handlers.RBAC,
+		HealthContexts:    deps.Handlers.HealthContexts,
 
 		AuthenticatedRateLimitPerMin:  rateLimits.AuthenticatedPerMinute,
 		AuthLoginRateLimitPerMin:      rateLimits.AuthLoginPerMinute,
