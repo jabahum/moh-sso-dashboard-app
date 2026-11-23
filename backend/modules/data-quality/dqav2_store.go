@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 // DQA v2 store: the DWH-side persistence for the ported rule engine
 // (internal/features/data_quality/dqa). The DWH has no golang-migrate
@@ -12,11 +12,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/lib/pq"
 
-	"github.com/moh-sso-dashboard/internal/features/data_quality/dqa"
+	"github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality/dqa"
 )
 
 // dqaPreambleDDL is best-effort. On the MoH DWH the dqa schema is pre-provisioned
@@ -124,28 +125,31 @@ type DQAStore struct {
 	db *sql.DB
 }
 
-// NewDQAStore self-migrates the dqa schema (idempotent) and returns a store.
-// A nil db is tolerated (feature is inert) so callers can wire it the same
-// way NewRepository tolerates a nil dwhDB.
+// NewDQAStore returns a store. A nil db is tolerated (feature is inert) so
+// callers can wire it the same way NewRepository tolerates a nil dwhDB. The
+// idempotent dqa schema migration runs from Module.Initialize (migrate).
 func NewDQAStore(db *sql.DB) *DQAStore {
-	s := &DQAStore{db: db}
-	if db != nil {
-		ctx := context.Background()
-		// Ignored on purpose — see dqaPreambleDDL.
-		_, _ = db.ExecContext(ctx, dqaPreambleDDL)
-		if _, err := db.ExecContext(ctx, dqaSchemaDDL); err != nil {
-			// Non-fatal: surfaced on first real use instead of at boot, matching
-			// the existing ensureSchema() convention for hiv.issue.
-			fmt.Printf("dqa: schema init warning: %v\n", err)
-		}
-		if _, err := db.ExecContext(ctx, completenessSchemaDDL); err != nil {
-			fmt.Printf("dqa: completeness schema init warning: %v\n", err)
-		}
-		if _, err := db.ExecContext(ctx, scheduledRunsSchemaDDL); err != nil {
-			fmt.Printf("dqa: scheduled runs schema init warning: %v\n", err)
-		}
+	return &DQAStore{db: db}
+}
+
+// migrate self-migrates the dqa schema (idempotent). Failures are non-fatal:
+// they surface on first real use instead of at boot, matching the
+// ensureSchema() convention for hiv.issue.
+func (s *DQAStore) migrate(ctx context.Context, logger *slog.Logger) {
+	if s == nil || s.db == nil {
+		return
 	}
-	return s
+	// Ignored on purpose — see dqaPreambleDDL.
+	_, _ = s.db.ExecContext(ctx, dqaPreambleDDL)
+	if _, err := s.db.ExecContext(ctx, dqaSchemaDDL); err != nil {
+		logger.Warn("dqa: schema init warning", "error", err)
+	}
+	if _, err := s.db.ExecContext(ctx, completenessSchemaDDL); err != nil {
+		logger.Warn("dqa: completeness schema init warning", "error", err)
+	}
+	if _, err := s.db.ExecContext(ctx, scheduledRunsSchemaDDL); err != nil {
+		logger.Warn("dqa: scheduled runs schema init warning", "error", err)
+	}
 }
 
 // ── table registry ──────────────────────────────────────────────────────

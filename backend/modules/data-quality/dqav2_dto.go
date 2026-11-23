@@ -1,6 +1,6 @@
-package data_quality
+package dataquality
 
-import "github.com/moh-sso-dashboard/internal/features/data_quality/dqa"
+import "github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality/dqa"
 
 // dqaRuleRequest is the wire shape for creating/updating a v2 rule. It maps
 // 1:1 onto dqa.RuleFromMap's expectations.

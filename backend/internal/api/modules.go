@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	dataqualitymodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	kitadapter "github.com/moh-sso-dashboard/internal/adapters/modulekit"
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	"github.com/moh-sso-dashboard/internal/config"
 	"github.com/moh-sso-dashboard/internal/middleware"
@@ -144,6 +146,21 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 			// Behind the data-statistics system check and health-context
 			// selection, where the host registered these routes before.
 			modulehttp.Register(routes.ContextScoped, handlers.DocumentTemplates)
+		},
+	}, module.Definition{
+		Info: module.Info{ID: dataqualitymodule.ID, Version: dataqualitymodule.Version(), Enabled: enabled[dataqualitymodule.ID]},
+		Initialize: func(ctx context.Context) (module.Stop, error) {
+			if handlers.DataQuality == nil {
+				return nil, errors.New("data quality module is required")
+			}
+			return handlers.DataQuality.Initialize(ctx)
+		},
+		Register: func(routes module.Routes) {
+			if routes.ContextScoped == nil {
+				return
+			}
+			// The middleware only names the caller for created_by/reported_by fields.
+			modulehttp.Register(routes.ContextScoped.Group("", kitadapter.CallerNameMiddleware()), handlers.DataQuality)
 		},
 	})
 }

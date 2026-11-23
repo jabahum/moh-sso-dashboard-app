@@ -25,9 +25,6 @@ var allowedFeatureImports = map[string]map[string]string{
 	"auth": {
 		"authsession": "auth owns the authsession backing store as an implementation detail",
 	},
-	"data_quality": {
-		"health_context": "data-quality issues enforce ownership through the shared contextual scope policy",
-	},
 	"email": {
 		"rbac":           "email group targeting resolves recipients through the RBAC repository port",
 		"users":          "email group targeting filters resolved members through the users repository port",

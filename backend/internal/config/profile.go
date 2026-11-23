@@ -11,7 +11,7 @@ const ProfileCore = "core"
 // OptionalModuleIDs lists the currently packaged applications. Legacy feature
 // switches are not inferred from this inventory.
 func OptionalModuleIDs() []string {
-	return []string{"metrics", "audit", "geojson", "report-scheduler", "announcements", "admin-units", "storage-locations", "visualiser", "document-templates"}
+	return []string{"metrics", "audit", "geojson", "report-scheduler", "announcements", "admin-units", "storage-locations", "visualiser", "document-templates", "data-quality"}
 }
 func (c *Config) CoreOnly() bool { return c != nil && c.PlatformProfile == ProfileCore }
 func (c *Config) EffectiveDisabledModules() string {

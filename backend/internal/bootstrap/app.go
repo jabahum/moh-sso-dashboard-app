@@ -229,8 +229,6 @@ func Run() {
 		SMSService:                     services.SMS,
 		AuditService:                   services.Audit,
 		Logger:                         appLogger,
-		DQADB:                          dbs.DQA,
-		DWHDB:                          dbs.DWH,
 	})
 
 	if err != nil {

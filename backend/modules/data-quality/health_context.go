@@ -1,26 +1,31 @@
-package data_quality
+package dataquality
 
 import (
 	"context"
 	"errors"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	healthcontext "github.com/moh-sso-dashboard/internal/features/health_context"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
 )
 
 var errIssueOutsideHealthContext = errors.New("issue is outside the selected health context")
 
-func healthContextScopeFromRequest(c *gin.Context) healthContextScope {
-	contextID, _ := c.Get("health_context_id")
-	id, _ := contextID.(uuid.UUID)
-	scopeMode, _ := c.Get("health_context_scope_mode")
-	mode, _ := scopeMode.(healthcontext.ScopeMode)
+// healthContextScopeFromRequest reads the host's already-authorized selection.
+// Without a selection the scope is unrestricted (uuid.Nil), as before.
+func healthContextScopeFromRequest(c *modulekit.Context) healthContextScope {
+	selection := c.HealthContext()
+	if selection == nil {
+		return healthContextScope{}
+	}
+	id, err := uuid.Parse(selection.NodeID)
+	if err != nil {
+		return healthContextScope{}
+	}
 	return healthContextScope{
 		ContextID:          id,
-		IncludeDescendants: mode == healthcontext.ScopeNodeAndDescendants,
+		IncludeDescendants: selection.IncludeDescendants,
 	}
 }
 

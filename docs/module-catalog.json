@@ -94,20 +94,22 @@
     },
     {
       "id": "data_quality",
-      "stage": "planned",
+      "stage": "published",
       "scope": "DQA rules, results and schedules",
-      "moduleId": "",
+      "moduleId": "data-quality",
       "dependencies": [
         "warehouse",
         "health_context",
-        "primary-db"
+        "primary-db",
+        "keycloak",
+        "email"
       ],
       "workers": [
-        "host DQA schedule worker"
+        "registry-owned DQA scheduled-run worker"
       ],
       "migrations": "core and warehouse",
-      "next": "Define DQA migration ownership and a joined worker stop/readiness contract before enabling module disablement.",
-      "integration": "host"
+      "next": "Built from the repository through a local replace until backend/core v0.2.0 and this module are tagged; then pin the release in backend/go.mod.",
+      "integration": "self-contained"
     },
     {
       "id": "document_templates",

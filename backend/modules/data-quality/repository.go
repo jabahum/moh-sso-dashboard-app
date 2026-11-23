@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 import (
 	"context"
@@ -32,13 +32,17 @@ type postgresRepository struct {
 	dwhDB                 *sql.DB
 }
 
+// NewRepository builds the issue repository. The best-effort hiv.issue column
+// migration runs from Module.Initialize (ensureIssueSchema), at startup.
 func NewRepository(dwhDB *sql.DB, primaryDB *sql.DB) Repository {
-	repo := &postgresRepository{
+	return newPostgresRepository(dwhDB, primaryDB)
+}
+
+func newPostgresRepository(dwhDB *sql.DB, primaryDB *sql.DB) *postgresRepository {
+	return &postgresRepository{
 		dwhDB:     dwhDB,
 		primaryDB: primaryDB,
 	}
-	repo.ensureSchema(context.Background())
-	return repo
 }
 
 func (r *postgresRepository) ensureSchema(ctx context.Context) {
