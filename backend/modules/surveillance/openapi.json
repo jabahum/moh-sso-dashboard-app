@@ -1,0 +1,4093 @@
+{
+  "components": {
+    "schemas": {
+      "db.WeeklyStatus": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "disease_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "district_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "epi_week_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "indicator_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "region_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "source_name": {
+            "$ref": "#/components/schemas/sql.NullString"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sub_county_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "sql.NullString": {
+        "properties": {
+          "String": {
+            "type": "string"
+          },
+          "Valid": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.AlertResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "created_on": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "disease_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "disease_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "district_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "district_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "epi_week": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "epi_week_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "epi_year": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "external_id": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "narrative": {
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "region_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "source_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "submitted_by": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.CreateImportBatchRequest": {
+        "properties": {
+          "dataset_type": {
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "file_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "imported_by": {
+            "nullable": true,
+            "type": "string"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_name",
+          "dataset_type"
+        ],
+        "type": "object"
+      },
+      "surveillance.DeleteResponse": {
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.DiseaseResponse": {
+        "properties": {
+          "category": {
+            "nullable": true,
+            "type": "string"
+          },
+          "code": {
+            "nullable": true,
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.DiseaseWeeklyTrendAggregateResponse": {
+        "properties": {
+          "epi_week": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "epi_week_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "epi_year": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total_cases": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.DistrictResponse": {
+        "properties": {
+          "code": {
+            "nullable": true,
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "region_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "region_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.EpiWeekResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "epi_week": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "epi_year": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "week_end_date": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "week_start_date": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.FacilityWeeklyMetricResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "disease_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "disease_name": {
+            "type": "string"
+          },
+          "district_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "district_name": {
+            "type": "string"
+          },
+          "epi_week": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "epi_week_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "epi_year": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "facility_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "facility_name": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "indicator_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "indicator_name": {
+            "type": "string"
+          },
+          "metric_value": {
+            "type": "string"
+          },
+          "region_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "region_name": {
+            "type": "string"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "source_record_id": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sub_county_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "sub_county_name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.ImportBatchResponse": {
+        "properties": {
+          "completed_at": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "dataset_type": {
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "failed_rows": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "file_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "imported_by": {
+            "nullable": true,
+            "type": "string"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "success_rows": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total_rows": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.ImportRawRowResponse": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "error_message": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "payload": {},
+          "row_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.RegionResponse": {
+        "properties": {
+          "code": {
+            "nullable": true,
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.SubCountyResponse": {
+        "properties": {
+          "code": {
+            "nullable": true,
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "district_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.UpdateImportBatchStatusRequest": {
+        "properties": {
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "surveillance.UpsertDistrictRequest": {
+        "properties": {
+          "code": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "region_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "surveillance.UpsertSubCountyRequest": {
+        "properties": {
+          "code": {
+            "nullable": true,
+            "type": "string"
+          },
+          "district_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "district_id"
+        ],
+        "type": "object"
+      },
+      "surveillance.WeeklyStatusDetailedResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "disease_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "disease_name": {
+            "type": "string"
+          },
+          "district_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "district_name": {
+            "type": "string"
+          },
+          "epi_week_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "indicator_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "indicator_name": {
+            "type": "string"
+          },
+          "region_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "region_name": {
+            "type": "string"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sub_county_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "sub_county_name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "surveillance.WeeklyStatusResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "disease_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "district_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "epi_week_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "indicator_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "region_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "source_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sub_county_id": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "paths": {
+    "/surveillance/alerts": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_alerts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "diseaseID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "districtID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "epiWeekID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "regionID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.AlertResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Alerts",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListAlerts",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/diseases": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_diseases",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.DiseaseResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Diseases",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListDiseases",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/districts": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_districts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.DistrictResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Districts",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListDistricts",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      },
+      "post": {
+        "description": "Explicit route permission: surveillance:manage_locations. Additional group/system access checks may apply.",
+        "operationId": "post_api_v1_surveillance_districts",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/surveillance.UpsertDistrictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/surveillance.DistrictResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Upsert District",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).UpsertDistrict",
+        "x-route-permissions": [
+          "surveillance:manage_locations"
+        ]
+      }
+    },
+    "/surveillance/districts/{districtID}/subcounties": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_districts_districtID_subcounties",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "districtID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.SubCountyResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Subcounties By District",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListSubcountiesByDistrict",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/facility-weekly-metrics/disease-trend": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_facility-weekly-metrics_disease-trend",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "diseaseID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "districtID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "epiYear",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "regionID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.DiseaseWeeklyTrendAggregateResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Disease Weekly Trend Aggregated",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListDiseaseWeeklyTrendAggregated",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/facility-weekly-metrics/facility/{facilityID}": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_facility-weekly-metrics_facility_facilityID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "facilityID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.FacilityWeeklyMetricResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Facility Weekly Metrics By Facility",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListFacilityWeeklyMetricsByFacility",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/facility-weekly-metrics/facility/{facilityID}/disease/{diseaseID}/trend": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_facility-weekly-metrics_facility_facilityID_disease_diseaseID_trend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diseaseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "facilityID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.FacilityWeeklyMetricResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Facility Disease Metrics Trend",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListFacilityDiseaseMetricsTrend",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/facility-weekly-metrics/facility/{facilityID}/indicator/{indicatorID}/trend": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_facility-weekly-metrics_facility_facilityID_indicator_indicatorID_trend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "facilityID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "indicatorID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.FacilityWeeklyMetricResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Facility Indicator Metrics Trend",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListFacilityIndicatorMetricsTrend",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/facility-weekly-metrics/week/{epiWeekID}": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_facility-weekly-metrics_week_epiWeekID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "epiWeekID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.FacilityWeeklyMetricResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Facility Weekly Metrics By Week",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListFacilityWeeklyMetricsByWeek",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/facility-weekly-metrics/week/{epiWeekID}/disease/{diseaseID}": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_facility-weekly-metrics_week_epiWeekID_disease_diseaseID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diseaseID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "epiWeekID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.FacilityWeeklyMetricResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Facility Disease Metrics By Week And Disease",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListFacilityDiseaseMetricsByWeekAndDisease",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/imports": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_imports",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.ImportBatchResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Import Batches",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListImportBatches",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      },
+      "post": {
+        "description": "Explicit route permission: surveillance:import. Additional group/system access checks may apply.",
+        "operationId": "post_api_v1_surveillance_imports",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/surveillance.CreateImportBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/surveillance.ImportBatchResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Create Import Batch",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).CreateImportBatch",
+        "x-route-permissions": [
+          "surveillance:import"
+        ]
+      }
+    },
+    "/surveillance/imports/{batchID}": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_imports_batchID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batchID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/surveillance.ImportBatchResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Import Batch By ID",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).GetImportBatchByID",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/imports/{batchID}/raw-rows": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_imports_batchID_raw-rows",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batchID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.ImportRawRowResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Import Raw Rows By Batch",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListImportRawRowsByBatch",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/imports/{batchID}/status": {
+      "patch": {
+        "description": "Explicit route permission: surveillance:import. Additional group/system access checks may apply.",
+        "operationId": "patch_api_v1_surveillance_imports_batchID_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batchID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/surveillance.UpdateImportBatchStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/surveillance.ImportBatchResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Update Import Batch Status",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).UpdateImportBatchStatus",
+        "x-route-permissions": [
+          "surveillance:import"
+        ]
+      }
+    },
+    "/surveillance/regions": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_regions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.RegionResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Regions",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListRegions",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/regions/{regionID}/districts": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_regions_regionID_districts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "regionID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.DistrictResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Districts By Region",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListDistrictsByRegion",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/subcounties": {
+      "post": {
+        "description": "Explicit route permission: surveillance:manage_locations. Additional group/system access checks may apply.",
+        "operationId": "post_api_v1_surveillance_subcounties",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/surveillance.UpsertSubCountyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/surveillance.SubCountyResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Upsert Subcounty",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).UpsertSubcounty",
+        "x-route-permissions": [
+          "surveillance:manage_locations"
+        ]
+      }
+    },
+    "/surveillance/subcounties/{id}": {
+      "delete": {
+        "description": "Explicit route permission: surveillance:manage_locations. Additional group/system access checks may apply.",
+        "operationId": "delete_api_v1_surveillance_subcounties_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/surveillance.DeleteResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Delete Subcounty",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).DeleteSubcounty",
+        "x-route-permissions": [
+          "surveillance:manage_locations"
+        ]
+      },
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_subcounties_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/surveillance.SubCountyResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Subcounty By ID",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).GetSubcountyByID",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/weekly-statuses/detailed": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_weekly-statuses_detailed",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "diseaseID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "districtID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "epiWeekID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "indicatorID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "regionID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subCountyID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.WeeklyStatusDetailedResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Weekly Statuses Detailed",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListWeeklyStatusesDetailed",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/weekly-statuses/district/week/{epiWeekID}": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_weekly-statuses_district_week_epiWeekID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "epiWeekID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/db.WeeklyStatus"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List District Weekly Statuses By Week",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListDistrictWeeklyStatusesByWeek",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/weekly-statuses/list": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_weekly-statuses_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "diseaseID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "districtID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "epiWeekID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "indicatorID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "regionID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subCountyID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.WeeklyStatusResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Weekly Statuses",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListWeeklyStatuses",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/weekly-statuses/national/week/{epiWeekID}": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_weekly-statuses_national_week_epiWeekID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "epiWeekID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.WeeklyStatusResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List National Weekly Statuses By Week",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListNationalWeeklyStatusesByWeek",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/weekly-statuses/region/week/{epiWeekID}": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_weekly-statuses_region_week_epiWeekID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "epiWeekID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.WeeklyStatusResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Region Weekly Statuses By Week",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListRegionWeeklyStatusesByWeek",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    },
+    "/surveillance/weeks": {
+      "get": {
+        "description": "Explicit route permission: surveillance:read. Additional group/system access checks may apply.",
+        "operationId": "get_api_v1_surveillance_weeks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/surveillance.EpiWeekResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "List Epi Weeks By Year",
+        "tags": [
+          "surveillance"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/surveillance.(*Handler).ListEpiWeeksByYear",
+        "x-route-permissions": [
+          "surveillance:read"
+        ]
+      }
+    }
+  }
+}

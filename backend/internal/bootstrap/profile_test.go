@@ -17,15 +17,15 @@ import (
 func TestCoreCompositionOmitsOptionalConstructorsAndRoutes(t *testing.T) {
 	cfg := &config.Config{PlatformProfile: config.ProfileCore, FrontendBaseURL: "https://portal.example.org"}
 	log := logger.NewLogger()
-	repos := buildRepositories(cfg, nil, nil, nil, nil, log)
-	if repos.Surveillance != nil || repos.Email != nil || repos.Documents != nil || repos.NotificationDelivery != nil {
+	repos := buildRepositories(cfg, nil, nil, nil, log)
+	if repos.Email != nil || repos.Documents != nil || repos.NotificationDelivery != nil {
 		t.Fatal("optional repositories constructed")
 	}
 	services := buildServices(serviceDependencies{Config: cfg, Repositories: repos, Logger: log})
 	if services.RBAC == nil || services.HealthContexts == nil || services.Auth == nil || services.Audit == nil || services.Sessions == nil || services.Notifications == nil {
 		t.Fatal("missing core capability")
 	}
-	if services.SMTP != nil || services.Email != nil || services.SMS != nil || services.Documents != nil || services.ReportScheduler != nil {
+	if services.SMTP != nil || services.Email != nil || services.SMS != nil || services.Documents != nil || services.ReportScheduler != nil || services.SurveillanceModule != nil {
 		t.Fatal("optional service constructed")
 	}
 	handlers := buildHandlers(handlerDependencies{Config: cfg, Services: services})

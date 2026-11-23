@@ -31,7 +31,6 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {
 	registerDocumentRoutes(contextScoped, deps)
 	registerDataQualityRoutes(contextScoped, deps)
 	registerVisualiserRoutes(contextScoped, deps)
-	registerSurveillanceRoutes(contextScoped, deps)
 
 	registerRBACProtectedRoutes(protected, deps)
 	registerHealthContextProtectedRoutes(protected, deps)

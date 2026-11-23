@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	router "github.com/moh-sso-dashboard/internal/api"
 	"github.com/moh-sso-dashboard/internal/api/handler"
+	healthcontext "github.com/moh-sso-dashboard/internal/features/health_context"
 	adminunits "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcements "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	audit "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
@@ -23,6 +24,7 @@ import (
 	metrics "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportScheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	storagelocations "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
+	surveillance "github.com/mohuganda/moh-sso-dashboard/backend/modules/surveillance"
 )
 
 // Routes uses inert handlers: route registration never needs live DB/Redis/SSO.
@@ -80,6 +82,10 @@ func documentationHandlers() router.HandlerSet {
 	}
 	var err error
 	handlers.StorageLocations, err = storagelocations.NewModule(storagelocations.Dependencies{Database: new(sql.DB)})
+	if err != nil {
+		panic(err)
+	}
+	handlers.Surveillance, err = surveillance.NewModule(surveillance.Dependencies{Database: new(sql.DB), HealthContext: healthcontext.ModuleDirectory{}})
 	if err != nil {
 		panic(err)
 	}

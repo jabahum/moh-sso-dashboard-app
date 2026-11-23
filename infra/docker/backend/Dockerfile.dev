@@ -20,6 +20,7 @@ COPY backend/go.mod backend/go.sum ./
 COPY backend/core/go.mod ./core/go.mod
 # Modules built from this repository through local replace directives.
 COPY backend/modules/storage-locations/go.mod ./modules/storage-locations/go.mod
+COPY backend/modules/surveillance/go.mod ./modules/surveillance/go.mod
 RUN go mod download
 
 # Copy all source code

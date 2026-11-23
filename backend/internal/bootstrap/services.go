@@ -15,7 +15,6 @@ import (
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	logger "github.com/moh-sso-dashboard/internal/log"
@@ -25,6 +24,7 @@ import (
 	"github.com/moh-sso-dashboard/internal/worker"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
+	surveillancemodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/surveillance"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,14 +42,7 @@ type services struct {
 	Documents               *documentfeature.Service
 	Clients                 *clientfeature.Service
 	Users                   *userfeature.Service
-	Diseases                *surveillancefeature.DiseaseService
-	EpiWeeks                *surveillancefeature.EpiWeekService
-	Locations               *surveillancefeature.LocationService
-	Facilities              *surveillancefeature.FacilityService
-	FacilityWeeklyMetrics   *surveillancefeature.FacilityWeeklyMetricsService
-	WeeklyStatus            *surveillancefeature.WeeklyStatusService
-	SurveillanceImport      *surveillancefeature.ImportService
-	Alerts                  *surveillancefeature.AlertService
+	SurveillanceModule      *surveillancemodule.Module
 	DocumentTemplates       documenttemplatefeature.Service
 	DocumentTemplateSheets  documenttemplatefeature.SheetService
 	DocumentTemplateColumns documenttemplatefeature.ColumnService
@@ -187,57 +180,6 @@ func buildServices(deps serviceDependencies) services {
 		deps.Config,
 	)
 
-	diseaseService := surveillancefeature.NewDiseaseService(
-		deps.Logger,
-		deps.Repositories.Surveillance.Diseases,
-		notificationsService,
-		deps.Config,
-	)
-
-	epiWeekService := surveillancefeature.NewEpiWeekService(
-		deps.Logger,
-		deps.Repositories.Surveillance.EpiWeeks,
-		notificationsService,
-	)
-
-	locationService := surveillancefeature.NewLocationService(
-		deps.Logger,
-		deps.Repositories.Surveillance.Regions,
-		deps.Repositories.Surveillance.Districts,
-		deps.Repositories.Surveillance.SubCounties,
-		notificationsService,
-		deps.Config,
-	)
-
-	facilityService := surveillancefeature.NewFacilityService(
-		deps.Logger,
-		deps.Repositories.Surveillance.Facilities,
-		notificationsService,
-	)
-
-	facilityWeeklyMetricsService := surveillancefeature.NewFacilityWeeklyMetricsService(
-		deps.Logger,
-		deps.Repositories.Surveillance.FacilityMetrics,
-		deps.Repositories.Surveillance.Imports,
-	)
-
-	weeklyStatusService := surveillancefeature.NewWeeklyStatusService(
-		deps.Logger,
-		deps.Repositories.Surveillance.WeeklyStatus,
-	)
-
-	surveillanceImportService := surveillancefeature.NewImportService(
-		deps.Repositories.Surveillance.Imports,
-	)
-
-	alertsService := surveillancefeature.NewAlertService(
-		deps.Logger,
-		deps.Repositories.Surveillance.Alerts,
-		deps.Repositories.Surveillance.Imports,
-		notificationsService,
-		deps.Config,
-	)
-
 	documentTemplateService := documenttemplatefeature.NewService(
 		deps.Repositories.DocumentTemplates,
 		deps.Repositories.DocumentTemplateSheets,
@@ -258,15 +200,19 @@ func buildServices(deps serviceDependencies) services {
 		deps.Config,
 	)
 
+	healthContextService := healthcontextfeature.NewService(deps.Repositories.HealthContexts)
+	surveillanceModule := buildSurveillanceModule(deps, notificationsService, healthContextService)
+	var surveillanceJobs importsvc.SurveillanceJobs
+	if surveillanceModule != nil {
+		surveillanceJobs = surveillanceModule
+	}
+
 	importService := importsvc.NewService(
 		deps.Repositories.Documents,
 		deps.Repositories.Processes,
 		deps.Repositories.DocumentFiles,
-		deps.Repositories.Surveillance.Imports,
 		documentTemplateService,
-		facilityWeeklyMetricsService,
-		weeklyStatusService,
-		alertsService,
+		surveillanceJobs,
 		deps.FileStorage,
 		deps.Databases.Remote,
 	)
@@ -276,7 +222,6 @@ func buildServices(deps serviceDependencies) services {
 	userService.SetAccessRoleRemovalHook(newIdentitySyncRevocationHook(deps.Config, deps.Databases.Primary, deps.AdminKeycloak))
 	rbacService.SetKeycloakGroupMembershipManager(deps.AdminKeycloak)
 	rbacService.SetFrontendBaseURL(deps.Config.FrontendBaseURL)
-	healthContextService := healthcontextfeature.NewService(deps.Repositories.HealthContexts)
 	emailFeatureService.SetHealthContextService(healthContextService)
 
 	return services{
@@ -293,14 +238,7 @@ func buildServices(deps serviceDependencies) services {
 		Documents:               documentService,
 		Clients:                 clientService,
 		Users:                   userService,
-		Diseases:                diseaseService,
-		EpiWeeks:                epiWeekService,
-		Locations:               locationService,
-		Facilities:              facilityService,
-		FacilityWeeklyMetrics:   facilityWeeklyMetricsService,
-		WeeklyStatus:            weeklyStatusService,
-		SurveillanceImport:      surveillanceImportService,
-		Alerts:                  alertsService,
+		SurveillanceModule:      surveillanceModule,
 		DocumentTemplates:       documentTemplateService,
 		DocumentTemplateSheets:  documentTemplateSheetService,
 		DocumentTemplateColumns: documentTemplateColumnService,

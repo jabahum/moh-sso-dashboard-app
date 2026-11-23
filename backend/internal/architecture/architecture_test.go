@@ -36,9 +36,6 @@ var allowedFeatureImports = map[string]map[string]string{
 	"rbac": {
 		"system_rbac": "RBAC sync applies the system RBAC seed format",
 	},
-	"surveillance": {
-		"health_context": "surveillance resources use aliases and the shared contextual scope policy",
-	},
 	"visualiser": {
 		"health_context": "visualiser queries constrain organisation units through health-context aliases",
 	},

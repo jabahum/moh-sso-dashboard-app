@@ -22,7 +22,6 @@ import (
 	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
 	"github.com/moh-sso-dashboard/internal/keycloak"
@@ -155,20 +154,6 @@ func buildHandlers(deps handlerDependencies) handlers {
 	)
 	authHandler.SetHealthContextResolver(deps.Services.HealthContexts)
 
-	surveillanceHandler := surveillancefeature.NewHandler(
-		deps.Services.EpiWeeks,
-		deps.Services.Diseases,
-		deps.Services.Locations,
-		deps.Services.FacilityWeeklyMetrics,
-		deps.Services.WeeklyStatus,
-		deps.Services.Alerts,
-		deps.Services.SurveillanceImport,
-		deps.Services.HealthContexts,
-	)
-	if deps.Databases.observatory != nil {
-		surveillanceHandler.SetAvailabilityCheck(deps.Databases.observatory.Ready)
-	}
-
 	documentTemplateHandler := documenttemplatesfeature.NewHandler(
 		deps.Services.DocumentTemplates,
 		deps.Services.DocumentTemplateSheets,
@@ -228,7 +213,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			Announcements:           announcementHandler,
 			AdminUnits:              adminunitsHandler,
 			Visualiser:              visualiserHandler,
-			Surveillance:            surveillanceHandler,
+			Surveillance:            deps.Services.SurveillanceModule,
 			GeoJSON:                 geoJSONHandler,
 			Email:                   emailHandler,
 			RBAC:                    rbacHandler,

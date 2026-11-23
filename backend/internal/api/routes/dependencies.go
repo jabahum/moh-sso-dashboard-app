@@ -11,7 +11,6 @@ import (
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
 	"github.com/moh-sso-dashboard/internal/ratelimit"
@@ -21,6 +20,7 @@ import (
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
+	surveillancefeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/surveillance"
 )
 
 type Dependencies struct {
@@ -43,7 +43,7 @@ type Dependencies struct {
 
 	AdminUnits     *adminunitsfeature.Module
 	Visualiser     *visualiserfeature.Handler
-	Surveillance   *surveillancefeature.Handler
+	Surveillance   *surveillancefeature.Module
 	GeoJSON        *geojsonfeature.Module
 	Email          *emailfeature.Handler
 	RBAC           *rbacfeature.Handler

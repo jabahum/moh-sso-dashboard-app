@@ -11,7 +11,6 @@ import (
 	healthcontextRepo "github.com/moh-sso-dashboard/internal/features/health_context"
 	rbacRepo "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionRepo "github.com/moh-sso-dashboard/internal/features/sessions"
-	surveillanceRepo "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userRepo "github.com/moh-sso-dashboard/internal/features/users"
 	kcClientPkg "github.com/moh-sso-dashboard/internal/keycloak"
 	logger "github.com/moh-sso-dashboard/internal/log"
@@ -38,7 +37,6 @@ type repositories struct {
 	Processes               processRepo.ProcessRepository
 	Sessions                sessionRepo.SessionRepository
 	Email                   emailRepo.EmailRepository
-	Surveillance            *surveillanceRepo.Repositories
 	RBAC                    rbacRepo.Repository
 	HealthContexts          healthcontextRepo.Repository
 }
@@ -46,7 +44,6 @@ type repositories struct {
 func buildRepositories(
 	cfg *config.Config,
 	store storepkg.Store,
-	surveillanceStore storepkg.Store,
 	adminKC *kcClientPkg.KeyAdminClient,
 	webKC *kcClientPkg.Client,
 	appLogger *logger.Logger,
@@ -82,7 +79,6 @@ func buildRepositories(
 		Processes:               processRepo.NewProcessRepository(cfg, store, *appLogger),
 		Sessions:                sessionRepo.NewSessionRepository(adminKC, cfg, *appLogger),
 		Email:                   emailRepo.NewEmailRepository(cfg, store, *appLogger),
-		Surveillance:            surveillanceRepo.NewRepositories(surveillanceStore),
 		RBAC:                    rbacRepo.NewRepository(primaryDB),
 		HealthContexts:          healthContexts,
 	}
