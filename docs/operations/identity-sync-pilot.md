@@ -50,7 +50,7 @@ Stop and roll back (see [Rollback](#rollback)) if any of these happens:
 | Component | Must include |
 |---|---|
 | Dashboard backend | `feat/platform-identity-sync` (migrations 61 to 65, the identity-sync registry, batch runs, revocations, and the `moh-sso` CLI in the image) |
-| CLIMS | `feat/clims-identity-sync-v1.1` (contract 1.1, migration `000017_session_revocation_marker`) |
+| CLIMS | `feat/clims-identity-sync-v1.1` (contract 1.1, migration `000036_session_revocation_marker`) |
 
 Take a database backup of the dashboard and CLIMS databases after deploying and
 before step 1. Record the backup names in the ticket.

@@ -90,8 +90,19 @@ for (const app of ["clims", "poesgo"]) {
         { env: tokens, volumes: [`${dir}:/conformance:ro`], allowFail: true },
       );
       await testInfo.attach(`conformance-${app}.json`, { body: res.stdout, contentType: "application/json" });
-      expect(res.json, `conformance printed no JSON report (exit ${res.code}): ${res.stderr}`).toBeTruthy();
-      const results = res.json.results;
+      // On failure the CLI prints a summary line after the JSON report; read the report alone.
+      let report = res.json;
+      if (!report) {
+        const start = res.stdout.indexOf("{");
+        const end = res.stdout.lastIndexOf("}");
+        try {
+          report = start >= 0 ? JSON.parse(res.stdout.slice(start, end + 1)) : undefined;
+        } catch {
+          report = undefined;
+        }
+      }
+      expect(report, `conformance printed no JSON report (exit ${res.code}): ${res.stderr}`).toBeTruthy();
+      const results = report.results;
       for (const r of results) console.log(`[${app}] ${r.status.toUpperCase().padEnd(4)} ${r.id} ${r.detail ?? ""}`);
       const failed = results.filter((r) => r.status === "fail");
       const skipped = results.filter((r) => r.status === "skip");
