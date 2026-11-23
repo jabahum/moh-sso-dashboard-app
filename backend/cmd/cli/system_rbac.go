@@ -300,6 +300,11 @@ var systemRBACExportDBCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		// Service clients live only in the seed file, not in the database, so
+		// keep the ones already in the target file instead of dropping them.
+		if existing, err := systemrbac.LoadSeedFile(systemRBACFile); err == nil {
+			seed.ServiceClients = existing.ServiceClients
+		}
 		if err := systemrbac.WriteSeedFile(systemRBACFile, seed); err != nil {
 			return err
 		}

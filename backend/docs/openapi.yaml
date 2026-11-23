@@ -6871,6 +6871,10 @@ components:
           items:
             $ref: '#/components/schemas/system_rbac.SeedRealmRole'
           type: array
+        serviceClients:
+          items:
+            $ref: '#/components/schemas/system_rbac.SeedServiceClient'
+          type: array
         systems:
           items:
             $ref: '#/components/schemas/system_rbac.SeedSystem'
@@ -6989,6 +6993,28 @@ components:
           type: array
         serviceOnly:
           type: boolean
+      type: object
+    system_rbac.SeedServiceClient:
+      properties:
+        audience:
+          type: string
+        clientId:
+          type: string
+        description:
+          type: string
+        displayName:
+          type: string
+        roles:
+          items:
+            $ref: '#/components/schemas/system_rbac.SeedServiceClientRole'
+          type: array
+      type: object
+    system_rbac.SeedServiceClientRole:
+      properties:
+        role:
+          type: string
+        system:
+          type: string
       type: object
     system_rbac.SeedSystem:
       properties:

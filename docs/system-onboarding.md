@@ -9,6 +9,8 @@ activation, and acceptance tests, start with the
 Registering a system does not create its OAuth client, deploy an external
 application, or install a hosted frontend module. For the full RBAC and Keycloak
 sync operating model, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
+To register an application from a reviewed YAML or JSON document instead of a
+seed entry, see [Application manifests](application-manifests.md).
 
 ## Application lifecycle
 

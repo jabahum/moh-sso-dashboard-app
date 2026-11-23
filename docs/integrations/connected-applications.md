@@ -114,10 +114,19 @@ not pick changes up from the file, so check each item in the admin console:
 6. Keycloak runs with a fixed public hostname (`KC_HOSTNAME`), so tokens
    requested through an internal URL still carry the public issuer.
 
-A realm that wasn't created from the export can import the clients from each
-application repository's `infra/sso/` folder. Those files are copies of the
-export's definitions, and the application guides list the manual steps that
-partial import can't carry.
+A realm that wasn't created from the export has two ways to get the sync
+clients:
+
+- **Let the dashboard create them.** Both sync clients are listed under
+  `serviceClients:` in `backend/config/system-rbac.seed.yaml`. With
+  `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true`, backend startup creates any that
+  are missing and completes items 2 to 4 above (service account, role, scope
+  mapping, audience mapper). It never touches a client of another shape and
+  never sets a secret; Keycloak generates it. See
+  [Service clients](../rbac-keycloak-sync.md#service-clients).
+- **Import them.** Each application repository's `infra/sso/` folder has
+  import files that are copies of the export's definitions, and the
+  application guides list the manual steps that partial import can't carry.
 
 After any secret is created or regenerated, store it straight into its
 destination (the application's env file or the dashboard's secret mount)
@@ -167,10 +176,16 @@ substitute the values from section 2.
    capabilities `accounts.list`, `identity.link` and `sessions.revoke`. CLIMS
    shows `clims` and `uuid`.
 
-   The same registration is available in the portal: Admin → RBAC → select the
-   application → Operations → **Identity sync**.
+   The same registration is available in the portal: Admin → RBAC → **This
+   application** → select the application → **Identity sync** tab.
 
-5. **Preview, review, apply, rehearse removal.** Follow the
+5. **Portal launcher entry.** To launch the application from the portal,
+   import its application manifest on Admin → Systems → **Import manifest**
+   (CLIMS ships `infra/sso/clims.application.yaml`; POES has none yet) and
+   take it through the lifecycle review. See
+   [Application manifests](../application-manifests.md).
+
+6. **Preview, review, apply, rehearse removal.** Follow the
    [pilot runbook](../operations/identity-sync-pilot.md) from step 2. It is
    written for CLIMS; for POES use the substitutions in its
    [Running the pilot for POES](../operations/identity-sync-pilot.md#running-the-pilot-for-poes)
