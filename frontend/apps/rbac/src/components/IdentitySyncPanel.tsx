@@ -465,44 +465,46 @@ function RunsCard({ clientId, canWrite }: Props) {
       ) : runs.length === 0 ? (
         <p>No runs yet.</p>
       ) : (
-        <Table size="sm" aria-label="Recent runs">
-          <TableHead>
-            <TableRow>
-              <TableHeader>Started</TableHeader>
-              <TableHeader>By</TableHeader>
-              <TableHeader>Status</TableHeader>
-              <TableHeader>
-                <span className="cds--visually-hidden">Open</span>
-              </TableHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {runs.map((run) => (
-              <TableRow key={run.id} isSelected={run.id === selectedRunId}>
-                <TableCell>{formatTime(run.createdAt)}</TableCell>
-                <TableCell>{run.createdBy}</TableCell>
-                <TableCell>
-                  <Tag
-                    type={
-                      run.status === "completed"
-                        ? "green"
-                        : run.status === "failed"
-                          ? "red"
-                          : "gray"
-                    }
-                  >
-                    {run.status}
-                  </Tag>
-                </TableCell>
-                <TableCell>
-                  <Button size="sm" kind="ghost" onClick={() => setSelectedRunId(run.id)}>
-                    {run.id === selectedRunId ? "Open" : "Review"}
-                  </Button>
-                </TableCell>
+        <div className="rbac-identity-sync__table">
+          <Table size="sm" aria-label="Recent runs">
+            <TableHead>
+              <TableRow>
+                <TableHeader>Started</TableHeader>
+                <TableHeader>By</TableHeader>
+                <TableHeader>Status</TableHeader>
+                <TableHeader>
+                  <span className="cds--visually-hidden">Open</span>
+                </TableHeader>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {runs.map((run) => (
+                <TableRow key={run.id} isSelected={run.id === selectedRunId}>
+                  <TableCell>{formatTime(run.createdAt)}</TableCell>
+                  <TableCell>{run.createdBy}</TableCell>
+                  <TableCell>
+                    <Tag
+                      type={
+                        run.status === "completed"
+                          ? "green"
+                          : run.status === "failed"
+                            ? "red"
+                            : "gray"
+                      }
+                    >
+                      {run.status}
+                    </Tag>
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" kind="ghost" onClick={() => setSelectedRunId(run.id)}>
+                      {run.id === selectedRunId ? "Open" : "Review"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
       {selectedRunId && (
         <RunDetail
@@ -704,86 +706,88 @@ function RunDetail({ clientId, runId, canWrite, jobRunning, onJobStarted }: RunD
           </>
         )}
       </div>
-      <Table size="sm" aria-label="Run rows">
-        <TableHead>
-          <TableRow>
-            {canWrite && (
-              <TableHeader>
-                <Checkbox
-                  id={`identity-sync-select-all-${runId}`}
-                  labelText="Select all decidable rows"
-                  hideLabel
-                  checked={
-                    decidable.length > 0 &&
-                    decidable.every((row) => selected.includes(row.accountId))
-                  }
-                  disabled={decidable.length === 0}
-                  onChange={(_, { checked }) =>
-                    setSelected(checked ? decidable.map((row) => row.accountId) : [])
-                  }
-                />
-              </TableHeader>
-            )}
-            <TableHeader>Account</TableHeader>
-            <TableHeader>Email</TableHeader>
-            <TableHeader>Proposal</TableHeader>
-            <TableHeader>Keycloak user</TableHeader>
-            <TableHeader>Decision</TableHeader>
-            <TableHeader>Link / access</TableHeader>
-            <TableHeader>Attempts</TableHeader>
-            <TableHeader>Last error</TableHeader>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
+      <div className="rbac-identity-sync__table rbac-identity-sync__table--wide">
+        <Table size="sm" aria-label="Run rows">
+          <TableHead>
+            <TableRow>
               {canWrite && (
-                <TableCell>
+                <TableHeader>
                   <Checkbox
-                    id={`identity-sync-row-${row.id}`}
-                    labelText={`Select account ${row.accountId}`}
+                    id={`identity-sync-select-all-${runId}`}
+                    labelText="Select all decidable rows"
                     hideLabel
-                    checked={selected.includes(row.accountId)}
-                    disabled={!isDecidable(row)}
-                    onChange={(_, { checked }) => toggle(row.accountId, checked)}
+                    checked={
+                      decidable.length > 0 &&
+                      decidable.every((row) => selected.includes(row.accountId))
+                    }
+                    disabled={decidable.length === 0}
+                    onChange={(_, { checked }) =>
+                      setSelected(checked ? decidable.map((row) => row.accountId) : [])
+                    }
                   />
-                </TableCell>
+                </TableHeader>
               )}
-              <TableCell>
-                <code>{row.accountId}</code>
-              </TableCell>
-              <TableCell>{row.emailHint || "—"}</TableCell>
-              <TableCell>
-                <Tag size="sm" type={proposalTag[row.proposal]}>
-                  {proposalLabels[row.proposal]}
-                </Tag>
-              </TableCell>
-              <TableCell>
-                {row.proposedSubject ? <code>{row.proposedSubject}</code> : "—"}
-              </TableCell>
-              <TableCell>
-                {row.decision}
-                {row.reviewedBy && (
-                  <small className="rbac-identity-sync__muted"> by {row.reviewedBy}</small>
-                )}
-              </TableCell>
-              <TableCell>
-                {row.linkStatus} / {row.grantStatus}
-              </TableCell>
-              <TableCell>{row.attempts}</TableCell>
-              <TableCell>
-                {row.lastError ? (
-                  <Tag size="sm" type="red">
-                    {row.lastError}
-                  </Tag>
-                ) : (
-                  ""
-                )}
-              </TableCell>
+              <TableHeader>Account</TableHeader>
+              <TableHeader>Email</TableHeader>
+              <TableHeader>Proposal</TableHeader>
+              <TableHeader>Keycloak user</TableHeader>
+              <TableHeader>Decision</TableHeader>
+              <TableHeader>Link / access</TableHeader>
+              <TableHeader>Attempts</TableHeader>
+              <TableHeader>Last error</TableHeader>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                {canWrite && (
+                  <TableCell>
+                    <Checkbox
+                      id={`identity-sync-row-${row.id}`}
+                      labelText={`Select account ${row.accountId}`}
+                      hideLabel
+                      checked={selected.includes(row.accountId)}
+                      disabled={!isDecidable(row)}
+                      onChange={(_, { checked }) => toggle(row.accountId, checked)}
+                    />
+                  </TableCell>
+                )}
+                <TableCell>
+                  <code>{row.accountId}</code>
+                </TableCell>
+                <TableCell>{row.emailHint || "—"}</TableCell>
+                <TableCell>
+                  <Tag size="sm" type={proposalTag[row.proposal]}>
+                    {proposalLabels[row.proposal]}
+                  </Tag>
+                </TableCell>
+                <TableCell>
+                  {row.proposedSubject ? <code>{row.proposedSubject}</code> : "—"}
+                </TableCell>
+                <TableCell>
+                  {row.decision}
+                  {row.reviewedBy && (
+                    <small className="rbac-identity-sync__muted"> by {row.reviewedBy}</small>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {row.linkStatus} / {row.grantStatus}
+                </TableCell>
+                <TableCell>{row.attempts}</TableCell>
+                <TableCell>
+                  {row.lastError ? (
+                    <Tag size="sm" type="red">
+                      {row.lastError}
+                    </Tag>
+                  ) : (
+                    ""
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
@@ -930,71 +934,73 @@ function RevocationsCard({ clientId, canWrite }: Props) {
       ) : revocations.length === 0 ? (
         <p>No access removals recorded.</p>
       ) : (
-        <Table size="sm" aria-label="Access removals">
-          <TableHead>
-            <TableRow>
-              <TableHeader>Keycloak user</TableHeader>
-              <TableHeader>Removed</TableHeader>
-              <TableHeader>By / reason</TableHeader>
-              <TableHeader>Steps</TableHeader>
-              <TableHeader>Status</TableHeader>
-              {canWrite && (
-                <TableHeader>
-                  <span className="cds--visually-hidden">Actions</span>
-                </TableHeader>
-              )}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {revocations.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>
-                  <code>{r.subject}</code>
-                </TableCell>
-                <TableCell>{formatTime(r.revokedAt)}</TableCell>
-                <TableCell>
-                  {r.revokedBy}
-                  <small className="rbac-identity-sync__muted"> {r.reason}</small>
-                </TableCell>
-                <TableCell>
-                  <StepTags revocation={r} />
-                  {r.lastError && (
-                    <small className="rbac-identity-sync__muted"> {r.lastError}</small>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {r.restoredAt ? (
-                    <Tag size="sm" type="gray">
-                      Restored by {r.restoredBy}
-                    </Tag>
-                  ) : r.complete ? (
-                    <Tag size="sm" type={r.sessionsStillOpen ? "warm-gray" : "green"}>
-                      {r.sessionsStillOpen ? "Done; sessions expire on their own" : "Done"}
-                    </Tag>
-                  ) : (
-                    <Tag size="sm" type="red">
-                      Incomplete
-                    </Tag>
-                  )}
-                </TableCell>
+        <div className="rbac-identity-sync__table rbac-identity-sync__table--wide">
+          <Table size="sm" aria-label="Access removals">
+            <TableHead>
+              <TableRow>
+                <TableHeader>Keycloak user</TableHeader>
+                <TableHeader>Removed</TableHeader>
+                <TableHeader>By / reason</TableHeader>
+                <TableHeader>Steps</TableHeader>
+                <TableHeader>Status</TableHeader>
                 {canWrite && (
-                  <TableCell>
-                    {!r.restoredAt && (
-                      <Button
-                        size="sm"
-                        kind="ghost"
-                        disabled={restoring || restoreReason.trim() === ""}
-                        onClick={() => handleRestore(r.subject)}
-                      >
-                        Clear revocation
-                      </Button>
-                    )}
-                  </TableCell>
+                  <TableHeader>
+                    <span className="cds--visually-hidden">Actions</span>
+                  </TableHeader>
                 )}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {revocations.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <code>{r.subject}</code>
+                  </TableCell>
+                  <TableCell>{formatTime(r.revokedAt)}</TableCell>
+                  <TableCell className="rbac-identity-sync__wrap">
+                    {r.revokedBy}
+                    <small className="rbac-identity-sync__muted"> {r.reason}</small>
+                  </TableCell>
+                  <TableCell>
+                    <StepTags revocation={r} />
+                    {r.lastError && (
+                      <small className="rbac-identity-sync__muted"> {r.lastError}</small>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {r.restoredAt ? (
+                      <Tag size="sm" type="gray">
+                        Restored by {r.restoredBy}
+                      </Tag>
+                    ) : r.complete ? (
+                      <Tag size="sm" type={r.sessionsStillOpen ? "warm-gray" : "green"}>
+                        {r.sessionsStillOpen ? "Done; sessions expire on their own" : "Done"}
+                      </Tag>
+                    ) : (
+                      <Tag size="sm" type="red">
+                        Incomplete
+                      </Tag>
+                    )}
+                  </TableCell>
+                  {canWrite && (
+                    <TableCell>
+                      {!r.restoredAt && (
+                        <Button
+                          size="sm"
+                          kind="ghost"
+                          disabled={restoring || restoreReason.trim() === ""}
+                          onClick={() => handleRestore(r.subject)}
+                        >
+                          Clear revocation
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );

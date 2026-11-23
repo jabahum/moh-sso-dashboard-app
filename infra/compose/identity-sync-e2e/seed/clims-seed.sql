@@ -28,7 +28,9 @@ INSERT INTO users (id, firstname, lastname, email, username, password, phone_num
     -- rows the suite changes between approval and apply.
     ('c1000000-0000-4000-8000-000000000012', 'Clims', 'Unverified', 'clims.unverified@e2e.test', 'clims.unverified', '!e2e-no-password', '', 'active',   now(), now()),
     ('c1000000-0000-4000-8000-000000000013', 'Clims', 'RecheckDir', 'clims.recheckdir@e2e.test', 'clims.recheckdir', '!e2e-no-password', '', 'active',   now(), now()),
-    ('c1000000-0000-4000-8000-000000000014', 'Clims', 'RecheckAcct','clims.recheckacct@e2e.test','clims.recheckacct','!e2e-no-password', '', 'active',   now(), now());
+    ('c1000000-0000-4000-8000-000000000014', 'Clims', 'RecheckAcct','clims.recheckacct@e2e.test','clims.recheckacct','!e2e-no-password', '', 'active',   now(), now()),
+    -- Portal screens suite: approved and applied through the RBAC workspace.
+    ('c1000000-0000-4000-8000-000000000015', 'Screens', 'Unlinked', 'screens.unlinked@e2e.test', 'screens.unlinked', '!e2e-no-password', '', 'active',   now(), now());
 
 -- Every account except the roleless one holds one existing CLIMS role.
 INSERT INTO role_user (user_id, role_id)

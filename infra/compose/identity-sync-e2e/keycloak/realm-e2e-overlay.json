@@ -701,6 +701,31 @@
      "portal_user"
     ]
    }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000110",
+   "username": "screens.unlinked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Screens",
+   "lastName": "Unlinked",
+   "email": "screens.unlinked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
   }
  ]
 }

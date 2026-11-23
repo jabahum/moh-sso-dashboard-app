@@ -40,6 +40,6 @@ cd "$here"
 step "npm ci (Playwright 1.64.1)" npm ci --no-audit --no-fund || exit 1
 step "Playwright chromium present" npx playwright install chromium || exit 1
 # One Playwright run, suites in file order; each suite reports its own tests.
-step "suites: contract, sync, browser, removal" npx playwright test || true
+step "suites: contract, sync, browser, removal, screens" npx playwright test || true
 # Keeps every host port in the e2e range (infra/scripts/test-migrations.py).
 step "migrations-check" env MIGRATIONS_CHECK_HOST_PORT="${MIGRATIONS_CHECK_HOST_PORT:-18432}" make --no-print-directory -C "$repo/infra" migrations-check || true
