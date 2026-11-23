@@ -629,10 +629,9 @@ func (s BatchService) processRow(ctx context.Context, t BatchTarget, row BatchRo
 
 	if row.LinkStatus != LinkLinked {
 		if !found {
-			if update(func(r *BatchRow) { r.LinkStatus, r.LastError = LinkIneligible, CodeAccountIneligible }) {
-				out.Outcome, out.Code = "ineligible", CodeAccountIneligible
-			}
-			return out
+			// Missing from the walk is not proof of ineligibility (the listing may
+			// have skipped it); resume retries. Only a 404 from PUT is final.
+			return fail(CodeAccountLookupFailed, func(r *BatchRow) { r.LinkStatus = LinkFailed })
 		}
 		if account.Email != row.EmailHint {
 			return s.backToReview(update, &out, CodeAccountChanged)

@@ -448,7 +448,9 @@ func TestBatchApplyAccountChecks(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows := f.rows(t, run.ID)
-	if r := rows["a-reuse"]; r.LinkStatus != LinkIneligible || r.LastError != CodeAccountIneligible {
+	// Missing from the walk is retryable (link failed / account_lookup_failed);
+	// only a 404 from PUT is ineligible (TestBatchLinkConflictAndIneligibleAreFinal).
+	if r := rows["a-reuse"]; r.LinkStatus != LinkFailed || r.LastError != CodeAccountLookupFailed || r.Terminal() {
 		t.Errorf("missing account row = %+v", r)
 	}
 	if r := rows["b-create"]; r.Proposal != ProposalReview || r.LastError != CodeAccountChanged || r.UserStatus != UserPending {
