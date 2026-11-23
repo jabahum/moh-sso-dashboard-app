@@ -1,0 +1,205 @@
+# Connected applications: CLIMS and POES
+
+CLIMS and POES (Poesgo) keep their own user accounts. The dashboard connects
+them to MoH Keycloak in two ways: users launch them from the portal and sign in
+with their Keycloak session, and the dashboard's identity sync links each local
+account to its Keycloak user and ends local sessions when portal access is
+removed.
+
+This page is the dashboard-side onboarding for both applications. It collects
+their values in one place, says who holds which credential, and gives the
+registration steps. Each application's repository has the matching guide for
+its own side:
+
+| Application | Repository guide | Runbook |
+| --- | --- | --- |
+| CLIMS | `docs/sso-and-identity-sync.md` in the CLIMS repository | `infra/sso/README.md` there |
+| POES | `docs/23-sso-and-identity-sync-onboarding.md` in the poesGo repository | `infra/sso/README.md` there |
+
+Related dashboard documents:
+
+- [Identity-sync contract (v1.1)](identity-sync-contract.md): what each application implements.
+- [Adapter and conformance suite](identity-sync-adapter.md): for teams adding a new application.
+- [Dashboard design](../architecture/identity-sync.md): registry, batches, removal.
+- [Production pilot runbook](../operations/identity-sync-pilot.md): the procedure for the first production links.
+- [Application identity contract](../platform-identity.md#identity-reconciliation-clims-poes): CLI settings.
+
+## 1. How it fits together
+
+```mermaid
+flowchart LR
+  user([User's browser])
+  portal[Portal launcher]
+  kc[(Keycloak realm)]
+  app[CLIMS or POES]
+  dash[Dashboard backend]
+
+  user -- "launch" --> portal
+  portal -- "/api/v1/auth/sso/start" --> app
+  app -- "OIDC code flow + PKCE<br/>client: clims / poesgo" --> kc
+  kc -- "ID token with clims_roles / poesgo_roles" --> app
+
+  dash -- "client credentials<br/>clims-identity-sync / poesgo-identity-sync" --> kc
+  kc -- "access token: aud = app client,<br/>role identity_sync" --> dash
+  dash -- "Bearer calls to<br/>/api/v1/internal/identity-sync" --> app
+  dash -- "grant / remove *_access" --> kc
+```
+
+Granting portal access to an application means two things: the user holds the
+application's access role in Keycloak, and their Keycloak identity is linked
+to their local account. Removing access reverses both: the dashboard removes
+the access role, so new sign-ins are refused, then calls
+`POST /sessions/revoke` on the application, which ends existing sessions.
+
+## 2. Values for each application
+
+| | CLIMS | POES |
+| --- | --- | --- |
+| Registry app ID (`--app`) | `clims` | `poesgo` |
+| Interactive client | `clims` | `poesgo` |
+| Access role | `clims_access` | `poesgo_access` |
+| ID-token roles claim | `clims_roles` | `poesgo_roles` |
+| Sync client | `clims-identity-sync` | `poesgo-identity-sync` |
+| Sync token audience | `clims` | `poesgo` |
+| Account ID format | `uuid` | `positive-integer` |
+| Contract | 1.1 | 1.1 |
+| Production origin (realm export) | `https://clims.health.go.ug` | `https://poes.health.go.ug` |
+| Registry credential | `env:CLIMS_SYNC_CLIENT_SECRET` | `env:POESGO_SYNC_CLIENT_SECRET` |
+| Mounted secret file variable | `CLIMS_SYNC_CLIENT_SECRET_FILE` | `POESGO_SYNC_CLIENT_SECRET_FILE` |
+| App setting that enables sync | `IDENTITY_SYNC_CLIENT_ID=clims-identity-sync` | `IDENTITY_SYNC_CLIENT_ID=poesgo-identity-sync` |
+| Password sign-in alongside portal sign-in | Yes. Web and mobile keep it | No. In `AUTH_PROVIDER=oidc` POES accepts only its SSO session, so its web admin and mobile apps can't sign in to that deployment yet |
+
+The backend entrypoint loads any mounted `<NAME>_SYNC_CLIENT_SECRET_FILE` as
+`<NAME>_SYNC_CLIENT_SECRET`, which is what the registry's `env:` reference
+reads. The deprecated `clims-identity-sync` and `poes-identity-sync` CLI
+commands use the older `CLIMS_SYNC_*` and `POES_SYNC_*` settings described in
+[platform identity](../platform-identity.md#identity-reconciliation-clims-poes).
+Prefer the registry commands below.
+
+## 3. Credentials: who holds what
+
+| Credential | Held by | Notes |
+| --- | --- | --- |
+| `clims` / `poesgo` client secret | The application only | The dashboard never needs it |
+| Application `JWT_SECRET` | The application only | Signs the application's own sessions |
+| `clims-identity-sync` / `poesgo-identity-sync` secret | The dashboard only | Mounted as a file, referenced by the registry; never pasted on a command line |
+| Keycloak admin client (`KEYCLOAK_ADMIN_CLIENT_ID` / `_SECRET`) | The dashboard only | Looks up users and grants or removes `<app>_access` |
+
+The application verifies sync tokens against Keycloak's public keys, so the
+dashboard and the application never share a secret. Rotate a sync secret in
+Keycloak (Clients → the sync client → Credentials → Regenerate), then replace
+the dashboard's mounted file and restart the backend. Sync calls fail in
+between; users are not affected.
+
+## 4. Keycloak
+
+`infra/keycloak/realm-export.json` and `realm-export-prod.json` define all four
+clients: both access roles, both `identity_sync` roles, the audience mappers,
+the scope mappings and the service-account role assignments. A live realm does
+not pick changes up from the file, so check each item in the admin console:
+
+1. `clims` and `poesgo` exist with the redirect URI
+   `<origin>/api/v1/auth/sso/callback`, PKCE S256, and a client-role mapper that
+   puts their roles in the ID token as `clims_roles` / `poesgo_roles`.
+2. `clims-identity-sync` and `poesgo-identity-sync` are confidential, have only
+   *Service accounts* enabled, and have `fullScopeAllowed` off.
+3. Each sync client's service account holds its application's `identity_sync`
+   role, and the same role is in the sync client's dedicated scope (Client
+   scopes → `<sync client>-dedicated` → Scope). Without the scope mapping the
+   role never reaches the token and every call gets 403.
+4. Each sync client has an audience mapper adding the application client ID to
+   `aud`.
+5. Realm settings → User profile has `"unmanagedAttributePolicy": "ADMIN_EDIT"`;
+   invitations fail without it.
+6. Keycloak runs with a fixed public hostname (`KC_HOSTNAME`), so tokens
+   requested through an internal URL still carry the public issuer.
+
+A realm that wasn't created from the export can import the clients from each
+application repository's `infra/sso/` folder. Those files are copies of the
+export's definitions, and the application guides list the manual steps that
+partial import can't carry.
+
+After any secret is created or regenerated, store it straight into its
+destination (the application's env file or the dashboard's secret mount)
+without displaying it.
+
+## 5. Connect an application
+
+Do these in order for each application. The examples use POES. For CLIMS,
+substitute the values from section 2.
+
+1. **Application side.** The application team sets its OIDC settings and
+   `IDENTITY_SYNC_CLIENT_ID`, applies its migrations, and confirms
+   `/api/v1/internal/identity-sync` is reachable from the dashboard's network.
+   Their repository guide has the details.
+2. **Secret.** Mount the sync client's secret and set
+   `POESGO_SYNC_CLIENT_SECRET_FILE` to its path. If the application's origin
+   resolves to a private address from the dashboard (split-horizon DNS), add
+   that host name only to `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS`.
+3. **Service identity binding.** The registry accepts only a sync client that
+   is an enabled service identity of the application. A portal admin with
+   `rbac:write` and `rbac:roles:write` registers it once:
+
+   ```text
+   PUT /api/v1/admin/platform/applications/poesgo/identities/poesgo-identity-sync
+   {"subject": "<Keycloak user ID of service-account-poesgo-identity-sync>",
+    "scopes": [], "enabled": true, "reason": "CHG-<ticket>: POES identity sync"}
+   ```
+
+4. **Register and describe.** Run through the backend entrypoint so mounted
+   secrets load (see the pilot runbook's
+   [Running the CLI](../operations/identity-sync-pilot.md#running-the-cli)):
+
+   ```sh
+   moh-sso identity-sync register --app poesgo \
+     --origin https://poes.health.go.ug \
+     --sync-client poesgo-identity-sync \
+     --access-role poesgo_access \
+     --credential env:POESGO_SYNC_CLIENT_SECRET \
+     --reason "CHG-<ticket>: POES identity sync" \
+     --enable
+
+   moh-sso identity-sync describe --app poesgo
+   ```
+
+   **Expect:** the live descriptor shows `version` `1.1`, `application`
+   `poesgo`, `accountIdFormat` `positive-integer`, `maxPageSize` 100 and the
+   capabilities `accounts.list`, `identity.link` and `sessions.revoke`. CLIMS
+   shows `clims` and `uuid`.
+
+   The same registration is available in the portal: Admin → RBAC → select the
+   application → Operations → **Identity sync**.
+
+5. **Preview, review, apply, rehearse removal.** Follow the
+   [pilot runbook](../operations/identity-sync-pilot.md) from step 2. It is
+   written for CLIMS; for POES use the substitutions in its
+   [Running the pilot for POES](../operations/identity-sync-pilot.md#running-the-pilot-for-poes)
+   section.
+
+Rehearse the whole sequence first in the disposable stack, which runs CLIMS,
+POES, Keycloak and the dashboard together: `make -C infra identity-sync-e2e-test`
+(see `infra/compose/identity-sync-e2e/README.md` and `e2e/identity-sync/README.md`).
+
+## 6. Adding another application
+
+1. The application implements the [contract](identity-sync-contract.md). A Go
+   application can use the adapter in `backend/core/identitysync`; any language
+   can be checked with the conformance suite
+   ([adapter guide](identity-sync-adapter.md)).
+2. Add its interactive client, sync client, roles, audience mapper, scope
+   mapping and service-account role to the realm exports, following the CLIMS
+   and POES entries.
+3. Add a column to the table in section 2, then connect it as in section 5.
+
+## 7. Troubleshooting
+
+| Symptom | Likely cause |
+| --- | --- |
+| `register --enable` reports a private-origin error | The origin resolves to an internal address; see `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` |
+| `register` reports a binding error | Step 3's service identity is missing or disabled |
+| `describe` or a run gets 404 from the application | The application hasn't set `IDENTITY_SYNC_CLIENT_ID`, so its sync routes are off |
+| 401 from the application | Token from another realm or issuer, expired, or `aud` lacks the application client ID (audience mapper) |
+| 403 from the application | Token not from the registered sync client, or `identity_sync` is missing from its service account or its dedicated scope |
+| Links apply but users can't sign in | The link's issuer differs from the application's `OIDC_ISSUER` (check `KEYCLOAK_EXTERNAL_URL` and `KC_HOSTNAME`), or the user lacks the access role |
+| POES users can sign in from the portal but the POES web admin or mobile app stops working | That POES deployment switched to `AUTH_PROVIDER=oidc`; those clients need `local` mode for now |
+| 503 from the application | Its database is unavailable; runs retry after `Retry-After` |

@@ -71,6 +71,8 @@ All platform service endpoints accept only Bearer access tokens. Browser cookies
 
 ## Identity reconciliation (CLIMS, POES)
 
+For onboarding CLIMS and POES end to end, start with [Connected applications](integrations/connected-applications.md), which has both applications' values side by side, the credentials each party holds, and the registration steps.
+
 The backend CLI links accounts that already exist in an external application to their Keycloak users. `clims-identity-sync` and `poes-identity-sync` preview matches page by page and apply one reviewed link at a time; they never create Keycloak users.
 
 Each application has a dedicated machine client in the realm exports: `clims-identity-sync` and `poesgo-identity-sync`. These are confidential clients with only service accounts enabled and `fullScopeAllowed: false`. Each service account holds only its application's `identity_sync` client role, and an audience mapper adds the application's client ID (`clims` or `poesgo`) to the token's `aud`. The application's `/api/v1/internal/identity-sync` endpoints must require that audience and role. The role has no portal permissions and must not be assigned to people.

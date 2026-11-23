@@ -56,6 +56,21 @@ export default {
         },
         {
           type: 'category',
+          label: 'Identity sync (CLIMS, POES)',
+          items: [
+            {
+              type: 'doc',
+              id: 'docs/integrations/connected-applications',
+              label: 'Connected applications',
+            },
+            'docs/integrations/identity-sync-contract',
+            'docs/integrations/identity-sync-adapter',
+            'docs/architecture/identity-sync',
+            'docs/operations/identity-sync-pilot',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Health context',
           items: [
             'docs/architecture/health-context',

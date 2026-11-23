@@ -14,7 +14,7 @@ that hosts independently published microfrontend apps.
 | You are | Read first | Then |
 | --- | --- | --- |
 | A developer new to the project | [Getting started](docs/getting-started.md) | [Configuration reference](docs/configuration.md), [Make commands](docs/make.md) |
-| Connecting an application or system to the portal | [Onboarding handbook](docs/platform-onboarding.md) | [System onboarding](docs/system-onboarding.md), [onboarding record template](docs/templates/application-onboarding-record.md) |
+| Connecting an application or system to the portal | [Onboarding handbook](docs/platform-onboarding.md) | [System onboarding](docs/system-onboarding.md), [onboarding record template](docs/templates/application-onboarding-record.md); for CLIMS and POES, [Connected applications](docs/integrations/connected-applications.md) |
 | Managing users, roles and access | [RBAC usage](docs/rbac-usage.md) | [RBAC and Keycloak sync](docs/rbac-keycloak-sync.md), [RBAC governance](docs/rbac-governance.md) |
 | Deploying or operating the portal | [Deployment](docs/deployment.md) | [Platform runbook](docs/operations/platform-runbook.md), [releasing](docs/releasing.md), [rollback](docs/rollback.md) |
 | Looking up an endpoint | [API reference](docs/api-reference.md) | Swagger UI at `/swagger/` on a running backend |
