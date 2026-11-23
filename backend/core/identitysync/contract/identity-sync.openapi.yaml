@@ -2,6 +2,9 @@ openapi: 3.0.3
 info:
   title: MoH identity-sync application contract
   version: 1.1.0
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
   description: |
     Endpoints an application exposes so the MoH SSO Dashboard can reconcile the
     application's local accounts with Keycloak identities.

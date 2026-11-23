@@ -6,7 +6,8 @@ stable within a minor version.
 
 ## v0.1.0 (unreleased)
 
-First published version. Standard library only; requires Go 1.25.
+First published version, MIT licensed (`LICENSE`). Standard library only;
+requires Go 1.25.
 
 ### Identity sync (contract 1.1)
 
