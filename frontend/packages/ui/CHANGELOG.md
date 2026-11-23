@@ -1,5 +1,27 @@
 # @moh-sso/ui
 
+## 1.7.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+- 95a3edd: Dock shared side panels alongside portal content on desktop. Disable docking globally in runtime configuration or for an individual panel.
+
+### Patch Changes
+
+- d83ac9c: Render `PublicFooter` in normal page flow instead of fixed to the viewport, so it no longer covers the end of long pages.
+- 77ef3f4: Make the user header logo a link to the portal home, so home stays reachable when the title is hidden on small screens.
+- Updated dependencies
+  - @moh-sso/types@1.7.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.1`.
+
+- Unify shell header actions across admin and user layouts (#342) (`77ef3f40`)
+- Keep the portal footer in page flow so it stops covering content (#344) (`d83ac9cd`)
+
 ## 1.6.0
 
 ### Minor Changes
@@ -13,6 +35,7 @@
   - @moh-sso/types@1.6.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.5.0`.

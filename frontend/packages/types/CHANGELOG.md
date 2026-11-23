@@ -1,5 +1,26 @@
 # @moh-sso/types
 
+## 1.7.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [95a3edd]
+- Updated dependencies [d83ac9c]
+- Updated dependencies [77ef3f4]
+  - @moh-sso/ui@1.7.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.1`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.6.0
 
 ### Patch Changes
@@ -10,6 +31,7 @@
   - @moh-sso/ui@1.6.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.5.0`.

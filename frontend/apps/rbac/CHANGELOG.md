@@ -1,5 +1,38 @@
 # @moh-sso/rbac
 
+## 1.6.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [95a3edd]
+- Updated dependencies [1f62724]
+- Updated dependencies [d83ac9c]
+- Updated dependencies [77ef3f4]
+- Updated dependencies [bce82d0]
+  - @moh-sso/users@1.6.0
+  - @moh-sso/api@1.7.0
+  - @moh-sso/auth@1.7.0
+  - @moh-sso/microfrontend@1.7.0
+  - @moh-sso/types@1.7.0
+  - @moh-sso/ui@1.7.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.1`.
+
+- Merge docs/content-structure (with upstream/main) into docs/accuracy (`50b0444f`)
+- Correct frontend docs and READMEs to match the code (`2a18c23c`)
+- Register an application's service identity from the Identity sync page (`963f8621`)
+- Test the identity-sync screens end to end and fit their tables to the workspace (`14e25999`)
+- Add identity-sync screens to the RBAC workspace (`1a5fd228`)
+- Prevent service-account roles from being granted to people (`5ce06be3`)
+
 ## 1.5.1
 
 ### Patch Changes
@@ -15,6 +48,7 @@
   - @moh-sso/ui@1.6.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.5.0`.

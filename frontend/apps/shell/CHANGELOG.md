@@ -1,5 +1,55 @@
 # @moh-sso/shell
 
+## 1.6.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [95a3edd]
+- Updated dependencies [1f62724]
+- Updated dependencies [d83ac9c]
+- Updated dependencies [bf2cfe7]
+- Updated dependencies [77ef3f4]
+- Updated dependencies [bce82d0]
+  - @moh-sso/announcements@1.6.0
+  - @moh-sso/audit@1.6.0
+  - @moh-sso/clients@1.6.0
+  - @moh-sso/data-validation@1.6.0
+  - @moh-sso/data-visualizer@1.6.0
+  - @moh-sso/documents@1.6.0
+  - @moh-sso/e-services@1.6.0
+  - @moh-sso/email@1.6.0
+  - @moh-sso/issue-tracker@1.6.0
+  - @moh-sso/rbac@1.6.0
+  - @moh-sso/report-browser@1.6.0
+  - @moh-sso/report-scheduler@0.7.0
+  - @moh-sso/surveillance@1.6.0
+  - @moh-sso/users@1.6.0
+  - @moh-sso/utilities@1.6.0
+  - @moh-sso/api@1.7.0
+  - @moh-sso/auth@1.7.0
+  - @moh-sso/config@1.7.0
+  - @moh-sso/microfrontend@1.7.0
+  - @moh-sso/state@1.7.0
+  - @moh-sso/types@1.7.0
+  - @moh-sso/ui@1.7.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.1`.
+
+- Correct frontend docs and READMEs to match the code (`2a18c23c`)
+- Give the admin overview actionable signals and quick actions (#346) (`7cb65478`)
+- Unify shell header actions across admin and user layouts (#342) (`77ef3f40`)
+- Keep the portal footer in page flow so it stops covering content (#344) (`d83ac9cd`)
+- Balance the news landing page and tidy its sidebar cards (#341) (`b4f2a21f`)
+- Clean up list filters and empty states (#343) (`1f627241`)
+
 ## 1.5.1
 
 ### Patch Changes
@@ -31,6 +81,7 @@
   - @moh-sso/ui@1.6.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.5.0`.
