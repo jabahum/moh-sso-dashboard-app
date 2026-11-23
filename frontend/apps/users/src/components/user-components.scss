@@ -13,6 +13,29 @@
   width: 12.5rem;
 }
 
+.user-filters__field--checkbox {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+
+  .cds--form-item {
+    flex: none;
+  }
+}
+
+/* Keep the Status column visible on narrow screens by hiding lower-value columns. */
+@media (max-width: 671px) {
+  .users-table .users-table__col--hide-md {
+    display: none;
+  }
+}
+
+@media (max-width: 479px) {
+  .users-table .users-table__col--hide-sm {
+    display: none;
+  }
+}
+
 .user-bulk-actions {
   margin-bottom: 1rem;
 }
