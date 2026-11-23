@@ -424,6 +424,10 @@ func retryableError(err error) bool {
 	if !errors.As(err, &transport) {
 		return false
 	}
+	// A non-public peer address is a policy refusal, not a network fault.
+	if errors.Is(err, ErrPrivateOrigin) {
+		return false
+	}
 	// A certificate the dashboard does not trust will not become trusted on retry.
 	var certErr *tls.CertificateVerificationError
 	var unknownAuthority x509.UnknownAuthorityError

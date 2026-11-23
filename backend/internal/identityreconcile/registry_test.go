@@ -177,6 +177,9 @@ func registryFixture(t *testing.T, app http.HandlerFunc) (*RegistryService, *fak
 	repo := &fakeRegistryRepo{}
 	service := NewRegistryService(repo, server.URL+"/realms/moh/protocol/openid-connect/token")
 	service.HTTPClient = server.Client()
+	// The TLS test server listens on loopback; allowlist it the way a dev or
+	// e2e stack sets IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS.
+	service.AllowedPrivateHosts = []string{"127.0.0.1"}
 	service.Getenv = func(k string) string {
 		if k == "ALERTS_SYNC_CLIENT_SECRET" {
 			return "fixture-secret"

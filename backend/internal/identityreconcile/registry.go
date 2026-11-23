@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -146,11 +148,34 @@ type RegistryService struct {
 	HTTPClient *http.Client
 	// Sleeper overrides the connector's retry sleeper (tests).
 	Sleeper Sleeper
+	// AllowedPrivateHosts are origin hosts exempt from the non-public address
+	// check (origin_guard.go). NewRegistryService reads them from
+	// IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS; empty by default.
+	AllowedPrivateHosts []string
+	// Resolver overrides DNS resolution for the registration check (tests).
+	Resolver HostResolver
 }
 
 // NewRegistryService returns a registry service backed by the given repository.
+// Origin hosts exempt from the non-public address check come from
+// IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS (empty by default).
 func NewRegistryService(repository RegistryRepository, tokenEndpoint string) *RegistryService {
-	return &RegistryService{Repository: repository, TokenEndpoint: tokenEndpoint}
+	return &RegistryService{Repository: repository, TokenEndpoint: tokenEndpoint, AllowedPrivateHosts: AllowedPrivateHostsFromEnv(nil)}
+}
+
+// checkOrigin refuses an origin whose host resolves to a non-public address.
+// A disabled save tolerates a DNS failure (nothing is contacted) but still
+// refuses addresses it does resolve.
+func (s *RegistryService) checkOrigin(ctx context.Context, integration Integration) error {
+	u, err := url.Parse(integration.Origin)
+	if err != nil {
+		return fmt.Errorf("%w: origin", ErrInvalidIntegration)
+	}
+	err = s.originPolicy().checkHost(ctx, u.Hostname())
+	if err != nil && !errors.Is(err, ErrPrivateOrigin) && !integration.Enabled {
+		return nil
+	}
+	return err
 }
 
 // Get returns the integration for an application.
@@ -180,6 +205,11 @@ func (s *RegistryService) Save(ctx context.Context, integration Integration, act
 			integration.ContractVersion = existing.ContractVersion
 		}
 	} else if !errors.Is(err, ErrIntegrationNotFound) {
+		return Integration{}, err
+	}
+	// The origin must resolve only to public addresses (origin_guard.go),
+	// checked before any token is minted or sent.
+	if err := s.checkOrigin(ctx, integration); err != nil {
 		return Integration{}, err
 	}
 	if integration.Enabled {
@@ -265,13 +295,33 @@ func (s *RegistryService) ConnectorFor(integration Integration) (*HTTPAccounts, 
 	if err != nil {
 		return nil, err
 	}
-	if s.HTTPClient != nil && s.HTTPClient.Transport != nil {
-		connector.client.Transport = s.HTTPClient.Transport
-	}
+	connector.client.Transport = s.connectorTransport()
 	if s.Sleeper != nil {
 		connector.sleep = s.Sleeper
 	}
 	return connector, nil
+}
+
+func (s *RegistryService) originPolicy() originPolicy {
+	return newOriginPolicy(s.AllowedPrivateHosts, s.Resolver)
+}
+
+// connectorTransport returns the connector's transport with the dial-time
+// non-public address check. An injected *http.Transport (tests that trust a
+// TLS test server) is cloned and guarded the same way; any other injected
+// RoundTripper is used as is.
+func (s *RegistryService) connectorTransport() http.RoundTripper {
+	base := http.DefaultTransport.(*http.Transport)
+	if s.HTTPClient != nil && s.HTTPClient.Transport != nil {
+		injected, ok := s.HTTPClient.Transport.(*http.Transport)
+		if !ok {
+			return s.HTTPClient.Transport
+		}
+		base = injected
+	}
+	transport := base.Clone()
+	transport.DialContext = s.originPolicy().dialContext(&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second})
+	return transport
 }
 
 func (s *RegistryService) tokenClient() *http.Client {

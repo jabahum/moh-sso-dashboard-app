@@ -84,6 +84,7 @@ func fakeIdentitySyncRuntime(t *testing.T, rows map[string]identityreconcile.Int
 	openIdentitySyncRuntime = func(context.Context) (*identitySyncRuntime, error) {
 		registry := identityreconcile.NewRegistryService(repo, server.URL+"/realms/moh/protocol/openid-connect/token")
 		registry.HTTPClient = server.Client()
+		registry.AllowedPrivateHosts = []string{"127.0.0.1"} // loopback test server, as a dev stack allowlists
 		registry.Getenv = getenv
 		registry.Sleeper = func(context.Context, time.Duration) error { return nil }
 		return &identitySyncRuntime{Registry: registry, getenv: getenv}, nil
