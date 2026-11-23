@@ -57,7 +57,24 @@ with constraint `ihp_identity_sync_sync_client` or
 access role later is not blocked (an operator must be able to disable a
 compromised sync client at once); instead the registry service re-checks both
 bindings every time it builds a connector, and refuses to sync until they hold
-again.
+again. Migration 65 lets the integration itself be disabled after its binding
+broke: an UPDATE that leaves the row disabled and keeps
+`application_client_id`, `sync_client_id` and `access_role` unchanged skips the
+binding checks. Inserts, enabling and every binding change are still checked.
+
+**Origins must be public.** A save sends a live sync-client token to the
+origin, so the registry resolves the origin's host on every save and refuses
+loopback, link-local (including `169.254.169.254`), private (RFC 1918, IPv6
+ULA), CGNAT (`100.64.0.0/10`), unspecified, multicast and reserved addresses
+(`ErrPrivateOrigin`) before any token is minted. The connector repeats the check
+at dial time on the peer address it actually connects to, which defeats DNS
+rebinding, and such a refusal is not retried. Hosts listed in
+`IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` (comma-separated host names or IP
+literals; empty by default) are exempt. Production leaves it empty; dev and e2e
+stacks whose applications run on a private network or loopback set it (the dev
+compose file passes it through to the backend; the CLI reads it from its own
+environment). Changing the origin of an enabled integration needs the same
+`rbac:write` and `rbac:roles:write` permissions as any registry change.
 
 **Secrets.** The registry stores a reference, never a secret. `env:NAME` reads
 an environment variable, and `file:/path` reads a mounted secret file (one
@@ -88,6 +105,13 @@ timeouts, 429, 502, 503 and 504; up to 5 attempts; exponential backoff from
 one ends the call). Redirects are refused, responses are capped at 256 KiB and
 each request times out after 15 s.
 
+**No silent downgrade.** The registry's stored `contract_version` is passed to
+the connector. When it is 1.1 or newer, a 404 from `GET /` is
+`ErrDescriptorMissing` (not cached, so the next call asks again), never a
+fallback to 1.0. Only an explicit re-register (`register --enable` or the admin
+API PUT), which probes without the stored version, may record a downgrade to
+1.0.
+
 ### CLI
 
 ```text
@@ -102,16 +126,35 @@ moh-sso identity-sync conformance --app <id>                    # Track D
 `clims-identity-sync` and `poes-identity-sync` remain as deprecated aliases for
 one release (`identity-sync … --app clims` / `--app poesgo`). They print a
 deprecation note to stderr. When the application has an enabled registry entry
-they use it; otherwise they keep the `<APP>_SYNC_*` environment configuration
-exactly as before. The connector validates account IDs using the format in the
-descriptor. A 1.0 application gets the existing per-app validation, which comes
-from a registry field and not from code.
+they use it. They fall back to the `<APP>_SYNC_*` environment configuration
+only when no registry is configured (no database settings or Keycloak base URL)
+or the application has no registry row. A registry that is configured but
+cannot be opened, a failed lookup, or a row whose revocation list cannot be
+opened stops the command with a clear error (fail closed). For a disabled row
+the environment run still refuses revoked identities. The connector validates
+account IDs using the format in the descriptor. A 1.0 application gets the
+existing per-app validation, which comes from a registry field and not from code.
+
+`preview` (and the aliases) show an account the application already reports as
+linked for our issuer as `linked`, and an identity with an active revocation as
+`revoked` instead of `reuse`; preview opens the revocation list and fails closed
+without it. Single-account `apply` refuses any account that is already linked
+(`ErrAccountAlreadyLinked`): a linked account without access is
+`linked_no_access`, and access removed on purpose must be restored explicitly
+(grant the access role in the portal, which also restores an active revocation,
+or `identity-sync restore` followed by a reviewed grant). For a 1.1 application
+this also means a single apply whose grant failed after the link cannot simply
+be re-run; use the portal grant or a batch run's `resume`.
 
 Registry commands read the database from the usual `app.env`/environment
 configuration and Keycloak settings from `KEYCLOAK_BASE_URL`, `KEYCLOAK_REALM`,
 `KEYCLOAK_EXTERNAL_URL` (public issuer) and the operator credentials. `apply`
 walks the eligible accounts to find the reviewed account, then re-checks that
 the directory still matches exactly the approved subject before linking.
+Database-only subcommands (`run show`, `run approve`, `run reject`, and
+`revocations` without `--resume`) carry the `moh-sso/no-keycloak-admin`
+annotation, so the root command does not demand the Keycloak admin flags for
+them; `revocations` listing opens only the database.
 
 **Extension points for other tracks.** `newIdentitySyncCommand()` returns the
 parent `*cobra.Command`; a track adds its subcommand from its own file with
@@ -203,9 +246,11 @@ that was never attempted through the steps below. Each outcome is written in its
 own row transaction, which first re-checks that the row is still approved by a
 named reviewer.
 
-0. `attempts += 1`. A row no longer in the eligible list becomes `ineligible`
-   (`account_ineligible`). A row whose email changed since review goes back to
-   `review` (`account_changed`).
+0. `attempts += 1`. A row the re-read walk did not return gets
+   `link_status=failed` (`account_lookup_failed`) and resume retries it: a
+   moving page boundary is not proof of ineligibility. Only a 404 from
+   `PUT /accounts/{id}/identity` makes a row `ineligible`. A row whose email
+   changed since review goes back to `review` (`account_changed`).
 1. `create` rows whose `user_status` is not `invited`: `EnsureUser` (see
    Invitations), then `user_status=invited` and `proposed_subject` set to the new
    user. On failure, `user_status=failed`.
@@ -220,8 +265,12 @@ named reviewer.
    sent. Otherwise `PUT` the link. The result is `linked`; `conflict`
    (`link_conflict`) or `ineligible` (`account_ineligible`), both final; or
    `failed` (`link_failed`).
-4. Re-check revocation, then grant the access role: `granted` or `failed`
-   (`grant_failed`).
+4. Under the per-(application, subject) access lock (see Track C), re-check
+   revocation, then grant the access role: `granted` or `failed`
+   (`grant_failed`). If the lock cannot be taken the row fails with
+   `revocation_check_failed`. After the grant, `RevokeService.EnforceRevocation`
+   checks again; if a revocation exists anyway, its steps are re-run (the role
+   is removed again) and the row becomes `revoked` (`identity_revoked`).
 
 `resume` processes approved rows that were attempted but neither finished nor
 reached a final state. A row with `link_status=linked` skips steps 0–3: no
@@ -235,7 +284,7 @@ Rows proposed `linked_no_access` or `revoked`, and rows that become `revoked`,
 are never granted. Apply selects only approved `reuse`/`create` rows, and
 migration 63 rejects a `linked_no_access` or `revoked` row marked granted.
 
-Stable error codes: `account_ineligible`, `account_changed`,
+Stable error codes: `account_ineligible`, `account_lookup_failed`, `account_changed`,
 `directory_changed`, `directory_lookup_failed`, `invite_failed`,
 `invite_email_collision`, `invite_ambiguous`, `invite_origin_mismatch`,
 `invite_user_disabled`, `invite_attribute_not_stored`, `invite_email_failed`,
@@ -272,7 +321,14 @@ application, plus the `AccessChecker` that separates `linked` from
 **Realm requirement.** The realm user profile must declare
 `ihp_identity_sync_origin` as an attribute that only administrators can view
 and edit, or enable unmanaged attributes with admin-only editing. Users must not
-be able to edit it.
+be able to edit it. `infra/keycloak/realm-export.json` and
+`realm-export-prod.json` (Keycloak 26.0.5) declare it in their
+`org.keycloak.userprofile.UserProfileProvider` component
+(`declarative-user-profile`: Keycloak's default attributes plus
+`ihp_identity_sync_origin` with `view`/`edit` = `["admin"]`); the unmanaged
+attribute policy is not set. `prepare-keycloak-realm.py` keeps that component
+in generated environment realms. An existing realm is not changed by an import:
+add the attribute in Realm settings → User profile once.
 
 Keycloak admin client additions (`internal/keycloak/identity_sync_users.go`;
 their errors carry only the HTTP status):
@@ -310,7 +366,11 @@ sets to Track C's `RevokeService.IsRevoked` on the registry database (it fails
 closed when that database is unavailable). The same checker guards the
 single-account `identity-sync apply` and the deprecated aliases' registry
 path (`Service.Application`/`Service.Revocations`), checked before the link and
-before the grant.
+before the grant. The checker the CLI passes is a `*RevokeService`, so batch and
+single apply also get its access lock (`AccessLocker`) and post-grant
+re-assertion (`RevocationEnforcer`); with the Keycloak operator settings present
+it is the full revoke service, so a re-asserted revocation removes the role and
+ends sessions at once.
 
 **Owned files:** `backend/internal/identityreconcile/batch*.go`,
 `backend/internal/identityreconcile/invite*.go`, migration 63,
@@ -344,7 +404,10 @@ through portal RBAC or the users API) runs these idempotent steps:
    which retries transient failures under the contract policy (up to 5 attempts).
    For a 1.0 application the step is `unsupported`: existing sessions last until
    their local expiry. The CLI and the portal hook report that residual window
-   and never call it success.
+   and never call it success. `unsupported` is recorded only when the registry's
+   stored `contract_version` is `1.0`; for any other stored version an
+   "unsupported" answer is `failed` (`sessions_unsupported_unexpected`) and resume
+   retries it (see Track A, "No silent downgrade").
 5. Record the outcome in the audit log (`ihp_rbac_audit_events`, resource type
    `identity_sync_revocation`): `application.identity_sync.revocation_recorded`,
    `…revocation_attempted` (step statuses, attempts, `last_error`) and
@@ -360,6 +423,30 @@ and `failed` steps of active revocations and never repeats a finished one; it
 does not retry `unsupported`. Repeating `revoke` for an active revocation reuses
 the row and re-asserts every step (for example, removes a role granted again by
 hand).
+
+**Grants and revocations are serialised.** Without coordination, a revocation
+landing between an apply's revocation check and its grant would be undone by
+that grant. Both paths take one lock per (application, subject):
+`PostgresRevocations.WithAccessLock` holds the transaction-scoped advisory lock
+`pg_advisory_xact_lock(0x1d5c, hashtext('<application>/<subject>'))` while its
+function runs. Batch and single apply hold it across "check revoked → grant";
+`Revoke` holds it across "record revocation → remove role", and resume and
+re-assertion hold it around the role step. Either the grant finishes first and
+the revocation then removes the role, or the revocation commits first and the
+grant's check sees it. As a second line of defence apply calls
+`EnforceRevocation` after granting: if a revocation exists anyway (written by a
+path that did not take the lock), its steps are marked `pending` again (so
+resume handles them even if the process stops) and, with a full revoke service,
+run at once.
+
+**Portal re-grant restores.** When a portal admin grants an application's
+registered access role (users API or RBAC user-access update) to a person who
+has an active revocation for that application, the portal hook records an
+explicit restore by that admin: `restored_by=portal:<admin id>`,
+`restore_reason="portal re-grant"`, audited as `…revocation_restored`. The
+restore is recorded only after the grant succeeded, so the revocation list
+matches reality. A failed restore never fails the grant; it is returned as a
+warning (`identity_sync_restore_failed`).
 
 ### Table (migration 64)
 
@@ -405,9 +492,17 @@ cannot be deleted (the registry reports it as still referenced).
   `RemoveUserClientRoles`. `identityreconcile.PortalRevocationHook` revokes only
   when the client has an enabled integration, the removed roles include its
   access role, and the person no longer holds it through a group. The role
-  removal always stands; an incomplete revocation is logged and visible in the
-  revocation status and audit log. Wired in `internal/bootstrap`
-  (`identity_sync_revocation.go`, both profiles).
+  removal always stands. An incomplete revocation, or a 1.0 application that
+  cannot end sessions, comes back as `IncompleteRevocationError` with a warning
+  code (`identity_sync_revocation_incomplete` or
+  `identity_sync_sessions_not_ended`). The users service then raises a critical
+  admin notification (`IDENTITY_SYNC_REVOCATION_INCOMPLETE`) and adds a warning
+  to the request (`internal/accesswarnings`, nil-safe). `PUT` and `DELETE`
+  `/users/:id/client-roles` answer 204 when there is nothing to report and 200
+  with `{"warnings": [...]}` otherwise; the RBAC user-access update keeps 200 and
+  adds a `warnings` field. The hook also implements
+  `users.AccessRoleGrantHook` (portal re-grant restore, above). Wired in
+  `internal/bootstrap` (`identity_sync_revocation.go`, both profiles).
 
 ### CLI
 
