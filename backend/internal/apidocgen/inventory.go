@@ -28,6 +28,7 @@ import (
 	metrics "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportScheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	storagelocations "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
+	surveillance "github.com/mohuganda/moh-sso-dashboard/backend/modules/surveillance"
 	visualiser "github.com/mohuganda/moh-sso-dashboard/backend/modules/visualiser"
 )
 
@@ -104,6 +105,10 @@ func documentationHandlers() router.HandlerSet {
 	handlers.Documents, err = documents.NewModule(documents.Dependencies{
 		Database: new(sql.DB), StorageLocations: inertDocumentLocations{}, FileStores: inertDocumentStores{},
 	})
+	if err != nil {
+		panic(err)
+	}
+	handlers.Surveillance, err = surveillance.NewModule(surveillance.Dependencies{Database: new(sql.DB), HealthContext: healthcontext.ModuleDirectory{}})
 	if err != nil {
 		panic(err)
 	}

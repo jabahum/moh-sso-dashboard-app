@@ -3,10 +3,17 @@ package health_context
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
-	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	"github.com/moh-sso-dashboard/internal/geography"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
+
+	"github.com/moh-sso-dashboard/internal/geography"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
+	surveillance "github.com/mohuganda/moh-sso-dashboard/backend/modules/surveillance"
 	"os"
 	"path/filepath"
 	"testing"
@@ -177,36 +184,70 @@ func TestGeographySyncAcrossDatabases(t *testing.T) {
 	if err != nil || current.ID != customContext.ID {
 		t.Fatalf("context identity changed: %+v %v", current, err)
 	}
-	// Location APIs and per-row fact imports share this writer. A returned ID is
-	// always the destination ID, even when its parent has a different canonical ID.
-	store := geography.NewStore(db.NewStore(observatory), primary, replica.Sync)
-	createdDistrict, err := store.UpsertDistrict(ctx, db.UpsertDistrictParams{Name: "Primary API district", RegionID: uuid.NullUUID{UUID: uuid.MustParse(remoteID), Valid: true}})
+	// Location APIs and per-row fact imports share this writer (now owned by the
+	// Surveillance module). A returned ID is always the destination ID, even
+	// when its parent has a different canonical ID.
+	surveillanceModule, err := surveillance.NewModule(surveillance.Dependencies{
+		Database: observatory, GeographyPrimary: primary, ReplicateGeography: replica.Sync,
+		HealthContext: ModuleDirectory{Service: NewService(repo)},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if createdDistrict.RegionID.UUID.String() != remoteID {
+	callSurveillance := func(method, target, body string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(method, target, strings.NewReader(body))
+		request = request.WithContext(modulekit.WithRequest(ctx, modulekit.Request{Authenticated: true, Access: core.RequestAccess{
+			Identity: core.Identity{Subject: "geography-test"}, Systems: []string{surveillance.System},
+			Permissions: []string{surveillance.ReadPermission, surveillance.ManageLocationsPermission},
+		}}))
+		response := httptest.NewRecorder()
+		surveillanceModule.ServeHTTP(response, request)
+		return response
+	}
+	response := callSurveillance("POST", "/surveillance/districts", `{"name":"Primary API district","region_id":"`+remoteID+`"}`)
+	var createdDistrict struct {
+		Data struct {
+			ID       uuid.UUID `json:"id"`
+			RegionID string    `json:"region_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &createdDistrict); err != nil || response.Code != http.StatusOK {
+		t.Fatalf("district upsert: %d %s", response.Code, response.Body.String())
+	}
+	if createdDistrict.Data.RegionID != remoteID {
 		t.Fatal("API returned primary parent UUID instead of replica UUID")
 	}
 	var canonicalRegion string
 	if err := primary.QueryRowContext(ctx, `SELECT region_id FROM geography.districts WHERE name='Primary API district'`).Scan(&canonicalRegion); err != nil || canonicalRegion != sourceID {
 		t.Fatalf("write did not resolve canonical parent: %s %v", canonicalRegion, err)
 	}
-	if err := store.ExecTx(ctx, func(q db.Querier) error {
-		sub, err := q.CreateSubCounty(ctx, db.CreateSubCountyParams{Name: "Imported subcounty", DistrictID: createdDistrict.ID})
-		if err != nil {
-			return err
-		}
-		_, err = q.CreateFacility(ctx, db.CreateFacilityParams{Name: "Imported facility", DistrictID: uuid.NullUUID{UUID: createdDistrict.ID, Valid: true}, SubCountyID: uuid.NullUUID{UUID: sub.ID, Valid: true}})
-		return err
-	}); err != nil {
+	// A facility-metrics import creates its sub-county and facility inside the
+	// row transaction; both must still be written to primary.
+	var regionName, diseaseName string
+	if err := observatory.QueryRowContext(ctx, `SELECT name FROM regions WHERE id=$1`, remoteID).Scan(&regionName); err != nil {
+		t.Fatal(err)
+	}
+	if err := observatory.QueryRowContext(ctx, `SELECT name FROM diseases ORDER BY name LIMIT 1`).Scan(&diseaseName); err != nil {
+		t.Fatal(err)
+	}
+	document, batch := uuid.New(), uuid.New()
+	payload, _ := json.Marshal(map[string]any{"record_id": "r1", "facility": "Imported facility", "region": regionName, "district": "Primary API district",
+		"sub_county": "Imported subcounty", "disease": diseaseName, "value": 3, "year": 2026, "weeks": 2})
+	if _, err := observatory.ExecContext(ctx, `INSERT INTO surveillance_import_batches(id,source_name,dataset_type,status,total_rows,document_id) VALUES($1,'test','facility_metrics','PENDING',1,$2)`, batch, document); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := observatory.ExecContext(ctx, `INSERT INTO surveillance_import_raw_rows(batch_id,row_number,payload) VALUES($1,1,$2)`, batch, payload); err != nil {
+		t.Fatal(err)
+	}
+	if err := surveillanceModule.ProcessImportBatch(ctx, surveillance.ImportJob{DocumentID: document}); err != nil {
 		t.Fatal(err)
 	}
 	var imported int
 	if err := primary.QueryRowContext(ctx, `SELECT count(*) FROM geography.facilities WHERE name='Imported facility'`).Scan(&imported); err != nil || imported != 1 {
 		t.Fatalf("import bypassed primary: %d %v", imported, err)
 	}
-	if err := store.DeleteSubCounty(ctx, uuid.New()); !errors.Is(err, geography.ErrDeletionRestricted) {
-		t.Fatalf("destructive delete must be blocked: %v", err)
+	if response := callSurveillance("DELETE", "/surveillance/subcounties/"+uuid.NewString(), ""); response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), "GEOGRAPHY_DELETE_RESTRICTED") {
+		t.Fatalf("destructive delete must be blocked: %d %s", response.Code, response.Body.String())
 	}
 	// Re-applying a data-preserving migration rollback cannot adopt destination
 	// UUIDs a second time, replace canonical rows or change active assignments.

@@ -23,6 +23,7 @@ COPY backend/modules/visualiser/go.mod ./modules/visualiser/go.mod
 COPY backend/modules/document-templates/go.mod ./modules/document-templates/go.mod
 COPY backend/modules/data-quality/go.mod ./modules/data-quality/go.mod
 COPY backend/modules/documents/go.mod ./modules/documents/go.mod
+COPY backend/modules/surveillance/go.mod ./modules/surveillance/go.mod
 RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
 
 COPY backend/ .

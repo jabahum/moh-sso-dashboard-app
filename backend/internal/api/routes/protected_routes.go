@@ -28,7 +28,6 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {
 
 	contextScoped := ContextScopedGroup(protected, deps.HealthContexts)
 	registerVisualiserRoutes(contextScoped, deps)
-	registerSurveillanceRoutes(contextScoped, deps)
 
 	registerRBACProtectedRoutes(protected, deps)
 	registerHealthContextProtectedRoutes(protected, deps)

@@ -19,7 +19,6 @@ import (
 	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	db "github.com/moh-sso-dashboard/internal/migrate"
@@ -139,20 +138,6 @@ func buildHandlers(deps handlerDependencies) handlers {
 	)
 	authHandler.SetHealthContextResolver(deps.Services.HealthContexts)
 
-	surveillanceHandler := surveillancefeature.NewHandler(
-		deps.Services.EpiWeeks,
-		deps.Services.Diseases,
-		deps.Services.Locations,
-		deps.Services.FacilityWeeklyMetrics,
-		deps.Services.WeeklyStatus,
-		deps.Services.Alerts,
-		deps.Services.SurveillanceImport,
-		deps.Services.HealthContexts,
-	)
-	if deps.Databases.observatory != nil {
-		surveillanceHandler.SetAvailabilityCheck(deps.Databases.observatory.Ready)
-	}
-
 	healthHandler := handler.NewHealthHandler(
 		func(ctx context.Context) error {
 			return db.PingDB(ctx, deps.Databases.Primary)
@@ -196,7 +181,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			Announcements:     announcementHandler,
 			AdminUnits:        adminunitsHandler,
 			Visualiser:        visualiserHandler,
-			Surveillance:      surveillanceHandler,
+			Surveillance:      deps.Services.SurveillanceModule,
 			GeoJSON:           geoJSONHandler,
 			Email:             emailHandler,
 			RBAC:              rbacHandler,

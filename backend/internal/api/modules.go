@@ -6,6 +6,7 @@ import (
 	"fmt"
 	dataqualitymodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality"
 	documentsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/documents"
+	surveillancemodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/surveillance"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -175,6 +176,18 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 		},
 		Register: func(routes module.Routes) {
 			modulehttp.Register(routes.ContextScoped, handlers.Documents)
+		},
+	}, module.Definition{
+		Info: module.Info{ID: surveillancemodule.ID, Version: surveillancemodule.Version(), Enabled: enabled[surveillancemodule.ID]},
+		Initialize: func(context.Context) (module.Stop, error) {
+			if handlers.Surveillance == nil {
+				return nil, errors.New("surveillance module is required")
+			}
+			return nil, nil
+		},
+		Register: func(routes module.Routes) {
+			// Context-scoped: data-statistics system and the selected health context.
+			modulehttp.Register(routes.ContextScoped, handlers.Surveillance)
 		},
 	})
 }

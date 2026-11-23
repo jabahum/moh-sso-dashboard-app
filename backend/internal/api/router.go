@@ -23,7 +23,6 @@ import (
 	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	"github.com/moh-sso-dashboard/internal/middleware"
@@ -41,6 +40,7 @@ import (
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
+	surveillancefeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/surveillance"
 	visualiserfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/visualiser"
 )
 
@@ -72,7 +72,7 @@ type HandlerSet struct {
 	Announcements     *announcementfeature.Module
 	AdminUnits        *adminunitsfeature.Module
 	Visualiser        *visualiserfeature.Module
-	Surveillance      *surveillancefeature.Handler
+	Surveillance      *surveillancefeature.Module
 	GeoJSON           *geojsonfeature.Module
 	Email             *emailfeature.Handler
 	RBAC              *rbacfeature.Handler

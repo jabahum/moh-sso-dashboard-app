@@ -310,19 +310,21 @@
     },
     {
       "id": "surveillance",
-      "stage": "planned",
+      "stage": "published",
       "scope": "Surveillance and outbreak APIs",
-      "moduleId": "",
+      "moduleId": "surveillance",
       "dependencies": [
         "health_context",
         "primary-db",
         "observatory-db",
-        "geojson"
+        "notifications",
+        "documents",
+        "blob-storage"
       ],
       "workers": [],
       "migrations": "core and Observatory",
-      "next": "Review primary/Observatory repository boundaries and schema ownership before packaging routes.",
-      "integration": "host"
+      "next": "Built from the repository through a local replace until backend/core v0.2.0 and this module are tagged; then pin the release in backend/go.mod.",
+      "integration": "self-contained"
     },
     {
       "id": "system_rbac",
