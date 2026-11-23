@@ -12,7 +12,13 @@ sync operating model, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
 
 ## Application lifecycle
 
-New systems now enter the registry as `registered` and disabled, including systems discovered by Keycloak sync or imported from a seed. Configure metadata and access roles, then validate, approve, and activate the application in `/admin/rbac`. Existing records retain their access when migration 48 is applied. See [Platform development](platform-development.md) for transitions, permissions, API examples, rollout, and rollback.
+The starting lifecycle state of a new registry entry depends on how it is created (`upsertSystemTx` in `backend/internal/features/rbac/repository_postgres.go`, and `backend/internal/features/system_rbac/seed_apply.go`):
+
+- Systems registered by an administrator (**Register application**, `POST /admin/rbac/systems`, or a new client ID saved through `PUT /admin/rbac/systems/:clientId`), application-manifest imports, and Keycloak clients that carry a `portal.onboarding.profile` attribute start `registered` and disabled. Configure metadata and access roles, then validate, approve, and activate them in `/admin/rbac`.
+- Clients discovered by Keycloak sync (admin UI or startup discovery) without that attribute start `active`, with `enabled` taken from the Keycloak client.
+- Systems inserted by `system-rbac seed` start `active` when the seed entry is enabled (the default) and `registered` when it sets `enabled: false`.
+
+Migration 48 (`000048_application_registry_lifecycle`) added the lifecycle and left existing records `active`. Migration 59 (`000059_grandfather_existing_client_lifecycle`) moved every record still in `registered`, `configured`, `validated` or `approved` to `active` and enabled, and added the `lifecycle_managed` flag so that only onboarding-managed records drop back to `configured` when their configuration changes. See [Platform development](platform-development.md) for transitions, permissions, API examples, rollout, and rollback.
 
 ## Launch and navigation model
 

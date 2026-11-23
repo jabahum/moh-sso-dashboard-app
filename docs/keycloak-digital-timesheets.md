@@ -1,11 +1,12 @@
-# Health Workforce Portal OIDC setup
+# Digital Timesheets OIDC client setup
 
 This page is for identity operators who provision the Keycloak web and laptop-test
 clients requested for Digital Timesheet and Clinical Training, and for the external
 team integrating sign-in. It does not activate sign-in in the external application or
 change any live Keycloak instance automatically.
 
-Production uses the existing **`moh-realm`**. The laptop-test client and synthetic
+The clients use the Keycloak display name **Health Workforce Portal**; their client
+IDs are `digital-timesheets` and `digital-timesheets-test`. Production uses the existing **`moh-realm`**. The laptop-test client and synthetic
 users live separately in **`moh-test`**, following the environment isolation setup.
 
 ## Client contract
@@ -13,6 +14,7 @@ users live separately in **`moh-test`**, following the environment isolation set
 | Setting | Production | Laptop test |
 | --- | --- | --- |
 | Client ID | `digital-timesheets` | `digital-timesheets-test` |
+| Client name | Health Workforce Portal | Health Workforce Portal (laptop test) |
 | Redirect URI, exact | `https://timesheet.health.go.ug/auth/sso` | `http://127.0.0.1:8081/auth/sso` |
 | Post-logout URI, exact | `https://timesheet.health.go.ug/login` | `http://127.0.0.1:8081/login` |
 | Web origin | `https://timesheet.health.go.ug` | `http://127.0.0.1:8081` |
@@ -105,8 +107,10 @@ authentication mappers are managed by this script.
 
 ## Synthetic test accounts
 
-The user approved arbitrary test identities. These belong only to `moh-test`. These four fixtures use reserved,
-non-deliverable `.invalid` addresses, never real staff addresses:
+The test manifest (`digital-timesheets-test.json`, `testUsers`) defines four
+synthetic fixture identities that are not tied to real people. They belong only to
+`moh-test` and use reserved, non-deliverable `.invalid` addresses, never real staff
+addresses:
 
 | Username | Email | Email verified |
 | --- | --- | --- |

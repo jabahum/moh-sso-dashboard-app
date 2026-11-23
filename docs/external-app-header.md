@@ -22,9 +22,10 @@ another one.
 
 ### Install the package
 
-Use a released `@moh-sso/ui` version containing `ExternalAppHeader` and its
-`styles.css` export. These changes must be released before external projects can
-install them from the package registry; version 1.1.0 does not contain this API.
+Use an `@moh-sso/ui` version containing `ExternalAppHeader` and its `styles.css`
+export: the component first appears in `@moh-sso/ui` 1.2.0 (tag `frontend/v1.2.0`);
+version 1.1.0 does not contain it. External projects can install it from a package
+registry only once that version has been published there.
 For local development, build the UI workspace and use a locally packed package.
 Use the package's declared React, Carbon and router peer dependency versions.
 

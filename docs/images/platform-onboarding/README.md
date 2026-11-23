@@ -6,11 +6,15 @@ and how to refresh the images.
 
 ## Capture context
 
-These are actual, unedited screenshots captured from the local development portal
-on 3 November 2026, while reviewing `platform/phase-1-application-registry` after
-merge commit `4c223829`. The footer displays the inherited frontend `1.1.0`
-version and backend `dev`; it does not mean the platform additions were already
-in the published `1.1.0` release. No production system was used.
+These are actual, unedited screenshots from the local development portal. They
+were taken on 3 November 2026, while the then-current branch
+`platform/phase-1-application-registry` was being reviewed after merge commit
+`4c223829`; that date and branch record when the images were captured, not the
+code they describe today. The footer in the images displays the frontend version
+`1.1.0` and backend `dev` that the branch carried at that time; it does not mean
+the platform additions were in the published `1.1.0` release. No production
+system was used. The UI may have changed since capture; see the refresh procedure
+below.
 
 ## Screenshot list
 
