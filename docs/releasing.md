@@ -45,7 +45,9 @@ Application changes must be committed before running this command. The generated
 make release-prepare
 ```
 
-This automatically generates and commits all versions, but does not run release verification or publish tags. It is useful for reviewing the release diff. Run `make release` afterward with the same `BUMP` value; the prepared plan is reused without another version bump.
+This automatically generates and commits all versions, but does not run release verification or publish tags. It is useful for reviewing the release diff. When the backend version changes, it also regenerates `backend/docs/openapi.yaml`, whose `info.version` follows `backend/VERSION`. Run `make release` afterward with the same `BUMP` value; the prepared plan is reused without another version bump.
+
+The prepare commit is usually reviewed and merged as a pull request before tagging. `make release` still reuses the plan from the merge commit, as long as the merged tree is identical to the prepared one (nothing else was merged in between). If other changes landed first, it stops instead of preparing the next version over the unpublished one. Then publish exactly the prepared versions from the prepared tree with `make release-manual BACKEND_VERSION=<x.y.z> FRONTEND_VERSION=<x.y.z>`, or prepare again after they are published.
 
 The prepared versions can also be verified separately:
 

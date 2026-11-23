@@ -161,6 +161,20 @@ test("automatic preparation commits versions and reuses a prepared release on re
     let versionCalls = 0;
     const run = (command, args, options) => {
       if (command === "git" && ["fetch", "remote"].includes(args[0])) return "";
+      if (command === "mock-go") {
+        assert.deepEqual(args, ["run", "./cmd/cli", "openapi", "generate"]);
+        assert.equal(options.cwd, join(root, "backend"));
+        const version = readFileSync(
+          join(root, "backend/VERSION"),
+          "utf8",
+        ).trim();
+        mkdirSync(join(root, "backend/docs"), { recursive: true });
+        writeFileSync(
+          join(root, "backend/docs/openapi.yaml"),
+          `info:\n  version: ${version}\n`,
+        );
+        return "";
+      }
       if (command === "mock-npm") {
         versionCalls++;
         const changeset = execFileSync(
@@ -188,7 +202,7 @@ test("automatic preparation commits versions and reuses a prepared release on re
       }
       return execFileSync(command, args, options);
     };
-    const config = { root: `${root}/`, npm: "mock-npm", run };
+    const config = { root: `${root}/`, npm: "mock-npm", go: "mock-go", run };
     const plan = prepareRelease(config);
     assert.equal(plan.backendVersion, "0.0.2");
     assert.equal(plan.frontendVersion, "0.1.1");
@@ -199,6 +213,11 @@ test("automatic preparation commits versions and reuses a prepared release on re
       existsSync(join(root, ".release/notes/frontend/packages/api/0.1.1.md")),
     );
     assert.ok(existsSync(join(root, "backend/CHANGELOG.md")));
+    // The regenerated API contract carries the new version in the same commit.
+    assert.equal(
+      git("show", "HEAD:backend/docs/openapi.yaml"),
+      "info:\n  version: 0.0.2",
+    );
     assert.equal(git("status", "--porcelain"), "");
     assert.match(
       git("log", "-1", "--format=%s"),
@@ -215,6 +234,93 @@ test("automatic preparation commits versions and reuses a prepared release on re
     writeFileSync(join(root, "dirty.txt"), "uncommitted");
     assert.throws(() => prepareRelease(config), /Commit or stash/);
     assert.ok(existsSync(join(root, ".release/plan.json")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a merged prepare PR is published as prepared, never bumped past", () => {
+  const root = mkdtempSync(join(tmpdir(), "moh-auto-release-merge-"));
+  try {
+    for (const path of [
+      "backend",
+      "frontend/apps/shell",
+      "frontend/.changeset",
+    ])
+      mkdirSync(join(root, path), { recursive: true });
+    writeFileSync(join(root, "backend/VERSION"), "1.5.1\n");
+    writeFileSync(
+      join(root, "frontend/apps/shell/package.json"),
+      JSON.stringify({ name: "@moh-sso/shell", version: "1.5.1" }),
+    );
+    const git = (...args) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+    git("init", "-q", "-b", "main");
+    git("config", "user.name", "Release Test");
+    git("config", "user.email", "release@example.invalid");
+    git("config", "commit.gpgsign", "false");
+    git("add", ".");
+    git("commit", "-qm", "fixture");
+    git("tag", "backend/v1.5.1");
+    const run = (command, args, options) => {
+      if (command === "git" && ["fetch", "remote"].includes(args[0])) return "";
+      if (command === "mock-go") {
+        mkdirSync(join(root, "backend/docs"), { recursive: true });
+        writeFileSync(join(root, "backend/docs/openapi.yaml"), "info: {}\n");
+        return "";
+      }
+      return execFileSync(command, args, options);
+    };
+    const config = {
+      root: `${root}/`,
+      component: "backend",
+      bump: "minor",
+      go: "mock-go",
+      run,
+    };
+
+    // Prepare on a branch, then merge it like a pull request (a merge commit).
+    git("switch", "-qc", "release");
+    const plan = prepareRelease(config);
+    assert.equal(plan.backendVersion, "1.6.0");
+    git("switch", "-q", "main");
+    git(
+      "merge",
+      "-q",
+      "--no-ff",
+      "-m",
+      "Merge pull request: prepare 1.6.0",
+      "release",
+    );
+    assert.notEqual(
+      git("log", "-1", "--format=%H", "--", ".release/plan.json"),
+      git("rev-parse", "HEAD"),
+    );
+
+    // Releasing from the merge commit reuses the plan instead of preparing 1.7.0.
+    assert.deepEqual(prepareRelease(config), plan);
+    assert.equal(
+      readFileSync(join(root, "backend/VERSION"), "utf8"),
+      "1.6.0\n",
+    );
+
+    // Once anything else lands, the untagged 1.6.0 is not silently skipped.
+    writeFileSync(join(root, "later.txt"), "a later change");
+    git("add", "later.txt");
+    git("commit", "-qm", "later change");
+    assert.throws(
+      () => prepareRelease(config),
+      /backend\/v1\.6\.0 was prepared .* but never published.*BACKEND_VERSION=1\.6\.0/,
+    );
+    // A different BUMP does not bypass it either.
+    assert.throws(
+      () => prepareRelease({ ...config, bump: "patch" }),
+      /never published/,
+    );
+
+    // After 1.6.0 is published the next release prepares normally.
+    git("tag", "backend/v1.6.0");
+    assert.equal(prepareRelease(config).backendVersion, "1.7.0");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
