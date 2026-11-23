@@ -682,6 +682,26 @@ systems:
           - systems:read
           - systems:launch
 
+# Keycloak clients that only use the client-credentials grant. They are not portal
+# systems. The startup push (RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true) creates each
+# one confidential and service-account-only, with an audience mapper, and grants its
+# service account the listed service-only roles plus the matching scope mappings.
+# Keycloak generates the secret; copy it into the dashboard's secret file.
+serviceClients:
+  - clientId: clims-identity-sync
+    displayName: clims identity sync
+    description: "MoH SSO Dashboard reconciler: lists clims accounts and records Keycloak identity links"
+    audience: clims
+    roles:
+      - system: clims
+        role: identity_sync
+  - clientId: poesgo-identity-sync
+    displayName: Poesgo identity sync
+    description: MoH SSO Dashboard service client for Poesgo identity reconciliation
+    audience: poesgo
+    roles:
+      - system: poesgo
+        role: identity_sync
 realmRoles:
   - name: admin
     description: Administrator role with full access

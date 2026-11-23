@@ -19,6 +19,30 @@ type SeedFile struct {
 	GroupMemberships     []SeedGroupMembership     `json:"groupMemberships,omitempty" yaml:"groupMemberships,omitempty"`
 	HealthContexts       []SeedHealthContext       `json:"healthContexts,omitempty" yaml:"healthContexts,omitempty"`
 	GroupContextMappings []SeedGroupContextMapping `json:"groupContextMappings,omitempty" yaml:"groupContextMappings,omitempty"`
+	// ServiceClients are Keycloak clients that only use the client-credentials
+	// grant, such as the identity-sync clients. They are not portal systems:
+	// they never appear in the launcher or the RBAC system list, and they are
+	// created in Keycloak only by the startup push
+	// (RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK).
+	ServiceClients []SeedServiceClient `json:"serviceClients,omitempty" yaml:"serviceClients,omitempty"`
+}
+
+// SeedServiceClient describes a confidential, service-account-only Keycloak
+// client. Keycloak generates its secret; the seed never holds one.
+type SeedServiceClient struct {
+	ClientID    string `json:"clientId" yaml:"clientId"`
+	DisplayName string `json:"displayName,omitempty" yaml:"displayName,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Audience is the system client ID added to the access token's aud claim.
+	Audience string `json:"audience" yaml:"audience"`
+	// Roles are service-only system roles granted to the service account.
+	Roles []SeedServiceClientRole `json:"roles" yaml:"roles"`
+}
+
+// SeedServiceClientRole names one service-only role of a seeded system.
+type SeedServiceClientRole struct {
+	System string `json:"system" yaml:"system"`
+	Role   string `json:"role" yaml:"role"`
 }
 
 type SeedHealthContext struct {
@@ -366,6 +390,10 @@ func ValidateSeed(seed SeedFile) error {
 		}
 	}
 
+	if err := validateServiceClients(seed.ServiceClients, seenSystems, systemRoles, serviceOnlyRoles); err != nil {
+		return err
+	}
+
 	for _, membership := range seed.GroupMemberships {
 		if strings.TrimSpace(membership.UserID) == "" &&
 			strings.TrimSpace(membership.Username) == "" &&
@@ -383,6 +411,65 @@ func ValidateSeed(seed SeedFile) error {
 		}
 	}
 
+	return nil
+}
+
+// validateServiceClients checks that each service client is distinct from the
+// seeded systems, targets a seeded system as its audience and is granted only
+// existing service-only roles, so a seed can never give a robot a role meant
+// for people.
+func validateServiceClients(
+	clients []SeedServiceClient,
+	systems map[string]bool,
+	systemRoles map[string]map[string]bool,
+	serviceOnlyRoles map[string]map[string]bool,
+) error {
+	seen := map[string]bool{}
+	for _, client := range clients {
+		clientID := strings.ToLower(strings.TrimSpace(client.ClientID))
+		if clientID == "" {
+			return fmt.Errorf("service client clientId is required")
+		}
+		if clientID != strings.TrimSpace(client.ClientID) {
+			return fmt.Errorf("service client %q clientId must be lowercase without surrounding spaces", client.ClientID)
+		}
+		if seen[clientID] {
+			return fmt.Errorf("duplicate service client clientId %q", clientID)
+		}
+		seen[clientID] = true
+		if systems[clientID] {
+			return fmt.Errorf("service client %q is also a system; a client is either a portal system or a service client", clientID)
+		}
+		audience := strings.ToLower(strings.TrimSpace(client.Audience))
+		if audience == "" {
+			return fmt.Errorf("service client %q audience is required", clientID)
+		}
+		if !systems[audience] {
+			return fmt.Errorf("service client %q audience %q is not a seeded system", clientID, audience)
+		}
+		if len(client.Roles) == 0 {
+			return fmt.Errorf("service client %q needs at least one role", clientID)
+		}
+		seenRoles := map[string]bool{}
+		for _, role := range client.Roles {
+			system := strings.ToLower(strings.TrimSpace(role.System))
+			roleName := strings.ToLower(strings.TrimSpace(role.Role))
+			key := system + "/" + roleName
+			if system == "" || roleName == "" {
+				return fmt.Errorf("service client %q has a role without a system or name", clientID)
+			}
+			if seenRoles[key] {
+				return fmt.Errorf("service client %q lists role %q twice", clientID, key)
+			}
+			seenRoles[key] = true
+			if !systemRoles[system][roleName] {
+				return fmt.Errorf("service client %q references unknown role %q", clientID, key)
+			}
+			if !serviceOnlyRoles[system][roleName] {
+				return fmt.Errorf("service client %q can only be granted service-only roles; %q is not service-only", clientID, key)
+			}
+		}
+	}
 	return nil
 }
 

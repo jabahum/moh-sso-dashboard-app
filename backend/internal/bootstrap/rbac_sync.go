@@ -51,11 +51,14 @@ func runStartupRBACSync(
 	ctx = systemrbac.WithStartupDiscovery(ctx)
 
 	// Establish canonical defaults before discovering previously unknown clients.
+	var seed systemrbac.SeedFile
+	seedLoaded := false
 	if cfg.RBACStartupSeedEnabled && db != nil {
-		seed, source, err := loadStartupRBACSeed(cfg.RBACStartupSeedPath)
+		loaded, source, err := loadStartupRBACSeed(cfg.RBACStartupSeedPath)
 		if err != nil {
 			return err
 		}
+		seed, seedLoaded = loaded, true
 		if err := systemrbac.ApplySeed(ctx, db, seed); err != nil {
 			return err
 		}
@@ -120,6 +123,27 @@ func runStartupRBACSync(
 				"client_roles_created", result.ClientRolesCreated,
 				"warnings", result.Warnings,
 			)
+		}
+
+		// Service clients (for example the identity-sync clients) come from the
+		// seed and need the roles the push above created.
+		if seedLoaded && len(seed.ServiceClients) > 0 {
+			clients, err := services.RBAC.PushServiceClientsToKeycloak(ctx, adminKC, seed.ServiceClients)
+			if err != nil {
+				return err
+			}
+			if appLogger != nil {
+				changed := make([]string, 0, len(clients.Changed))
+				for _, client := range clients.Changed {
+					changed = append(changed, client.ClientID)
+				}
+				appLogger.Info(
+					"RBAC Keycloak service clients startup sync complete",
+					"changed", changed,
+					"unchanged", clients.Unchanged,
+					"warnings", clients.Warnings,
+				)
+			}
 		}
 	}
 
