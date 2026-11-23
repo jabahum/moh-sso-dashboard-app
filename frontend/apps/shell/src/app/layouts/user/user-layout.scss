@@ -50,7 +50,6 @@
   min-width: 0;
   flex: 1;
   padding: 1.5rem;
-  padding-bottom: 4.5rem;
   overflow-x: hidden;
   background: var(--cds-background, #ffffff);
 }
@@ -260,7 +259,7 @@
 
 @media (max-width: 672px) {
   .user-layout__content {
-    padding: 1rem 0.75rem 5rem;
+    padding: 1rem 0.75rem;
   }
 }
 

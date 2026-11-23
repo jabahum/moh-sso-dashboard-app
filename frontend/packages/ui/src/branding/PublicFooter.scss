@@ -1,12 +1,13 @@
 /* src/components/footer/PublicFooter.css */
+/*
+ * The footer sits in normal flow at the end of the layout. Layouts are
+ * min-height: 100vh flex columns, so it still rests at the bottom of short
+ * pages without covering the last rows of long ones.
+ */
 .public-footer {
-  /*margin-top: 4rem;*/
-  /*padding: 1.5rem 0;*/
-  position: fixed;
-  left: var(--moh-footer-left-offset, 0);
-  bottom: 0;
+  flex-shrink: 0;
+  margin-left: var(--moh-footer-left-offset, 0);
   width: calc(100% - var(--moh-footer-left-offset, 0px));
-  z-index: 1000;
   background: var(--cds-layer);
   border-top: 1px solid var(--cds-border-subtle);
 }
@@ -61,7 +62,7 @@
 
 @media (max-width: 672px) {
   .public-footer {
-    left: 0;
+    margin-left: 0;
     width: 100%;
   }
 
