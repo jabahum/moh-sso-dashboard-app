@@ -109,7 +109,9 @@ existing build unless `IDSYNC_E2E_REBUILD_PORTAL=1`.
 ## Fixtures
 
 Every Keycloak user's password is `E2e-Fixture-Only-1`, and every email is
-`<username>@e2e.test`. Keycloak user IDs are fixed, so app links can be seeded:
+`<username>@e2e.test`. The realm keeps `duplicateEmailsAllowed: false`, so two Keycloak users can
+never share an email; ambiguous matches come from unverified or disabled users.
+Keycloak user IDs are fixed, so app links can be seeded:
 `e2e00000-0000-4000-8000-<n>`, with `n` zero-padded to 12 digits.
 
 | Keycloak user (n) | Client roles | CLIMS account | POES account | Expected preview |
@@ -122,6 +124,9 @@ Every Keycloak user's password is `E2e-Fixture-Only-1`, and every email is
 | `clims.disabled` (104) | `clims_access` | `inactive`, linked | none | not listed. Sign-in refused |
 | `clims.orphan` (105) | `clims_access` | none | none | n/a. Sign-in refused (no link) |
 | `clims.kcdisabled` (106) | none, and the Keycloak user is disabled | active, not linked | none | `review` |
+| `clims.unverified` (107) | none, Keycloak email not verified | active, not linked | none | `review`. Sync suite: cannot be approved |
+| `clims.recheckdir` (108) | none | active, not linked | none | `reuse`. Sync suite unverifies the email after approval; apply returns it to `review` (`directory_changed`) |
+| `clims.recheckacct` (109) | none | active, not linked | none | `reuse`. Sync suite changes the CLIMS email after approval; apply returns it to `review` (`account_changed`) |
 | `poes.linked` / `unlinked` / `noaccess` / `disabled` / `orphan` (201 to 205) | as for CLIMS, with `poesgo_access` | none | ids 2, 3, 4, 5 (inactive), and none for orphan | `linked`, `reuse`, `linked`, not listed, n/a |
 | `removal.both` (11) | `clims_access`, `poesgo_access` | active, linked | id 15, active, linked | `linked`. Owned by the removal suite |
 | `browser.unlinked` (12) | `clims_access`, `poesgo_access` | active, not linked | id 16, active, not linked | `reuse`. Browser suite: refused by both apps |
@@ -137,7 +142,8 @@ Each app also has one ineligible account with an email: CLIMS
 `poes.roleless` (id 14). CLIMS account IDs are
 `c1000000-0000-4000-8000-0000000000NN`. With `NN` in hex, the order follows the
 table: 01 `both.apps` … 0e `roleless`, then 0f `removal.both`, 10
-`browser.unlinked` and 11 `browser.noaccess`. POES IDs are 1 to 17.
+`browser.unlinked`, 11 `browser.noaccess`, then 12 `unverified`, 13 `recheckdir`
+and 14 `recheckacct`. POES IDs are 1 to 17.
 
 Extra realm clients for the conformance tokens:
 

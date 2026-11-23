@@ -70,8 +70,7 @@ async function currentDirectAccess(assignable) {
 
 test("the RBAC user-access profile shows the user's current Keycloak access", async () => {
   // Precondition for an admin removing access through the portal UI: the form is
-  // filled from this profile. See product_bugs: KeyAdminClient.GetUser reads
-  // GET /users/{id}, which carries no role mappings, so this comes back empty.
+  // filled from this profile, which must carry the user's Keycloak role mappings.
   const context = await newContext();
   const admin = await context.newPage();
   await portalSignIn(admin, "e2e.admin");
@@ -109,12 +108,20 @@ test("removing CLIMS access in the portal ends the CLIMS session at once and lea
   const adminContext = await newContext();
   const admin = await adminContext.newPage();
   await portalSignIn(admin, "e2e.admin");
+  // Exactly what the portal form (users app, UserAccessPanel) sends: the
+  // profile's direct access, with the role deselected. The users app is not
+  // served by this stack's core profile, so the request is made from the page.
+  const profile = await portalFetch(admin, "GET", `/api/v1/admin/rbac/user-access/users/${SUBJECT}`);
+  expect(profile.status).toBe(200);
+  const direct = profile.json.data.directAccess;
+  // The profile matches Keycloak, so the form starts from the real state.
   const assignable = (await portalFetch(admin, "GET", "/api/v1/admin/rbac/user-access/assignable")).json.data;
   const before = await currentDirectAccess(assignable);
-  expect(before.clientRoles.clims).toEqual(["clims_access"]);
-  expect(before.clientRoles.poesgo).toEqual(["poesgo_access"]);
-  const body = { ...before, clientRoles: { ...before.clientRoles } };
-  delete body.clientRoles.clims;
+  expect(direct.clientRoles.clims).toEqual(["clims_access"]);
+  expect(direct.clientRoles.poesgo).toEqual(["poesgo_access"]);
+  const sorted = (m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, [...v].sort()]));
+  expect(sorted(direct.clientRoles)).toEqual(sorted(before.clientRoles));
+  const body = { realmRoles: direct.realmRoles, clientRoles: { ...direct.clientRoles, clims: [] } };
 
   const t0 = Date.now();
   const put = await portalFetch(admin, "PUT", `/api/v1/admin/rbac/user-access/users/${SUBJECT}`, body);

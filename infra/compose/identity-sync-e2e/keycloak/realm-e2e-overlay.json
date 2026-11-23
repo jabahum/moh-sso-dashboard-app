@@ -626,6 +626,81 @@
    "id": "e2e00000-0000-4000-8000-000000000903",
    "enabled": true,
    "serviceAccountClientId": "e2e-other-service"
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000107",
+   "username": "clims.unverified",
+   "enabled": true,
+   "emailVerified": false,
+   "firstName": "Clims",
+   "lastName": "Unverified",
+   "email": "clims.unverified@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000108",
+   "username": "clims.recheckdir",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "RecheckDir",
+   "email": "clims.recheckdir@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000109",
+   "username": "clims.recheckacct",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "RecheckAcct",
+   "email": "clims.recheckacct@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
   }
  ]
 }

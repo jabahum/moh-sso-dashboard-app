@@ -23,7 +23,12 @@ INSERT INTO users (id, firstname, lastname, email, username, password, phone_num
     -- Per-suite fixtures (e2e/identity-sync): removal suite, browser suite.
     ('c1000000-0000-4000-8000-00000000000f', 'Removal', 'Both',     'removal.both@e2e.test',     'removal.both',     '!e2e-no-password', '', 'active',   now(), now()),
     ('c1000000-0000-4000-8000-000000000010', 'Browser', 'Unlinked', 'browser.unlinked@e2e.test', 'browser.unlinked', '!e2e-no-password', '', 'active',   now(), now()),
-    ('c1000000-0000-4000-8000-000000000011', 'Browser', 'NoAccess', 'browser.noaccess@e2e.test', 'browser.noaccess', '!e2e-no-password', '', 'active',   now(), now());
+    ('c1000000-0000-4000-8000-000000000011', 'Browser', 'NoAccess', 'browser.noaccess@e2e.test', 'browser.noaccess', '!e2e-no-password', '', 'active',   now(), now()),
+    -- Sync suite review fixtures: an unverified Keycloak email, and two reuse
+    -- rows the suite changes between approval and apply.
+    ('c1000000-0000-4000-8000-000000000012', 'Clims', 'Unverified', 'clims.unverified@e2e.test', 'clims.unverified', '!e2e-no-password', '', 'active',   now(), now()),
+    ('c1000000-0000-4000-8000-000000000013', 'Clims', 'RecheckDir', 'clims.recheckdir@e2e.test', 'clims.recheckdir', '!e2e-no-password', '', 'active',   now(), now()),
+    ('c1000000-0000-4000-8000-000000000014', 'Clims', 'RecheckAcct','clims.recheckacct@e2e.test','clims.recheckacct','!e2e-no-password', '', 'active',   now(), now());
 
 -- Every account except the roleless one holds one existing CLIMS role.
 INSERT INTO role_user (user_id, role_id)

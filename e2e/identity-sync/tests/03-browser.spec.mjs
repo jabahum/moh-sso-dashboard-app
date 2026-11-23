@@ -5,7 +5,7 @@
 // (access roles, unlinked local accounts), browser.noaccess (linked, no roles).
 import { test, expect } from "@playwright/test";
 import { CLIMS, DASHBOARD, POES } from "../lib/stack.mjs";
-import { closeBrowser, newContext, portalFetch, portalSignIn, trackNavigations } from "../lib/browser.mjs";
+import { closeBrowser, isKeycloakLoginPage, keycloakLogin, newContext, portalFetch, portalSignIn, trackNavigations } from "../lib/browser.mjs";
 
 test.afterAll(closeBrowser);
 
@@ -124,5 +124,42 @@ test("a linked user without the access role gets no tiles and is refused by both
   await expect(poes.getByText("sso_access_denied")).toBeVisible();
   expect((await poes.goto(`${POES}/api/v1/auth/me`)).status()).toBe(401);
   expect(page.url().startsWith(DASHBOARD)).toBe(true);
+  await context.close();
+});
+
+for (const [label, clUser, poUser] of [
+  ["a disabled local account", "clims.disabled", "poes.disabled"],
+  ["an orphan (access role, no local account)", "clims.orphan", "poes.orphan"],
+]) {
+  test(`${label} is refused by the app without a session`, async () => {
+    for (const [username, app] of [[clUser, "clims"], [poUser, "poes"]]) {
+      const context = await newContext();
+      const page = await context.newPage();
+      if (app === "clims") {
+        await page.goto(`${CLIMS}/api/v1/auth/sso/start`);
+        await keycloakLogin(page, username);
+        await page.waitForURL((u) => u.origin === CLIMS && u.pathname === "/sign-in", { timeout: 60_000 });
+        expect(new URL(page.url()).searchParams.get("sso_error"), `${username} CLIMS sso_error`).toBe("unavailable");
+        expect(await page.evaluate(() => localStorage.getItem("clims.session"))).toBeNull();
+      } else {
+        await page.goto(`${POES}/api/v1/auth/sso/start`);
+        await keycloakLogin(page, username);
+        await page.waitForURL((u) => u.origin === POES && u.pathname === "/api/v1/auth/sso/callback", { timeout: 60_000 });
+        await expect(page.getByText("sso_account_unavailable")).toBeVisible();
+        expect((await page.goto(`${POES}/api/v1/auth/me`)).status()).toBe(401);
+      }
+      await context.close();
+    }
+  });
+}
+
+test("a user disabled in Keycloak cannot sign in at all", async () => {
+  const context = await newContext();
+  const page = await context.newPage();
+  await page.goto(`${CLIMS}/api/v1/auth/sso/start`);
+  await keycloakLogin(page, "clims.kcdisabled");
+  await expect(page.locator("#input-error, .kc-feedback-text, [class*='alert-error']").first()).toBeVisible({ timeout: 30_000 });
+  expect(isKeycloakLoginPage(page.url())).toBe(true);
+  expect(page.url().startsWith(CLIMS)).toBe(false);
   await context.close();
 });

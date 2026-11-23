@@ -197,3 +197,48 @@ test("POES: invitation for an account without a Keycloak user, reuse, and idempo
   await new Promise((r) => setTimeout(r, 2000));
   expect(await mailTo("poes.invitee@e2e.test")).toHaveLength(1);
 });
+
+test("CLIMS: an unverified Keycloak email needs review, and apply sends changed rows back to review", async () => {
+  const runId = startRun("clims");
+  let { rows } = showRun(runId);
+  // clims.unverified: one Keycloak user with this email, but the email is not verified.
+  // (duplicateEmailsAllowed is false in the realm, so two users can never share an email.)
+  expectProposals(rows, {
+    [climsId(0x12)]: "review",
+    [climsId(0x13)]: "reuse",
+    [climsId(0x14)]: "reuse",
+  });
+  expect(rows[climsId(0x12)].proposedSubject ?? "").toBe("");
+  const refused = cli(["identity-sync", "run", "approve", "--run", runId, "--account", climsId(0x12), "--reviewer", REVIEWER], { allowFail: true });
+  expect(refused.code).not.toBe(0);
+  expect(rows[climsId(0x13)].proposedSubject).toBe(kcId(108));
+  expect(rows[climsId(0x14)].proposedSubject).toBe(kcId(109));
+
+  cli(["identity-sync", "run", "approve", "--run", runId, "--account", `${climsId(0x13)},${climsId(0x14)}`, "--reviewer", REVIEWER, "--note", "e2e recheck"]);
+  ({ rows } = showRun(runId));
+  expect(rows[climsId(0x13)].decision).toBe("approved");
+  expect(rows[climsId(0x14)].decision).toBe("approved");
+
+  // Between approval and apply: the directory match stops qualifying (email no
+  // longer verified), and the application account's email changes.
+  const user = await kc("GET", `/users/${kcId(108)}`);
+  await kc("PUT", `/users/${kcId(108)}`, { ...user, emailVerified: false });
+  expect((await kc("GET", `/users/${kcId(108)}`)).emailVerified).toBe(false);
+  sql(APPS.clims.db, `UPDATE users SET email = 'clims.recheckacct.moved@e2e.test' WHERE id = '${climsId(0x14)}'`);
+
+  const apply = cli(["identity-sync", "run", "apply", "--run", runId], { allowFail: true });
+  ({ rows } = showRun(runId));
+  expect(rows[climsId(0x13)], apply.stderr).toMatchObject({ proposal: "review", decision: "pending", lastError: "directory_changed" });
+  expect(rows[climsId(0x14)], apply.stderr).toMatchObject({ proposal: "review", decision: "pending", lastError: "account_changed" });
+  // Nothing was linked or granted for either account.
+  expect(climsLink(climsId(0x13))).toEqual([]);
+  expect(climsLink(climsId(0x14))).toEqual([]);
+  expect(await directClientRoles(kcId(108), "clims")).not.toContain("clims_access");
+  expect(await directClientRoles(kcId(109), "clims")).not.toContain("clims_access");
+  // A row sent back to review cannot be applied by re-running without a new decision.
+  const again = cli(["identity-sync", "run", "resume", "--run", runId], { allowFail: true });
+  expect(again.code, again.stderr).toBe(0);
+  expect(climsLink(climsId(0x13))).toEqual([]);
+  expect(climsLink(climsId(0x14))).toEqual([]);
+  expect(apply.code, `apply exit (stderr: ${apply.stderr})`).toBe(0);
+});
