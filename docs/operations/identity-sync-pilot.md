@@ -127,8 +127,8 @@ docker compose run --rm --no-deps \
 The rest of this runbook writes that prefix as `moh-sso`.
 
 **In the portal.** Steps 1 to 7 can also be done in the portal by an
-administrator with `rbac:write` and `rbac:roles:write`: Admin → RBAC → select
-the application → Operations → **Identity sync**. The page registers the
+administrator with `rbac:write` and `rbac:roles:write`: Admin → RBAC → **This
+application** → select the application → **Identity sync** tab. The page registers the
 integration and checks its live descriptor, starts runs (as background jobs),
 lets the reviewer select and approve rows (recorded under their own portal
 identity), applies and resumes runs, and lists access removals with a retry and
