@@ -301,7 +301,7 @@ function SurveillanceDashboardContent() {
     () => [
       {
         value: "",
-        label: "Select...",
+        label: "All regions",
       },
       ...regions.map((item) => ({
         value: item.id,
@@ -315,7 +315,7 @@ function SurveillanceDashboardContent() {
     () => [
       {
         value: "",
-        label: "Select...",
+        label: "All districts",
       },
       ...districts.map((item) => ({
         value: item.id,
@@ -329,7 +329,7 @@ function SurveillanceDashboardContent() {
     () => [
       {
         value: "",
-        label: "Select...",
+        label: "All sub-counties",
       },
       ...subcounties.map((item) => ({
         value: item.id,
@@ -440,32 +440,39 @@ function SurveillanceDashboardContent() {
     [navigate, selectedWeekId, selectedRegionId, selectedDistrictId, selectedSubCountyId],
   );
 
-  const createStatusItems = useCallback(
-    (status: "MAROON" | "RED" | "YELLOW" | "GREEN") => {
-      return Array.from(
+  const createStatusTile = useCallback(
+    (title: string, status: "MAROON" | "RED" | "YELLOW" | "GREEN") => {
+      const names = Array.from(
         new Set(
           filteredWeeklyStatuses
             .filter((item) => item.status === status && item.disease_id)
             .map((item) => diseaseNameById.get(String(item.disease_id)))
             .filter((name): name is string => Boolean(name?.trim())),
         ),
-      )
-        .slice(0, 6)
-        .map((name) => ({
+      );
+
+      return {
+        title,
+        total: names.length,
+        items: names.slice(0, 6).map((name) => ({
           label: name,
           onClick: () => handleOpenDisease(slugifyDiseaseName(name)),
-        }));
+        })),
+      };
     },
     [filteredWeeklyStatuses, diseaseNameById, handleOpenDisease],
   );
 
-  const immediateActionItems = useMemo(() => createStatusItems("MAROON"), [createStatusItems]);
+  const immediateActionTile = useMemo(
+    () => createStatusTile("Immediate Action", "MAROON"),
+    [createStatusTile],
+  );
 
-  const takeActionItems = useMemo(() => createStatusItems("RED"), [createStatusItems]);
+  const takeActionTile = useMemo(() => createStatusTile("Take Action", "RED"), [createStatusTile]);
 
-  const alertItems = useMemo(() => createStatusItems("YELLOW"), [createStatusItems]);
+  const alertTile = useMemo(() => createStatusTile("Alert", "YELLOW"), [createStatusTile]);
 
-  const watchItems = useMemo(() => createStatusItems("GREEN"), [createStatusItems]);
+  const watchTile = useMemo(() => createStatusTile("Watch", "GREEN"), [createStatusTile]);
 
   const regionDistrictNames = useMemo(() => {
     return new Set(districts.map((district) => districtKey(district.name)).filter(Boolean));
@@ -602,22 +609,11 @@ function SurveillanceDashboardContent() {
 
         <section className="surveillance-dashboard-page__section">
           <SurveillanceTiles
-            immediateAction={{
-              title: "Immediate Action",
-              items: immediateActionItems,
-            }}
-            takeAction={{
-              title: "Take Action",
-              items: takeActionItems,
-            }}
-            alert={{
-              title: "Alert",
-              items: alertItems,
-            }}
-            watch={{
-              title: "Watch",
-              items: watchItems,
-            }}
+            immediateAction={immediateActionTile}
+            takeAction={takeActionTile}
+            alert={alertTile}
+            watch={watchTile}
+            loading={weeksLoading || diseasesLoading || weeklyStatusesLoading}
           />
         </section>
 
