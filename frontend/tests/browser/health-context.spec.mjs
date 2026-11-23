@@ -46,7 +46,14 @@ for (const width of [1440, 390, 320]) {
             enabled: true,
             realmRoles: ["admin"],
             clientRoles: {},
-            permissions: ["portal:access", "clients:read", "systems:launch", "surveillance:read"],
+            // The header bell only renders for users who can read notifications.
+            permissions: [
+              "portal:access",
+              "clients:read",
+              "notifications:read",
+              "systems:launch",
+              "surveillance:read",
+            ],
             systems: ["data-statistics"],
             accessibleSystems: [
               {
