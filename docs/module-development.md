@@ -18,9 +18,11 @@ are registered through application manifests and the database application regist
 
 ### Current expansion examples
 
-All six compiled registry modules (`metrics`, `audit`, `geojson`,
-`report-scheduler`, `announcements` and `admin-units`) are now `published` and
-`self-contained`: each one's handlers, OpenAPI metadata and persistence live in
+Every compiled registry module is `published` and `self-contained`: the six
+released ones (`metrics`, `audit`, `geojson`, `report-scheduler`,
+`announcements`, `admin-units`) and the six extracted onto `core/modulekit`
+(`storage-locations`, `visualiser`, `document-templates`, `data-quality`,
+`documents`, `surveillance`), which are built from the repository until tagged. each one's handlers, OpenAPI metadata and persistence live in
 `backend/modules/<module-id>`, and no host adapter remains. Primary-schema
 migrations stay with the host. Audit-event recording is a separate core service
 and remains active when the Audit read module is disabled. Metrics remains the
@@ -165,7 +167,7 @@ only verified context and fails closed. Headers do not become identity claims.
 
 Modules can provide `OpenAPI() []byte` as a structural contract. API generation
 merges their declared operations only for actual registered routes, alongside
-existing typed Gin operations. All six published modules supply this method.
+existing typed Gin operations. Every module supplies this method.
 Keep the published operation metadata and actual permission checks aligned.
 
 Review and commit the package, publish an immutable directory-prefixed tag,

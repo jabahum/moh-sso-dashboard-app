@@ -258,11 +258,10 @@ API contracts and configuration ownership rules are documented in
 ## Disablement and inventory
 
 Set `DISABLED_MODULES` to a comma-separated list of optional module IDs
-(`metrics`, `audit`, `geojson`, `report-scheduler`, `announcements`,
-`admin-units`) to omit those modules at startup. The default empty value enables
+(`metrics`, `audit`, `geojson`, `report-scheduler`, `announcements`, `admin-units`, `storage-locations`, `visualiser`, `document-templates`, `data-quality`, `documents` and `surveillance`) to omit those modules at startup. The default empty value enables
 all of them. The setting takes effect on restart. Unknown IDs and mandatory core
-feature IDs fail startup. `PLATFORM_PROFILE=core` disables all six packaged
-modules; see [Platform core boundaries](platform-core.md#startup-profiles).
+feature IDs fail startup. `PLATFORM_PROFILE=core` disables every optional
+module; see [Platform core boundaries](platform-core.md#startup-profiles).
 
 Disabled modules are not constructed, their routes are not registered and their
 workers do not run, but data is retained and becomes available again when the
@@ -1276,9 +1275,10 @@ auth/audit/startup notification records persist without channel delivery.
 Unknown profiles and module IDs fail before provider startup.
 
 The existing primary migrations and data are shared across profiles.
-All six packaged modules remain visible but disabled in core. The full profile
-keeps legacy feature/provider requirements; its module setting is not an
-independent switch for legacy documents, DQA, visualizer or surveillance.
+All optional modules remain visible but disabled in core. In the full profile
+each module, including Documents, Data Quality, Visualiser and Surveillance,
+can be disabled on its own; their database and storage providers are still
+constructed.
 A dedicated backend-only Compose entry point and core environment example
 require no optional services, storage mounts or provider secrets.
 

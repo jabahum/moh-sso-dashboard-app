@@ -35,7 +35,7 @@ Review affected application registrations and navigation when changing API
 availability. Keep Keycloak roles and application lifecycle approval aligned with
 the intended rollout; module configuration does not automatically edit them.
 Announcements, the audit read module and map asset module have no background workers to stop.
-Other worker-bearing legacy features remain tracked as planned.
+The Documents and Data Quality modules own their workers: each starts in the module's initialization and stops (cancel, then wait) on shutdown, and neither runs when its module is disabled.
 
 ## Minimal platform profile
 

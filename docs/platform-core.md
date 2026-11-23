@@ -172,9 +172,9 @@ cache, workspaces/downloads disabled and no third-party dependencies.
 Phase 4 adds `PLATFORM_PROFILE=full|core`. The default is `full`, preserving
 the existing full distribution. Unknown profiles and unknown/mandatory IDs in
 `DISABLED_MODULES` fail configuration validation before opening connections.
-Core selects all six packaged applications as disabled and omits legacy optional
-feature routes and constructors. Inventory still reports their pinned versions
-with `enabled: false`.
+Core selects every optional module as disabled and omits optional feature
+routes and constructors. Inventory still reports their versions with
+`enabled: false`.
 
 | Resource/capability | Full profile | Core profile |
 | --- | --- | --- |
@@ -185,7 +185,8 @@ with `enabled: false`.
 | Remote, DWH, DQA and Observatory pools/replication | Existing legacy-feature dependencies | Not constructed or validated |
 | Storage factory and file-storage provider | Constructed for existing document features | Not constructed |
 | SMTP/template/queue and SMS providers | Existing delivery wiring | Not constructed or validated |
-| Document, DQA and delivery workers | Started for existing full-profile features/settings | Not constructed or started |
+| Document and DQA workers | Owned by the `documents` and `data-quality` modules; started when the module is enabled | Not constructed or started |
+| Delivery workers | Started for existing full-profile settings | Not constructed or started |
 | Packaged scheduler worker | Started when its module is enabled | Not constructed |
 | Optional HTTP/admin/public/machine notification routes | Existing surface and module switches | Omitted |
 | Frontend | Existing full-distribution shell | Separately hosted; core Compose is backend-only |
@@ -197,12 +198,13 @@ settings and existing credential verification; deployed authentication bypass
 restrictions still apply. Provider secret files are read only for capabilities
 used by the selected profile. Mandatory secret validation remains intact.
 
-The full profile still needs its legacy Remote/DWH/DQA/Observatory and document
-dependencies, even when all six packaged modules are disabled: legacy document,
-DQA, visualizer and surveillance features have not gained independent switches.
-`DISABLED_MODULES` controls the six packaged applications only. Selecting
-`core` removes those legacy features as a group; it does not implicitly enable
-an arbitrary subset. Further legacy feature switches can build on this boundary.
+Documents, Document Templates, Storage Locations, Data Quality, Visualiser and
+Surveillance are now optional modules too, so `DISABLED_MODULES` switches each
+of them independently in the full profile: a disabled module registers no
+routes and runs no worker. The full profile still opens the Remote, DWH, DQA
+and Observatory connections and the storage providers they use, even when the
+modules that need them are disabled, and the document import pipeline keeps
+its surveillance processors registered.
 
 Both profiles run the same existing primary-database migrations. No schema,
 data, module pin or migration history is deleted when profiles change. A
@@ -280,8 +282,10 @@ python3 infra/scripts/test-distribution-auth.py --backend-image <candidate> --pr
 
 ## Self-contained HTTP modules
 
-All six published modules (Administrative Units, Announcements, Audit, GeoJSON,
-Metrics and Report Scheduler) are self-contained in `docs/module-catalog.json`:
+All published modules (Administrative Units, Announcements, Audit, GeoJSON,
+Metrics and Report Scheduler) and the modules extracted onto `core/modulekit`
+(Storage Locations, Visualiser, Document Templates, Data Quality, Documents and
+Surveillance) are self-contained in `docs/module-catalog.json`:
 each package owns its HTTP handlers, DTOs, OpenAPI metadata and any persistence, and
 no host adapter tree remains (`backend/internal/adapters/modules` holds only a
 README). `NewModuleRegistry` in `backend/internal/api/modules.go` mounts all of
