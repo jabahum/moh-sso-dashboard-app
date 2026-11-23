@@ -73,6 +73,14 @@ func TestPlatformPostgres(t *testing.T) {
 	if _, err := repo.SaveIdentity(ctx, "other", token.ClientID, "operator", input); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("binding reassigned: %v", err)
 	}
+	listed, err := repo.ListIdentities(ctx, "pilot")
+	if err != nil || len(listed) != 1 || listed[0].ClientID != token.ClientID || listed[0].Subject != token.Subject ||
+		!listed[0].Enabled || len(listed[0].Scopes) != 3 {
+		t.Fatalf("ListIdentities(pilot) = %+v, %v", listed, err)
+	}
+	if other, err := repo.ListIdentities(ctx, "other"); err != nil || len(other) != 0 || other == nil {
+		t.Fatalf("ListIdentities(other) = %#v, %v (want an empty, non-nil list)", other, err)
+	}
 	p, err := repo.ResolveIdentity(ctx, token)
 	if err != nil {
 		t.Fatal(err)

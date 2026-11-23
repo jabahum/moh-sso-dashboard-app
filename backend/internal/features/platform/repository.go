@@ -12,5 +12,6 @@ type Repository interface {
 	GetNotification(context.Context, string, string) (NotificationStatus, error)
 	ResolveIdentity(context.Context, Token) (Principal, error)
 	SaveIdentity(context.Context, string, string, string, IdentityInput) (Identity, error)
+	ListIdentities(context.Context, string) ([]Identity, error)
 	UserAccess(context.Context, string, Token) (UserAccess, error)
 }

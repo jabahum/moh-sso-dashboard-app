@@ -38,6 +38,9 @@ func TestApplicationRegistryPostgres(t *testing.T) {
 		}
 	}
 	migration("000059_grandfather_existing_client_lifecycle.up.sql")
+	// Role reads include service_only (migration 61), whose triggers cover RBAC group grants (38).
+	migration("000038_add_rbac_groups.up.sql")
+	migration("000061_service_only_system_roles.up.sql")
 	repo := NewRepository(db)
 	for clientID, enabled := range map[string]bool{"legacy-enabled": true, "legacy-disabled": false} {
 		detail, err := repo.GetSystem(ctx, clientID)

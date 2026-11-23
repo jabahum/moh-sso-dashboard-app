@@ -26,6 +26,17 @@ components:
         - error
         - meta
       type: object
+    accesswarnings.Warning:
+      properties:
+        clientId:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        userId:
+          type: string
+      type: object
     admin_units.Facility:
       properties:
         country_uid:
@@ -3092,6 +3103,153 @@ components:
         - namespace
         - externalId
       type: object
+    identityreconcile.BatchRow:
+      properties:
+        accountId:
+          type: string
+        attempts:
+          format: int64
+          type: integer
+        decision:
+          type: string
+        emailHint:
+          type: string
+        grantStatus:
+          type: string
+        id:
+          type: string
+        lastError:
+          type: string
+        linkStatus:
+          type: string
+        proposal:
+          type: string
+        proposedSubject:
+          type: string
+        reviewNote:
+          type: string
+        reviewedAt:
+          format: date-time
+          nullable: true
+          type: string
+        reviewedBy:
+          type: string
+        runId:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+        userStatus:
+          type: string
+      type: object
+    identityreconcile.BatchRun:
+      properties:
+        applicationId:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        createdBy:
+          type: string
+        id:
+          type: string
+        issuer:
+          type: string
+        status:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      type: object
+    identityreconcile.Job:
+      properties:
+        actor:
+          type: string
+        applicationId:
+          type: string
+        error:
+          type: string
+        errorMessage:
+          type: string
+        finishedAt:
+          format: date-time
+          nullable: true
+          type: string
+        id:
+          type: string
+        kind:
+          type: string
+        runId:
+          type: string
+        startedAt:
+          format: date-time
+          type: string
+        status:
+          type: string
+        summary:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+      type: object
+    identityreconcile.Revocation:
+      properties:
+        applicationId:
+          type: string
+        attempts:
+          format: int64
+          type: integer
+        consentsRevoked:
+          type: string
+        id:
+          type: string
+        issuer:
+          type: string
+        lastError:
+          type: string
+        reason:
+          type: string
+        restoreReason:
+          type: string
+        restoredAt:
+          format: date-time
+          nullable: true
+          type: string
+        restoredBy:
+          type: string
+        revokedAt:
+          format: date-time
+          type: string
+        revokedBy:
+          type: string
+        roleRemoved:
+          type: string
+        sessionsRevoked:
+          type: string
+        subject:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      type: object
+    identitysync.Descriptor:
+      properties:
+        accountIdFormat:
+          type: string
+        application:
+          type: string
+        capabilities:
+          items:
+            type: string
+          type: array
+        contract:
+          type: string
+        maxPageSize:
+          format: int64
+          type: integer
+        version:
+          type: string
+      type: object
     keycloak.ClientProfile:
       properties:
         id:
@@ -4214,6 +4372,109 @@ components:
         - subject
         - reason
       type: object
+    platform.IdentitySyncApplyInput:
+      properties:
+        resume:
+          type: boolean
+      type: object
+    platform.IdentitySyncDecisionInput:
+      properties:
+        accountIds:
+          items:
+            type: string
+          type: array
+        decision:
+          type: string
+        note:
+          type: string
+      required:
+        - decision
+        - accountIds
+      type: object
+    platform.IdentitySyncDeleteInput:
+      properties:
+        reason:
+          type: string
+      required:
+        - reason
+      type: object
+    platform.IdentitySyncInput:
+      properties:
+        accessRole:
+          type: string
+        accountIdFormat:
+          type: string
+        allowContractDowngrade:
+          type: boolean
+        credentialRef:
+          type: string
+        enabled:
+          type: boolean
+        origin:
+          type: string
+        reason:
+          type: string
+        syncClientId:
+          type: string
+      required:
+        - origin
+        - syncClientId
+        - accessRole
+        - credentialRef
+        - accountIdFormat
+        - reason
+      type: object
+    platform.IdentitySyncIntegration:
+      properties:
+        accessRole:
+          type: string
+        accountIdFormat:
+          type: string
+        applicationId:
+          type: string
+        contractVersion:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        credentialRef:
+          type: string
+        enabled:
+          type: boolean
+        origin:
+          type: string
+        syncClientId:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+        updatedBy:
+          type: string
+      type: object
+    platform.IdentitySyncRestoreInput:
+      properties:
+        reason:
+          type: string
+        subject:
+          type: string
+      required:
+        - subject
+        - reason
+      type: object
+    platform.IdentitySyncRunDetail:
+      properties:
+        counts:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        rows:
+          items:
+            $ref: '#/components/schemas/identityreconcile.BatchRow'
+          type: array
+        run:
+          $ref: '#/components/schemas/identityreconcile.BatchRun'
+      type: object
     platform.NotificationInput:
       properties:
         message:
@@ -4279,6 +4540,13 @@ components:
             $ref: '#/components/schemas/platform.WorkerHealth'
           type: array
       type: object
+    platform.ServiceAccount:
+      properties:
+        clientId:
+          type: string
+        subject:
+          type: string
+      type: object
     platform.UserAccess:
       properties:
         applicationId:
@@ -4305,6 +4573,50 @@ components:
             - $ref: '#/components/schemas/core.WorkerSnapshot'
           nullable: true
         name:
+          type: string
+      type: object
+    platform.item:
+      properties:
+        applicationId:
+          type: string
+        attempts:
+          format: int64
+          type: integer
+        complete:
+          type: boolean
+        consentsRevoked:
+          type: string
+        id:
+          type: string
+        issuer:
+          type: string
+        lastError:
+          type: string
+        reason:
+          type: string
+        restoreReason:
+          type: string
+        restoredAt:
+          format: date-time
+          nullable: true
+          type: string
+        restoredBy:
+          type: string
+        revokedAt:
+          format: date-time
+          type: string
+        revokedBy:
+          type: string
+        roleRemoved:
+          type: string
+        sessionsRevoked:
+          type: string
+        sessionsStillOpen:
+          type: boolean
+        subject:
+          type: string
+        updatedAt:
+          format: date-time
           type: string
       type: object
     rbac.AccessRequest:
@@ -5136,6 +5448,9 @@ components:
           type: boolean
         name:
           type: string
+        serviceOnly:
+          nullable: true
+          type: boolean
       type: object
     rbac.RoleTemplate:
       properties:
@@ -5450,6 +5765,8 @@ components:
           items:
             $ref: '#/components/schemas/rbac.Permission'
           type: array
+        serviceOnly:
+          type: boolean
         systemId:
           type: string
       type: object
@@ -5531,6 +5848,10 @@ components:
           $ref: '#/components/schemas/rbac.DirectUserAccessResponse'
         effectiveAccess:
           $ref: '#/components/schemas/rbac.EffectiveAccessResponse'
+        warnings:
+          items:
+            $ref: '#/components/schemas/accesswarnings.Warning'
+          type: array
       type: object
     report_scheduler.Artifact:
       properties:
@@ -6666,6 +6987,8 @@ components:
           items:
             type: string
           type: array
+        serviceOnly:
+          type: boolean
       type: object
     system_rbac.SeedSystem:
       properties:
@@ -6723,6 +7046,13 @@ components:
           type: string
         systemType:
           type: string
+      type: object
+    users.AccessChangeWarnings:
+      properties:
+        warnings:
+          items:
+            $ref: '#/components/schemas/accesswarnings.Warning'
+          type: array
       type: object
     users.ClientRoleResponse:
       properties:
@@ -16220,6 +16550,70 @@ paths:
       x-go-handler: github.com/moh-sso-dashboard/internal/features/notifications.(*Handler).TestSMS
       x-route-permissions:
         - notifications:write
+  /api/v1/admin/platform/applications/{clientId}/identities:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identities
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      identities:
+                        items:
+                          $ref: '#/components/schemas/platform.Identity'
+                        type: array
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Identities
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ListIdentities
   /api/v1/admin/platform/applications/{clientId}/identities/{oauthClientId}:
     put:
       operationId: put_api_v1_admin_platform_applications_clientId_identities_oauthClientId
@@ -16290,6 +16684,1218 @@ paths:
       tags:
         - admin-platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).SaveIdentity
+  /api/v1/admin/platform/applications/{clientId}/identities/{oauthClientId}/service-account:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identities_oauthClientId_service-account
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: oauthClientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.ServiceAccount'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Service Account
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetServiceAccount
+  /api/v1/admin/platform/applications/{clientId}/identity-sync:
+    delete:
+      operationId: delete_api_v1_admin_platform_applications_clientId_identity-sync
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform.IdentitySyncDeleteInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      applicationId:
+                        type: string
+                      deleted:
+                        type: boolean
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Delete Identity Sync
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).DeleteIdentitySync
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identity-sync
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.IdentitySyncIntegration'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Identity Sync
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetIdentitySync
+    put:
+      operationId: put_api_v1_admin_platform_applications_clientId_identity-sync
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform.IdentitySyncInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.IdentitySyncIntegration'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Save Identity Sync
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).SaveIdentitySync
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/describe:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identity-sync_describe
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/identitysync.Descriptor'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Describe Identity Sync
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).DescribeIdentitySync
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/jobs:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identity-sync_jobs
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      jobs:
+                        items:
+                          $ref: '#/components/schemas/identityreconcile.Job'
+                        type: array
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Identity Sync Jobs
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ListIdentitySyncJobs
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/revocations:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identity-sync_revocations
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: all
+          required: false
+          schema:
+            default: "false"
+            type: string
+        - in: query
+          name: unfinished
+          required: false
+          schema:
+            default: "false"
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      jobs:
+                        items:
+                          $ref: '#/components/schemas/identityreconcile.Job'
+                        type: array
+                      revocations:
+                        items:
+                          $ref: '#/components/schemas/platform.item'
+                        type: array
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Identity Sync Revocations
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ListIdentitySyncRevocations
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/revocations/restore:
+    post:
+      operationId: post_api_v1_admin_platform_applications_clientId_identity-sync_revocations_restore
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform.IdentitySyncRestoreInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/identityreconcile.Revocation'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Restore Identity Sync Revocation
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).RestoreIdentitySyncRevocation
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/revocations/resume:
+    post:
+      operationId: post_api_v1_admin_platform_applications_clientId_identity-sync_revocations_resume
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/identityreconcile.Job'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Accepted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Resume Identity Sync Revocations
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ResumeIdentitySyncRevocations
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/runs:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identity-sync_runs
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      jobs:
+                        items:
+                          $ref: '#/components/schemas/identityreconcile.Job'
+                        type: array
+                      runs:
+                        items:
+                          $ref: '#/components/schemas/identityreconcile.BatchRun'
+                        type: array
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Identity Sync Runs
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ListIdentitySyncRuns
+    post:
+      operationId: post_api_v1_admin_platform_applications_clientId_identity-sync_runs
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/identityreconcile.Job'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Accepted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Start Identity Sync Run
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).StartIdentitySyncRun
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/runs/{runId}:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identity-sync_runs_runId
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.IdentitySyncRunDetail'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Identity Sync Run
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetIdentitySyncRun
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/runs/{runId}/apply:
+    post:
+      operationId: post_api_v1_admin_platform_applications_clientId_identity-sync_runs_runId_apply
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform.IdentitySyncApplyInput'
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/identityreconcile.Job'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Accepted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Apply Identity Sync Run
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ApplyIdentitySyncRun
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/runs/{runId}/decisions:
+    post:
+      operationId: post_api_v1_admin_platform_applications_clientId_identity-sync_runs_runId_decisions
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform.IdentitySyncDecisionInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      rows:
+                        items:
+                          $ref: '#/components/schemas/identityreconcile.BatchRow'
+                        type: array
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Decide Identity Sync Rows
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).DecideIdentitySyncRows
   /api/v1/admin/platform/applications/{clientId}/operations:
     get:
       description: 'Explicit route permission: rbac:read. Additional group/system access checks may apply.'
@@ -22359,6 +23965,27 @@ paths:
               $ref: '#/components/schemas/users.userClientRolesRequest'
         required: true
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/users.AccessChangeWarnings'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
         "204":
           description: No Content
         "400":
@@ -22425,6 +24052,27 @@ paths:
               $ref: '#/components/schemas/users.userClientRolesRequest'
         required: true
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/users.AccessChangeWarnings'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
         "204":
           description: No Content
         "400":
@@ -22575,6 +24223,27 @@ paths:
               $ref: '#/components/schemas/users.userClientRolesRequest'
         required: true
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/users.AccessChangeWarnings'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
         "204":
           description: No Content
         "400":

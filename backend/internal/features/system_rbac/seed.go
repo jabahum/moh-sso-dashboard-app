@@ -84,6 +84,10 @@ type SeedRole struct {
 	DisplayName string   `json:"displayName,omitempty" yaml:"displayName,omitempty"`
 	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
 	Permissions []string `json:"permissions,omitempty" yaml:"permissions,omitempty"`
+	// ServiceOnly marks a role held only by Keycloak service accounts. It carries no
+	// portal permissions and is never granted to people (access roles, realm-role
+	// defaults, groups or direct user assignment).
+	ServiceOnly bool `json:"serviceOnly,omitempty" yaml:"serviceOnly,omitempty"`
 }
 
 type SeedRealmRole struct {
@@ -217,6 +221,7 @@ func ValidateSeed(seed SeedFile) error {
 	seenSystems := map[string]bool{}
 	systemRoles := map[string]map[string]bool{}
 	systemAccessRoles := map[string]map[string]bool{}
+	serviceOnlyRoles := map[string]map[string]bool{}
 	contextCodes := map[string]bool{}
 	for _, healthContext := range seed.HealthContexts {
 		code := strings.ToUpper(strings.TrimSpace(healthContext.Code))
@@ -261,6 +266,7 @@ func ValidateSeed(seed SeedFile) error {
 		}
 
 		seenRoles := map[string]bool{}
+		serviceOnly := map[string]bool{}
 		for _, role := range system.Roles {
 			roleName := strings.ToLower(strings.TrimSpace(role.Name))
 			if roleName == "" {
@@ -273,11 +279,22 @@ func ValidateSeed(seed SeedFile) error {
 			if err := validatePermissions(knownPermissions, role.Permissions); err != nil {
 				return fmt.Errorf("system %q role %q: %w", clientID, roleName, err)
 			}
+			if role.ServiceOnly {
+				if len(role.Permissions) > 0 {
+					return fmt.Errorf("system %q service-only role %q cannot carry portal permissions", clientID, roleName)
+				}
+				serviceOnly[roleName] = true
+			}
 		}
 		systemRoles[clientID] = seenRoles
+		serviceOnlyRoles[clientID] = serviceOnly
 		accessRoles := map[string]bool{}
 		for _, roleName := range system.AccessRoles {
-			accessRoles[strings.ToLower(strings.TrimSpace(roleName))] = true
+			roleName = strings.ToLower(strings.TrimSpace(roleName))
+			if serviceOnly[roleName] {
+				return fmt.Errorf("system %q service-only role %q cannot be an access role", clientID, roleName)
+			}
+			accessRoles[roleName] = true
 		}
 		systemAccessRoles[clientID] = accessRoles
 	}
@@ -304,6 +321,9 @@ func ValidateSeed(seed SeedFile) error {
 				systemRole = strings.ToLower(strings.TrimSpace(systemRole))
 				if !systemRoles[clientID][systemRole] {
 					return fmt.Errorf("realm role %q references unknown role %q for system %q", roleName, systemRole, clientID)
+				}
+				if serviceOnlyRoles[clientID][systemRole] {
+					return fmt.Errorf("realm role %q cannot grant service-only role %q for system %q", roleName, systemRole, clientID)
 				}
 				if !systemAccessRoles[clientID][systemRole] {
 					return fmt.Errorf("realm role %q default role %q is not an access role for system %q", roleName, systemRole, clientID)
@@ -338,6 +358,9 @@ func ValidateSeed(seed SeedFile) error {
 				systemRole = strings.ToLower(strings.TrimSpace(systemRole))
 				if !systemRoles[clientID][systemRole] {
 					return fmt.Errorf("group %q references unknown role %q for system %q", groupPath, systemRole, clientID)
+				}
+				if serviceOnlyRoles[clientID][systemRole] {
+					return fmt.Errorf("group %q cannot grant service-only role %q for system %q", groupPath, systemRole, clientID)
 				}
 			}
 		}

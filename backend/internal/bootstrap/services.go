@@ -266,6 +266,8 @@ func buildServices(deps serviceDependencies) services {
 	)
 
 	rbacService := rbacfeature.NewService(deps.Repositories.RBAC, userService)
+	userService.SetServiceOnlyRoleChecker(rbacService)
+	userService.SetAccessRoleRemovalHook(newIdentitySyncRevocationHook(deps.Config, deps.Databases.Primary, deps.AdminKeycloak))
 	rbacService.SetKeycloakGroupMembershipManager(deps.AdminKeycloak)
 	rbacService.SetFrontendBaseURL(deps.Config.FrontendBaseURL)
 	healthContextService := healthcontextfeature.NewService(deps.Repositories.HealthContexts)

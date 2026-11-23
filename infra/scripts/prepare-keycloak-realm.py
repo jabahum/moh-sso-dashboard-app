@@ -24,7 +24,13 @@ def render(environment, portal_url, api_url):
     realm['users'] = [u for u in realm.get('users', []) if u.get('serviceAccountClientId')]
     realm['sslRequired'] = 'external' if environment in ('development', 'test') else 'all'
     realm['smtpServer'] = {}
-    realm.pop('components', None)
+    # Keep only the declarative user profile (it declares the admin-only
+    # ihp_identity_sync_origin attribute identity-sync invitations store); drop
+    # every other component (keys, LDAP, etc.).
+    components = realm.pop('components', {}) or {}
+    profile = components.get('org.keycloak.userprofile.UserProfileProvider')
+    if profile:
+        realm['components'] = {'org.keycloak.userprofile.UserProfileProvider': profile}
     for client in realm['clients']:
         client['enabled'] = client['clientId'] in ('dashboard-web', 'dashboard-admin', 'data-statistics')
         client['redirectUris'] = []

@@ -76,6 +76,7 @@ func main() {
 	rootCmd.AddCommand(createUserCmd)
 	rootCmd.AddCommand(listUsersCmd)
 	rootCmd.AddCommand(systemRBACCmd)
+	rootCmd.AddCommand(newIdentitySyncCommand())
 	rootCmd.AddCommand(newPOESSyncCommand())
 	rootCmd.AddCommand(newCLIMSSyncCommand())
 	rootCmd.AddCommand(doctorCmd)
@@ -102,13 +103,33 @@ func isLocalToolCommand(cmd *cobra.Command) bool {
 		"moh-sso dev",
 		"moh-sso openapi",
 		"moh-sso version",
+		// Run by application teams against their own app; needs no Keycloak admin.
+		"moh-sso identity-sync conformance",
 	}
 	for _, prefix := range localPrefixes {
 		if strings.HasPrefix(commandPath, prefix) {
 			return true
 		}
 	}
-	return false
+	return needsNoKeycloakAdmin(cmd)
+}
+
+// annotationNoKeycloakAdmin marks a command that reads or writes only the
+// dashboard database, so the root does not demand Keycloak admin credentials.
+// Value "true", or "unless:<flag>" when setting that boolean flag makes the
+// command talk to Keycloak (for example "revocations --resume").
+const annotationNoKeycloakAdmin = "moh-sso/no-keycloak-admin"
+
+func needsNoKeycloakAdmin(cmd *cobra.Command) bool {
+	value, ok := cmd.Annotations[annotationNoKeycloakAdmin]
+	if !ok {
+		return false
+	}
+	if flag, found := strings.CutPrefix(value, "unless:"); found {
+		set, err := cmd.Flags().GetBool(flag)
+		return err == nil && !set
+	}
+	return value == "true"
 }
 
 func newAdminKC() *keycloak.KeyAdminClient {

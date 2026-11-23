@@ -44,6 +44,25 @@ Portal RBAC owns:
 
 Newly discovered roles do not grant portal permissions until an admin maps them.
 
+### Service-only roles
+
+Mark a system role held only by a Keycloak service account with `serviceOnly: true` in the seed, or set `serviceOnly` through the role API. Examples are `data-statistics/report_scheduler_service` and `clims`/`poesgo` `identity_sync`.
+
+```yaml
+      - name: identity_sync
+        displayName: CLIMS Identity Sync
+        serviceOnly: true
+        permissions: []
+```
+
+A service-only role is never granted to people:
+
+- It is hidden from the user-access picker.
+- Direct user client-role grants reject it with `SERVICE_ONLY_ROLE`.
+- It cannot carry portal permissions, be an access role, be a realm-role default, or be granted to an RBAC group.
+
+Seed validation, the RBAC and users services, and database triggers (migration 61) all enforce these rules. Seed apply can mark a role service-only but never clears the flag. To clear it, update the role explicitly. A role can only be marked service-only once its permissions and person-facing grants are removed. Removing a service-only role from a person who already holds it still works.
+
 ## Drift detection
 
 Use the admin UI or CLI to compare Keycloak with portal RBAC.

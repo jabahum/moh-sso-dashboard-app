@@ -22,6 +22,7 @@ func buildCoreServices(deps serviceDependencies) services {
 	notifications := service.NewNotificationsService(deps.Config, deps.Repositories.Notifications, nil, nil, nil)
 	audit := service.NewAuditService(deps.Store, deps.Cache, notifications, deps.Config)
 	users := userfeature.NewService(deps.Repositories.Users, notifications, deps.Config)
+	users.SetAccessRoleRemovalHook(newIdentitySyncRevocationHook(deps.Config, deps.Databases.Primary, deps.AdminKeycloak))
 	rbac := rbacfeature.NewService(deps.Repositories.RBAC, users)
 	rbac.SetKeycloakGroupMembershipManager(deps.AdminKeycloak)
 	rbac.SetFrontendBaseURL(deps.Config.FrontendBaseURL)
@@ -49,8 +50,11 @@ func buildCoreHandlers(deps handlerDependencies) handlers {
 			RBAC:           rbacfeature.NewHandler(deps.Services.RBAC),
 			HealthContexts: healthcontextfeature.NewHandler(deps.Services.HealthContexts, deps.Services.Audit),
 			Platform: &platformfeature.Handler{
-				Repository: &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
-				CoreReady:  health.CheckCore, RequiredWorkers: []string{}, DeliveryEnabled: &delivery,
+				Repository:   &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
+				IdentitySync: platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm),
+				IdentitySyncOps: identitySyncOperationsHandler(deps.Config, deps.Databases.Primary, deps.AdminKeycloak),
+				ServiceAccounts: serviceAccountResolver(deps.AdminKeycloak),
+				CoreReady:    health.CheckCore, RequiredWorkers: []string{}, DeliveryEnabled: &delivery,
 				Verifier: &platformfeature.Introspector{
 					Endpoint: strings.TrimRight(deps.Config.KeycloakTokenBaseURL(), "/") + "/realms/" + deps.Config.KeycloakRealm + "/protocol/openid-connect/token/introspect",
 					Issuer:   strings.TrimRight(deps.Config.KeycloakExternalURL, "/") + "/realms/" + deps.Config.KeycloakRealm,

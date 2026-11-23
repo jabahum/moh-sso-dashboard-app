@@ -219,6 +219,9 @@ const (
 	ClientRoleAssigned NotificationType = "CLIENT_ROLE_ASSIGNED"
 	ClientRolesUpdated NotificationType = "CLIENT_TOLE_UPDATED"
 	ClientRoleRemoved  NotificationType = "CLIENT_ROLE_REMOVED"
+	// IdentitySyncRevocationIncomplete: a portal role removal could not end
+	// every session of a registered identity-sync application.
+	IdentitySyncRevocationIncomplete NotificationType = "IDENTITY_SYNC_REVOCATION_INCOMPLETE"
 )
 
 const (
@@ -463,7 +466,8 @@ func (t NotificationType) Severity() string {
 		ClientDisabled,
 		ImportFailed,
 		BackupFailed,
-		PolicyViolation:
+		PolicyViolation,
+		IdentitySyncRevocationIncomplete:
 		return "critical"
 
 	// 🟠 Warning
@@ -486,6 +490,8 @@ func (t NotificationType) Severity() string {
 
 func (t NotificationType) Title() string {
 	switch t {
+	case IdentitySyncRevocationIncomplete:
+		return "Application access removal incomplete"
 	case SystemStartup:
 		return "System started"
 	case SystemShutdown:

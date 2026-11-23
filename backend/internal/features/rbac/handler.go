@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/moh-sso-dashboard/internal/authz"
 	"github.com/moh-sso-dashboard/internal/http/response"
 )
@@ -739,6 +740,10 @@ func bindRealmExportPayload(c *gin.Context) ([]byte, bool) {
 }
 
 func writeError(c *gin.Context, err error, code string) {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Constraint == "ihp_service_only_system_role" {
+		err = ErrServiceOnlyRole
+	}
 	switch {
 	case errors.Is(err, ErrApplicationExists):
 		response.Fail(c, http.StatusConflict, "APPLICATION_EXISTS", "application is already registered")
