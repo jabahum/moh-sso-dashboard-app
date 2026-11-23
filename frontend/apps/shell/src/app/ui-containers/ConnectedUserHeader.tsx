@@ -7,6 +7,7 @@ import { UserHeader, useHeaderPanel } from "@moh-sso/ui";
 
 import { ConnectedAccountPanel } from "./ConnectedAccountPanel";
 import { ConnectedAppMenu } from "./ConnectedAppMenu";
+import { ConnectedNotificationsAction } from "./ConnectedNotificationsAction";
 import { HealthContextSelector } from "./HealthContextSelector";
 
 type Props = {
@@ -31,7 +32,14 @@ export function ConnectedUserHeader({
   return (
     <UserHeader
       username={user?.username}
-      contextSelector={<HealthContextSelector />}
+      // Production builds the shell against the published @moh-sso/ui, so the
+      // bell rides in the existing contextSelector slot rather than a new prop.
+      contextSelector={
+        <>
+          <HealthContextSelector />
+          <ConnectedNotificationsAction />
+        </>
+      }
       navigationExpanded={navigationExpanded}
       onToggleNavigation={onToggleNavigation}
       onGlobalAction={onGlobalAction}

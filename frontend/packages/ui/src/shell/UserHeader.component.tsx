@@ -42,6 +42,13 @@ const UserHeader: React.FC<UserHeaderProps> = ({
   onToggleNavigation,
   onGlobalAction,
 }) => {
+  const handleHomeClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (onNavigateHome && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      onNavigateHome();
+    }
+  };
+
   return (
     <Header aria-label={`MOH ${appName}`} className="moh-shell-header">
       <SkipToContent />
@@ -56,22 +63,18 @@ const UserHeader: React.FC<UserHeaderProps> = ({
         />
       )}
 
-      <img src={imagePath} className="moh-image-style" alt="Uganda coat of arms" />
+      <a
+        href={homeHref}
+        className="moh-header-logo-link"
+        aria-label={`MOH ${appName} home`}
+        onClick={handleHomeClick}
+      >
+        <img src={imagePath} className="moh-image-style" alt="" aria-hidden="true" />
+      </a>
       <HeaderName
         prefix="MOH"
         href={homeHref}
-        onClick={(event) => {
-          if (
-            onNavigateHome &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            !event.shiftKey &&
-            !event.altKey
-          ) {
-            event.preventDefault();
-            onNavigateHome();
-          }
-        }}
+        onClick={handleHomeClick}
         className="moh-header-name"
         title={appName}
       >
@@ -79,6 +82,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({
       </HeaderName>
 
       <HeaderGlobalBar onClickCapture={onGlobalAction}>
+        {/* Keep this order in sync with the admin layout header actions. */}
         {contextSelector}
         {appMenu ?? <AppMenuAction />}
         <HeaderGlobalAction
