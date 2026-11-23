@@ -1,0 +1,412 @@
+# Disposable end-to-end stack for identity sync (docs/architecture/identity-sync.md,
+# "Phase 2"). Synthetic data only; databases live on tmpfs. Every secret below is
+# a FAKE fixture value ("e2e-fake-...") that is valid only inside this stack.
+#
+#   CLIMS_REPO=/path/to/clims POES_REPO=/path/to/poesGo \
+#     docker compose -p idsync-e2e -f infra/compose/identity-sync-e2e/compose.yaml up -d --build --wait
+#
+# Or use "make -C infra identity-sync-e2e-up". See README.md in this folder.
+name: idsync-e2e
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 5m, max-file: "2" }
+
+x-ca-trust: &ca-trust
+  # Go reads SSL_CERT_FILE: trust only Caddy's internal root inside the stack.
+  SSL_CERT_FILE: /e2e-ca/root.crt
+
+x-issuer: &issuer https://sso.e2e.test:18443/realms/moh-realm
+
+x-dashboard-env: &dashboard-env
+  <<: *ca-trust
+  PLATFORM_PROFILE: core
+  ENVIRONMENT: test
+  GIN_MODE: release
+  SERVER_PORT: "9000"
+  ENABLE_TLS: "false"
+  DEV_AUTH_BYPASS: "false"
+  DB_DRIVER: postgres
+  DB_HOST: dashboard-postgres
+  DB_PORT: "5432"
+  DB_USER: sso_e2e
+  DB_PASSWORD: e2e-fake-dashboard-db-password
+  DB_NAME: sso_dashboard_e2e
+  DB_ENABLE_SSL: "false"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ""
+  KEYCLOAK_BASE_URL: https://sso.e2e.test:18443
+  KEYCLOAK_INTERNAL_URL: https://sso.e2e.test:18443
+  KEYCLOAK_EXTERNAL_URL: https://sso.e2e.test:18443
+  KEYCLOAK_REALM: moh-realm
+  KEYCLOAK_ADMIN_CLIENT_ID: dashboard-admin
+  KEYCLOAK_ADMIN_CLIENT_SECRET: e2e-fake-dashboard-admin-secret
+  KEYCLOAK_WEB_CLIENT_ID: dashboard-web
+  KEYCLOAK_WEB_CLIENT_SECRET: e2e-fake-dashboard-web-secret
+  KEYCLOAK_REDIRECT_URI: https://dashboard.e2e.test:18443/api/v1/auth/callback
+  FRONTEND_BASE_URL: https://dashboard.e2e.test:18443/portal
+  FRONTEND_REDIRECT_URI: https://dashboard.e2e.test:18443/portal
+  APP_BASE_URL: https://dashboard.e2e.test:18443
+  LOGIN_URL: https://dashboard.e2e.test:18443/api/v1/auth/login
+  AUTH_RETURN_URL_ALLOWED_ORIGINS: https://dashboard.e2e.test:18443
+  COOKIE_DOMAIN: ""
+  TOKEN_SYMMETRIC_KEY: e2e-fake-token-key-0123456789abcd
+  ADMIN_DASHBOARD_URL: https://dashboard.e2e.test:18443/portal
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  SMTP_FROM_EMAIL: dashboard@e2e.test
+  SMTP_FROM_NAME: MoH SSO e2e
+  RBAC_STARTUP_SYNC_ENABLED: "true"
+  RBAC_STARTUP_SEED_ENABLED: "true"
+  RBAC_STARTUP_SYNC_REALM_EXPORT: "true"
+  RBAC_STARTUP_SYNC_REALM_EXPORT_PATH: /realm/realm-export.json
+  RBAC_STARTUP_SYNC_LIVE_KEYCLOAK: "true"
+  RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK: "false"
+  RBAC_STARTUP_SYNC_USERS: "true"
+  # Applications in this stack sit on a private compose network behind Caddy.
+  IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS: clims.e2e.test,poes.e2e.test
+  # Referenced by the registry rows as env:<NAME> (fixture secrets from the realm overlay).
+  CLIMS_SYNC_CLIENT_SECRET: e2e-fake-clims-sync-secret
+  POESGO_SYNC_CLIENT_SECRET: e2e-fake-poesgo-sync-secret
+
+networks:
+  edge: {}
+  dashboard_net: {}
+  clims_net: {}
+  poes_net: {}
+
+volumes:
+  caddy_data: {}
+  e2e_ca: {}
+  realm_import: {}
+
+services:
+  # ---------------------------------------------------------------- TLS edge
+  caddy:
+    image: caddy:2.10-alpine
+    logging: *logging
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    ports: ["127.0.0.1:18443:18443"]
+    networks:
+      edge:
+        aliases: [sso.e2e.test, dashboard.e2e.test, clims.e2e.test, poes.e2e.test, mail.e2e.test]
+    healthcheck:
+      test: [CMD-SHELL, "test -s /data/caddy/pki/authorities/local/root.crt && nc -z 127.0.0.1 18443"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Copies only Caddy's root certificate (never its key) to a shared volume and
+  # to ./generated/caddy-root.crt on the host for test runners.
+  ca-export:
+    image: caddy:2.10-alpine
+    logging: *logging
+    entrypoint: [sh, -ec]
+    command:
+      - |
+        cp /caddy-data/caddy/pki/authorities/local/root.crt /ca/root.crt
+        cp /caddy-data/caddy/pki/authorities/local/root.crt /host-ca/caddy-root.crt
+        chmod 0644 /ca/root.crt /host-ca/caddy-root.crt
+        echo "exported Caddy root CA"
+    volumes:
+      - caddy_data:/caddy-data:ro
+      - e2e_ca:/ca
+      - ./generated:/host-ca
+    network_mode: none
+    depends_on:
+      caddy: { condition: service_healthy }
+
+  mailpit:
+    image: axllent/mailpit:v1.27.0
+    logging: *logging
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    networks: [edge]
+    healthcheck:
+      test: [CMD, /mailpit, readyz]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # ---------------------------------------------------------------- Keycloak
+  realm-merge:
+    image: python:3.13-alpine
+    logging: *logging
+    command: [python3, -I, /overlay/merge-realm.py, /base/realm-export.json, /overlay/realm-e2e-overlay.json, /out/realm-export.json]
+    volumes:
+      - ../../keycloak/realm-export.json:/base/realm-export.json:ro
+      - ./keycloak:/overlay:ro
+      - realm_import:/out
+    network_mode: none
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.5
+    logging: *logging
+    command: [start-dev, --import-realm]
+    environment:
+      KC_HOSTNAME: https://sso.e2e.test:18443
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: e2e-kc-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: e2e-fake-kc-admin-password
+    volumes:
+      - realm_import:/opt/keycloak/data/import:ro
+      - ../../keycloak/themes:/opt/keycloak/themes:ro
+    tmpfs: ["/opt/keycloak/data/h2:mode=1777"]
+    networks: [edge]
+    depends_on:
+      realm-merge: { condition: service_completed_successfully }
+      mailpit: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, bash, -ec, "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      start_period: 30s
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  # ---------------------------------------------------------------- Dashboard
+  dashboard-postgres:
+    image: postgres:15-alpine
+    logging: *logging
+    environment:
+      POSTGRES_DB: sso_dashboard_e2e
+      POSTGRES_USER: sso_e2e
+      POSTGRES_PASSWORD: e2e-fake-dashboard-db-password
+    tmpfs: ["/var/lib/postgresql/data"]
+    networks: [dashboard_net]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    logging: *logging
+    command: [redis-server, --save, "", --appendonly, "no"]
+    networks: [dashboard_net]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  dashboard-backend:
+    image: idsync-e2e-dashboard:local
+    build:
+      context: ../../..
+      dockerfile: infra/compose/identity-sync-e2e/dashboard.Dockerfile
+    logging: *logging
+    init: true
+    environment: *dashboard-env
+    volumes:
+      - e2e_ca:/e2e-ca:ro
+      - realm_import:/realm:ro
+    networks: [edge, dashboard_net]
+    depends_on:
+      dashboard-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      ca-export: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:9000/health/ready"]
+      start_period: 30s
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  # Registers each sync client as an enabled service identity of its application.
+  dashboard-seed:
+    image: postgres:15-alpine
+    logging: *logging
+    environment:
+      PGHOST: dashboard-postgres
+      PGUSER: sso_e2e
+      PGPASSWORD: e2e-fake-dashboard-db-password
+      PGDATABASE: sso_dashboard_e2e
+    command: [psql, -v, ON_ERROR_STOP=1, -f, /seed/dashboard-bindings.sql]
+    volumes:
+      - ./seed/dashboard-bindings.sql:/seed/dashboard-bindings.sql:ro
+    networks: [dashboard_net]
+    depends_on:
+      dashboard-backend: { condition: service_healthy }
+
+  # identity-sync register --enable for both applications, then describe.
+  registry-seed:
+    image: idsync-e2e-dashboard:local
+    logging: *logging
+    entrypoint: [/bin/sh, /scripts/register-apps.sh]
+    environment: *dashboard-env
+    volumes:
+      - e2e_ca:/e2e-ca:ro
+      - ./scripts/register-apps.sh:/scripts/register-apps.sh:ro
+    networks: [edge, dashboard_net]
+    depends_on:
+      dashboard-seed: { condition: service_completed_successfully }
+      clims-seed: { condition: service_completed_successfully }
+      poes-backend: { condition: service_healthy }
+
+  # Ad-hoc CLI: docker compose -p idsync-e2e -f ... run --rm cli identity-sync describe --app clims
+  cli:
+    image: idsync-e2e-dashboard:local
+    profiles: [tools]
+    entrypoint: [/app/moh-sso]
+    environment: *dashboard-env
+    volumes:
+      - e2e_ca:/e2e-ca:ro
+    networks: [edge, dashboard_net]
+
+  # ---------------------------------------------------------------- CLIMS
+  clims-postgres:
+    image: postgres:16-alpine
+    logging: *logging
+    environment:
+      POSTGRES_DB: clims_e2e
+      POSTGRES_USER: clims_e2e
+      POSTGRES_PASSWORD: e2e-fake-clims-db-password
+    tmpfs: ["/var/lib/postgresql/data"]
+    networks: [clims_net]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  clims-backend:
+    image: idsync-e2e-clims-backend:local
+    build:
+      context: ${CLIMS_REPO:?set CLIMS_REPO to the CLIMS checkout}
+      dockerfile: infra/docker/backend/Dockerfile.prod
+    logging: *logging
+    environment:
+      <<: *ca-trust
+      APP_ENV: test
+      IDENTITY_SYNC_TEST_PROBE: "1"
+      PORT: "8080"
+      DB_HOST: clims-postgres
+      DB_PORT: "5432"
+      DB_USER: clims_e2e
+      DB_PASSWORD: e2e-fake-clims-db-password
+      DB_NAME: clims_e2e
+      DB_SSLMODE: disable
+      JWT_SECRET: e2e-fake-clims-jwt-secret-0123456789abcdef
+      OIDC_ISSUER: *issuer
+      OIDC_CLIENT_ID: clims
+      OIDC_CLIENT_SECRET: e2e-fake-clims-oidc-secret
+      OIDC_PUBLIC_ORIGIN: https://clims.e2e.test:18443
+      IDENTITY_SYNC_CLIENT_ID: clims-identity-sync
+    volumes:
+      - e2e_ca:/e2e-ca:ro
+    networks:
+      edge: {}
+      clims_net:
+        # The CLIMS frontend's rewrites are built against http://backend:8080.
+        aliases: [backend]
+    depends_on:
+      clims-postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      ca-export: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, curl, -fsS, -o, /dev/null, http://localhost:8080/health/ready]
+      start_period: 15s
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
+  # Synthetic CLIMS accounts and links, after the backend has run its migrations.
+  clims-seed:
+    image: postgres:16-alpine
+    logging: *logging
+    environment:
+      PGHOST: clims-postgres
+      PGUSER: clims_e2e
+      PGPASSWORD: e2e-fake-clims-db-password
+      PGDATABASE: clims_e2e
+    command: [psql, -v, ON_ERROR_STOP=1, -f, /seed/clims-seed.sql]
+    volumes:
+      - ./seed/clims-seed.sql:/seed/clims-seed.sql:ro
+    networks: [clims_net]
+    depends_on:
+      clims-backend: { condition: service_healthy }
+
+  clims-frontend:
+    image: idsync-e2e-clims-frontend:local
+    build:
+      context: ${CLIMS_REPO:?set CLIMS_REPO to the CLIMS checkout}/frontend
+      dockerfile: ../infra/docker/frontend/Dockerfile.prod
+    logging: *logging
+    networks: [edge, clims_net]
+    depends_on:
+      clims-backend: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/sign-in').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      start_period: 10s
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
+  # ---------------------------------------------------------------- POES
+  poes-postgres:
+    image: postgres:18-alpine
+    logging: *logging
+    environment:
+      POSTGRES_DB: poesgo_e2e
+      POSTGRES_USER: poesgo_e2e
+      POSTGRES_PASSWORD: e2e-fake-poes-db-password
+    tmpfs: ["/var/lib/postgresql"]
+    volumes:
+      # Synthetic base schema, then POES's own migrations, then synthetic accounts.
+      - ./seed/poes-01-base-schema.sql:/docker-entrypoint-initdb.d/01-base-schema.sql:ro
+      - ${POES_REPO:?set POES_REPO to the poesGo checkout}/infra/database/migrations/000002_user_oidc_identities.up.sql:/docker-entrypoint-initdb.d/02-user-oidc-identities.sql:ro
+      - ${POES_REPO:?set POES_REPO to the poesGo checkout}/infra/database/migrations/000003_user_session_versions.up.sql:/docker-entrypoint-initdb.d/03-user-session-versions.sql:ro
+      - ./seed/poes-04-seed.sql:/docker-entrypoint-initdb.d/04-seed.sql:ro
+    networks: [poes_net]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  poes-backend:
+    image: idsync-e2e-poes-backend:local
+    build:
+      context: ${POES_REPO:?set POES_REPO to the poesGo checkout}/backend
+      dockerfile: ../infra/docker/backend/Dockerfile.prod
+    logging: *logging
+    init: true
+    read_only: true
+    environment:
+      <<: *ca-trust
+      APP_ENV: test
+      IDENTITY_SYNC_TEST_PROBE: "1"
+      AUTH_PROVIDER: oidc
+      JWT_SECRET: e2e-fake-poes-jwt-secret-0123456789abcdef
+      OIDC_ISSUER: *issuer
+      OIDC_CLIENT_ID: poesgo
+      OIDC_CLIENT_SECRET: e2e-fake-poesgo-oidc-secret
+      OIDC_PUBLIC_ORIGIN: https://poes.e2e.test:18443
+      IDENTITY_SYNC_CLIENT_ID: poesgo-identity-sync
+      HTTP_HOST: 0.0.0.0
+      HTTP_PORT: "8080"
+      POSTGRES_HOST: poes-postgres
+      POSTGRES_DB: poesgo_e2e
+      POSTGRES_USER: poesgo_e2e
+      POSTGRES_PASSWORD: e2e-fake-poes-db-password
+    volumes:
+      - e2e_ca:/e2e-ca:ro
+    networks: [edge, poes_net]
+    depends_on:
+      poes-postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      ca-export: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, wget, -q, -T, "3", -O, /dev/null, http://127.0.0.1:8080/ready]
+      start_period: 5s
+      interval: 3s
+      timeout: 5s
+      retries: 40

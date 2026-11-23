@@ -54,6 +54,11 @@ infra-help:
 	@echo 'Override paths are relative to the repo root or absolute. Env files are never sourced.'
 	@echo 'Guide: docs/make.md (prerequisites, examples, generated files and command effects).'
 	@echo 'CD: make cd-check; server commands cd-preflight, cd-status, cd-verify, cd-rollback [DEPLOY_CONFIG=...]'
+	@echo ''
+	@echo 'Identity-sync e2e (disposable, synthetic data; see infra/compose/identity-sync-e2e/README.md):'
+	@echo '  make identity-sync-e2e-up                  Build, start and seed the stack; prove health [CLIMS_REPO= POES_REPO=]'
+	@echo '  make identity-sync-e2e-test                Run the e2e suites against the running stack'
+	@echo '  make identity-sync-e2e-down                Stop it and delete its volumes (docker compose down -v)'
 
 compose-config:
 	$(COMPOSE) config --quiet
@@ -331,3 +336,31 @@ prod-backend-logs:
 .PHONY: prod-frontend-logs
 prod-frontend-logs:
 	kubectl logs -f deployment/$(HELM_RELEASE)-frontend -n $(PROD_NAMESPACE)
+
+# ---------------------------------------------------------------------------
+# Identity-sync end-to-end stack (docs/architecture/identity-sync.md, Phase 2).
+# Compose project "idsync-e2e"; host ports 18443 (Caddy) only.
+# ---------------------------------------------------------------------------
+IDSYNC_E2E_DIR := $(REPO_ROOT)/infra/compose/identity-sync-e2e
+CLIMS_REPO ?= $(abspath $(REPO_ROOT)/../clims)
+POES_REPO ?= $(abspath $(REPO_ROOT)/../poesGo)
+IDSYNC_E2E_COMPOSE = CLIMS_REPO="$(CLIMS_REPO)" POES_REPO="$(POES_REPO)" $(DOCKER) compose -p idsync-e2e -f "$(IDSYNC_E2E_DIR)/compose.yaml"
+
+.PHONY: identity-sync-e2e-up identity-sync-e2e-down identity-sync-e2e-test identity-sync-e2e-smoke
+identity-sync-e2e-up:
+	@test -d "$(CLIMS_REPO)/backend" || { echo "CLIMS_REPO=$(CLIMS_REPO) is not a CLIMS checkout"; exit 1; }
+	@test -d "$(POES_REPO)/backend" || { echo "POES_REPO=$(POES_REPO) is not a poesGo checkout"; exit 1; }
+	$(IDSYNC_E2E_COMPOSE) up -d --build --wait
+	$(IDSYNC_E2E_COMPOSE) wait registry-seed
+	CLIMS_REPO="$(CLIMS_REPO)" POES_REPO="$(POES_REPO)" "$(IDSYNC_E2E_DIR)/scripts/smoke.sh"
+
+identity-sync-e2e-smoke:
+	CLIMS_REPO="$(CLIMS_REPO)" POES_REPO="$(POES_REPO)" "$(IDSYNC_E2E_DIR)/scripts/smoke.sh"
+
+# Stage 2 fills this with the contract, sync, browser and removal suites.
+identity-sync-e2e-test: identity-sync-e2e-smoke
+	@echo "identity-sync e2e suites are not implemented yet; only the smoke checks ran." >&2
+	@exit 1
+
+identity-sync-e2e-down:
+	$(IDSYNC_E2E_COMPOSE) --profile tools down -v --remove-orphans
