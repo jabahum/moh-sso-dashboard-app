@@ -88,11 +88,31 @@ func (r *notificationDeliveryRepository) ClaimPending(
 	channel string,
 	limit int32,
 ) ([]db.NotificationDelivery, error) {
+	lease := ProcessingLease.Seconds()
+	failed, err := r.store.FailExhaustedStaleNotificationDeliveries(
+		ctx,
+		db.FailExhaustedStaleNotificationDeliveriesParams{
+			Channel:      channel,
+			LeaseSeconds: lease,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fail exhausted stale notification deliveries: %w", err)
+	}
+	if failed > 0 {
+		r.logger.Error(
+			"notification deliveries failed after their processing lease expired on the final attempt",
+			"channel", channel,
+			"count", failed,
+		)
+	}
+
 	deliveries, err := r.store.ClaimPendingNotificationDeliveries(
 		ctx,
 		db.ClaimPendingNotificationDeliveriesParams{
-			Channel: channel,
-			Limit:   limit,
+			Channel:      channel,
+			LeaseSeconds: lease,
+			BatchLimit:   limit,
 		},
 	)
 	if err != nil {

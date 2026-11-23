@@ -23,6 +23,11 @@ type Querier interface {
 	CancelProcess(ctx context.Context, id uuid.UUID) error
 	ClaimEmailOutboxBatch(ctx context.Context, limit int32) ([]EmailOutbox, error)
 	ClaimNextPendingProcess(ctx context.Context) (Process, error)
+	// Claims due PENDING/RETRY deliveries plus PROCESSING deliveries whose lease
+	// expired (the claiming worker crashed or was stopped mid-batch) and still have
+	// attempts left. Claiming starts an attempt, so `attempts` is incremented here
+	// and nowhere else: it counts delivery attempts actually started, including
+	// one interrupted by a crash, and never manual retries.
 	ClaimPendingNotificationDeliveries(ctx context.Context, arg ClaimPendingNotificationDeliveriesParams) ([]NotificationDelivery, error)
 	CompleteProcess(ctx context.Context, id uuid.UUID) error
 	CompleteSurveillanceImportBatch(ctx context.Context, arg CompleteSurveillanceImportBatchParams) error
@@ -102,6 +107,10 @@ type Querier interface {
 	ExistsDocumentTemplateColumnName(ctx context.Context, arg ExistsDocumentTemplateColumnNameParams) (bool, error)
 	ExistsDocumentTemplateSheetCode(ctx context.Context, arg ExistsDocumentTemplateSheetCodeParams) (bool, error)
 	ExistsDocumentTemplateSheetName(ctx context.Context, arg ExistsDocumentTemplateSheetNameParams) (bool, error)
+	// A PROCESSING delivery whose lease expired on its final attempt is not
+	// reclaimed (that would exceed max_attempts); it is failed instead so it does
+	// not stay PROCESSING forever.
+	FailExhaustedStaleNotificationDeliveries(ctx context.Context, arg FailExhaustedStaleNotificationDeliveriesParams) (int64, error)
 	FailProcess(ctx context.Context, arg FailProcessParams) error
 	FailSurveillanceImportBatch(ctx context.Context, arg FailSurveillanceImportBatchParams) error
 	FailedLoginsByUserInRange(ctx context.Context, arg FailedLoginsByUserInRangeParams) ([]FailedLoginsByUserInRangeRow, error)

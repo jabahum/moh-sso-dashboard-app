@@ -8,7 +8,9 @@ such as in-app display, email, SMS, or future webhook delivery.
 
 ## Delivery channels
 
-- `in_app`: stored for the portal notification center (no worker processes these records).
+- `in_app`: stored for the portal notification center. No worker processes these records: the
+  stored notification is the delivery, so the delivery is created `SENT` (one attempt, `sent_at`
+  set) rather than left `PENDING`.
 - `email`: processed by the notification email delivery worker, which hands the message to the
   email outbox; the delivery is marked `SENT` with provider `email_queue` and provider status
   `QUEUED` once queued, and the outbox worker sends it later.
@@ -24,16 +26,25 @@ up to `NOTIFICATION_DELIVERY_BATCH_SIZE` (default `20`) due deliveries per chann
 ## Delivery statuses
 
 - `PENDING`: queued and ready when `scheduled_at` is due.
-- `PROCESSING`: claimed by a worker.
+- `PROCESSING`: claimed by a worker, which holds a 15-minute lease on it (`locked_at`).
 - `SENT`: provider accepted or completed the delivery (for email: queued to the email outbox).
-- `FAILED`: the failed attempt brought `attempts` to `max_attempts`.
+- `FAILED`: attempt number `max_attempts` (or a later one, after a manual retry) failed, or the
+  worker's lease expired during that final attempt.
 - `RETRY`: an attempt failed with attempts remaining, or an admin queued a manual retry.
 - `CANCELLED`: manually cancelled.
 
-A delivery's `max_attempts` defaults to 5 when the caller does not set one (test SMS uses 3). After
-a failed attempt the worker schedules the next one 30 seconds, 2 minutes, then 5 minutes later
-(`retryDelay` in `backend/internal/worker/notification_delivery_worker.go`). Deliveries left in
-`PROCESSING` (for example after a backend crash) are not reclaimed automatically.
+A delivery's `max_attempts` defaults to 5 when the caller does not set one (test SMS uses 3).
+`attempts` counts delivery attempts a worker has started: claiming a delivery increments it, and
+marking it `RETRY`, `FAILED` or `SENT` does not, so a delivery sent first time shows 1. After a
+failed attempt the worker schedules the next one 30 seconds, 2 minutes, then 5 minutes later
+(`retryDelay` in `backend/internal/worker/notification_delivery_worker.go`).
+
+A delivery left in `PROCESSING` (for example after a backend crash or restart mid-batch) is
+reclaimed once its lease expires, 15 minutes after it was claimed (`ProcessingLease` in
+`backend/internal/repository/notification_delivery`). The interrupted attempt counts: the reclaim
+starts the next attempt, and a delivery whose lease expired during its final attempt is marked
+`FAILED` instead of being reclaimed. Because the worker cannot tell whether the interrupted attempt
+reached the provider, a reclaimed delivery can be delivered twice.
 
 ## Admin dashboard
 
@@ -75,8 +86,9 @@ Supported delivery list query parameters:
 
 The API is less restrictive than the dashboard buttons: retry and cancel accept any delivery that
 is not `SENT`; a `SENT` delivery returns `409 INVALID_DELIVERY_STATE`. A manual retry sets the
-delivery to `RETRY`, due immediately, and increments `attempts`, so a delivery that had already
-reached `max_attempts` becomes `FAILED` again if the next attempt fails. Retry, cancel and test SMS
+delivery to `RETRY`, due immediately, without changing `attempts` (a manual retry is not an
+attempt), so a delivery that had already reached `max_attempts` gets exactly one more attempt and
+becomes `FAILED` again if it fails. Retry, cancel and test SMS
 are also rate limited by the notifications write policy.
 
 Delivery responses include the recipient, template data and payload (so phone numbers, email

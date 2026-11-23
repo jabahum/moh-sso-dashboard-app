@@ -47,9 +47,9 @@ The dashboard action calls:
 POST /api/v1/admin/notifications/deliveries/:deliveryID/retry
 ```
 
-Retry moves the delivery to `RETRY`, schedules immediate processing and increments `attempts`.
-If the delivery had already reached `max_attempts`, it returns to `FAILED` after one more failed
-attempt.
+Retry moves the delivery to `RETRY` and schedules immediate processing. It does not change
+`attempts`, which counts only attempts a worker started. If the delivery had already reached
+`max_attempts`, it gets exactly one more attempt and returns to `FAILED` if that attempt fails.
 
 ## Cancel a delivery
 
@@ -81,13 +81,18 @@ The request is rejected with `503 SMS_DISABLED` when `SMS_ENABLED=false`.
 
 ## Stuck processing deliveries
 
-Deliveries left in `PROCESSING` are not reclaimed automatically. If a delivery stays in
-`PROCESSING`:
+A worker holds a 15-minute lease on each delivery it claims. If the worker dies before finishing
+(backend crash or restart mid-batch), the next poll after the lease expires reclaims the delivery
+as its next attempt, or marks it `FAILED` with "Processing lease expired during the final attempt"
+when that was its last attempt. The interrupted attempt may already have reached the provider, so
+a reclaimed delivery can arrive twice.
 
-1. Check if the backend worker is running.
+If a delivery stays in `PROCESSING` for longer than about 15 minutes plus one poll interval:
+
+1. Check if the backend worker is running (reclaim happens only when a worker for that channel
+   polls; the SMS worker runs only with `SMS_ENABLED=true`).
 2. Check backend logs around the last `locked_at` timestamp.
-3. If the delivery is safe to reprocess, cancel it and then retry it (the dashboard does not offer
-   retry for `PROCESSING` deliveries; the retry API accepts them).
+3. If the delivery must not be reprocessed, cancel it.
 4. If the notification should no longer be sent, use cancel.
 
 ## Provider outage

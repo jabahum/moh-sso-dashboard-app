@@ -169,8 +169,7 @@ func (w *NotificationSMSDeliveryWorker) failOrRetry(
 	item db.NotificationDelivery,
 	cause error,
 ) error {
-	nextAttempts := item.Attempts + 1
-	if nextAttempts >= item.MaxAttempts {
+	if deliveryAttemptsExhausted(item) {
 		if err := w.notificationDelivery.MarkFailed(
 			ctx,
 			db.MarkNotificationDeliveryFailedParams{
@@ -190,7 +189,7 @@ func (w *NotificationSMSDeliveryWorker) failOrRetry(
 		return cause
 	}
 
-	delay := retryDelay(nextAttempts)
+	delay := retryDelay(item.Attempts)
 	if err := w.notificationDelivery.MarkRetry(
 		ctx,
 		db.MarkNotificationDeliveryRetryParams{
@@ -206,7 +205,7 @@ func (w *NotificationSMSDeliveryWorker) failOrRetry(
 	}
 	w.auditSMSDelivery(ctx, "notification_delivery.sms_retry", item, map[string]any{
 		"status":        "RETRY",
-		"next_attempt":  nextAttempts,
+		"next_attempt":  item.Attempts,
 		"retry_delay_s": int64(delay.Seconds()),
 	})
 

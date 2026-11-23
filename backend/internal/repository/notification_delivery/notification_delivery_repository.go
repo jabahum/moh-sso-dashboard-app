@@ -3,11 +3,19 @@ package notification_delivery
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
 	"github.com/sqlc-dev/pqtype"
 )
+
+// ProcessingLease is how long a claimed delivery may stay PROCESSING before
+// another claim treats the claiming worker as gone and takes it over. It must
+// comfortably exceed the time a worker needs to work through one claimed batch
+// (batch size x per-message provider timeout, e.g. 20 x 10s SMS), otherwise a
+// slow but live worker's tail items could be claimed and sent twice.
+const ProcessingLease = 15 * time.Minute
 
 type MarkSentWithProviderParams struct {
 	ID                uuid.UUID
@@ -23,6 +31,9 @@ type NotificationDeliveryRepository interface {
 	ListByNotificationID(ctx context.Context, notificationID uuid.UUID) ([]db.NotificationDelivery, error)
 	GetByID(ctx context.Context, id uuid.UUID) (db.NotificationDelivery, error)
 
+	// ClaimPending fails PROCESSING deliveries whose lease expired on their final
+	// attempt, then claims due deliveries (including ones whose lease expired with
+	// attempts left) and starts an attempt on each.
 	ClaimPending(ctx context.Context, channel string, limit int32) ([]db.NotificationDelivery, error)
 
 	MarkSent(ctx context.Context, id uuid.UUID) error

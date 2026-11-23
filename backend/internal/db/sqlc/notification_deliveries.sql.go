@@ -33,15 +33,25 @@ WITH next_deliveries AS (
   FROM notification_deliveries nd
   WHERE
     nd.channel = $1
-    AND nd.status IN ('PENDING', 'RETRY')
-    AND (nd.scheduled_at IS NULL OR nd.scheduled_at <= now())
+    AND (
+      (
+        nd.status IN ('PENDING', 'RETRY')
+        AND (nd.scheduled_at IS NULL OR nd.scheduled_at <= now())
+      )
+      OR (
+        nd.status = 'PROCESSING'
+        AND COALESCE(nd.locked_at, nd.updated_at) < now() - make_interval(secs => $2::double precision)
+        AND nd.attempts < nd.max_attempts
+      )
+    )
   ORDER BY nd.scheduled_at NULLS FIRST, nd.created_at ASC
-  LIMIT $2
+  LIMIT $3
   FOR UPDATE SKIP LOCKED
 )
 UPDATE notification_deliveries nd
 SET
   status = 'PROCESSING',
+  attempts = nd.attempts + 1,
   locked_at = now(),
   updated_at = now()
 FROM next_deliveries next
@@ -50,12 +60,18 @@ RETURNING nd.id, nd.notification_id, nd.channel, nd.status, nd.recipient, nd.tem
 `
 
 type ClaimPendingNotificationDeliveriesParams struct {
-	Channel string `json:"channel"`
-	Limit   int32  `json:"limit"`
+	Channel      string  `json:"channel"`
+	LeaseSeconds float64 `json:"lease_seconds"`
+	BatchLimit   int32   `json:"batch_limit"`
 }
 
+// Claims due PENDING/RETRY deliveries plus PROCESSING deliveries whose lease
+// expired (the claiming worker crashed or was stopped mid-batch) and still have
+// attempts left. Claiming starts an attempt, so `attempts` is incremented here
+// and nowhere else: it counts delivery attempts actually started, including
+// one interrupted by a crash, and never manual retries.
 func (q *Queries) ClaimPendingNotificationDeliveries(ctx context.Context, arg ClaimPendingNotificationDeliveriesParams) ([]NotificationDelivery, error) {
-	rows, err := q.db.QueryContext(ctx, claimPendingNotificationDeliveries, arg.Channel, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, claimPendingNotificationDeliveries, arg.Channel, arg.LeaseSeconds, arg.BatchLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -159,19 +175,23 @@ INSERT INTO notification_deliveries (
   template_data,
   payload,
   scheduled_at,
+  sent_at,
   attempts,
   max_attempts
 )
 VALUES (
   $1,
   $2,
-  COALESCE($8, 'PENDING'),
+  COALESCE($8::text, 'PENDING'),
   $3,
   $4,
   $5,
   $6,
   $7,
-  0,
+  -- A delivery created already SENT (in-app: the stored notification is the
+  -- delivery) records that single completed attempt.
+  CASE WHEN $8::text = 'SENT' THEN now() END,
+  CASE WHEN $8::text = 'SENT' THEN 1 ELSE 0 END,
   COALESCE($9, 5)
 )
 RETURNING id, notification_id, channel, status, recipient, template_name, template_data, payload, scheduled_at, locked_at, sent_at, attempts, max_attempts, last_error, created_at, updated_at, provider, provider_message_id, provider_status, provider_response
@@ -185,7 +205,7 @@ type CreateNotificationDeliveryParams struct {
 	TemplateData        pqtype.NullRawMessage `json:"template_data"`
 	Payload             pqtype.NullRawMessage `json:"payload"`
 	ScheduledAt         sql.NullTime          `json:"scheduled_at"`
-	DeliveryStatus      interface{}           `json:"delivery_status"`
+	DeliveryStatus      sql.NullString        `json:"delivery_status"`
 	DeliveryMaxAttempts interface{}           `json:"delivery_max_attempts"`
 }
 
@@ -228,6 +248,36 @@ func (q *Queries) CreateNotificationDelivery(ctx context.Context, arg CreateNoti
 		&i.ProviderResponse,
 	)
 	return i, err
+}
+
+const failExhaustedStaleNotificationDeliveries = `-- name: FailExhaustedStaleNotificationDeliveries :execrows
+UPDATE notification_deliveries
+SET
+  status = 'FAILED',
+  locked_at = NULL,
+  last_error = 'Processing lease expired during the final attempt',
+  updated_at = now()
+WHERE
+  channel = $1
+  AND status = 'PROCESSING'
+  AND COALESCE(locked_at, updated_at) < now() - make_interval(secs => $2::double precision)
+  AND attempts >= max_attempts
+`
+
+type FailExhaustedStaleNotificationDeliveriesParams struct {
+	Channel      string  `json:"channel"`
+	LeaseSeconds float64 `json:"lease_seconds"`
+}
+
+// A PROCESSING delivery whose lease expired on its final attempt is not
+// reclaimed (that would exceed max_attempts); it is failed instead so it does
+// not stay PROCESSING forever.
+func (q *Queries) FailExhaustedStaleNotificationDeliveries(ctx context.Context, arg FailExhaustedStaleNotificationDeliveriesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, failExhaustedStaleNotificationDeliveries, arg.Channel, arg.LeaseSeconds)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getNotificationDeliveryByID = `-- name: GetNotificationDeliveryByID :one
@@ -468,7 +518,6 @@ const markNotificationDeliveryFailed = `-- name: MarkNotificationDeliveryFailed 
 UPDATE notification_deliveries
 SET
   status = 'FAILED',
-  attempts = attempts + 1,
   locked_at = NULL,
   last_error = $2,
   updated_at = now()
@@ -489,7 +538,6 @@ const markNotificationDeliveryRetry = `-- name: MarkNotificationDeliveryRetry :e
 UPDATE notification_deliveries
 SET
   status = 'RETRY',
-  attempts = attempts + 1,
   locked_at = NULL,
   last_error = $2,
   scheduled_at = now() + ($3::text)::interval,

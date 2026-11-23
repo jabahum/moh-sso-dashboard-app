@@ -127,7 +127,8 @@ Body:
 ```
 
 The endpoint requires `notifications:write` and returns `202` with the notification ID and status
-`PENDING`. It queues an SMS delivery (`max_attempts` 3) and an in-app delivery. The admin dashboard
+`PENDING`. It queues an SMS delivery (`max_attempts` 3) and records an in-app delivery, which is
+`SENT` as soon as it is stored. The admin dashboard
 exposes this as **Send test SMS**.
 
 ## Production checklist
@@ -150,5 +151,5 @@ exposes this as **Send test SMS**.
   intentionally.
 - Delivery stuck in `PENDING`: check `NOTIFICATION_DELIVERY_WORKER_ENABLED`, `SMS_ENABLED` and
   backend logs.
-- Delivery stuck in `PROCESSING`: check whether the backend crashed during processing; retry or cancel from the admin dashboard.
+- Delivery stuck in `PROCESSING`: the SMS worker reclaims it (or fails it, if that was its last attempt) once its 15-minute lease expires; if it stays longer, check that the backend and SMS worker are running, or cancel it from the admin dashboard.
 - Provider failure: inspect provider metadata and backend logs, then retry after fixing credentials/network issues.

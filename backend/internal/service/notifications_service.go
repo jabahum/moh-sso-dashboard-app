@@ -949,6 +949,14 @@ func (s *notificationsService) createNotificationDelivery(
 		maxAttempts = 5
 	}
 
+	// No worker processes in-app deliveries: the notification row Notify has
+	// just stored is what the portal notification center shows, so the delivery
+	// is complete on creation. Creating it PENDING left it pending forever.
+	status := model.NotificationDeliveryPending
+	if delivery.Channel == model.NotificationChannelInApp {
+		status = model.NotificationDeliverySent
+	}
+
 	_, err = s.notificationDeliveryRepo.Create(
 		ctx,
 		db.CreateNotificationDeliveryParams{
@@ -966,7 +974,7 @@ func (s *notificationsService) createNotificationDelivery(
 				Valid: delivery.ScheduledAt != nil,
 			},
 			DeliveryStatus: sql.NullString{
-				String: string(model.NotificationDeliveryPending),
+				String: string(status),
 				Valid:  true,
 			},
 			DeliveryMaxAttempts: sql.NullInt32{

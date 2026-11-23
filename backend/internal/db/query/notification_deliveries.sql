@@ -12,19 +12,23 @@ INSERT INTO notification_deliveries (
   template_data,
   payload,
   scheduled_at,
+  sent_at,
   attempts,
   max_attempts
 )
 VALUES (
   $1,
   $2,
-  COALESCE(sqlc.narg('delivery_status'), 'PENDING'),
+  COALESCE(sqlc.narg('delivery_status')::text, 'PENDING'),
   $3,
   $4,
   $5,
   $6,
   $7,
-  0,
+  -- A delivery created already SENT (in-app: the stored notification is the
+  -- delivery) records that single completed attempt.
+  CASE WHEN sqlc.narg('delivery_status')::text = 'SENT' THEN now() END,
+  CASE WHEN sqlc.narg('delivery_status')::text = 'SENT' THEN 1 ELSE 0 END,
   COALESCE(sqlc.narg('delivery_max_attempts'), 5)
 )
 RETURNING *;
@@ -44,25 +48,57 @@ WHERE id = $1;
 
 
 -- name: ClaimPendingNotificationDeliveries :many
+-- Claims due PENDING/RETRY deliveries plus PROCESSING deliveries whose lease
+-- expired (the claiming worker crashed or was stopped mid-batch) and still have
+-- attempts left. Claiming starts an attempt, so `attempts` is incremented here
+-- and nowhere else: it counts delivery attempts actually started, including
+-- one interrupted by a crash, and never manual retries.
 WITH next_deliveries AS (
   SELECT nd.id
   FROM notification_deliveries nd
   WHERE
-    nd.channel = $1
-    AND nd.status IN ('PENDING', 'RETRY')
-    AND (nd.scheduled_at IS NULL OR nd.scheduled_at <= now())
+    nd.channel = sqlc.arg(channel)
+    AND (
+      (
+        nd.status IN ('PENDING', 'RETRY')
+        AND (nd.scheduled_at IS NULL OR nd.scheduled_at <= now())
+      )
+      OR (
+        nd.status = 'PROCESSING'
+        AND COALESCE(nd.locked_at, nd.updated_at) < now() - make_interval(secs => sqlc.arg(lease_seconds)::double precision)
+        AND nd.attempts < nd.max_attempts
+      )
+    )
   ORDER BY nd.scheduled_at NULLS FIRST, nd.created_at ASC
-  LIMIT $2
+  LIMIT sqlc.arg(batch_limit)
   FOR UPDATE SKIP LOCKED
 )
 UPDATE notification_deliveries nd
 SET
   status = 'PROCESSING',
+  attempts = nd.attempts + 1,
   locked_at = now(),
   updated_at = now()
 FROM next_deliveries next
 WHERE nd.id = next.id
 RETURNING nd.*;
+
+
+-- name: FailExhaustedStaleNotificationDeliveries :execrows
+-- A PROCESSING delivery whose lease expired on its final attempt is not
+-- reclaimed (that would exceed max_attempts); it is failed instead so it does
+-- not stay PROCESSING forever.
+UPDATE notification_deliveries
+SET
+  status = 'FAILED',
+  locked_at = NULL,
+  last_error = 'Processing lease expired during the final attempt',
+  updated_at = now()
+WHERE
+  channel = sqlc.arg(channel)
+  AND status = 'PROCESSING'
+  AND COALESCE(locked_at, updated_at) < now() - make_interval(secs => sqlc.arg(lease_seconds)::double precision)
+  AND attempts >= max_attempts;
 
 
 -- name: MarkNotificationDeliverySent :exec
@@ -80,7 +116,6 @@ WHERE id = $1;
 UPDATE notification_deliveries
 SET
   status = 'RETRY',
-  attempts = attempts + 1,
   locked_at = NULL,
   last_error = $2,
   scheduled_at = now() + ($3::text)::interval,
@@ -92,7 +127,6 @@ WHERE id = $1;
 UPDATE notification_deliveries
 SET
   status = 'FAILED',
-  attempts = attempts + 1,
   locked_at = NULL,
   last_error = $2,
   updated_at = now()

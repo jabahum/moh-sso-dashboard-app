@@ -182,9 +182,9 @@ func (w *NotificationEmailDeliveryWorker) failOrRetry(
 	item db.NotificationDelivery,
 	cause error,
 ) error {
-	nextAttempts := item.Attempts + 1
+	attempt := item.Attempts
 
-	if nextAttempts >= item.MaxAttempts {
+	if deliveryAttemptsExhausted(item) {
 		if err := w.notificationDelivery.MarkFailed(
 			ctx,
 			db.MarkNotificationDeliveryFailedParams{
@@ -203,14 +203,14 @@ func (w *NotificationEmailDeliveryWorker) failOrRetry(
 			"error", cause,
 			"delivery_id", item.ID,
 			"notification_id", item.NotificationID,
-			"attempts", nextAttempts,
+			"attempts", attempt,
 			"max_attempts", item.MaxAttempts,
 		)
 
 		return cause
 	}
 
-	delay := retryDelay(nextAttempts)
+	delay := retryDelay(attempt)
 
 	if err := w.notificationDelivery.MarkRetry(
 		ctx,
@@ -231,13 +231,21 @@ func (w *NotificationEmailDeliveryWorker) failOrRetry(
 		"error", cause,
 		"delivery_id", item.ID,
 		"notification_id", item.NotificationID,
-		"attempts", nextAttempts,
+		"attempts", attempt,
 		"retry_after", delay.String(),
 	)
 
 	return cause
 }
 
+// deliveryAttemptsExhausted reports whether a claimed delivery's failed attempt
+// was its last. Claiming increments attempts, so item.Attempts already counts the
+// attempt that just failed; retry and failure updates leave the counter alone.
+func deliveryAttemptsExhausted(item db.NotificationDelivery) bool {
+	return item.Attempts >= item.MaxAttempts
+}
+
+// retryDelay is the backoff after the given (1-based) failed attempt.
 func retryDelay(attempts int32) time.Duration {
 	switch {
 	case attempts <= 1:

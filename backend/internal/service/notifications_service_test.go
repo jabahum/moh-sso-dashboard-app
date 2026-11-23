@@ -39,8 +39,8 @@ func (f *fakeNotificationDeliveryRepo) Create(_ context.Context, arg db.CreateNo
 	if delivery.Status == "" {
 		delivery.Status = string(model.NotificationDeliveryPending)
 	}
-	if status, ok := arg.DeliveryStatus.(sql.NullString); ok && status.Valid {
-		delivery.Status = status.String
+	if arg.DeliveryStatus.Valid {
+		delivery.Status = arg.DeliveryStatus.String
 	}
 	if maxAttempts, ok := arg.DeliveryMaxAttempts.(sql.NullInt32); ok && maxAttempts.Valid && maxAttempts.Int32 > 0 {
 		delivery.MaxAttempts = maxAttempts.Int32
@@ -193,6 +193,29 @@ func TestQueueTestSMSCreatesSMSDelivery(t *testing.T) {
 	}
 	if smsDelivery.MaxAttempts != 3 {
 		t.Fatalf("expected sms max attempts 3, got %#v", smsDelivery.MaxAttempts)
+	}
+	for _, delivery := range deliveries.created {
+		want := string(model.NotificationDeliveryPending)
+		if delivery.Channel == string(model.NotificationChannelInApp) {
+			// No worker drains in-app deliveries; the stored notification is the delivery.
+			want = string(model.NotificationDeliverySent)
+		}
+		if delivery.Status != want {
+			t.Fatalf("%s delivery created %s, want %s", delivery.Channel, delivery.Status, want)
+		}
+	}
+}
+
+func TestNotifyCreatesDefaultInAppDeliveryAsSent(t *testing.T) {
+	deliveries := &fakeNotificationDeliveryRepo{}
+	svc := NewNotificationsService(nil, &fakeNotificationsRepo{}, deliveries, nil, nil)
+
+	if _, err := svc.Notify(context.Background(), model.Notification{Type: "TEST", Title: "t", Message: "m", TargetRole: "admin"}); err != nil {
+		t.Fatalf("notify: %v", err)
+	}
+	if len(deliveries.created) != 1 || deliveries.created[0].Channel != string(model.NotificationChannelInApp) ||
+		deliveries.created[0].Status != string(model.NotificationDeliverySent) {
+		t.Fatalf("default delivery = %+v, want one SENT in_app delivery", deliveries.created)
 	}
 }
 
