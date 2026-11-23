@@ -11,12 +11,15 @@ frontend/
     announcements/
     audit/
     clients/
+    data-validation/
     data-visualizer/
     documents/
     e-services/
     email/
     issue-tracker/
+    rbac/
     report-browser/
+    report-scheduler/
     surveillance/
     users/
     utilities/
@@ -56,7 +59,7 @@ Each app under `frontend/apps/<app>` owns its feature UI:
 - `src/single-spa.tsx`
 - public exports from `src/index.ts`
 
-Standalone apps can run inside the shell or build as independent package artifacts.
+Standalone apps can run inside the shell or build as independent package artifacts. There are 15 standalone apps plus the shell, and 8 shared packages.
 
 ## Shared packages
 
@@ -105,6 +108,8 @@ Every app/package has npm-style package metadata:
 - `publishConfig`
 - `dependencies`
 - `peerDependencies`
+
+The shell (`@moh-sso/shell`) is `"private": true` and has no `publishConfig`.
 
 Run this after import or manifest changes:
 

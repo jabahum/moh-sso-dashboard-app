@@ -4,10 +4,17 @@ This audit tracks direct cross-app imports and whether they should remain. It is
 
 ## Current intentional dependencies
 
-- `users` imports `clients` role assignment UI.
-- `home` is shell-owned and composes panels from users, clients, and announcements.
-- `issue-tracker` imports data visualizer utilities and table components.
-- `surveillance` imports document API/types for disease detail documents.
+Declared in each app's `package.json` and used in its `src/`:
+
+- `users` imports `@moh-sso/clients/types` (client role and role-assignment types) and the `@moh-sso/rbac` API hooks and types for user access.
+- `rbac` imports `useListUsersQuery` from `@moh-sso/users`, so `users` and `rbac` depend on each other.
+- `clients` imports user-access hooks from `@moh-sso/rbac/api`.
+- `announcements` imports from `@moh-sso/rbac` and `useListUsersQuery` from `@moh-sso/users`.
+- `email` imports `useListRbacGroupsQuery` from `@moh-sso/rbac`.
+- `documents` imports `useGetUserQuery` from `@moh-sso/users/api`.
+- `surveillance` imports the documents API and types for disease detail documents.
+- `issue-tracker` declares `@moh-sso/data-visualizer` as a dependency but no longer imports it.
+- `home` is shell-owned and lazy-loads panels from users (`UserFormPanel`), clients (`ClientFormPanel`) and announcements (`ManageAnnouncementsPanel`).
 
 ## Target direction
 
@@ -19,6 +26,6 @@ This audit tracks direct cross-app imports and whether they should remain. It is
 
 ## Next cleanup candidates
 
-- Move user/client role assignment UI into a shared admin package or `packages/ui`.
-- Move data visualizer table utilities used by issue tracker into `packages/ui` or `packages/utils`.
+- Move the user, RBAC and client access hooks and types shared by `users`, `rbac`, `clients`, `announcements`, `email` and `documents` into a shared package to break the `users`/`rbac` cycle.
+- Remove the unused `@moh-sso/data-visualizer` dependency from `issue-tracker`.
 - Keep surveillance/document API coupling documented until domain ownership is clearer.

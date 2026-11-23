@@ -44,7 +44,7 @@ More detail: [docs/architecture.md](docs/architecture.md).
 
 ## Prerequisites
 
-Use Node `20.19+` or `22.12+` for Vite 7. Node 18 may still build in some environments, but Vite will warn.
+Use Node 22. The CI workflows (`node-version: 22`) and the frontend Docker images (`node:22-alpine`) build with Node 22; Vite 7 itself needs Node `20.19+` or `22.12+`. `frontend/.nvmrc` still pins `20.20.1`, and `package.json` declares no `engines` field.
 
 ```bash
 cd frontend
@@ -90,6 +90,7 @@ Local ports:
 - utilities: `4112`
 - rbac: `4113`
 - data-validation: `4114`
+- report-scheduler: `4115`
 
 More detail: [docs/development.md](docs/development.md).
 
@@ -139,7 +140,7 @@ FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/do
 
 ## Deployment
 
-`npm run build:docker` builds packages, generates the import map, builds apps, builds the shell, and stages microfrontend bundles into `dist`.
+`npm run build:docker` runs `scripts/frontend-modules.mjs build` for the `production` entry of `module-sources.json`. With the default `npm` source it installs the pinned `@moh-sso/*` releases, builds only the shell, and stages the installed app and package bundles (`build:docker:npm-prepared`). With `FRONTEND_MODULE_SOURCE=workspace` it builds packages, the import map, apps and the shell from this checkout and stages them (`build:docker:source`). Either way the result lands in `dist`.
 
 Final static layout:
 
@@ -147,6 +148,7 @@ Final static layout:
 dist/index.html
 dist/assets/*
 dist/import-map.json
+dist/version-manifest.json
 dist/mf/<app>/single-spa.js
 dist/packages/<package>/index.js
 ```
@@ -170,7 +172,7 @@ More detail: [docs/build-and-deployment.md](docs/build-and-deployment.md).
 
 ## Troubleshooting
 
-- Vite Node warning: use Node `20.19+` or `22.12+`.
+- Vite Node warning: use Node 22 (Vite 7 needs `20.19+` or `22.12+`).
 - Missing dependency or app build failure: run `npm run audit:packages`.
 - `npm ci` fails in Docker: run `npm install` locally and commit the updated `package-lock.json`.
 - Remote app loads blank: check the import map URL, served `single-spa.js`, basename, and browser console.

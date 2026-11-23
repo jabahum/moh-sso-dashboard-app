@@ -2,23 +2,30 @@
 
 This page outlines the CI jobs that validate, version, publish, deploy and roll back the frontend. It is for release maintainers and anyone changing the release workflows.
 
-The repository's **Build & Push Images** workflow publishes source-built frontend images on `frontend/v<shell-version>` tags and verifies their runtime version manifest. Use the root Makefile for verified frontend-only or combined releases; see [Releasing frontend and backend](../../docs/releasing.md). The **Frontend Release** tag workflow verifies source builds and packed packages, publishes all 23 public modules to npm, verifies exact versions in the registry, then publishes per-module notes and a combined GitHub Release body. The private shell is excluded. Configure the upstream `NPM_TOKEN` secret or trusted publishers as described in [the release guide](../../docs/releasing.md#publish-frontend-npm-modules). `make frontend-publish` remains available for manual bootstrap.
+The repository's **Build & Push Images** workflow (`.github/workflows/build.yml`) builds the frontend image from `infra/docker/frontend/Dockerfile.npm-modules`, which stages the `@moh-sso/*` releases pinned in `module-sources.json` (`production`) rather than building them from source. It pushes images tagged with the short commit SHA (plus `latest` on the default branch, and the version on `frontend/v<shell-version>` tags) and verifies the runtime version manifest and bundled documentation. Use the root Makefile for verified frontend-only or combined releases; see [Releasing frontend and backend](../../docs/releasing.md). The **Frontend Release** tag workflow verifies source builds and packed packages, publishes all 23 public modules (8 shared packages and 15 apps) to npm, verifies exact versions in the registry, then publishes per-module notes and a combined GitHub Release body. The private shell is excluded. Configure the upstream `NPM_TOKEN` secret or trusted publishers as described in [the release guide](../../docs/releasing.md#publish-frontend-npm-modules). `make frontend-publish` remains available for manual bootstrap.
 
 ## Validate job
 
+The **Frontend Release** workflow validates with `npm run release:dry-run` (`scripts/check-frontend-release.mjs`), which runs the versioning and runtime-config tests and then `npm run release:check` while preserving `public/config.js`, `public/import-map.json` and `public/version-manifest.json`. `release:check` runs:
+
 ```bash
-npm ci
+npm run config:validate
+npm run architecture:check
+npm run mf:doctor
+npm run rbac:doctor
+npm run deploy:doctor
 npm run audit:packages
+npm run version:audit
 npm run typecheck
 npm run lint
 npm run config:prod
-FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css
 npm run audit:import-map
 npm run runtime:verify
 npm run bundle:budget
 npm run audit:publishability
 npm run audit:packed
-npm run config:dev
 ```
 
 The local equivalent is:
@@ -26,6 +33,8 @@ The local equivalent is:
 ```bash
 npm run release:check
 ```
+
+`release:check` leaves the production runtime config active; run `npm run config:dev` afterwards (or use `release:dry-run`, which restores the files).
 
 ## Version job
 
@@ -46,27 +55,25 @@ The tagged CI workflow runs these commands after release verification to publish
 
 ## Source Docker deploy job
 
-Build the default production image from source:
+Build a production image from source:
 
 ```bash
-docker build -f infra/docker/frontend/Dockerfile .
+docker build -f infra/docker/frontend/Dockerfile --build-arg FRONTEND_MODULE_SOURCE=workspace .
 ```
 
-This path remains the default production deployment.
-It builds all workspace packages/apps from source, stages microfrontend artifacts into `dist/mf` and `dist/packages`, inlines the production import map, and serves the shell as a static app.
+Without the build argument this Dockerfile follows `production.source` in `module-sources.json` (currently `npm`). With `workspace` it builds all workspace packages/apps from source, stages microfrontend artifacts into `dist/mf` and `dist/packages` (and `dist/portal/`), inlines the production import map, and serves the shell as a static app.
 
 ## Optional npm module Docker job
 
-After packages are published, set exact production pins in `module-sources.json` and build the npm-module image:
+After packages are published, set exact production pins in `module-sources.json`, refresh `module-locks/production/` with `npm run modules:lock`, and build the npm-module image:
 
 ```bash
 docker build \
   -f infra/docker/frontend/Dockerfile.npm-modules \
-  --build-arg FRONTEND_MODULE_SOURCE=npm \
   .
 ```
 
-Use this only when package publishing and version pinning are stable.
+`FRONTEND_MODULE_SOURCE` defaults to `npm` in this Dockerfile. This is the image CI publishes.
 The npm-module path expects every selected `@moh-sso/*` app/package to have already been published with built `dist` artifacts.
 
 ## Deploy job
@@ -86,9 +93,9 @@ FRONTEND_ASSET_BASE_URL=https://cdn.example.com FRONTEND_VERSIONED_IMPORTS=true 
 Then upload app and package bundles to versioned paths:
 
 ```text
-/mf/users/0.4.1/single-spa.js
-/mf/documents/0.8.0/single-spa.js
-/packages/api/0.2.0/index.js
+/mf/users/1.5.1/single-spa.js
+/mf/documents/1.5.1/single-spa.js
+/packages/api/1.6.0/index.js
 ```
 
 Deploy:
@@ -111,6 +118,7 @@ Standalone app bundles currently include:
 - `@moh-sso/issue-tracker`
 - `@moh-sso/rbac`
 - `@moh-sso/report-browser`
+- `@moh-sso/report-scheduler`
 - `@moh-sso/surveillance`
 - `@moh-sso/users`
 - `@moh-sso/utilities`
@@ -124,7 +132,7 @@ Example:
 ```json
 {
   "imports": {
-    "@moh-sso/users": "https://cdn.example.com/mf/users/0.4.0/single-spa.js"
+    "@moh-sso/users": "https://cdn.example.com/mf/users/1.5.0/single-spa.js"
   }
 }
 ```

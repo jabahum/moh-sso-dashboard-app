@@ -11,20 +11,22 @@ frontend/public/import-map.local.json
 
 `import-map.json` is the production-style map. `import-map.local.json` maps apps to local dev server ports.
 
-Production Docker builds set `FRONTEND_ASSET_BASE_URL=/`, so the generated production map points to:
+`scripts/generate-import-map.mjs` writes `public/import-map.json`. Without `FRONTEND_ASSET_BASE_URL` (the committed map) it points to:
 
 ```text
 /mf/<app>/single-spa.js
 /packages/<package>/index.js
 ```
 
-The staging step mirrors the final static artifact under `dist/` so these URLs resolve with the shell's `/` base path.
+The production Docker images (`infra/docker/frontend/Dockerfile`, `Dockerfile.nginx`, `Dockerfile.npm-modules`) set `FRONTEND_ASSET_BASE_URL=/portal` and `FRONTEND_BASE_PATH=/portal`, so the generated map points to `/portal/mf/<app>/single-spa.js` and `/portal/packages/<package>/index.js`. The staging step copies the static artifact into `dist/portal/` as well, so these URLs resolve under the shell's `/portal/` base path.
 
 ## Vendor dependencies
 
 The production import map uses pinned ESM CDN URLs for shared platform dependencies:
 
 - `react`
+- `react/jsx-runtime`
+- `react/jsx-dev-runtime`
 - `react-dom`
 - `react-dom/client`
 - `react-redux`
@@ -35,7 +37,7 @@ The production import map uses pinned ESM CDN URLs for shared platform dependenc
 - `single-spa`
 - `single-spa-react`
 
-This avoids missing `/vendor/*.js` files and keeps React shared in remote mode.
+The URLs point at `esm.sh`. Entries for packages with a React peer dependency carry `?external=react,react-dom` (or `?external=react`) so that a single shared React instance is used in remote mode.
 
 ## App and package entries
 
@@ -45,7 +47,7 @@ App bundles in the default non-versioned map:
 /mf/<app>/single-spa.js
 ```
 
-In production Docker builds, these become `/mf/<app>/single-spa.js`.
+In production Docker builds, these become `/portal/mf/<app>/single-spa.js`.
 
 The staged app folder also contains related chunks, CSS, route files, and declarations. Remote hosts must serve the whole `/mf/<app>/` folder, not only `single-spa.js`.
 
@@ -55,7 +57,7 @@ Shared packages:
 /packages/<package>/index.js
 ```
 
-In production Docker builds, these become `/packages/<package>/index.js`.
+In production Docker builds, these become `/portal/packages/<package>/index.js`.
 
 The staged package folder may contain CSS or related files. Remote hosts should serve the whole `/packages/<package>/` folder.
 
@@ -68,7 +70,7 @@ Default mode writes local/static paths:
 /packages/api/index.js
 ```
 
-Versioned mode writes CDN/base URLs with package versions:
+Versioned mode writes CDN/base URLs with module versions. The script uses the `production` module selection with source `workspace` unless `FRONTEND_MODULE_SOURCE` says otherwise, so versions come from each `package.json`, or from the `production` npm pins in `module-sources.json` when `FRONTEND_MODULE_SOURCE=npm`. It only applies when `FRONTEND_ASSET_BASE_URL` is set:
 
 ```bash
 FRONTEND_ASSET_BASE_URL=https://cdn.example.com FRONTEND_VERSIONED_IMPORTS=true npm run generate:import-map
@@ -79,9 +81,9 @@ Example:
 ```json
 {
   "imports": {
-    "@moh-sso/users": "https://cdn.example.com/mf/users/0.4.1/single-spa.js",
-    "@moh-sso/documents": "https://cdn.example.com/mf/documents/0.8.0/single-spa.js",
-    "@moh-sso/api": "https://cdn.example.com/packages/api/0.2.0/index.js"
+    "@moh-sso/users": "https://cdn.example.com/mf/users/1.5.1/single-spa.js",
+    "@moh-sso/documents": "https://cdn.example.com/mf/documents/1.5.1/single-spa.js",
+    "@moh-sso/api": "https://cdn.example.com/packages/api/1.6.0/index.js"
   }
 }
 ```
@@ -93,7 +95,7 @@ Environment variables:
 
 ## Local import map
 
-The local map points apps to dev servers:
+`public/import-map.local.json` points apps to dev servers (it is maintained by hand, not generated):
 
 - users: `http://localhost:4101/single-spa.js`
 - clients: `http://localhost:4102/single-spa.js`
@@ -107,6 +109,10 @@ The local map points apps to dev servers:
 - report-browser: `http://localhost:4110/single-spa.js`
 - e-services: `http://localhost:4111/single-spa.js`
 - utilities: `http://localhost:4112/single-spa.js`
+- data-validation: `http://localhost:4114/single-spa.js`
+- report-scheduler: `http://localhost:4115/single-spa.js`
+
+It has no entry for rbac, although `npm run dev:mf:rbac` serves it on port `4113`. It contains no `@moh-sso/<package>` entries and its vendor URLs lack the `?external=` queries used in `import-map.json`.
 
 ## Enable remote mode
 
@@ -120,7 +126,7 @@ The shell `index.html` loads the import map before the shell module. To enable r
    Production builds keep `import-map.json` on disk and inline the same map into `dist/index.html`.
    This avoids relying on external import-map loading, which is not consistently supported by browsers.
 
-   Production Docker uses `public/config.production.js`, which sets these runtime flags.
+   Production Docker builds run `node scripts/use-runtime-config.mjs production`, which activates `public/config.production.js` with these runtime flags. At container start, `40-runtime-config.sh` rewrites `config.js` from `API_BASE_URL` and the `FRONTEND_*` variables.
 
 5. Optionally enable import-map-overrides:
 

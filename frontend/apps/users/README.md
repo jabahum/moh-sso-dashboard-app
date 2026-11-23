@@ -2,7 +2,8 @@
 
 The users app manages platform user accounts and access assignments.
 
-It is a standalone React microfrontend exposed as `@moh-sso/users` and mounted by the shell at `/admin/users`.
+It is a standalone React microfrontend exposed as `@moh-sso/users` and mounted by the shell at `/admin/users`. The shell route requires `users:read`
+(`apps/shell/src/app/microfrontends/registry.ts`).
 
 ## Responsibilities
 
@@ -20,7 +21,11 @@ It is a standalone React microfrontend exposed as `@moh-sso/users` and mounted b
 
 ## Development
 
+Run from `frontend/`. `npm run dev:mf:users` starts the Vite dev server on port 4101;
+`npm run preview:mf:users` serves the built bundle on the same port.
+
 ```bash
-npm run dev -w @moh-sso/users
+npm run dev:mf:users
 npm run build -w @moh-sso/users
+npm run preview:mf:users
 ```

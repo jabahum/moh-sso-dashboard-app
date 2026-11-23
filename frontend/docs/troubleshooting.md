@@ -21,23 +21,17 @@ from `frontend/` to verify the script URL in development and production output.
 
 ## Vite warns about Node version
 
-Vite 7 expects Node `20.19+` or `22.12+`.
+Vite 7 expects Node `20.19+` or `22.12+`. CI and the frontend Docker images use Node 22.
 
 Fix:
 
 ```bash
 node --version
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 ```
 
-Switch to Node 20.19+ or 22.12+.
-
-If the `20` alias is unavailable in your local `nvm`, use an exact installed version such as:
-
-```bash
-nvm use v20.20.1
-```
+`frontend/.nvmrc` pins `20.20.1`, so a bare `nvm use` in `frontend/` selects Node 20.20.1, which satisfies Vite but differs from CI.
 
 ## Failed to resolve `single-spa-react`
 
@@ -112,7 +106,7 @@ Fix:
 npm run config:dev
 ```
 
-Then restart the dev server.
+Then restart the dev server. `npm run dev:shell` (and `npm run dev`) copies `config.development.js` to `config.js` on start unless `FRONTEND_RUNTIME_CONFIG_PREPARED=true` is set.
 
 ## Duplicate React or invalid hook call
 

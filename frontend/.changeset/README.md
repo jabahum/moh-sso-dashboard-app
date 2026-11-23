@@ -12,7 +12,7 @@ Select every package/app affected by the public change.
 
 ## Versioning Model
 
-Shared packages are fixed together and release as one train:
+Shared packages are fixed together (the `fixed` group in `config.json`) and release as one train, currently at `1.6.0`:
 
 - `@moh-sso/api`
 - `@moh-sso/auth`
@@ -25,10 +25,12 @@ Shared packages are fixed together and release as one train:
 
 Apps version independently:
 
-- `@moh-sso/shell`
+- `@moh-sso/shell` (versioned but `"private": true`, so never published)
 - `@moh-sso/users`
 - `@moh-sso/documents`
-- other `@moh-sso/*` apps under `apps/`
+- other `@moh-sso/*` apps under `apps/` (15 published apps in total)
+
+`config.json` publishes with `"access": "public"` from base branch `main`.
 
 ## What Needs A Changeset
 
@@ -52,8 +54,4 @@ npm run release:dry-run
 npm run release:packages
 ```
 
-Install Changesets first if the command is unavailable:
-
-```bash
-npm install -D @changesets/cli
-```
+`@changesets/cli` is a dev dependency of `frontend/package.json`, so `npm install` provides it.

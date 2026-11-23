@@ -37,19 +37,22 @@ The current module supports:
 - Server-backed schedule filtering by search and enabled/paused state.
 - Server-backed execution filtering by report search and execution status.
 - Bounded history/inbox queries to avoid unbounded scheduler UI loads.
-- Admin scheduler metrics endpoint for operations tooling.
+- Admin scheduler metrics endpoint for operations tooling (`GET /api/v1/report-scheduler/metrics`,
+  which requires `metrics:read` or `report_scheduler:manage`).
 
 ## Health BI integration
 
-The `dwh_visualization` scheduler adapter uses the application base
-`https://dashboards.health.go.ug/report-browser`, within the shared Integrated
-Health Portal Keycloak realm. Users retain their
-portal session and module permissions. Background jobs use a dedicated backend
-Keycloak service account with automatically refreshed bearer tokens. See the
+The backend Health BI client (`backend/modules/report-scheduler/health_bi.go`) calls the
+base URL set by `HEALTH_BI_BASE_URL` (empty by default; `infra/env/prod.env.example` sets
+`https://dashboards.health.go.ug/report-browser`), within the shared Integrated Health Portal
+Keycloak realm. Users retain their portal session and module permissions. Background jobs
+use a dedicated backend Keycloak service account (`HEALTH_BI_KEYCLOAK_CLIENT_ID`, default
+`report-scheduler-worker`, and `HEALTH_BI_KEYCLOAK_CLIENT_SECRET`) with automatically
+refreshed bearer tokens. See the
 [backend configuration and contract](../../../docs/scheduler-backend.md).
 
 The form loads report detail before saving and offers only supported periods and
-formats. The current adapter supports PDF/CSV and whole calendar periods in
+formats. The current Health BI integration supports PDF/CSV and whole calendar periods in
 `Africa/Kampala`; daily reporting periods are unsupported. Recurrence frequency
 is independent of the period being exported. Nested report IDs use query
 parameters so category paths survive routing. Additional filters without inline
@@ -80,7 +83,7 @@ The local microfrontend uses port 4115 and relies on the portal login session.
 
 ## Access
 
-The backend requires the `data-statistics` parent system plus the relevant granular scheduler permission. Apply/sync the RBAC seed after permission changes:
+The backend requires the `data-statistics` parent system plus the relevant granular scheduler permission. Apply/sync the RBAC seed after permission changes (run from `backend/`):
 
 ```sh
 go run ./cmd/cli system-rbac validate --file config/system-rbac.seed.yaml
