@@ -19,7 +19,7 @@ import (
 	adminunits "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 )
 
-const otherAdminUnitModules = "metrics,audit,geojson,report-scheduler,announcements"
+const otherAdminUnitModules = "metrics,audit,geojson,report-scheduler,announcements," + extractedModules
 
 func TestAdminUnitsInitializationRequiresEnabledDependencies(t *testing.T) {
 	for _, missing := range []string{"handler", "disabled"} {

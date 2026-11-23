@@ -22,7 +22,6 @@ import (
 	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
@@ -116,10 +115,6 @@ func buildHandlers(deps handlerDependencies) handlers {
 		deps.Databases.Remote,
 	)
 
-	storageLocationHandler := storagelocationfeature.NewHandler(
-		deps.Services.StorageLocations,
-		deps.Services.Audit,
-	)
 	sessionHandler := sessionfeature.NewHandler(deps.Services.Sessions)
 	dataQualityHandler := dataqualityfeature.NewHandler(deps.Databases.DWH, deps.Databases.DQA, deps.Databases.Primary, deps.AdminKeycloak, deps.Services.Email, deps.Config)
 	announcementHandler := buildAnnouncementsModule(deps)
@@ -227,7 +222,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			DocumentTemplates:       documentTemplateHandler,
 			DocumentTemplateSheets:  documentTemplateSheetHandler,
 			DocumentTemplateColumns: documentTemplateColumnHandler,
-			StorageLocations:        storageLocationHandler,
+			StorageLocations:        deps.Services.StorageLocationsModule,
 			Sessions:                sessionHandler,
 			DataQuality:             dataQualityHandler,
 			Announcements:           announcementHandler,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"github.com/moh-sso-dashboard/internal/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +34,7 @@ func TestModuleConfiguration(t *testing.T) {
 func TestMetricsModuleRoutesAndInventory(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, disabled := range []string{"", " metrics "} {
-		registry, err := NewModuleRegistry(HandlerSet{Metrics: testMetricsModule(t), Audit: testAuditModule(t, auditReadFixture{}), GeoJSON: testGeoJSONModule(t, "")}, disabled+",report-scheduler,announcements,admin-units", nil, nil)
+		registry, err := NewModuleRegistry(HandlerSet{Metrics: testMetricsModule(t), Audit: testAuditModule(t, auditReadFixture{}), GeoJSON: testGeoJSONModule(t, "")}, disabled+",report-scheduler,announcements,admin-units,"+extractedModules, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,7 +64,7 @@ func TestMetricsModuleRoutesAndInventory(t *testing.T) {
 				if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
 					t.Fatal(err)
 				}
-				if !body.Success || len(body.Data) != 6 || body.Data[0].Enabled != (disabled == "") {
+				if !body.Success || len(body.Data) != len(config.OptionalModuleIDs()) || body.Data[0].Enabled != (disabled == "") {
 					t.Fatalf("unexpected inventory: %s", res.Body.String())
 				}
 			}

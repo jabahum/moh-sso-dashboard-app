@@ -49,7 +49,7 @@ func (*schedulerModuleFixture) GetDeliveryByAccessToken(context.Context, string)
 func TestSchedulerModuleControlsRoutesAndWorker(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, disabled := range []bool{false, true} {
-		disabledIDs := "metrics,audit,geojson,announcements,admin-units"
+		disabledIDs := "metrics,audit,geojson,announcements,admin-units," + extractedModules
 		if disabled {
 			disabledIDs += ", report-scheduler "
 		}
@@ -136,7 +136,7 @@ func TestSchedulerRegistryFailsStartupBeforeClaims(t *testing.T) {
 		if missing == "worker" {
 			worker = nil
 		}
-		registry, err := NewModuleRegistry(handlers, "metrics,audit,geojson,announcements,admin-units", nil, worker)
+		registry, err := NewModuleRegistry(handlers, "metrics,audit,geojson,announcements,admin-units,"+extractedModules, nil, worker)
 		if err != nil {
 			t.Fatal(err)
 		}

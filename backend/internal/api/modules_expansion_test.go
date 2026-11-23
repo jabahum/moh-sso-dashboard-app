@@ -22,7 +22,7 @@ type auditReadFixture struct{ auditfeature.Repository }
 
 func TestHostedModuleInitializationRequiresOnlyEnabledHandlers(t *testing.T) {
 	for _, disabled := range []string{"metrics,geojson", "metrics,audit", "metrics,audit,geojson"} {
-		registry, err := NewModuleRegistry(HandlerSet{}, disabled+",report-scheduler,announcements,admin-units", nil, nil)
+		registry, err := NewModuleRegistry(HandlerSet{}, disabled+",report-scheduler,announcements,admin-units,"+extractedModules, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -50,7 +50,7 @@ func TestReadModuleRoutesPreservePermissionsAndDisablement(t *testing.T) {
 	}
 	for _, disabled := range []string{"", "audit", "geojson", "audit,geojson"} {
 		handlers := HandlerSet{Metrics: testMetricsModule(t), Audit: testAuditModule(t, auditReadFixture{}), GeoJSON: testGeoJSONModule(t, assets)}
-		registry, err := NewModuleRegistry(handlers, disabled+",report-scheduler,announcements,admin-units", nil, nil)
+		registry, err := NewModuleRegistry(handlers, disabled+",report-scheduler,announcements,admin-units,"+extractedModules, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

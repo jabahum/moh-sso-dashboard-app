@@ -293,18 +293,17 @@
     },
     {
       "id": "storage_locations",
-      "stage": "planned",
+      "stage": "published",
       "scope": "Storage configuration and location administration",
-      "moduleId": "",
+      "moduleId": "storage-locations",
       "dependencies": [
         "primary-db",
-        "blob-storage",
-        "host-audit-recorder"
+        "notifications"
       ],
       "workers": [],
       "migrations": "core",
-      "next": "Define storage-factory/secret references without leaking credentials; preserve document consumers.",
-      "integration": "host"
+      "next": "Built from the repository through a local replace until backend/core v0.2.0 and this module are tagged; then pin the release in backend/go.mod.",
+      "integration": "self-contained"
     },
     {
       "id": "surveillance",

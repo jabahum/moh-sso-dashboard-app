@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const otherAnnouncementModules = "metrics,audit,geojson,report-scheduler,admin-units"
+const otherAnnouncementModules = "metrics,audit,geojson,report-scheduler,admin-units," + extractedModules
 
 type announcementRouteRepository struct {
 	announcement.Repository

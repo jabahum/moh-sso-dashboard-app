@@ -11,11 +11,36 @@ MODULE_PREFIX = 'github.com/mohuganda/moh-sso-dashboard/backend/modules/'
 MODULE_VERSION = re.compile(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?')
 PIN = re.compile(r'^\s*(?:require\s+)?(' + re.escape(MODULE_PREFIX) + r'\S+)\s+(\S+)', re.MULTILINE)
 CHECKSUM = re.compile(r'h1:[A-Za-z0-9+/]{43}=')
+LOCAL_REPLACE = re.compile(r'^\s*replace\s+(' + re.escape(MODULE_PREFIX) + r'(\S+))\s+=>\s+\./modules/(\S+)\s*$', re.MULTILINE)
+
+
+def local_modules(backend=ROOT / 'backend'):
+    """Modules built from this repository through `replace => ./modules/<id>`.
+
+    They are not published yet, so they have no proxy artifact or checksum to
+    verify; their source is the release's own commit. The running backend
+    reports their version as "dev".
+    """
+    local = {}
+    for module, module_id, directory in LOCAL_REPLACE.findall((backend / 'go.mod').read_text()):
+        if module_id != directory or not (backend / 'modules' / directory / 'go.mod').is_file():
+            raise ValueError(f'Invalid local module replacement: {module} => ./modules/{directory}')
+        local[module] = 'dev'
+    return local
+
+
+def selected_modules(backend=ROOT / 'backend'):
+    """Every backend module the distribution compiles, with its reported version."""
+    return {**module_pins(backend), **local_modules(backend)}
 
 
 def module_pins(backend=ROOT / 'backend'):
+    """Published module pins (excluding modules built from local source)."""
+    local = local_modules(backend)
     pins = {}
     for module, version in PIN.findall((backend / 'go.mod').read_text()):
+        if module in local:
+            continue
         if module in pins or not MODULE_VERSION.fullmatch(version):
             raise ValueError(f'Invalid or duplicate module pin: {module} {version}')
         pins[module] = version

@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	kitadapter "github.com/moh-sso-dashboard/internal/adapters/modulekit"
 	"net/url"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	"github.com/moh-sso-dashboard/internal/keycloak"
@@ -24,6 +24,7 @@ import (
 	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/moh-sso-dashboard/internal/worker"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
+	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -36,6 +37,7 @@ type services struct {
 	Auth                    service.AuthService
 	Audit                   *service.AuditService
 	StorageLocations        storagelocationfeature.Service
+	StorageLocationsModule  *storagelocationfeature.Module
 	Sessions                sessionfeature.Service
 	Documents               *documentfeature.Service
 	Clients                 *clientfeature.Service
@@ -154,11 +156,15 @@ func buildServices(deps serviceDependencies) services {
 	reportSchedulerService.SetDeliveryLinkTTL(deps.Config.ReportSchedulerDeliveryLinkTTL)
 	reportSchedulerService.SetEmailAttachmentLimit(deps.Config.Email.MaxAttachmentBytes)
 
-	storageLocationService := storagelocationfeature.NewService(
-		deps.Repositories.StorageLocations,
-		notificationsService,
-		deps.Config,
-	)
+	storageLocationsModule, err := storagelocationfeature.NewModule(storagelocationfeature.Dependencies{
+		Database: deps.Databases.Primary,
+		Notifier: kitadapter.Notifier{Service: notificationsService},
+		Platform: kitadapter.Platform(deps.Config),
+	})
+	if err != nil {
+		panic(err)
+	}
+	storageLocationService := storageLocationsModule.Service
 
 	sessionService := sessionfeature.NewService(deps.Repositories.Sessions)
 	documentService := documentfeature.NewService(
@@ -282,6 +288,7 @@ func buildServices(deps serviceDependencies) services {
 		Auth:                    authService,
 		Audit:                   auditService,
 		StorageLocations:        storageLocationService,
+		StorageLocationsModule:  storageLocationsModule,
 		Sessions:                sessionService,
 		Documents:               documentService,
 		Clients:                 clientService,

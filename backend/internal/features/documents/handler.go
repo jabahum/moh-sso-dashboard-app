@@ -18,11 +18,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	"github.com/moh-sso-dashboard/internal/http/response"
 	"github.com/moh-sso-dashboard/internal/model"
 	sharedservice "github.com/moh-sso-dashboard/internal/service"
 	"github.com/moh-sso-dashboard/internal/storage"
+	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
 	"github.com/xuri/excelize/v2"
 )
 

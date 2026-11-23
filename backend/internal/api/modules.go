@@ -19,6 +19,7 @@ import (
 	geojsonmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	schedulermodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
+	storagelocationsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
 )
 
 // NewModuleRegistry is the distribution's explicit composition root. Legacy
@@ -106,6 +107,17 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 		},
 		Register: func(routes module.Routes) {
 			modulehttp.Register(routes.Protected, handlers.AdminUnits)
+		},
+	}, module.Definition{
+		Info: module.Info{ID: storagelocationsmodule.ID, Version: storagelocationsmodule.Version(), Enabled: enabled[storagelocationsmodule.ID]},
+		Initialize: func(context.Context) (module.Stop, error) {
+			if handlers.StorageLocations == nil {
+				return nil, errors.New("storage locations module is required")
+			}
+			return nil, nil
+		},
+		Register: func(routes module.Routes) {
+			modulehttp.Register(routes.Protected, handlers.StorageLocations)
 		},
 	})
 }

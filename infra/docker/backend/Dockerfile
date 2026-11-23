@@ -17,6 +17,8 @@ WORKDIR /app
 
 COPY backend/go.mod backend/go.sum ./
 COPY backend/core/go.mod ./core/go.mod
+# Modules built from this repository through local replace directives.
+COPY backend/modules/storage-locations/go.mod ./modules/storage-locations/go.mod
 RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
 
 COPY backend/ .

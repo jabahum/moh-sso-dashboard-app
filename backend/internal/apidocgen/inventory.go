@@ -22,6 +22,7 @@ import (
 	geojson "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metrics "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportScheduler "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
+	storagelocations "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
 )
 
 // Routes uses inert handlers: route registration never needs live DB/Redis/SSO.
@@ -78,6 +79,10 @@ func documentationHandlers() router.HandlerSet {
 		}
 	}
 	var err error
+	handlers.StorageLocations, err = storagelocations.NewModule(storagelocations.Dependencies{Database: new(sql.DB)})
+	if err != nil {
+		panic(err)
+	}
 	handlers.ReportScheduler = router.NewReportSchedulerModule(reportScheduler.NewService(nil, nil, nil, nil, nil, nil))
 	handlers.GeoJSON, err = geojson.NewModule(geojson.Dependencies{AuthorizeAny: func(*http.Request, ...string) error { return geojson.ErrUnauthorized }})
 	if err != nil {

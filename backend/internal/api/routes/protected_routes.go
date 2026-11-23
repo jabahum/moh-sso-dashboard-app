@@ -11,7 +11,6 @@ import (
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	"github.com/moh-sso-dashboard/internal/middleware"
 	"github.com/moh-sso-dashboard/internal/modulehttp"
@@ -25,7 +24,6 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {
 	}
 	registerClientRoutes(protected, deps)
 	registerUserRoutes(protected, deps)
-	registerStorageLocationRoutes(protected, deps)
 	registerSessionRoutes(protected, deps)
 	registerNotificationRoutes(protected, deps)
 
@@ -59,10 +57,6 @@ func registerClientRoutes(protected *gin.RouterGroup, deps Dependencies) {
 
 func registerUserRoutes(protected *gin.RouterGroup, deps Dependencies) {
 	userfeature.RegisterProtectedRoutes(protected, deps.Users)
-}
-
-func registerStorageLocationRoutes(protected *gin.RouterGroup, deps Dependencies) {
-	storagelocationfeature.RegisterProtectedRoutes(protected, deps.StorageLocations)
 }
 
 func registerSessionRoutes(protected *gin.RouterGroup, deps Dependencies) {

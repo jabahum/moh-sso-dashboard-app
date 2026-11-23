@@ -20,7 +20,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from backend_module_pins import MODULE_PREFIX, module_pins
+from backend_module_pins import MODULE_PREFIX, selected_modules
 
 ROOT = Path(__file__).resolve().parents[2]
 SECRET = 'distribution-auth-fixture-only'
@@ -112,7 +112,7 @@ def main():
     parser.add_argument('--backend-image', required=True)
     parser.add_argument('--profile', choices=('full', 'core'), default='full')
     args = parser.parse_args()
-    expected_versions = {path.removeprefix(MODULE_PREFIX): version for path, version in module_pins().items()}
+    expected_versions = {path.removeprefix(MODULE_PREFIX): version for path, version in selected_modules().items()}
     project = 'moh-auth-fixture-' + uuid.uuid4().hex[:10]
     with tempfile.TemporaryDirectory(prefix=project) as tmp:
         tmp = Path(tmp)

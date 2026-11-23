@@ -25,9 +25,6 @@ var allowedFeatureImports = map[string]map[string]string{
 	"auth": {
 		"authsession": "auth owns the authsession backing store as an implementation detail",
 	},
-	"documents": {
-		"storage_locations": "document upload flows validate configured storage locations",
-	},
 	"data_quality": {
 		"health_context": "data-quality issues enforce ownership through the shared contextual scope policy",
 	},

@@ -11,7 +11,6 @@ import (
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
@@ -21,6 +20,7 @@ import (
 	auditfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
+	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
 )
 
 type Dependencies struct {
@@ -37,7 +37,7 @@ type Dependencies struct {
 	DocumentTemplates       *documenttemplatesfeature.Handler
 	DocumentTemplateSheets  *documenttemplatesfeature.SheetHandler
 	DocumentTemplateColumns *documenttemplatesfeature.ColumnHandler
-	StorageLocations        *storagelocationfeature.Handler
+	StorageLocations        *storagelocationfeature.Module
 	Sessions                *sessionfeature.Handler
 	DataQuality             *dataqualityfeature.Handler
 
