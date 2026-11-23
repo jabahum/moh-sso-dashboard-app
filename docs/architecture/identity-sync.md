@@ -70,11 +70,23 @@ ULA), CGNAT (`100.64.0.0/10`), unspecified, multicast and reserved addresses
 at dial time on the peer address it actually connects to, which defeats DNS
 rebinding, and such a refusal is not retried. Hosts listed in
 `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` (comma-separated host names or IP
-literals; empty by default) are exempt. Production leaves it empty; dev and e2e
-stacks whose applications run on a private network or loopback set it (the dev
-compose file passes it through to the backend; the CLI reads it from its own
-environment). Changing the origin of an enabled integration needs the same
+literals; empty by default) are exempt. Dev and e2e stacks whose applications
+run on a private network or loopback set it. It is wired into the dev compose
+file, both env examples and the Helm chart (`backend.identitySync.allowedPrivateHosts`);
+the CLI reads it from its own environment. **Upgrade step:** before deploying,
+check whether any registered origin resolves to an internal address
+(split-horizon DNS, in-cluster names) and list those hosts, or that app's syncs
+and portal session revocations are refused. Connector transports ignore
+`HTTP(S)_PROXY`: through a proxy the dial-time check would inspect the proxy, not
+the origin. Changing the origin of an enabled integration needs the same
 `rbac:write` and `rbac:roles:write` permissions as any registry change.
+
+**Contract version.** An enabled save reads `GET /` again. When the stored
+version is 1.1 or newer and the application now answers like 1.0 (404), the
+save is refused (`ErrContractDowngrade`, HTTP 409
+`IDENTITY_SYNC_CONTRACT_DOWNGRADE`) unless the caller passes
+`allowContractDowngrade` (CLI: `--allow-contract-downgrade`), so a transient 404
+during a deploy cannot silently downgrade a registration.
 
 **Secrets.** The registry stores a reference, never a secret. `env:NAME` reads
 an environment variable, and `file:/path` reads a mounted secret file (one
