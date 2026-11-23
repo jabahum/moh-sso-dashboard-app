@@ -369,3 +369,14 @@ identity-sync-e2e-test:
 
 identity-sync-e2e-down:
 	$(IDSYNC_E2E_COMPOSE) --profile tools down -v --remove-orphans
+
+# backend/core release checks (never tag or push). VERSION=v0.1.0
+core-release-check:
+	@test -n "$(VERSION)" || (echo "VERSION is required, e.g. VERSION=v0.1.0" && exit 2)
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-core-release.py" --version "$(VERSION)" --source local
+
+core-release-verify:
+	@test -n "$(VERSION)" || (echo "VERSION is required, e.g. VERSION=v0.1.0" && exit 2)
+	$(PYTHON) "$(REPO_ROOT)/infra/scripts/test-core-release.py" --version "$(VERSION)" --source proxy
+
+.PHONY: core-release-check core-release-verify

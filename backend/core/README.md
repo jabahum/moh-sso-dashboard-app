@@ -12,7 +12,7 @@ Run `python3 infra/scripts/test-platform-core.py` from the repository root
 to verify the whole core outside the host tree with an empty dependency cache
 and workspaces/downloads disabled. The check builds, vets and runs uncached
 race tests. The first tagged release is planned as `backend/core/v0.1.0`; see
-the release steps in
+the release steps and `make -C infra core-release-check` in
 [the identity-sync adapter guide](../../docs/integrations/identity-sync-adapter.md#releasing-backendcore).
 
 

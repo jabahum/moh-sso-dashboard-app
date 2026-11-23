@@ -241,38 +241,50 @@ because access removal must end an application's sessions immediately.
 
 The module is versioned with tags prefixed `backend/core/`. It stays below
 1.0 while the contract settles, so a minor version may contain breaking
-changes. These steps are documentation only. A maintainer performs them after
-the change is merged.
+changes. `backend/core/CHANGELOG.md` records each version. A maintainer tags
+after the change is merged; nothing in the repository tags or pushes.
 
-1. On the merged `main` commit, check that the module is still
-   standard-library only and green:
+1. Before tagging, on the merged commit, run the pre-release check:
 
    ```sh
-   python3 infra/scripts/test-platform-core.py
-   (cd backend/core && go test -race -count=1 ./...)
+   make -C infra core-release-check VERSION=v0.1.0
+   ```
+
+   It checks the version format, that `backend/core/go.mod` declares
+   `module github.com/mohuganda/moh-sso-dashboard/backend/core` with no
+   `require` lines, that the changelog has a `## v0.1.0` section, that the tag
+   does not exist yet and that `backend/core` has no uncommitted files. It
+   runs `infra/scripts/test-platform-core.py` (standard library only, empty
+   cache, downloads disabled), then builds and runs an independent consumer
+   (`identitysync/testdata/consumer`) in a scratch module outside the
+   repository, offline: it serves the contract with the starter adapter and
+   must pass the conformance suite. Also lint the contract:
+
+   ```sh
    docker run --rm -v "$PWD/backend/core/identitysync/contract":/spec:ro \
      redocly/cli:1.25.11 lint /spec/identity-sync.openapi.yaml
    ```
 
-2. Check that `backend/core/go.mod` still declares
-   `module github.com/mohuganda/moh-sso-dashboard/backend/core` with no
-   `require` lines, and that `backend/core/README.md` describes the release.
-3. Create an annotated tag on that commit and push only the tag:
+2. Change `## v0.1.0 (unreleased)` to the release date in the changelog if you
+   track dates, commit, then create an annotated tag and push only the tag:
 
    ```sh
-   git tag -a backend/core/v0.1.0 -m "backend/core v0.1.0: identity-sync contract 1.1 types, adapter and conformance suite"
+   git tag -a backend/core/v0.1.0 -m "backend/core v0.1.0"
    git push origin backend/core/v0.1.0
    ```
 
-4. Check resolution from a scratch module outside the repository:
+3. After the push, verify the published version:
 
    ```sh
-   go mod init example.test/check && \
-   go get github.com/mohuganda/moh-sso-dashboard/backend/core@v0.1.0
+   make -C infra core-release-verify VERSION=v0.1.0
    ```
 
-   If the repository is private, set
-   `GOPRIVATE=github.com/mohuganda/*` for consumers.
+   It downloads the version through `proxy.golang.org` into a fresh cache
+   (checksum database on), checks the dependency graph has no other modules
+   and no replacement, compares every published file with the tag, and runs
+   the same consumer against the published version. If the repository is
+   private, the proxy cannot fetch it; consumers then need
+   `GOPRIVATE=github.com/mohuganda/*` and this verification does not apply.
 
-5. Applications then depend on `backend/core@v0.1.0`. The dashboard keeps its
+4. Applications then depend on `backend/core@v0.1.0`. The dashboard keeps its
    local `replace ./core` so it always builds against the same tree.
