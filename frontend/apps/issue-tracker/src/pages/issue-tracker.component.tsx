@@ -32,7 +32,7 @@ import * as XLSX from "xlsx";
 import { useSelector } from "react-redux";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { PERMISSIONS, PermissionGuard, selectUser } from "@moh-sso/auth";
-import { PageShell } from "@moh-sso/ui";
+import { PageShell, TableEmptyState } from "@moh-sso/ui";
 
 import {
   useGetIssueByCodeQuery,
@@ -1066,41 +1066,74 @@ const IssueTracker = () => {
             </div>
           </div>
 
-          {activeTab === "assigned_to_me" &&
-            issues.length === 0 &&
-            !isLoading && (
-              <div className="issue-assigned-empty-banner">
-                <strong>No issues currently assigned to you.</strong> Switch to
-                the <em>All Issues</em> tab to view all registered issues.
-              </div>
-            )}
-
-          <div
-            className="issue-tracker-table"
-            role="region"
-            aria-label="Registered issues table"
-            tabIndex={0}
-          >
-            <IssuesDataTable
-              columns={headers}
-              data={issues}
-              totalItems={data?.totalCount ?? 0}
-              currentPage={page}
-              currentPageSize={pageSize}
-              onPageChange={(newPage, newPageSize) => {
-                setPage(newPage);
-                setPageSize(newPageSize);
-              }}
-              handleIssueClick={handleIssueClick}
-              closeView={() => {
-                setSelectedIssue(undefined);
-                setIsViewIssueDetail(false);
-              }}
-              selectedRowIds={selectedRowIds}
-              onSelectRow={handleSelectRow}
-              onSelectAll={handleSelectAll}
-            />
-          </div>
+          {!isLoading && issues.length === 0 ? (
+            <div className="issue-tracker-empty" role="status">
+              {error ? (
+                <TableEmptyState
+                  title="Unable to load issues"
+                  description="Something went wrong while fetching issues. Try again shortly."
+                />
+              ) : hasActiveFilters || tableSearchTerm.trim() ? (
+                <TableEmptyState
+                  title="No matching issues"
+                  description="No issues match the current search or filters."
+                  actions={
+                    <Button kind="ghost" onClick={handleReset}>
+                      Reset filters
+                    </Button>
+                  }
+                />
+              ) : activeTab === "assigned_to_me" ? (
+                <TableEmptyState
+                  title="No issues assigned to you"
+                  description="Issues assigned to you will appear here."
+                  actions={
+                    <Button
+                      kind="ghost"
+                      onClick={() => {
+                        setActiveTab("all_issues");
+                        setSelectedRowIds([]);
+                      }}
+                    >
+                      View all issues
+                    </Button>
+                  }
+                />
+              ) : (
+                <TableEmptyState
+                  title="No issues yet"
+                  description="Registered data quality issues will appear here."
+                />
+              )}
+            </div>
+          ) : (
+            <div
+              className="issue-tracker-table"
+              role="region"
+              aria-label="Registered issues table"
+              tabIndex={0}
+            >
+              <IssuesDataTable
+                columns={headers}
+                data={issues}
+                totalItems={data?.totalCount ?? 0}
+                currentPage={page}
+                currentPageSize={pageSize}
+                onPageChange={(newPage, newPageSize) => {
+                  setPage(newPage);
+                  setPageSize(newPageSize);
+                }}
+                handleIssueClick={handleIssueClick}
+                closeView={() => {
+                  setSelectedIssue(undefined);
+                  setIsViewIssueDetail(false);
+                }}
+                selectedRowIds={selectedRowIds}
+                onSelectRow={handleSelectRow}
+                onSelectAll={handleSelectAll}
+              />
+            </div>
+          )}
 
           {showModal && (
             <PermissionGuard permission={PERMISSIONS.issueTrackerWrite}>

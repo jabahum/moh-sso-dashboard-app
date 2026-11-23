@@ -8,6 +8,24 @@
   min-width: 0;
 }
 
+/* Attach the view tabs directly to the filter bar instead of leaving a gap. */
+.issue-tracker-assignments {
+  min-width: 0;
+
+  .cds--tabs {
+    min-block-size: 0;
+  }
+}
+
+.issue-tracker-assignments + .issue-filter-container {
+  margin-top: -1rem;
+}
+
+.issue-tracker-empty {
+  background-color: var(--cds-layer, #ffffff);
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
 .issue-direct-loading {
   display: flex;
   align-items: center;
@@ -175,14 +193,6 @@
   .cds--search-input {
     width: 100%;
   }
-}
-
-.issue-assigned-empty-banner {
-  padding: 1rem 1.25rem;
-  background-color: #edf5ff;
-  border-left: 4px solid #0f62fe;
-  color: #161616;
-  font-size: 0.875rem;
 }
 
 /* ==============================
