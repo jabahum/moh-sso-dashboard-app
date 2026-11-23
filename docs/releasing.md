@@ -1,5 +1,7 @@
 # Releasing frontend and backend
 
+This page explains how to release the frontend and backend with the Make release commands, including npm publication, release notes and recovery from failures. It is for maintainers who cut releases. Run `make release-help` for the command summary. See [backend release details](releasing-backend.md), [versioning](versioning.md), and [frontend versioning](../frontend/docs/versioning.md).
+
 Run release commands from the repository root. Frontend apps/packages and the backend retain independent versions. Version preparation, local commit, verification, and component tagging are automatic.
 
 ## Requirements
@@ -88,11 +90,15 @@ make release-frontend
 
 Pushing `frontend/v<shell-version>` automatically runs **Frontend Release** in `mohuganda/moh-sso-dashboard`. It validates the shell version against the tag, installs dependencies, builds and verifies every module, publishes eligible public apps/packages through Changesets, and confirms each exact version exists on npm. Only then does it publish the GitHub Release notes. The private shell stays unpublished. No extra `frontend-publish` command is needed for a normal CI release.
 
+### Publish before updating deployment pins
+
 To publish prepared package versions before updating deployment pins, manually
 run **Frontend Release** from `main`. This runs the same build, publishing and
 registry checks without creating a component tag or GitHub release notes. After
 the versions are confirmed on npm, update the reviewed production pins and lock,
 then build the frontend image. Tag-triggered releases retain their normal notes.
+
+### Registry authentication
 
 Configure one authentication method before the first release:
 
@@ -100,6 +106,8 @@ Configure one authentication method before the first release:
 - For existing packages, configure an npm trusted publisher for each package: organization `mohuganda`, repository `moh-sso-dashboard`, workflow filename `frontend-release.yml`, with `npm publish` allowed. The workflow grants `id-token: write` and installs npm 11 on Node 22. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) and [npm token publishing permissions](https://docs.npmjs.com/about-access-tokens/).
 
 Package repository metadata identifies the upstream repository and each workspace directory for provenance. Forks run PR validation but do not publish release packages. The source-built image workflow runs separately: check both **Build & Push Images** and **Frontend Release** before treating a release as complete.
+
+### Partial and manual publication
 
 For a partially published release, rerun the failed **Frontend Release** workflow for the same tag. Changesets skips versions already on npm and publishes missing ones; the registry confirmation fails if any module is still absent. Keep the original published versions and tag.
 
@@ -112,16 +120,6 @@ make release
 ```
 
 The manual target still requires an untagged prepared release, so use CI reruns after a component tag exists. Run `cd frontend && npm run release:dry-run` for build, runtime and packed-consumer verification without publishing or creating tags. It restores tracked runtime configuration, import maps and version metadata afterward.
-
-## Failures and retries
-
-If verification fails after preparation, fix the problem and keep the prepared versions for review. Rerunning with the same component and bump reuses the plan while the preparation commit is still HEAD and no component tag exists. If you commit a code fix after preparing, use `make release-manual` with the prepared versions to avoid an additional automatic bump.
-
-If version preparation itself fails, inspect the modified files before retrying; it leaves them available for diagnosis. It never stages existing uncommitted application changes because preparation requires an initially clean checkout.
-
-If a push fails after creating local tags, inspect local and remote tags. The automatic command refuses to bump the same prepared release again. After confirming that neither component tag exists remotely, retry the atomic push with those exact refs. Never move or overwrite a published tag. If CI fails after the push, rerun the failed workflow for the existing tag.
-
-Run `make release-help` for the command summary. See [backend release details](releasing-backend.md), [versioning](versioning.md), and [frontend versioning](../frontend/docs/versioning.md).
 
 ## Release notes and changelogs
 
@@ -152,3 +150,11 @@ make release-notes
 This writes notes/changelogs into the worktree for review. Repeated generation replaces the same version entry and keeps older changelog entries. Commit the resulting files before running commands that require a clean checkout.
 
 After npm publication is verified, the **Frontend Release** tag workflow publishes the combined frontend notes as the GitHub Release body and attaches a compressed archive of individual module notes. The backend release workflows publish scoped backend notes as the GitHub Release body instead of repository-wide automatic notes. Both regenerate notes from tagged source, so manual component tags also receive notes. These release-note jobs are separate from frontend image builds; inspect the image workflow before deployment.
+
+## Failures and retries
+
+If verification fails after preparation, fix the problem and keep the prepared versions for review. Rerunning with the same component and bump reuses the plan while the preparation commit is still HEAD and no component tag exists. If you commit a code fix after preparing, use `make release-manual` with the prepared versions to avoid an additional automatic bump.
+
+If version preparation itself fails, inspect the modified files before retrying; it leaves them available for diagnosis. It never stages existing uncommitted application changes because preparation requires an initially clean checkout.
+
+If a push fails after creating local tags, inspect local and remote tags. The automatic command refuses to bump the same prepared release again. After confirming that neither component tag exists remotely, retry the atomic push with those exact refs. Never move or overwrite a published tag. If CI fails after the push, rerun the failed workflow for the existing tag.

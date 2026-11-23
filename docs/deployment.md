@@ -1,40 +1,10 @@
 # Deployment
 
-See the [Make command reference](make.md) for every deployment and generation target,
-its prerequisites, options, effects and examples.
-
-## Environment settings during upgrades
-
-Each newly built deployment bundle includes `environment-contract.json`, generated
-from the **names** in `infra/env/prod.env.example` and the reviewed defaults and
-requirements in `infra/env/deployment-policy.json`. Example values, local edits,
-and private credentials are never copied into that contract. Adding a variable
-to the template automatically adds its name to the next bundle; add mandatory
-settings to the policy and explicitly approve any default there.
-
-Preflight now receives the selected release directory. Under the deployment lock,
-it appends missing keys to the server's configured private environment file,
-using only approved defaults and leaving other new values blank. Existing values,
-including intentionally blank values, remain unchanged. It creates a private
-backup next to that file before an update; backups and the resulting file use
-mode `0600`. No values are printed. Rollback continues to use the previous
-release's original environment snapshot.
-
-Missing, blank, or placeholder required values block deployment **before** image
-pulls, database hooks, migrations or container changes. The error lists setting
-names only. Populate those settings privately and rerun deployment; valid
-file-backed secret alternatives are supported. Observatory still uses the
-operator-provided database; this process never provisions a database container.
-For a full manual preflight, pass the release directory:
-`make cd-preflight DEPLOY_RELEASE=/opt/moh-sso/releases/<release-id>`.
-Without `DEPLOY_RELEASE`, the command checks server prerequisites only.
-
-Older bundles without an environment contract must be rebuilt before a new
-deployment; rollback to an already verified snapshot remains available.
-
-The rollout shell uses `pipefail`, so an SSH/deployment failure remains a failed
-Actions step even when output is passed through `tee` and automatic rollback
-successfully restores the previous release.
+This page explains how to run the portal with Docker Compose in production and
+development, how to place Nginx in front of it, how to check the Kubernetes chart,
+and how updates and rollbacks work. It is for operators and developers who deploy
+or run the stack. See the [Make command reference](make.md) for every deployment
+and generation target, its prerequisites, options, effects and examples.
 
 ## Infrastructure layout
 
@@ -75,12 +45,16 @@ Use `make compose-config COMPOSE_ENV=dev`, for example, to validate one mode.
 where supported. `ENV_FILE` and `REMOTE_ENV_FILE` select alternative files; paths
 are relative to the repository root or absolute.
 
+### Compose launcher
+
 `infra/scripts/compose.sh` resolves the repository root, passes env files to
 Compose without sourcing them as shell code, and supplies absolute runtime-file
 paths. Prefer Make/the launcher instead of duplicating raw CLI flags in scripts.
 For raw Compose commands, paths in YAML are relative to `infra/compose/`; Docker
 build contexts are the repository root. Source files, credentials and generated
 build output are filtered by the root `.dockerignore`.
+
+### Project names and existing environment files
 
 Production keeps project `moh-sso-dashboard`; development keeps
 `moh-sso-dashboard-dev`. Moving the files does not rename projects or data volumes.
@@ -89,7 +63,7 @@ new ignored `infra/env/` locations, or use `ENV_FILE=/absolute/old/path.env`.
 Do not run development as an override of the production stack. Both use host
 ports 3000 and 9000, so customize bindings before running both on one machine.
 
-### Production quick start
+## Production quick start
 
 ```bash
 cp infra/env/prod.env.example infra/env/prod.env
@@ -104,6 +78,8 @@ make compose-pull
 make compose-prod-up
 ```
 
+### Image tags and builds
+
 Use semantic-version or SHA tags for both `BACKEND_TAG` and `FRONTEND_TAG`.
 Compose rejects empty tags; release automation also rejects mutable tags.
 Rebuild and publish backend/frontend images after Dockerfile or entrypoint changes.
@@ -114,18 +90,27 @@ docker build -f infra/docker/backend/Dockerfile --build-arg VERSION=1.2.3 -t bac
 docker build -f infra/docker/frontend/Dockerfile --build-arg VERSION=1.2.3 -t frontend:1.2.3 .
 ```
 
+### Runtime settings and API base URL
+
 The backend receives the full runtime environment, covering SMTP/GM, SMS, RBAC,
 storage, notification workers, Health BI, DWH and DQA. Infrastructure reads the
 same CLI env file for Postgres user/database and Redis authentication. The backend
 always uses production/release mode, HTTP port 9000 and disabled auth bypass.
-Public TLS terminates at Nginx. Frontend receives public runtime settings only;
-its entrypoint writes JSON-escaped `config.js` at root and `/portal/config.js`.
-`API_BASE_URL` defaults to `/api` for the whole-host gateway. The frontend resolves
-that to `/api/v1/...` and fetches version metadata from `/version`. Explicit
-service bases such as `/ssobackend`, `/backend`, or `http://localhost:9000` remain
-supported; a trailing `/api` is accepted without duplicating the API path.
-Shared-host routing still requires `API_BASE_URL=/ssobackend`, as in the production
-environment example, because that gateway owns only `/portal/` and `/ssobackend/`.
+Public TLS terminates at Nginx.
+
+Frontend receives public runtime settings only; its entrypoint writes JSON-escaped
+`config.js` at root and `/portal/config.js`:
+
+- `API_BASE_URL` defaults to `/api` for the whole-host gateway. The frontend
+  resolves that to `/api/v1/...` and fetches version metadata from `/version`.
+- Explicit service bases such as `/ssobackend`, `/backend`, or
+  `http://localhost:9000` remain supported; a trailing `/api` is accepted without
+  duplicating the API path.
+- Shared-host routing still requires `API_BASE_URL=/ssobackend`, as in the
+  production environment example, because that gateway owns only `/portal/` and
+  `/ssobackend/`.
+
+### Secrets
 
 The backend entrypoint reads DB and Keycloak client secrets from mounted files,
 then execs the server as `appuser`. Matching plaintext values can be blank in the
@@ -134,6 +119,8 @@ env file. Secret source paths can be overridden with `DB_PASSWORD_SECRET_FILE`,
 are interpreted from `infra/compose/`. Additional secrets support `*_FILE` paths
 when mounted through an override. Empty/unreadable mounted secrets fail startup.
 Redis server, client and readiness probe use the same `REDIS_PASSWORD`.
+
+### Databases and uploads
 
 The backend needs reachable upload-management (`REMOTE_DB_*`) and warehouse
 (`DWH_*`) databases during startup; production does not create mock datasets.
@@ -149,7 +136,7 @@ NFS requires an explicit bind mount of the host's mounted filesystem at
 `NFS_BASE_PATH`; setting a provider name alone does not mount NFS. S3/MinIO
 endpoints and credentials remain runtime settings.
 
-### Temporary private HTTP access
+## Temporary private HTTP access
 
 The backend serves HTTP internally even when the browser-facing URLs use HTTPS.
 To run without a TLS endpoint temporarily, use a backend image that supports
@@ -159,33 +146,37 @@ The external Keycloak URL still requires HTTPS, and authentication remains enabl
 Cookies omit `Secure` when the frontend URL is HTTP with this opt-in; they remain
 secure for HTTPS frontend URLs.
 
-For SSH-tunnel access to gateway mode, use:
+For SSH-tunnel access to gateway mode:
 
-```env
-ALLOW_INSECURE_HTTP=true
-NGINX_BIND_ADDRESS=127.0.0.1
-NGINX_HTTP_PORT=8080
-FRONTEND_BASE_URL=http://localhost:8080/portal
-FRONTEND_REDIRECT_URI=http://localhost:8080/portal
-AUTH_RETURN_URL_ALLOWED_ORIGINS=http://localhost:8080
-LOGIN_URL=http://localhost:8080/ssobackend/api/v1/auth/login
-KEYCLOAK_REDIRECT_URI=http://localhost:8080/ssobackend/api/v1/auth/callback
-APP_BASE_URL=http://localhost:8080/ssobackend
-API_BASE_URL=/ssobackend
-COOKIE_DOMAIN=
-```
+1. Set these values in the private production env file:
 
-Set `mode=gateway`, `verify_public_edge=false`, and `public_base_url=""` in
-`/etc/moh-sso/deploy.json`. Register the exact HTTP callback and frontend origin
-in Keycloak. Connect from your workstation with
-`ssh -L 8080:127.0.0.1:8080 USER@APP_SERVER`, then open
-`http://localhost:8080/portal/`. HTTP carries cookies and tokens unencrypted;
-keep access behind the SSH tunnel or a trusted private network.
+   ```env
+   ALLOW_INSECURE_HTTP=true
+   NGINX_BIND_ADDRESS=127.0.0.1
+   NGINX_HTTP_PORT=8080
+   FRONTEND_BASE_URL=http://localhost:8080/portal
+   FRONTEND_REDIRECT_URI=http://localhost:8080/portal
+   AUTH_RETURN_URL_ALLOWED_ORIGINS=http://localhost:8080
+   LOGIN_URL=http://localhost:8080/ssobackend/api/v1/auth/login
+   KEYCLOAK_REDIRECT_URI=http://localhost:8080/ssobackend/api/v1/auth/callback
+   APP_BASE_URL=http://localhost:8080/ssobackend
+   API_BASE_URL=/ssobackend
+   COOKIE_DOMAIN=
+   ```
+
+2. Set `mode=gateway`, `verify_public_edge=false`, and `public_base_url=""` in
+   `/etc/moh-sso/deploy.json`.
+3. Register the exact HTTP callback and frontend origin in Keycloak.
+4. Connect from your workstation with `ssh -L 8080:127.0.0.1:8080 USER@APP_SERVER`,
+   then open `http://localhost:8080/portal/`.
+
+HTTP carries cookies and tokens unencrypted; keep access behind the SSH tunnel or
+a trusted private network.
 
 When the domain and trusted certificate are ready, restore HTTPS URLs, set
 `ALLOW_INSECURE_HTTP=false`, and re-enable public-edge verification.
 
-### Development quick start
+## Development quick start
 
 ```bash
 cp infra/env/dev.env.example infra/env/dev.env
@@ -200,6 +191,8 @@ HTTP ports, local SMTP, cookies and Keycloak callbacks consistent. Backend sourc
 uses Air; frontend source uses Vite. Uploads, frontend dependencies and Go caches
 persist in named volumes. Rebuild on Dockerfile/lockfile changes, refreshing the
 frontend dependency volume if needed without deleting database/upload volumes.
+
+### Local services
 
 | Service | Local address |
 | --- | --- |
@@ -218,18 +211,30 @@ Default realm/client fixture values are in the dev example. Auth bypass defaults
 to false. Use `FRONTEND_DEV_COMMAND='npm run dev:remote:all'` in the env file for
 module servers; the default runs the shell with local modules.
 
-For external Keycloak, copy `infra/env/external-dev.env.example` to
-`infra/env/external-dev.env`. It uses the production Keycloak URL
-`https://auth.health.go.ug` while application URLs stay on localhost. Set the
-realm/client IDs to match that server and fill both client secrets privately, then run
-`make compose-external-up`. Register localhost callback
-`http://localhost:9000/api/v1/auth/callback` and frontend origin
-`http://localhost:3000` on that client. The local IdP and its DB are excluded.
+### External Keycloak
+
+1. Copy `infra/env/external-dev.env.example` to `infra/env/external-dev.env`. It
+   uses the production Keycloak URL `https://auth.health.go.ug` while application
+   URLs stay on localhost.
+2. Set the realm/client IDs to match that server and fill both client secrets
+   privately.
+3. Run `make compose-external-up`.
+4. Register localhost callback `http://localhost:9000/api/v1/auth/callback` and
+   frontend origin `http://localhost:3000` on that client.
+
+The local IdP and its DB are excluded.
+
+### Local SSO with Health BI
 
 `make sso-up`, `sso-down`, `sso-status` and `sso-reconcile-keycloak` use the relocated
 local SSO tool for the separate Health BI checkout. Runtime state stays in
 `.local-sso/` at the repository root. Health BI is optional for ordinary portal
 development; configure its adapter/service account before executing reports.
+
+## Nginx and gateway options
+
+Three layouts are supported: Nginx installed on the application host, Nginx on a
+separate machine, or the Compose container gateway.
 
 ### Nginx installed on the host (no Compose gateway)
 
@@ -247,6 +252,8 @@ HTTPS `server {}`**. Replace existing portal/backend locations to avoid duplicat
 Keep certificates, HTTPS redirects, HSTS and other security headers on that server.
 The snippets require Nginx 1.29.3+ for [header inheritance](https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header_inherit), tested with 1.30.6.
 
+#### Shared public host routing
+
 Shared public host routing stays:
 
 ```text
@@ -256,6 +263,8 @@ Shared public host routing stays:
 /ssobackend/*           -> Go backend, stripping that prefix internally
 ```
 
+#### Documentation site
+
 The frontend image builds and carries the documentation. For an existing host
 Nginx installation, reinstall the updated snippets above, then run
 `sudo nginx -t && sudo systemctl reload nginx` after deploying the new image.
@@ -264,14 +273,19 @@ existing private upstream addresses. The Compose gateway forwards `/docs/`
 through its existing frontend route. Verify the site at
 [https://dashboards.health.go.ug/docs/](https://dashboards.health.go.ug/docs/).
 
-Set `DOCS_URL` to the public origin, for example `https://portal.example.org`.
-For GitHub Actions, set the repository variable `DOCS_URL`. For a Compose
-distribution build, set `DOCS_URL` in `infra/env/prod.env` before running
-`infra/scripts/compose.sh distribution build frontend`. Direct Docker builds accept
-`--build-arg DOCS_URL` and inherit the value from the shell environment.
+Set `DOCS_URL` to the public origin, for example `https://portal.example.org`:
+
+- For GitHub Actions, set the repository variable `DOCS_URL`.
+- For a Compose distribution build, set `DOCS_URL` in `infra/env/prod.env` before
+  running `infra/scripts/compose.sh distribution build frontend`.
+- Direct Docker builds accept `--build-arg DOCS_URL` and inherit the value from the
+  shell environment.
+
 The image defaults to `https://dashboards.health.go.ug` and serves the site at
 `/docs/`. Docusaurus embeds the origin in static metadata, so applying a new
 origin requires rebuilding the frontend image.
+
+#### Swagger, caching and proxy limits
 
 Swagger is `/ssobackend/swagger/`, with the spec at
 `/ssobackend/swagger/openapi.json`. Stable module URLs revalidate; runtime config,
@@ -314,13 +328,19 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 Use either the loopback or remote upstream file, never both. Public DNS points to
-Nginx; public API and SSO URLs keep the HTTPS domain, not the private IP. Firewall
-application ports 3000/9000 to the Nginx machine's actual private source address.
-Use ACLs/security groups or Docker-aware filtering; plain UFW rules can be
-bypassed by [published Docker traffic](https://docs.docker.com/engine/network/packet-filtering-firewalls/).
-Verify another source cannot reach those ports. Use a private/VPN network for
-HTTP upstreams; encrypt transport across untrusted networks. Tests emulate the
-separate addresses; verify actual routing/firewalls on deployment.
+Nginx; public API and SSO URLs keep the HTTPS domain, not the private IP.
+
+Network security:
+
+- Firewall application ports 3000/9000 to the Nginx machine's actual private
+  source address.
+- Use ACLs/security groups or Docker-aware filtering; plain UFW rules can be
+  bypassed by [published Docker traffic](https://docs.docker.com/engine/network/packet-filtering-firewalls/).
+- Verify another source cannot reach those ports.
+- Use a private/VPN network for HTTP upstreams; encrypt transport across
+  untrusted networks.
+
+Tests emulate the separate addresses; verify actual routing/firewalls on deployment.
 
 ### Container gateway
 
@@ -384,6 +404,75 @@ If Docker Buildx needs a refresh, run `docker buildx inspect --bootstrap` first.
 confirms that the templates render, production requires immutable tags, arm64 images
 build, the stack starts, and backend runtime metadata is reachable.
 
+## Updates, rollback and migrations
+
+### Managed delivery
+
+For GitHub-driven delivery, follow the [CD and server setup runbook](cd-pipeline.md).
+The build publishes a matched image pair and infrastructure bundle. A separate
+workflow deploys staging or promotes that same build to production. Server-local
+`/etc/moh-sso/deploy.json` selects `prod`, `remote` or `gateway`; private settings
+remain on the server. Rollout verifies exact image digests, runtime versions,
+modules and the public HTTPS edge, and restores the previous recorded release on
+failure. No repository checkout is needed on the server.
+
+The rollout shell uses `pipefail`, so an SSH/deployment failure remains a failed
+Actions step even when output is passed through `tee` and automatic rollback
+successfully restores the previous release.
+
+### Environment settings during upgrades
+
+Each newly built deployment bundle includes `environment-contract.json`, generated
+from the **names** in `infra/env/prod.env.example` and the reviewed defaults and
+requirements in `infra/env/deployment-policy.json`. Example values, local edits,
+and private credentials are never copied into that contract. Adding a variable
+to the template automatically adds its name to the next bundle; add mandatory
+settings to the policy and explicitly approve any default there.
+
+Preflight now receives the selected release directory. Under the deployment lock,
+it appends missing keys to the server's configured private environment file,
+using only approved defaults and leaving other new values blank. Existing values,
+including intentionally blank values, remain unchanged. It creates a private
+backup next to that file before an update; backups and the resulting file use
+mode `0600`. No values are printed. Rollback continues to use the previous
+release's original environment snapshot.
+
+Missing, blank, or placeholder required values block deployment **before** image
+pulls, database hooks, migrations or container changes. The error lists setting
+names only. Populate those settings privately and rerun deployment; valid
+file-backed secret alternatives are supported. Observatory still uses the
+operator-provided database; this process never provisions a database container.
+For a full manual preflight, pass the release directory:
+`make cd-preflight DEPLOY_RELEASE=/opt/moh-sso/releases/<release-id>`.
+Without `DEPLOY_RELEASE`, the command checks server prerequisites only.
+
+Older bundles without an environment contract must be rebuilt before a new
+deployment; rollback to an already verified snapshot remains available.
+
+### Manual tag-based update
+
+For a manual tag-based update from a checked-out release, run
+`COMPOSE_ENV=prod sh infra/scripts/update.sh` (or `remote`/`gateway`). It validates,
+pulls selected tags and starts services without resetting volumes or Git state.
+It reuses Docker registry login, or reads `GHCR_TOKEN_FILE` when supplied. It does
+not prune images. Keep the chosen Compose mode/env paths consistent between
+manual commands. This updater does not create the CD system's verified release
+history; use the CD workflows for managed promotion and rollback.
+
+### Migrations and public SSO values
+
+Back up data and review migration compatibility before rollout. An application
+rollback does not reverse incompatible database migrations. Keep public SSO values
+aligned, for example:
+
+```env
+FRONTEND_BASE_URL=https://dashboards.health.go.ug/portal
+AUTH_RETURN_URL_ALLOWED_ORIGINS=https://dashboards.health.go.ug
+LOGIN_URL=https://dashboards.health.go.ug/ssobackend/api/v1/auth/login
+KEYCLOAK_REDIRECT_URI=https://dashboards.health.go.ug/ssobackend/api/v1/auth/callback
+API_BASE_URL=/ssobackend
+```
+
 ## Contracts and checks
 
 ```bash
@@ -405,33 +494,3 @@ commands still work (`make -C backend contracts-check`). CI runs contract
 freshness, moved infrastructure tests, Helm checks and application tests. Runtime
 fixtures validate secret loading, non-root uploads, public config and the actual
 Keycloak readiness probe without compiling or starting the full application.
-
-## Updates, rollback and migrations
-
-For GitHub-driven delivery, follow the [CD and server setup runbook](cd-pipeline.md).
-The build publishes a matched image pair and infrastructure bundle. A separate
-workflow deploys staging or promotes that same build to production. Server-local
-`/etc/moh-sso/deploy.json` selects `prod`, `remote` or `gateway`; private settings
-remain on the server. Rollout verifies exact image digests, runtime versions,
-modules and the public HTTPS edge, and restores the previous recorded release on
-failure. No repository checkout is needed on the server.
-
-For a manual tag-based update from a checked-out release, run
-`COMPOSE_ENV=prod sh infra/scripts/update.sh` (or `remote`/`gateway`). It validates,
-pulls selected tags and starts services without resetting volumes or Git state.
-It reuses Docker registry login, or reads `GHCR_TOKEN_FILE` when supplied. It does
-not prune images. Keep the chosen Compose mode/env paths consistent between
-manual commands. This updater does not create the CD system's verified release
-history; use the CD workflows for managed promotion and rollback.
-
-Back up data and review migration compatibility before rollout. An application
-rollback does not reverse incompatible database migrations. Keep public SSO values
-aligned, for example:
-
-```env
-FRONTEND_BASE_URL=https://dashboards.health.go.ug/portal
-AUTH_RETURN_URL_ALLOWED_ORIGINS=https://dashboards.health.go.ug
-LOGIN_URL=https://dashboards.health.go.ug/ssobackend/api/v1/auth/login
-KEYCLOAK_REDIRECT_URI=https://dashboards.health.go.ug/ssobackend/api/v1/auth/callback
-API_BASE_URL=/ssobackend
-```

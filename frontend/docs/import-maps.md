@@ -1,6 +1,6 @@
-# Import Maps
+# Import maps
 
-Import maps prepare the shell for independently deployed microfrontends.
+Import maps prepare the shell for independently deployed microfrontends. This page describes the generated maps, how to enable remote mode, and how to audit, cache and roll back import-map deployments. It is for frontend developers and operators.
 
 ## Files
 
@@ -20,7 +20,7 @@ Production Docker builds set `FRONTEND_ASSET_BASE_URL=/`, so the generated produ
 
 The staging step mirrors the final static artifact under `dist/` so these URLs resolve with the shell's `/` base path.
 
-## Vendor Dependencies
+## Vendor dependencies
 
 The production import map uses pinned ESM CDN URLs for shared platform dependencies:
 
@@ -37,7 +37,7 @@ The production import map uses pinned ESM CDN URLs for shared platform dependenc
 
 This avoids missing `/vendor/*.js` files and keeps React shared in remote mode.
 
-## App And Package Entries
+## App and package entries
 
 App bundles in the default non-versioned map:
 
@@ -59,7 +59,7 @@ In production Docker builds, these become `/packages/<package>/index.js`.
 
 The staged package folder may contain CSS or related files. Remote hosts should serve the whole `/packages/<package>/` folder.
 
-## Versioned Import Map Mode
+## Versioned import map mode
 
 Default mode writes local/static paths:
 
@@ -91,7 +91,7 @@ Environment variables:
 - `FRONTEND_VERSIONED_IMPORTS=true`
 - `FRONTEND_ASSET_BASE_URL=https://cdn.example.com`
 
-## Local Import Map
+## Local import map
 
 The local map points apps to dev servers:
 
@@ -108,33 +108,19 @@ The local map points apps to dev servers:
 - e-services: `http://localhost:4111/single-spa.js`
 - utilities: `http://localhost:4112/single-spa.js`
 
-## Import Map Overrides
-
-`import-map-overrides` can replace one deployed app with a local dev bundle. This is useful when testing a single app against deployed shell/config.
-
-## Import Map Audit
-
-After staging remote bundles, run:
-
-```bash
-npm run audit:import-map
-```
-
-This checks that bare imports in `dist/mf` and `dist/packages` are present in `public/import-map.json`.
-
-## Enabling Remote Mode
+## Enable remote mode
 
 The shell `index.html` loads the import map before the shell module. To enable remote/orchestrated mode:
 
 1. Set `window.__APP_CONFIG__.singleSpaOrchestration = true`.
 2. Set `window.__APP_CONFIG__.microfrontendMode = "remote"`.
 3. Set `window.__APP_CONFIG__.microfrontendMountMode = "orchestrated"`.
-4. Make sure the import map script is present before the shell module:
+4. Make sure the import map script is present before the shell module.
 
-Production builds keep `import-map.json` on disk and inline the same map into `dist/index.html`.
-This avoids relying on external import-map loading, which is not consistently supported by browsers.
+   Production builds keep `import-map.json` on disk and inline the same map into `dist/index.html`.
+   This avoids relying on external import-map loading, which is not consistently supported by browsers.
 
-Production Docker uses `public/config.production.js`, which sets these runtime flags.
+   Production Docker uses `public/config.production.js`, which sets these runtime flags.
 
 5. Optionally enable import-map-overrides:
 
@@ -144,15 +130,21 @@ Production Docker uses `public/config.production.js`, which sets these runtime f
 
 See [templates/index.remote.html](templates/index.remote.html) for a remote-mode HTML template.
 
-## Rollback
+## Import map overrides
 
-Rollback is import-map driven:
+`import-map-overrides` can replace one deployed app with a local dev bundle. This is useful when testing a single app against deployed shell/config.
 
-1. Point the affected app entry back to a previous versioned bundle URL.
-2. Redeploy the import map or shell config.
-3. Clear CDN/browser cache if required.
+## Import map audit
 
-## Cache Busting
+After staging remote bundles, run:
+
+```bash
+npm run audit:import-map
+```
+
+This checks that bare imports in `dist/mf` and `dist/packages` are present in `public/import-map.json`.
+
+## Cache busting
 
 Use one of these strategies:
 
@@ -160,6 +152,14 @@ Use one of these strategies:
 - hashed deployment folders
 - immutable CDN assets plus mutable import map
 
-## CDN Vs Self-Hosted Vendors
+## CDN vs self-hosted vendors
 
 The current map uses pinned CDN ESM URLs for simplicity. If an offline or fully self-hosted deployment is required, replace vendor entries with self-hosted files and ensure those files are served with the shell.
+
+## Rollback
+
+Rollback is import-map driven:
+
+1. Point the affected app entry back to a previous versioned bundle URL.
+2. Redeploy the import map or shell config.
+3. Clear CDN/browser cache if required.

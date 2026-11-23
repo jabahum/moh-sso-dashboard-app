@@ -1,8 +1,8 @@
-# Versioning And Releases
+# Versioning and releases
 
-The frontend uses a two-lane versioning model so shared packages stay compatible while apps can deploy independently.
+The frontend uses a two-lane versioning model so shared packages stay compatible while apps can deploy independently. This page describes the two versioning lanes, SemVer and dependency-range rules, the Changesets release workflow, the version manifest and import-map rollback. It is for frontend developers and release maintainers.
 
-## Lane 1: Shared Package Release Train
+## Lane 1: shared package release train
 
 Shared packages release together with the same version:
 
@@ -27,7 +27,7 @@ Example:
 
 This is configured in `.changeset/config.json` through the `fixed` package group.
 
-## Lane 2: Independent App Versions
+## Lane 2: independent app versions
 
 Apps version independently because they are future deployable units:
 
@@ -55,13 +55,13 @@ Examples:
 @moh-sso/surveillance@1.2.0
 ```
 
-## SemVer Rules
+## SemVer rules
 
 - `PATCH`: bug fix, internal refactor, visual fix, no public contract change.
 - `MINOR`: new feature or backward-compatible route/export/runtime behavior.
 - `MAJOR`: breaking change to public exports, route ownership, runtime props, API expectations, app-to-app dependency contract, or shared package contract.
 
-## Internal Dependency Ranges
+## Internal dependency ranges
 
 Apps should depend on shared packages with compatible ranges:
 
@@ -91,7 +91,7 @@ Shared packages should avoid depending on apps.
 
 From the repository root, `make release` generates a Changeset for every frontend app/package, applies all pending bumps, calculates the backend version, commits release metadata, verifies both components, and pushes their tags. PATCH is the default; select `BUMP=minor` or `BUMP=major` when needed. Existing stronger frontend Changesets take precedence. `make release-prepare` prepares and commits versions without publishing. See [releasing frontend and backend](../../docs/releasing.md).
 
-## Changesets Workflow
+## Changesets workflow
 
 Install Changesets if it is not available:
 
@@ -133,7 +133,7 @@ npm run release:packages
 
 Do not publish until release checks pass.
 
-## Releasing One App
+## Releasing one app
 
 1. Change the app.
 2. Run `npm run changeset`.
@@ -143,7 +143,7 @@ Do not publish until release checks pass.
 6. Build and upload that app bundle to its versioned deployment path.
 7. Update the import map to point at the new version.
 
-## Releasing Shared Packages
+## Releasing shared packages
 
 1. Change one or more shared packages.
 2. Run `npm run changeset`.
@@ -153,7 +153,7 @@ Do not publish until release checks pass.
 6. Run `npm run version:packages`.
 7. Publish/upload all shared package artifacts in the release train.
 
-## Version Manifest
+## Version manifest
 
 Generate:
 
@@ -176,7 +176,7 @@ It also records frontend service version, commit, and build time. The service ve
 
 Frontend Docker releases use `frontend/v<shell-version>` tags. The build rejects tags that disagree with the shell's package version and labels images with version, commit, and build time. Branch builds use `<shell-base-version>-dev.<commit>`.
 
-## Versioned Import Maps
+## Versioned import maps
 
 Default import map output uses static local paths:
 
@@ -216,7 +216,7 @@ Rollback by pointing the import map back to previous versioned URLs:
 
 Redeploy the import map or shell config. No app rebuild is required for import-map-only rollback.
 
-## CI/CD Outline
+## CI/CD outline
 
 1. install dependencies
 2. run package dependency audit

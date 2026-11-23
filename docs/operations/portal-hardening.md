@@ -1,5 +1,7 @@
 # Portal authentication and release hardening
 
+This page records the authentication, configuration and deployment hardening applied to the portal, how to verify it, and the reliability work that remains. It is for developers and operators reviewing the portal's release safety.
+
 ## Implemented changes
 
 - `DEV_AUTH_BYPASS` is loaded through the same Viper configuration as other settings. It defaults to false. Only `development`, `dev`, and `local` permit it; staging, production, and test startup reject it. Middleware also checks the effective configuration. Keep it disabled in deployed environments.

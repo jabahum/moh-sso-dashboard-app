@@ -1,5 +1,7 @@
 # Application platform operations
 
+This runbook covers operating the application platform: ownership, health and metrics, request correlation, rollout, suspension and credential rotation, compatibility and rollback, and failure handling. It is for platform operators and application teams supporting integrated applications.
+
 ## Ownership and support
 
 The platform team owns the registry, identity boundary, shared notification API, audit and delivery workers. Each application team owns its OIDC client configuration, backend authorization, domain data, external sessions and support contact. Registry ownership/support URLs are required before activation. Route incidents first by application ID and registry owner, then escalate shared identity/queue/SMTP failures to the platform team.
@@ -35,6 +37,20 @@ Use the request ID returned in the API response to locate the request log, `appl
 
 For CI/local database verification run `make migrations-check`; it provisions disposable PostgreSQL and exercises fresh/previous-schema upgrade paths, registry lifecycle and platform integration checks. Run backend tests/vet/OpenAPI freshness and the Python example tests. Tests never load the application's normal database configuration or create live Keycloak grants.
 
+## Suspension and credential rotation
+
+To stop new work, suspend the application through the registry lifecycle or disable its identity binding. Subsequent access decisions/submissions fail closed. Accepted queue work continues unless separately canceled/drained. Also revoke/rotate Keycloak credentials and end external application sessions when required by the incident. Registry suspension does not remotely erase independently managed sessions or rewrite roles in issued tokens.
+
+Rotate a service client secret in Keycloak and update only that application's backend secret store. Test a fresh token and binding; no registry secret update is needed because secrets are not stored there. To replace the service client/subject, bind the replacement with minimum scopes, verify it, then disable the old binding. Do not move an existing OAuth client binding to another application. Rotate the platform introspection client through the deployment secret mechanism and verify new authenticated requests; no positive authorization cache needs clearing.
+
+## Compatibility, retention and rollback
+
+`/api/v1/platform` is the initial stable service contract. Add optional fields/capabilities compatibly; document changes and give consumers an agreed migration window before removal. Reject unknown scopes/contract versions rather than silently widening access. Hosted modules must continue using the public package/runtime contracts and compatible shell dependency versions.
+
+Application idempotency mappings have no automatic expiry in v1. Retain them for all retry/reconciliation windows and include them in backups. Existing notification/email cleanup can remove transport details without removing the mapping; responses then become EXPIRED. Do not purge mappings while consumers may retry old keys. Set application-owned payload retention according to the actual data governance requirements; operational metrics and logs do not justify retaining message content indefinitely.
+
+For rollback, stop producers, disable bindings as appropriate, reconcile/cancel/drain accepted queue work, and back up ownership/idempotency data. Roll back consumers/backend before dropping schemas they use. Dropping migration 51 only removes heartbeat telemetry; old workers do not depend on it. Dropping migration 50 removes ownership/idempotency mappings but leaves transport records, so preserve a backup and do not resume automatic retries blindly. Drop identity bindings only after consumers stop using them. The registry down migration retains disabled flags and audit history, but older seed/sync behavior can subsequently re-enable systems; supervise those jobs during recovery.
+
 ## Failure handling
 
 | Symptom | Check and action |
@@ -49,17 +65,3 @@ For CI/local database verification run `make migrations-check`; it provisions di
 | EXPIRED | Historical queue data was cleaned up. Retained idempotency keys prevent re-delivery; do not recreate a key for an old operation. |
 
 New platform delivery rows have a maximum-attempts value of five; current bootstrap workers also impose a three-attempt cap per stage. The effective limit is the smaller cap. Manual retry/cancel controls remain in the existing notification/email administration APIs; manual retries can duplicate an external delivery. Use business identifiers to reconcile before retrying. Never claim exactly-once email transport or mailbox/read receipts.
-
-## Suspension and credential rotation
-
-To stop new work, suspend the application through the registry lifecycle or disable its identity binding. Subsequent access decisions/submissions fail closed. Accepted queue work continues unless separately canceled/drained. Also revoke/rotate Keycloak credentials and end external application sessions when required by the incident. Registry suspension does not remotely erase independently managed sessions or rewrite roles in issued tokens.
-
-Rotate a service client secret in Keycloak and update only that application's backend secret store. Test a fresh token and binding; no registry secret update is needed because secrets are not stored there. To replace the service client/subject, bind the replacement with minimum scopes, verify it, then disable the old binding. Do not move an existing OAuth client binding to another application. Rotate the platform introspection client through the deployment secret mechanism and verify new authenticated requests; no positive authorization cache needs clearing.
-
-## Compatibility, retention and rollback
-
-`/api/v1/platform` is the initial stable service contract. Add optional fields/capabilities compatibly; document changes and give consumers an agreed migration window before removal. Reject unknown scopes/contract versions rather than silently widening access. Hosted modules must continue using the public package/runtime contracts and compatible shell dependency versions.
-
-Application idempotency mappings have no automatic expiry in v1. Retain them for all retry/reconciliation windows and include them in backups. Existing notification/email cleanup can remove transport details without removing the mapping; responses then become EXPIRED. Do not purge mappings while consumers may retry old keys. Set application-owned payload retention according to the actual data governance requirements; operational metrics and logs do not justify retaining message content indefinitely.
-
-For rollback, stop producers, disable bindings as appropriate, reconcile/cancel/drain accepted queue work, and back up ownership/idempotency data. Roll back consumers/backend before dropping schemas they use. Dropping migration 51 only removes heartbeat telemetry; old workers do not depend on it. Dropping migration 50 removes ownership/idempotency mappings but leaves transport records, so preserve a backup and do not resume automatic retries blindly. Drop identity bindings only after consumers stop using them. The registry down migration retains disabled flags and audit history, but older seed/sync behavior can subsequently re-enable systems; supervise those jobs during recovery.

@@ -1,6 +1,6 @@
 # Versioning
 
-For root Make commands that verify and release either component or both together, see [Releasing frontend and backend](releasing.md).
+This page describes how the backend, frontend modules and container images are versioned and tagged, and the compatibility rules each release must follow. It is for maintainers and operators. For root Make commands that verify and release either component or both together, see [Releasing frontend and backend](releasing.md).
 
 ## Backend
 
@@ -18,7 +18,7 @@ backend/v2.0.0
 
 Frontend workspace packages and apps have their own npm versions. A backend tag never changes frontend package versions automatically.
 
-## Build Metadata
+## Build metadata
 
 Every backend binary exposes:
 
@@ -75,7 +75,7 @@ verification and rollback; they are not appended to production version numbers.
 Source-only development builds retain their existing version behavior. A newly
 built image pair must be deployed for this change to appear on the server.
 
-## Image Tags
+## Image tags
 
 Backend images use tags without the component prefix:
 

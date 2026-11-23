@@ -1,13 +1,13 @@
-# Adding A New App
+# Adding a new app
 
-Use this checklist when adding a new frontend app.
+Use this checklist when adding a new frontend app to the workspace. It is for frontend developers.
 
 For the complete governed onboarding flow, screenshots, and the distinction
 between a parent system and a frontend module, see the
 [onboarding handbook](../../docs/platform-onboarding.md#8-add-a-hosted-single-spa-module).
 Adding registry/navigation metadata alone does not install or mount a new app.
 
-## Create Files
+## Create files
 
 ```text
 frontend/apps/<app>/src/root.component.tsx
@@ -41,7 +41,7 @@ The app package should expose:
 }
 ```
 
-## App Lifecycle
+## App lifecycle
 
 For React apps:
 
@@ -54,7 +54,7 @@ export const { bootstrap, mount, unmount } = createReactMicrofrontendLifecycle(A
 
 Non-React apps should export the same lifecycle functions directly.
 
-## Route Metadata
+## Route metadata
 
 Add route ownership in `src/routes.tsx`:
 
@@ -69,7 +69,7 @@ export const exampleRoute: MicrofrontendRoute = {
 
 Use `paths` when an app owns multiple activation paths.
 
-## Register The App
+## Register the app
 
 Update:
 
@@ -82,7 +82,7 @@ Update:
 - shell `package.json` dependency when importing the new app
 - `tsconfig.base.json` only if a new public path alias is needed
 
-## Package Metadata
+## Package metadata
 
 Declare:
 

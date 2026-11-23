@@ -1,9 +1,9 @@
-# MOH SSO Dashboard Tooling
+# MOH SSO Dashboard tooling
+
+This page lists the backend CLI commands, frontend checks and verification commands used during development. It is for developers. This project uses lightweight operational and architecture tools instead of a large tooling framework.
 
 See the [Make command reference](make.md) for every deployment and generation target,
 its prerequisites, options, effects and examples.
-
-This project uses lightweight operational and architecture tools instead of a large tooling framework.
 
 ## Backend CLI
 
@@ -22,7 +22,7 @@ go run ./cmd/cli openapi validate
 
 `system-rbac sync-keycloak` defaults to dry-run behavior. Use `--apply` only after reviewing the generated draft.
 
-## Frontend Tooling
+## Frontend tooling
 
 Run frontend commands from `frontend/`. With `nvm`, use the project Node version first:
 

@@ -1,5 +1,7 @@
 # Make command reference
 
+This page lists the root Make targets for Docker Compose, contract generation, infrastructure checks and continuous delivery, with their prerequisites, options and effects. It is for developers and operators.
+
 Run these commands from the repository root. `make help` prints the command
 index; plain `make` builds the backend. Deployment targets also work with
 `make -C infra <target>`. Contract and frontend-generation targets belong to the
@@ -125,17 +127,6 @@ whole stack; it has no `SERVICE` filter and does not pass `-v`.
 
 ## Contracts and generated files
 
-Scheduler settings are generated separately with
-`make scheduler-env COMPOSE_ENV=external`. It updates the selected private
-application env (creating the default from its mode template if missing) and
-creates a private Health BI companion file without contacting
-Keycloak or restarting services. Existing signing keys and credentials are kept;
-missing worker credentials must come from Keycloak. `ENV_FILE`, `HEALTHBI_ENV_FILE`,
-`HEALTH_BI_URL`, `HEALTH_BI_PUBLIC_URL` and `SCHEDULER_CLIENT_SECRET_FILE` customize
-the operation. See [scheduler configuration](scheduler-configuration.md).
-`make scheduler-env-check` tests generation and credential preservation and is
-included in `make infra-check`.
-
 | Target | Reads/writes and result |
 | --- | --- |
 | `make contracts-generate` | Read registered API routes, handler DTOs and `backend/docs/openapi.overrides.yaml`; rewrite `backend/docs/openapi.yaml`. |
@@ -161,6 +152,19 @@ make generate
 `OPENAPI_OUTPUT` accepts an absolute path or a path relative to the repository
 root. Root Make resolves it before delegating to the backend. Go can be selected
 with `GO_CMD=/path/to/go`; frontend targets accept `NPM=/path/to/npm`.
+
+### Scheduler settings
+
+Scheduler settings are generated separately with
+`make scheduler-env COMPOSE_ENV=external`. It updates the selected private
+application env (creating the default from its mode template if missing) and
+creates a private Health BI companion file without contacting
+Keycloak or restarting services. Existing signing keys and credentials are kept;
+missing worker credentials must come from Keycloak. `ENV_FILE`, `HEALTHBI_ENV_FILE`,
+`HEALTH_BI_URL`, `HEALTH_BI_PUBLIC_URL` and `SCHEDULER_CLIENT_SECRET_FILE` customize
+the operation. See [scheduler configuration](scheduler-configuration.md).
+`make scheduler-env-check` tests generation and credential preservation and is
+included in `make infra-check`.
 
 ## Infrastructure checks
 

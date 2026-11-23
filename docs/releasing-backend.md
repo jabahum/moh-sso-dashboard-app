@@ -1,19 +1,19 @@
-# Releasing The Backend
+# Releasing the backend
 
-The root Makefile supports backend-only and combined frontend/backend releases. See [Releasing frontend and backend](releasing.md) for `make release`, `make release-backend`, and independent version arguments. The commands below run from `backend/` and retain the existing backend-specific workflow.
+This page covers the backend-specific release workflows: release PRs, manual workflow dispatch, local release builds and hotfixes. It is for maintainers releasing the Go backend. The root Makefile supports backend-only and combined frontend/backend releases. See [Releasing frontend and backend](releasing.md) for `make release`, `make release-backend`, and independent version arguments. The commands below run from `backend/` and retain the existing backend-specific workflow.
 
-## Automated Release
+## Automated release
 
 The `Backend Release` GitHub Actions workflow runs in two modes:
 
 1. Manual dispatch: provide a version such as `1.2.3`. Do not include `backend/v` in the input.
 2. Tag push: pushing `backend/v<version>` runs the same verification and publishes the GitHub release automatically.
 
-## Release PR Flow
+## Release PR flow
 
 Use this flow when you want a reviewed release branch before the tag and GitHub Release are created.
 
-### Command-Assisted Flow
+### Command-assisted flow
 
 The backend Makefile includes release helpers so the common path does not require memorizing `gh` command syntax.
 
@@ -37,6 +37,8 @@ What those commands do:
 | `make release-status VERSION=1.2.3` | Shows the GitHub release, recent release workflows, and Docker image manifest when Docker is available. |
 | `make verify-image IMAGE=ghcr.io/mohuganda/moh-sso-dashboard-backend:1.2.3 VERSION=1.2.3 COMMIT=<sha>` | Runs the backend image with `--version` and checks the embedded metadata. |
 
+#### Defaults and overrides
+
 The helper commands default to:
 
 ```text
@@ -54,6 +56,8 @@ make release-pr VERSION=1.2.3 RELEASE_REMOTE=origin
 make release-status VERSION=1.2.3 BACKEND_IMAGE=registry.example.go.ug/moh/backend
 ```
 
+#### Release PRs from a fork
+
 For release PRs that should create the `backend/v<version>` tag automatically, push the release branch to `upstream`, not a fork. GitHub does not allow a fork PR workflow token to create tags in `mohuganda/moh-sso-dashboard`.
 
 When `RELEASE_REMOTE=origin` points to a fork, the helper opens the PR with a fork-qualified head such as `jabahum:release/backend-v1.2.3` against `mohuganda/moh-sso-dashboard`. That is useful for review, but it cannot create the release tag after merge. After that fork PR is merged, run:
@@ -65,9 +69,15 @@ make release-dispatch VERSION=1.2.3
 
 Fork-based release PRs skip artifact provenance attestation, tag creation, GitHub Release publication, and release metadata upload because GitHub does not expose write-capable tokens or OIDC ID tokens to that workflow context. They still run formatting, vet, tests, architecture checks, version verification, SBOM generation, and checksums. Manual dispatch and direct tag releases still run the full release publication path.
 
+#### Artifact attestations
+
 GitHub artifact attestations are controlled by `ENABLE_GITHUB_ARTIFACT_ATTESTATIONS` in the backend release workflows. It is currently disabled because GitHub returned `Feature not available for the mohuganda organization`. Keep checksums and SBOMs enabled; set `ENABLE_GITHUB_ARTIFACT_ATTESTATIONS=true` only after the repository/org supports GitHub artifact attestations.
 
-### Manual Commands
+### Manual commands
+
+These steps perform the release PR flow with `git` and `gh` directly.
+
+#### Prepare the release branch
 
 1. Pick the next backend SemVer.
 
@@ -115,6 +125,8 @@ GitHub artifact attestations are controlled by `ENABLE_GITHUB_ARTIFACT_ATTESTATI
    git commit -m "Prepare backend v1.2.3 release"
    ```
 
+#### Open and merge the release PR
+
 6. Push the release branch.
 
    ```bash
@@ -148,6 +160,8 @@ GitHub artifact attestations are controlled by `ENABLE_GITHUB_ARTIFACT_ATTESTATI
    - the suffix is a valid SemVer, for example `1.2.3`
 
    It then verifies the merge commit, creates the tag, and publishes the release.
+
+#### Confirm and deploy the release
 
 10. Confirm the release.
 
@@ -185,7 +199,7 @@ GitHub artifact attestations are controlled by `ENABLE_GITHUB_ARTIFACT_ATTESTATI
 
 If you prefer a one-shot release without a PR, use the manual dispatch flow below.
 
-## Manual Dispatch Flow
+## Manual dispatch flow
 
 Run the `Backend Release` workflow directly:
 
@@ -222,7 +236,7 @@ The release workflow emits a metadata artifact with both:
 - `release_tag`: `backend/v<version>` for the Git tag and GitHub Release
 - `image_tag`: `<version>` for the Docker image tag
 
-## Local Release Build
+## Local release build
 
 ```bash
 cd backend

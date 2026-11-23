@@ -1,8 +1,8 @@
-# Frontend Architecture
+# Frontend architecture
 
-The frontend is a workspace-based modular frontend prepared for single-spa microfrontends. It keeps a shell app for global composition and separates product areas into standalone apps that can build independently.
+The frontend is a workspace-based modular frontend prepared for single-spa microfrontends. It keeps a shell app for global composition and separates product areas into standalone apps that can build independently. This page describes the workspace layout and the import, alias and dependency rules that keep apps and packages separate; it is for frontend developers.
 
-## Workspace Shape
+## Workspace shape
 
 ```text
 frontend/
@@ -31,7 +31,7 @@ frontend/
     utils/
 ```
 
-## Shell App
+## Shell app
 
 `frontend/apps/shell` owns global application composition:
 
@@ -44,7 +44,7 @@ frontend/
 
 The shell should import app route metadata and lifecycle modules, not app internals.
 
-## Standalone Apps
+## Standalone apps
 
 Each app under `frontend/apps/<app>` owns its feature UI:
 
@@ -58,7 +58,7 @@ Each app under `frontend/apps/<app>` owns its feature UI:
 
 Standalone apps can run inside the shell or build as independent package artifacts.
 
-## Shared Packages
+## Shared packages
 
 Packages under `frontend/packages` hold reusable code:
 
@@ -73,7 +73,7 @@ Packages under `frontend/packages` hold reusable code:
 
 If code is reused across multiple apps, move it into a package instead of importing another app's internals.
 
-## Import Rules
+## Import rules
 
 - Apps may import shared packages through `@moh-sso/*`.
 - Shell may import app lifecycle modules such as `@moh-sso/users/single-spa`.
@@ -82,7 +82,7 @@ If code is reused across multiple apps, move it into a package instead of import
 - App-to-app imports must be intentional and declared in `package.json`.
 - Shared reusable UI, types, API hooks, and utilities should live in `frontend/packages`.
 
-## Alias Rules
+## Alias rules
 
 - Use `@moh-sso/*` for public app/package imports.
 - Use `@/*` only for shell-local imports.
@@ -94,7 +94,7 @@ If code is reused across multiple apps, move it into a package instead of import
   - `@/ui`
   - `@/utils`
 
-## Dependency Metadata
+## Dependency metadata
 
 Every app/package has npm-style package metadata:
 

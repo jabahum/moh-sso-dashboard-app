@@ -1,6 +1,10 @@
-# Build And Deployment
+# Build and deployment
 
-## Build Commands
+This page lists the frontend build commands, the staged `dist` layout, the Docker images and the supported deployment modes. It is for frontend developers and operators building or hosting the frontend.
+
+## Build commands
+
+### Build steps
 
 Build shared packages:
 
@@ -32,6 +36,8 @@ Build everything:
 npm run build:all
 ```
 
+### Docker-ready artifact and version metadata
+
 Build the static Docker-ready artifact:
 
 ```bash
@@ -53,7 +59,7 @@ Generate version metadata:
 npm run generate:versions
 ```
 
-## What `build:docker` Does
+## What `build:docker` does
 
 `build:docker` runs:
 
@@ -65,7 +71,7 @@ npm run generate:versions
 6. stage microfrontends into `dist`
 7. inline the generated import map into `dist/index.html`
 
-## Final `dist` Layout
+## Final `dist` layout
 
 ```text
 dist/index.html
@@ -82,7 +88,7 @@ This layout supports single static deployment and prepares remote import-map dep
 
 `stage:mf` copies complete app/package build folders, not only `single-spa.js`, so relative chunks and CSS are available to remote imports.
 
-## Docker Production
+## Docker production
 
 From the repository root:
 
@@ -108,7 +114,7 @@ docker build -f infra/docker/frontend/Dockerfile.nginx .
 
 It serves on port `80`, so compose or Kubernetes service ports must match that image.
 
-## Optional NPM Module Docker Path
+## Optional npm module Docker path
 
 Select workspace or npm modules independently for development and production in [module-sources.json](../module-sources.json). See [module selection](module-source-strategy.md) for exact pins and overrides. For a package-versioned deployment, use:
 
@@ -121,7 +127,7 @@ docker build \
 
 This path builds the shell against pinned public npm exports and stages installed module bundles from an isolated installation. See [module selection](module-source-strategy.md) for development and production configuration.
 
-## Docker Dev
+## Docker development
 
 From the repository root:
 
@@ -141,9 +147,11 @@ Run all remote dev servers in Docker:
 FRONTEND_DEV_COMMAND="npm run dev:remote:all" docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
 
-## Deployment Modes
+## Deployment modes
 
-### Single Static Deployment
+The frontend can be deployed in three ways.
+
+### Single static deployment
 
 Deploy one artifact containing:
 
@@ -156,7 +164,7 @@ This is the simplest deployment mode.
 
 This is also the default source-mode Docker deployment. More detail: [Module Source Strategy](module-source-strategy.md).
 
-### NPM Package Module Deployment
+### npm package module deployment
 
 Publish apps/packages to npm first, then build a Docker image that stages installed package artifacts:
 
@@ -169,7 +177,7 @@ npm run audit:import-map
 
 Use this mode only after published package versions are available in the configured npm registry.
 
-### Remote Microfrontend Deployment
+### Remote microfrontend deployment
 
 Deploy shell and apps independently. The import map controls app and package versions.
 
@@ -186,7 +194,7 @@ Versioned deployment paths should look like:
 /packages/api/0.2.0/index.js
 ```
 
-## Static Hosting Notes
+## Static hosting requirements
 
 The static server must:
 
