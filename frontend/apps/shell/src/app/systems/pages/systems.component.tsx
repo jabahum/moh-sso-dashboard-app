@@ -130,6 +130,14 @@ export default function SystemsPage() {
   );
 
   const enabledCount = systems.filter((system) => system.enabled).length;
+  const hasSearch = search.trim() !== "";
+
+  const openAddSystemPanel = () =>
+    openPanel({
+      title: "Add system",
+      size: "lg",
+      content: <CreateSystemPanel onClose={closePanel} />,
+    });
 
   return (
     <DataTableShell
@@ -140,8 +148,23 @@ export default function SystemsPage() {
       getRowId={(row) => row.id}
       isLoading={isLoading}
       loadingDescription="Loading systems..."
-      emptyTitle="No systems found"
-      emptyDescription="No connected systems match the selected filters."
+      emptyTitle={systems.length === 0 ? "No systems yet" : "No matching systems"}
+      emptyDescription={
+        systems.length === 0
+          ? "Register a Keycloak client as a portal system to manage its launch and access settings here."
+          : "No connected systems match your search."
+      }
+      emptyActions={
+        systems.length === 0 ? (
+          <Button renderIcon={Add} onClick={openAddSystemPanel}>
+            Add system
+          </Button>
+        ) : hasSearch ? (
+          <Button kind="ghost" onClick={() => setSearch("")}>
+            Clear search
+          </Button>
+        ) : undefined
+      }
       tableState={
         isError ? (
           <ErrorState
@@ -156,35 +179,30 @@ export default function SystemsPage() {
           {isAdmin && canAll(["rbac:read", "rbac:write", "rbac:roles:write"]) && (
             <Button
               kind="secondary"
-              onClick={() => openPanel({
-                title: "Import application manifest",
-                size: "lg",
-                content: <ApplicationManifestPanel />,
-              })}
+              onClick={() =>
+                openPanel({
+                  title: "Import application manifest",
+                  size: "lg",
+                  content: <ApplicationManifestPanel />,
+                })
+              }
             >
               Import manifest
             </Button>
           )}
-          <Button
-            renderIcon={Add}
-            onClick={() =>
-              openPanel({
-                title: "Add system",
-                size: "lg",
-                content: <CreateSystemPanel onClose={closePanel} />,
-              })
-            }
-          >
+          <Button renderIcon={Add} onClick={openAddSystemPanel}>
             Add system
           </Button>
         </>
       }
       topContent={
-        <div className="systems-summary">
-          <SummaryTile label="Registered" value={systems.length} />
-          <SummaryTile label="Enabled" value={enabledCount} />
-          <SummaryTile label="Disabled" value={systems.length - enabledCount} />
-        </div>
+        systems.length > 0 ? (
+          <div className="systems-summary" role="group" aria-label="System totals">
+            <SummaryTile label="Registered" value={systems.length} />
+            <SummaryTile label="Enabled" value={enabledCount} />
+            <SummaryTile label="Disabled" value={systems.length - enabledCount} />
+          </div>
+        ) : undefined
       }
       filters={
         <Search

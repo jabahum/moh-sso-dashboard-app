@@ -1,8 +1,26 @@
-.systems-summary,
 .system-panel__mapping {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 1rem;
+}
+
+/* Compact inline totals rather than full-width tiles. */
+.systems-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  .systems-summary__item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+
+    strong {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+  }
 }
 
 .systems-summary__item {
