@@ -9,14 +9,16 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
+)
 
-	"github.com/moh-sso-dashboard/internal/config"
-	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	models "github.com/moh-sso-dashboard/internal/model"
-	processRepo "github.com/moh-sso-dashboard/internal/repository/processes"
-	sharedservice "github.com/moh-sso-dashboard/internal/service"
-	"github.com/moh-sso-dashboard/internal/storage"
-	"github.com/moh-sso-dashboard/internal/utils"
+// Notification types and the shared title/severity the host gave them.
+const (
+	notificationDocumentCreated = "DOCUMENT_CREATED"
+	notificationDocumentEdited  = "DOCUMENT_EDITED"
+	notificationDocumentDeleted = "DOCUMENT_DELETED"
+	notificationTitle           = "System notification"
+	notificationSeverity        = "info"
 )
 
 type CreateDocumentInput struct {
@@ -27,17 +29,12 @@ type CreateDocumentInput struct {
 	StorageLocation  uuid.UUID
 	ObjectKey        string
 	UploadedBy       uuid.UUID
-	ProcessType      models.ProcessType
+	ProcessType      ProcessType
 	QueueProcessing  bool
 	Status           string
 	IsTemplate       bool
 	Metadata         map[string]any
 	HealthContextID  *uuid.UUID
-}
-
-type HealthContextScope struct {
-	ID                 uuid.UUID
-	IncludeDescendants bool
 }
 
 type EditDocumentInput struct {
@@ -46,65 +43,52 @@ type EditDocumentInput struct {
 	ContentType      string
 }
 
+// Service manages documents and their processing jobs.
 type Service struct {
-	repo          Repository
-	processRepo   processRepo.ProcessRepository
-	notifications sharedservice.NotificationsService
-	storage       storage.Storage
-	cfg           *config.Config
+	repo     Repository
+	notifier modulekit.Notifier
+	platform modulekit.Platform
 }
 
-func NewService(
-	repo Repository,
-	processRepo processRepo.ProcessRepository,
-	notifications sharedservice.NotificationsService,
-	storage storage.Storage,
-	cfg ...*config.Config,
-) *Service {
-	var appConfig *config.Config
-	if len(cfg) > 0 {
-		appConfig = cfg[0]
-	}
-
-	return &Service{
-		repo:          repo,
-		processRepo:   processRepo,
-		notifications: notifications,
-		storage:       storage,
-		cfg:           appConfig,
-	}
+// NewService builds the service. notifier may be nil.
+func NewService(repo Repository, notifier modulekit.Notifier, platform modulekit.Platform) *Service {
+	return &Service{repo: repo, notifier: notifier, platform: platform}
 }
 
-func (s *Service) CreateDocument(
-	ctx context.Context,
-	input CreateDocumentInput,
-) (db.Document, error) {
+func mustJSON(v any) json.RawMessage {
+	b, _ := json.Marshal(v)
+	return b
+}
+
+func (s *Service) ready() error {
 	if s == nil {
-		return db.Document{}, errors.New("document service is nil")
+		return errors.New("document service is nil")
 	}
-
 	if s.repo == nil {
-		return db.Document{}, errors.New("document repository is nil")
+		return errors.New("document repository is nil")
 	}
+	return nil
+}
 
-	if s.processRepo == nil {
-		return db.Document{}, errors.New("process repository is nil")
+func (s *Service) CreateDocument(ctx context.Context, input CreateDocumentInput) (Document, error) {
+	if err := s.ready(); err != nil {
+		return Document{}, err
 	}
 
 	if strings.TrimSpace(input.OriginalFilename) == "" {
-		return db.Document{}, errors.New("original filename is required")
+		return Document{}, errors.New("original filename is required")
 	}
 
 	if input.StorageLocation == uuid.Nil {
-		return db.Document{}, errors.New("storage location is required")
+		return Document{}, errors.New("storage location is required")
 	}
 
 	if input.UploadedBy == uuid.Nil {
-		return db.Document{}, errors.New("uploaded by is required")
+		return Document{}, errors.New("uploaded by is required")
 	}
 
 	if strings.TrimSpace(input.ObjectKey) == "" {
-		return db.Document{}, errors.New("object key is required")
+		return Document{}, errors.New("object key is required")
 	}
 
 	docID := uuid.New()
@@ -121,82 +105,78 @@ func (s *Service) CreateDocument(
 	queueProcessing := input.QueueProcessing && processable && !input.IsTemplate
 
 	if input.QueueProcessing && !queueProcessing {
-		return db.Document{}, errors.New("processing can only be queued for processable non-template documents")
+		return Document{}, errors.New("processing can only be queued for processable non-template documents")
 	}
 
-	status := db.DocumentStatus(input.Status)
+	status := input.Status
 	if input.Status == "" {
 		if queueProcessing {
-			status = db.DocumentStatusPENDING
+			status = DocumentStatusPending
 		} else {
-			status = db.DocumentStatusCOMPLETED
+			status = DocumentStatusCompleted
 		}
 	}
 
 	if queueProcessing && !input.ProcessType.IsValid() {
-		return db.Document{}, errors.New("invalid process type for processable document")
+		return Document{}, errors.New("invalid process type for processable document")
 	}
 
 	metadata := json.RawMessage([]byte(`{}`))
 	if len(input.Metadata) > 0 {
 		raw, err := json.Marshal(input.Metadata)
 		if err != nil {
-			return db.Document{}, fmt.Errorf("marshal document metadata: %w", err)
+			return Document{}, fmt.Errorf("marshal document metadata: %w", err)
 		}
 
 		metadata = raw
 	}
 
-	doc, err := s.repo.CreateDocument(
-		ctx,
-		db.CreateDocumentParams{
-			ID:               docID,
-			OriginalFilename: strings.TrimSpace(input.OriginalFilename),
-			ContentType: sql.NullString{
-				String: strings.TrimSpace(input.ContentType),
-				Valid:  strings.TrimSpace(input.ContentType) != "",
-			},
-			SizeBytes:         input.SizeBytes,
-			ChecksumSha256:    checksum,
-			StorageLocationID: input.StorageLocation,
-			ObjectKey:         strings.TrimSpace(input.ObjectKey),
-			UploadedBy:        input.UploadedBy,
-			Status:            status,
-			Metadata:          metadata,
-			IsTemplate:        input.IsTemplate,
-			HealthContextID:   nullableUUID(input.HealthContextID),
+	doc, err := s.repo.CreateDocument(ctx, NewDocument{
+		ID:               docID,
+		OriginalFilename: strings.TrimSpace(input.OriginalFilename),
+		ContentType: sql.NullString{
+			String: strings.TrimSpace(input.ContentType),
+			Valid:  strings.TrimSpace(input.ContentType) != "",
 		},
-	)
+		SizeBytes:         input.SizeBytes,
+		ChecksumSha256:    checksum,
+		StorageLocationID: input.StorageLocation,
+		ObjectKey:         strings.TrimSpace(input.ObjectKey),
+		UploadedBy:        input.UploadedBy,
+		Status:            status,
+		Metadata:          metadata,
+		IsTemplate:        input.IsTemplate,
+		HealthContextID:   nullableUUID(input.HealthContextID),
+	})
 	if err != nil {
-		return db.Document{}, fmt.Errorf("create document: %w", err)
+		return Document{}, fmt.Errorf("create document: %w", err)
 	}
 
 	if queueProcessing {
-		_, err = s.processRepo.CreateProcess(ctx, db.CreateProcessParams{
+		_, err = s.repo.CreateProcess(ctx, NewProcess{
 			ID:          uuid.New(),
 			DocumentID:  doc.ID,
 			ProcessType: string(input.ProcessType),
 			CreatedBy:   input.UploadedBy,
 		})
 		if err != nil {
-			return db.Document{}, fmt.Errorf("create document process: %w", err)
+			return Document{}, fmt.Errorf("create document process: %w", err)
 		}
 	}
 
-	nt := models.DocumentCreated
-	notification := models.Notification{
-		Type:       string(nt),
-		Title:      nt.Title(),
-		Severity:   nt.Severity(),
-		Message:    buildDocumentCreatedMessage(doc, queueProcessing, input.IsTemplate),
+	notification := modulekit.Notification{
+		Type:       notificationDocumentCreated,
+		Title:      notificationTitle,
+		Severity:   notificationSeverity,
+		Message:    buildDocumentCreatedMessage(queueProcessing, input.IsTemplate),
 		TargetRole: "admin",
 		UserID:     input.UploadedBy.String(),
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"document_id":       doc.ID.String(),
 			"filename":          doc.OriginalFilename,
 			"content_type":      nullStringValue(doc.ContentType),
 			"size_bytes":        doc.SizeBytes,
-			"status":            string(doc.Status),
+			"status":            doc.Status,
 			"object_key":        doc.ObjectKey,
 			"uploaded_by":       input.UploadedBy.String(),
 			"is_template":       doc.IsTemplate,
@@ -216,11 +196,11 @@ func (s *Service) CreateDocument(
 			"Document created and queued for processing",
 			fmt.Sprintf("Document %s was created and queued for processing.", doc.OriginalFilename),
 			map[string]any{
-				"Name":         s.systemAdminName(),
-				"Platform":     s.platformName(),
+				"Name":         s.platform.AdminName(),
+				"Platform":     s.platform.DisplayName(),
 				"DocumentName": doc.OriginalFilename,
 				"DocumentType": nullStringValue(doc.ContentType),
-				"Status":       string(doc.Status),
+				"Status":       doc.Status,
 				"ActionURL":    s.adminDocumentsURL(),
 				"Details": fmt.Sprintf(
 					"Document ID: %s\nFilename: %s\nContent Type: %s\nProcess Type: %s\nUploaded By: %s\nObject Key: %s",
@@ -240,69 +220,51 @@ func (s *Service) CreateDocument(
 	return doc, nil
 }
 
-func (s *Service) GetDocumentInScope(
-	ctx context.Context,
-	id uuid.UUID,
-	scope *HealthContextScope,
-) (db.Document, error) {
+func (s *Service) GetDocumentInScope(ctx context.Context, id uuid.UUID, scope *HealthContextScope) (Document, error) {
 	if scope == nil {
 		return s.GetDocument(ctx, id)
 	}
 	if scope.ID == uuid.Nil {
-		return db.Document{}, errors.New("health context id is required")
+		return Document{}, errors.New("health context id is required")
 	}
 	doc, err := s.repo.GetDocumentInHealthContext(ctx, id, *scope)
 	if err != nil {
-		return db.Document{}, fmt.Errorf("get document in health context: %w", err)
+		return Document{}, fmt.Errorf("get document in health context: %w", err)
 	}
 	return doc, nil
 }
 
-func (s *Service) GetDocument(
-	ctx context.Context,
-	id uuid.UUID,
-) (db.Document, error) {
-	if s == nil {
-		return db.Document{}, errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return db.Document{}, errors.New("document repository is nil")
+func (s *Service) GetDocument(ctx context.Context, id uuid.UUID) (Document, error) {
+	if err := s.ready(); err != nil {
+		return Document{}, err
 	}
 
 	if id == uuid.Nil {
-		return db.Document{}, errors.New("document id is required")
+		return Document{}, errors.New("document id is required")
 	}
 
 	doc, err := s.repo.GetDocument(ctx, id)
 	if err != nil {
-		return db.Document{}, fmt.Errorf("get document: %w", err)
+		return Document{}, fmt.Errorf("get document: %w", err)
 	}
 
 	return doc, nil
 }
 
-func (s *Service) EditDocument(
-	ctx context.Context,
-	input EditDocumentInput,
-) (db.Document, error) {
-	if s == nil {
-		return db.Document{}, errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return db.Document{}, errors.New("document repository is nil")
+func (s *Service) EditDocument(ctx context.Context, input EditDocumentInput) (Document, error) {
+	if err := s.ready(); err != nil {
+		return Document{}, err
 	}
 
 	if input.ID == uuid.Nil {
-		return db.Document{}, errors.New("document id is required")
+		return Document{}, errors.New("document id is required")
 	}
 
 	if strings.TrimSpace(input.OriginalFilename) == "" {
-		return db.Document{}, errors.New("original filename is required")
+		return Document{}, errors.New("original filename is required")
 	}
 
-	doc, err := s.repo.EditDocument(ctx, db.UpdateDocumentParams{
+	doc, err := s.repo.EditDocument(ctx, DocumentEdit{
 		ID:               input.ID,
 		OriginalFilename: strings.TrimSpace(input.OriginalFilename),
 		ContentType: sql.NullString{
@@ -311,49 +273,37 @@ func (s *Service) EditDocument(
 		},
 	})
 	if err != nil {
-		return db.Document{}, fmt.Errorf("edit document: %w", err)
+		return Document{}, fmt.Errorf("edit document: %w", err)
 	}
 
 	// In-app only.
-	nt := models.DocumentEdited
-	s.notify(ctx, models.Notification{
-		Type:       string(nt),
-		Title:      nt.Title(),
-		Severity:   nt.Severity(),
+	s.notify(ctx, modulekit.Notification{
+		Type:       notificationDocumentEdited,
+		Title:      notificationTitle,
+		Severity:   notificationSeverity,
 		Message:    "Document edited",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"document_id":  doc.ID.String(),
 			"filename":     doc.OriginalFilename,
 			"content_type": nullStringValue(doc.ContentType),
-			"status":       string(doc.Status),
+			"status":       doc.Status,
 		}),
 	})
 
 	return doc, nil
 }
 
-func (s *Service) EditDocumentInScope(
-	ctx context.Context,
-	input EditDocumentInput,
-	scope *HealthContextScope,
-) (db.Document, error) {
+func (s *Service) EditDocumentInScope(ctx context.Context, input EditDocumentInput, scope *HealthContextScope) (Document, error) {
 	if _, err := s.GetDocumentInScope(ctx, input.ID, scope); err != nil {
-		return db.Document{}, err
+		return Document{}, err
 	}
 	return s.EditDocument(ctx, input)
 }
 
-func (s *Service) DeleteDocument(
-	ctx context.Context,
-	id uuid.UUID,
-) error {
-	if s == nil {
-		return errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return errors.New("document repository is nil")
+func (s *Service) DeleteDocument(ctx context.Context, id uuid.UUID) error {
+	if err := s.ready(); err != nil {
+		return err
 	}
 
 	if id == uuid.Nil {
@@ -370,18 +320,17 @@ func (s *Service) DeleteDocument(
 	}
 
 	// In-app only. Add email here later if document deletion must be escalated.
-	nt := models.DocumentDeleted
-	s.notify(ctx, models.Notification{
-		Type:       string(nt),
-		Title:      nt.Title(),
-		Severity:   nt.Severity(),
+	s.notify(ctx, modulekit.Notification{
+		Type:       notificationDocumentDeleted,
+		Title:      notificationTitle,
+		Severity:   notificationSeverity,
 		Message:    "Document deleted",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"document_id":  id.String(),
 			"filename":     doc.OriginalFilename,
 			"content_type": nullStringValue(doc.ContentType),
-			"status":       string(doc.Status),
+			"status":       doc.Status,
 			"object_key":   doc.ObjectKey,
 			"is_template":  doc.IsTemplate,
 		}),
@@ -390,37 +339,22 @@ func (s *Service) DeleteDocument(
 	return nil
 }
 
-func (s *Service) DeleteDocumentInScope(
-	ctx context.Context,
-	id uuid.UUID,
-	scope *HealthContextScope,
-) error {
+func (s *Service) DeleteDocumentInScope(ctx context.Context, id uuid.UUID, scope *HealthContextScope) error {
 	if _, err := s.GetDocumentInScope(ctx, id, scope); err != nil {
 		return err
 	}
 	return s.DeleteDocument(ctx, id)
 }
 
-func (s *Service) ListDocuments(
-	ctx context.Context,
-	page models.Pagination,
-) ([]db.Document, error) {
-	if s == nil {
-		return nil, errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return nil, errors.New("document repository is nil")
+func (s *Service) ListDocuments(ctx context.Context, page Pagination) ([]Document, error) {
+	if err := s.ready(); err != nil {
+		return nil, err
 	}
 
 	return s.repo.ListDocuments(ctx, page)
 }
 
-func (s *Service) ListDocumentsInScope(
-	ctx context.Context,
-	scope *HealthContextScope,
-	page models.Pagination,
-) ([]db.Document, error) {
+func (s *Service) ListDocumentsInScope(ctx context.Context, scope *HealthContextScope, page Pagination) ([]Document, error) {
 	if scope == nil {
 		return s.ListDocuments(ctx, page)
 	}
@@ -430,16 +364,17 @@ func (s *Service) ListDocumentsInScope(
 	return s.repo.ListDocumentsInHealthContext(ctx, *scope, page)
 }
 
-func (s *Service) ListProcessesByDocument(
-	ctx context.Context,
-	documentID string,
-) ([]db.Process, error) {
-	if s == nil {
-		return nil, errors.New("document service is nil")
+// Stats summarises non-template documents in the scope (all when nil).
+func (s *Service) Stats(ctx context.Context, scope *HealthContextScope) (Stats, error) {
+	if err := s.ready(); err != nil {
+		return Stats{}, err
 	}
+	return s.repo.Stats(ctx, scope)
+}
 
-	if s.repo == nil {
-		return nil, errors.New("document repository is nil")
+func (s *Service) ListProcessesByDocument(ctx context.Context, documentID string) ([]Process, error) {
+	if err := s.ready(); err != nil {
+		return nil, err
 	}
 
 	docUUID, err := uuid.Parse(documentID)
@@ -455,11 +390,7 @@ func (s *Service) ListProcessesByDocument(
 	return s.repo.ListProcessesByDocument(ctx, docUUID)
 }
 
-func (s *Service) ListProcessesByDocumentInScope(
-	ctx context.Context,
-	documentID string,
-	scope *HealthContextScope,
-) ([]db.Process, error) {
+func (s *Service) ListProcessesByDocumentInScope(ctx context.Context, documentID string, scope *HealthContextScope) ([]Process, error) {
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid document id: %w", err)
@@ -470,20 +401,9 @@ func (s *Service) ListProcessesByDocumentInScope(
 	return s.repo.ListProcessesByDocument(ctx, docUUID)
 }
 
-func (s *Service) Reprocess(
-	ctx context.Context,
-	documentID uuid.UUID,
-) error {
-	if s == nil {
-		return errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return errors.New("document repository is nil")
-	}
-
-	if s.processRepo == nil {
-		return errors.New("process repository is nil")
+func (s *Service) Reprocess(ctx context.Context, documentID uuid.UUID) error {
+	if err := s.ready(); err != nil {
+		return err
 	}
 
 	if documentID == uuid.Nil {
@@ -502,12 +422,12 @@ func (s *Service) Reprocess(
 		return fmt.Errorf("document type does not support processing")
 	}
 
-	proc, err := s.repo.GetLatestByDocumentID(ctx, documentID)
+	proc, err := s.repo.GetLatestProcessByDocumentID(ctx, documentID)
 	if err != nil {
 		return fmt.Errorf("get latest process by document id: %w", err)
 	}
 
-	if proc.Status == db.ProcessStatusPROCESSING {
+	if proc.Status == ProcessStatusProcessing {
 		return fmt.Errorf("document already processing")
 	}
 
@@ -516,7 +436,7 @@ func (s *Service) Reprocess(
 		return fmt.Errorf("mark document pending: %w", err)
 	}
 
-	_, err = s.processRepo.CreateProcess(ctx, db.CreateProcessParams{
+	_, err = s.repo.CreateProcess(ctx, NewProcess{
 		ID:          uuid.New(),
 		DocumentID:  documentID,
 		ProcessType: proc.ProcessType,
@@ -526,15 +446,14 @@ func (s *Service) Reprocess(
 		return fmt.Errorf("create reprocess process: %w", err)
 	}
 
-	nt := models.DocumentEdited
-	notification := models.Notification{
-		Type:       string(nt),
+	notification := modulekit.Notification{
+		Type:       notificationDocumentEdited,
 		Title:      "Document reprocessing queued",
-		Severity:   nt.Severity(),
+		Severity:   notificationSeverity,
 		Message:    "Document reprocessing queued",
 		TargetRole: "admin",
 		UserID:     proc.CreatedBy.String(),
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"document_id":  doc.ID.String(),
 			"filename":     doc.OriginalFilename,
 			"content_type": nullStringValue(doc.ContentType),
@@ -549,8 +468,8 @@ func (s *Service) Reprocess(
 		"Document reprocessing queued",
 		fmt.Sprintf("Document %s was queued for reprocessing.", doc.OriginalFilename),
 		map[string]any{
-			"Name":         s.systemAdminName(),
-			"Platform":     s.platformName(),
+			"Name":         s.platform.AdminName(),
+			"Platform":     s.platform.DisplayName(),
 			"DocumentName": doc.OriginalFilename,
 			"DocumentType": nullStringValue(doc.ContentType),
 			"Status":       "PENDING",
@@ -571,74 +490,55 @@ func (s *Service) Reprocess(
 	return nil
 }
 
-func (s *Service) ReprocessInScope(
-	ctx context.Context,
-	documentID uuid.UUID,
-	scope *HealthContextScope,
-) error {
+func (s *Service) ReprocessInScope(ctx context.Context, documentID uuid.UUID, scope *HealthContextScope) error {
 	if _, err := s.GetDocumentInScope(ctx, documentID, scope); err != nil {
 		return err
 	}
 	return s.Reprocess(ctx, documentID)
 }
 
-func (s *Service) MarkDocumentProcessing(
-	ctx context.Context,
-	documentID uuid.UUID,
-) (db.Document, error) {
-	if s == nil {
-		return db.Document{}, errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return db.Document{}, errors.New("document repository is nil")
+func (s *Service) MarkDocumentProcessing(ctx context.Context, documentID uuid.UUID) (Document, error) {
+	if err := s.ready(); err != nil {
+		return Document{}, err
 	}
 
 	if documentID == uuid.Nil {
-		return db.Document{}, errors.New("document id is required")
+		return Document{}, errors.New("document id is required")
 	}
 
 	doc, err := s.repo.MarkDocumentProcessing(ctx, documentID)
 	if err != nil {
-		return db.Document{}, fmt.Errorf("mark document processing: %w", err)
+		return Document{}, fmt.Errorf("mark document processing: %w", err)
 	}
 
 	return doc, nil
 }
 
-func (s *Service) MarkDocumentCompleted(
-	ctx context.Context,
-	documentID uuid.UUID,
-) (db.Document, error) {
-	if s == nil {
-		return db.Document{}, errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return db.Document{}, errors.New("document repository is nil")
+func (s *Service) MarkDocumentCompleted(ctx context.Context, documentID uuid.UUID) (Document, error) {
+	if err := s.ready(); err != nil {
+		return Document{}, err
 	}
 
 	if documentID == uuid.Nil {
-		return db.Document{}, errors.New("document id is required")
+		return Document{}, errors.New("document id is required")
 	}
 
 	doc, err := s.repo.MarkDocumentCompleted(ctx, documentID)
 	if err != nil {
-		return db.Document{}, fmt.Errorf("mark document completed: %w", err)
+		return Document{}, fmt.Errorf("mark document completed: %w", err)
 	}
 
-	nt := models.DocumentEdited
-	notification := models.Notification{
-		Type:       string(nt),
+	notification := modulekit.Notification{
+		Type:       notificationDocumentEdited,
 		Title:      "Document processing completed",
 		Severity:   "info",
 		Message:    "Document processing completed",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"document_id":  doc.ID.String(),
 			"filename":     doc.OriginalFilename,
 			"content_type": nullStringValue(doc.ContentType),
-			"status":       string(doc.Status),
+			"status":       doc.Status,
 			"object_key":   doc.ObjectKey,
 		}),
 	}
@@ -649,8 +549,8 @@ func (s *Service) MarkDocumentCompleted(
 		"Document processing completed",
 		fmt.Sprintf("Document %s was processed successfully.", doc.OriginalFilename),
 		map[string]any{
-			"Name":         s.systemAdminName(),
-			"Platform":     s.platformName(),
+			"Name":         s.platform.AdminName(),
+			"Platform":     s.platform.DisplayName(),
 			"DocumentName": doc.OriginalFilename,
 			"DocumentType": nullStringValue(doc.ContentType),
 			"ActionURL":    s.adminDocumentsURL(),
@@ -659,7 +559,7 @@ func (s *Service) MarkDocumentCompleted(
 				doc.ID.String(),
 				doc.OriginalFilename,
 				nullStringValue(doc.ContentType),
-				string(doc.Status),
+				doc.Status,
 				doc.ObjectKey,
 			),
 		},
@@ -670,39 +570,31 @@ func (s *Service) MarkDocumentCompleted(
 	return doc, nil
 }
 
-func (s *Service) MarkDocumentFailed(
-	ctx context.Context,
-	documentID uuid.UUID,
-) (db.Document, error) {
-	if s == nil {
-		return db.Document{}, errors.New("document service is nil")
-	}
-
-	if s.repo == nil {
-		return db.Document{}, errors.New("document repository is nil")
+func (s *Service) MarkDocumentFailed(ctx context.Context, documentID uuid.UUID) (Document, error) {
+	if err := s.ready(); err != nil {
+		return Document{}, err
 	}
 
 	if documentID == uuid.Nil {
-		return db.Document{}, errors.New("document id is required")
+		return Document{}, errors.New("document id is required")
 	}
 
 	doc, err := s.repo.MarkDocumentFailed(ctx, documentID)
 	if err != nil {
-		return db.Document{}, fmt.Errorf("mark document failed: %w", err)
+		return Document{}, fmt.Errorf("mark document failed: %w", err)
 	}
 
-	nt := models.DocumentDeleted
-	notification := models.Notification{
-		Type:       string(nt),
+	notification := modulekit.Notification{
+		Type:       notificationDocumentDeleted,
 		Title:      "Document processing failed",
 		Severity:   "critical",
 		Message:    "Document processing failed",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"document_id":  doc.ID.String(),
 			"filename":     doc.OriginalFilename,
 			"content_type": nullStringValue(doc.ContentType),
-			"status":       string(doc.Status),
+			"status":       doc.Status,
 			"object_key":   doc.ObjectKey,
 		}),
 	}
@@ -713,8 +605,8 @@ func (s *Service) MarkDocumentFailed(
 		"Document processing failed",
 		fmt.Sprintf("Document %s failed during processing.", doc.OriginalFilename),
 		map[string]any{
-			"Name":         s.systemAdminName(),
-			"Platform":     s.platformName(),
+			"Name":         s.platform.AdminName(),
+			"Platform":     s.platform.DisplayName(),
 			"DocumentName": doc.OriginalFilename,
 			"DocumentType": nullStringValue(doc.ContentType),
 			"Reason":       "Processing failed. Please review process logs for details.",
@@ -724,7 +616,7 @@ func (s *Service) MarkDocumentFailed(
 				doc.ID.String(),
 				doc.OriginalFilename,
 				nullStringValue(doc.ContentType),
-				string(doc.Status),
+				doc.Status,
 				doc.ObjectKey,
 			),
 		},
@@ -735,11 +627,8 @@ func (s *Service) MarkDocumentFailed(
 	return doc, nil
 }
 
-func (s *Service) notify(
-	ctx context.Context,
-	notification models.Notification,
-) {
-	if s == nil || s.notifications == nil {
+func (s *Service) notify(ctx context.Context, notification modulekit.Notification) {
+	if s == nil || s.notifier == nil {
 		return
 	}
 
@@ -747,11 +636,11 @@ func (s *Service) notify(
 		notification.TargetRole = "admin"
 	}
 
-	_, _ = s.notifications.Notify(ctx, notification)
+	_ = s.notifier.Notify(ctx, notification)
 }
 
 func (s *Service) attachAdminEmailDelivery(
-	notification *models.Notification,
+	notification *modulekit.Notification,
 	templateName string,
 	subject string,
 	textBody string,
@@ -761,7 +650,7 @@ func (s *Service) attachAdminEmailDelivery(
 		return
 	}
 
-	adminEmail := strings.TrimSpace(s.systemAdminEmail())
+	adminEmail := s.platform.AdminEmail()
 	if adminEmail == "" {
 		return
 	}
@@ -771,20 +660,20 @@ func (s *Service) attachAdminEmailDelivery(
 	}
 
 	if _, ok := templateData["Name"]; !ok {
-		templateData["Name"] = s.systemAdminName()
+		templateData["Name"] = s.platform.AdminName()
 	}
 
 	if _, ok := templateData["Platform"]; !ok {
-		templateData["Platform"] = s.platformName()
+		templateData["Platform"] = s.platform.DisplayName()
 	}
 
 	if _, ok := templateData["ActionURL"]; !ok {
 		templateData["ActionURL"] = s.adminDocumentsURL()
 	}
 
-	notification.Deliveries = []models.NotificationDeliveryRequest{
+	notification.Deliveries = []modulekit.NotificationDelivery{
 		{
-			Channel: models.NotificationChannelInApp,
+			Channel: modulekit.ChannelInApp,
 			Recipient: map[string]any{
 				"target_role": notification.TargetRole,
 			},
@@ -797,9 +686,9 @@ func (s *Service) attachAdminEmailDelivery(
 			MaxAttempts: 1,
 		},
 		{
-			Channel: models.NotificationChannelEmail,
+			Channel: modulekit.ChannelEmail,
 			Recipient: map[string]any{
-				"name":  s.systemAdminName(),
+				"name":  s.platform.AdminName(),
 				"email": adminEmail,
 			},
 			TemplateName: templateName,
@@ -813,53 +702,9 @@ func (s *Service) attachAdminEmailDelivery(
 	}
 }
 
-func (s *Service) platformName() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.PlatformName) != "" {
-		return strings.TrimSpace(s.cfg.Notification.PlatformName)
-	}
+func (s *Service) adminDocumentsURL() string { return s.platform.AdminPageURL("documents") }
 
-	return "MOH Integrated Health Portal"
-}
-
-func (s *Service) systemAdminName() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.SystemAdminName) != "" {
-		return strings.TrimSpace(s.cfg.Notification.SystemAdminName)
-	}
-
-	return "System Administrator"
-}
-
-func (s *Service) systemAdminEmail() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.SystemAdminEmail) != "" {
-		return strings.TrimSpace(s.cfg.Notification.SystemAdminEmail)
-	}
-
-	return ""
-}
-
-func (s *Service) adminDashboardURL() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.AdminDashboardURL) != "" {
-		return strings.TrimSpace(s.cfg.Notification.AdminDashboardURL)
-	}
-
-	return "http://localhost:3000/admin/home"
-}
-
-func (s *Service) adminDocumentsURL() string {
-	base := strings.TrimRight(s.adminDashboardURL(), "/")
-
-	if strings.HasSuffix(base, "/admin/home") {
-		return strings.TrimSuffix(base, "/admin/home") + "/admin/documents"
-	}
-
-	return base + "/documents"
-}
-
-func buildDocumentCreatedMessage(
-	doc db.Document,
-	needsProcessing bool,
-	isTemplate bool,
-) string {
+func buildDocumentCreatedMessage(needsProcessing bool, isTemplate bool) string {
 	if isTemplate {
 		return "Document template created"
 	}

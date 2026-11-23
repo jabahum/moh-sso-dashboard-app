@@ -4,7 +4,6 @@ import (
 	authfeature "github.com/moh-sso-dashboard/internal/features/auth"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
 
-	documentsfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
@@ -18,6 +17,7 @@ import (
 	auditfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
 	dataqualityfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality"
 	documenttemplatesfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
+	documentsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/documents"
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
@@ -34,7 +34,7 @@ type Dependencies struct {
 	Metrics           *metricsfeature.Module
 	Audit             *auditfeature.Module
 	Notifications     *notificationsfeature.Handler
-	Documents         *documentsfeature.Handler
+	Documents         *documentsmodule.Module
 	DocumentTemplates *documenttemplatesfeature.Module
 	StorageLocations  *storagelocationfeature.Module
 	Sessions          *sessionfeature.Handler

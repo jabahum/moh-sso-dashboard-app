@@ -4,7 +4,7 @@ import (
 	"context"
 
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	repository "github.com/moh-sso-dashboard/internal/features/documents"
+	repository "github.com/moh-sso-dashboard/internal/repository/document_imports"
 	"github.com/moh-sso-dashboard/internal/storage"
 )
 

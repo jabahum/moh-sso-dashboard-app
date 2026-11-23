@@ -6,7 +6,6 @@ import (
 	"github.com/moh-sso-dashboard/internal/config"
 	storepkg "github.com/moh-sso-dashboard/internal/db/sqlc"
 	clientRepo "github.com/moh-sso-dashboard/internal/features/clients"
-	documentRepo "github.com/moh-sso-dashboard/internal/features/documents"
 	healthcontextRepo "github.com/moh-sso-dashboard/internal/features/health_context"
 	rbacRepo "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionRepo "github.com/moh-sso-dashboard/internal/features/sessions"
@@ -15,6 +14,7 @@ import (
 	kcClientPkg "github.com/moh-sso-dashboard/internal/keycloak"
 	logger "github.com/moh-sso-dashboard/internal/log"
 	authRepo "github.com/moh-sso-dashboard/internal/repository/auth"
+	documentimports "github.com/moh-sso-dashboard/internal/repository/document_imports"
 	emailRepo "github.com/moh-sso-dashboard/internal/repository/email"
 	notificationDeliveryRepo "github.com/moh-sso-dashboard/internal/repository/notification_delivery"
 	notificationPreferencesRepo "github.com/moh-sso-dashboard/internal/repository/notification_preferences"
@@ -29,8 +29,8 @@ type repositories struct {
 	Notifications           notificationsRepo.NotificationsRepository
 	NotificationDelivery    notificationDeliveryRepo.NotificationDeliveryRepository
 	NotificationPreferences notificationPreferencesRepo.NotificationPreferencesRepository
-	Documents               documentRepo.DocumentRepository
-	DocumentFiles           documentRepo.FileRepository
+	Documents               documentimports.DocumentRepository
+	DocumentFiles           documentimports.FileRepository
 	Processes               processRepo.ProcessRepository
 	Sessions                sessionRepo.SessionRepository
 	Email                   emailRepo.EmailRepository
@@ -70,8 +70,8 @@ func buildRepositories(
 		Notifications:           notificationsRepo.NewNotificationsRepository(store, *appLogger),
 		NotificationDelivery:    notificationDeliveryRepo.NewNotificationDeliveryRepository(store, *appLogger),
 		NotificationPreferences: notificationPreferencesRepo.NewNotificationPreferencesRepository(store),
-		Documents:               documentRepo.NewDocumentRepository(cfg, store, *appLogger),
-		DocumentFiles:           documentRepo.NewFileRepository(),
+		Documents:               documentimports.NewDocumentRepository(store),
+		DocumentFiles:           documentimports.NewFileRepository(),
 		Processes:               processRepo.NewProcessRepository(cfg, store, *appLogger),
 		Sessions:                sessionRepo.NewSessionRepository(adminKC, cfg, *appLogger),
 		Email:                   emailRepo.NewEmailRepository(cfg, store, *appLogger),

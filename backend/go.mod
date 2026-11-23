@@ -102,6 +102,7 @@ require (
 	github.com/mohuganda/moh-sso-dashboard/backend/modules/audit v0.2.0
 	github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality v0.0.0
 	github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates v0.0.0
+	github.com/mohuganda/moh-sso-dashboard/backend/modules/documents v0.0.0
 	github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson v0.2.0
 	github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics v0.2.0
 	github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler v0.1.1-0.20261120164120-d9bb6f8c819f
@@ -120,3 +121,5 @@ replace github.com/mohuganda/moh-sso-dashboard/backend/modules/visualiser => ./m
 replace github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates => ./modules/document-templates
 
 replace github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality => ./modules/data-quality
+
+replace github.com/mohuganda/moh-sso-dashboard/backend/modules/documents => ./modules/documents

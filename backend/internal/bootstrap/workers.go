@@ -11,10 +11,7 @@ import (
 	logger "github.com/moh-sso-dashboard/internal/log"
 	emailRepo "github.com/moh-sso-dashboard/internal/repository/email"
 	notificationDeliveryRepo "github.com/moh-sso-dashboard/internal/repository/notification_delivery"
-	processRepo "github.com/moh-sso-dashboard/internal/repository/processes"
 	"github.com/moh-sso-dashboard/internal/service"
-	importSvc "github.com/moh-sso-dashboard/internal/service/import"
-	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/moh-sso-dashboard/internal/worker"
 	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -24,9 +21,6 @@ type workerDependencies struct {
 	Statuses                       map[string]*core.WorkerStatus
 	PrimaryDB                      *sql.DB
 	Config                         *config.Config
-	ProcessRepository              processRepo.ProcessRepository
-	ImportService                  *importSvc.Service
-	FileStorage                    storage.Storage
 	EmailRepository                emailRepo.EmailRepository
 	SMTPService                    worker.EmailSender
 	NotificationDeliveryRepository notificationDeliveryRepo.NotificationDeliveryRepository
@@ -72,11 +66,6 @@ func startBackgroundWorkers(ctx context.Context, deps workerDependencies) (core.
 	// Prepare every worker before launching any goroutine so constructor failures
 	// cannot leave partially started workers accessing released resources.
 	tasks := []core.WorkerTask{}
-	document, err := worker.NewDocumentWorker(deps.ProcessRepository, deps.ImportService, 3*time.Second, deps.FileStorage, deps.Logger)
-	if err != nil {
-		return nil, fmt.Errorf("document worker: %w", err)
-	}
-	tasks = append(tasks, core.WorkerTask{Name: "document", Run: document.Start})
 	email, err := worker.NewEmailWorker(deps.EmailRepository, deps.SMTPService, 3*time.Second, 20, 3, deps.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("email worker: %w", err)

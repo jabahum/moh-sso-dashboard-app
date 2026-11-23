@@ -25,7 +25,7 @@ func TestCoreCompositionOmitsOptionalConstructorsAndRoutes(t *testing.T) {
 	if services.RBAC == nil || services.HealthContexts == nil || services.Auth == nil || services.Audit == nil || services.Sessions == nil || services.Notifications == nil {
 		t.Fatal("missing core capability")
 	}
-	if services.SMTP != nil || services.Email != nil || services.SMS != nil || services.Documents != nil || services.ReportScheduler != nil {
+	if services.SMTP != nil || services.Email != nil || services.SMS != nil || services.Import != nil || services.ReportScheduler != nil {
 		t.Fatal("optional service constructed")
 	}
 	handlers := buildHandlers(handlerDependencies{Config: cfg, Services: services})

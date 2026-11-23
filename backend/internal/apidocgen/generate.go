@@ -489,6 +489,14 @@ func applyOverrides(op, previous object) {
 				keys[name] = true
 			}
 		}
+		// Module contracts are decoded from JSON, so their list is []any.
+		if old, ok := schema["required"].([]any); ok {
+			for _, value := range old {
+				if name, ok := value.(string); ok {
+					keys[name] = true
+				}
+			}
+		}
 		for _, value := range additions {
 			if name, ok := value.(string); ok {
 				keys[name] = true

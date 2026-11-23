@@ -12,9 +12,9 @@ import (
 	"github.com/google/uuid"
 
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	documentRepository "github.com/moh-sso-dashboard/internal/features/documents"
 	"github.com/moh-sso-dashboard/internal/features/surveillance"
 	"github.com/moh-sso-dashboard/internal/model"
+	documentRepository "github.com/moh-sso-dashboard/internal/repository/document_imports"
 	processRepository "github.com/moh-sso-dashboard/internal/repository/processes"
 	"github.com/moh-sso-dashboard/internal/storage"
 )

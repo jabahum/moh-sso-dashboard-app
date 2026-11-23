@@ -13,8 +13,6 @@ import (
 	authfeature "github.com/moh-sso-dashboard/internal/features/auth"
 	"github.com/moh-sso-dashboard/internal/features/authsession"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
-
-	documentsfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
@@ -103,15 +101,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 	}
 	notificationsHandler := notificationsfeature.NewHandler(deps.Services.Notifications, deps.Services.Audit)
 
-	documentHandler := documentsfeature.NewHandler(
-		deps.Services.Documents,
-		deps.Services.Audit,
-		deps.Services.StorageLocations,
-		deps.FileStorage,
-		deps.StorageFactory,
-		deps.Databases.Primary,
-		deps.Databases.Remote,
-	)
+	documentsModule := buildDocumentsModule(deps)
 
 	sessionHandler := sessionfeature.NewHandler(deps.Services.Sessions)
 	dataQualityHandler := buildDataQualityModule(deps)
@@ -198,7 +188,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			Metrics:           metricsHandler,
 			Audit:             auditHandler,
 			Notifications:     notificationsHandler,
-			Documents:         documentHandler,
+			Documents:         documentsModule,
 			DocumentTemplates: deps.Services.DocumentTemplatesModule,
 			StorageLocations:  deps.Services.StorageLocationsModule,
 			Sessions:          sessionHandler,

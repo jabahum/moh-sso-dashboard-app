@@ -9,7 +9,6 @@ import (
 	"github.com/moh-sso-dashboard/internal/config"
 	storepkg "github.com/moh-sso-dashboard/internal/db/sqlc"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
-	documentfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
@@ -39,7 +38,6 @@ type services struct {
 	StorageLocations        storagelocationfeature.Service
 	StorageLocationsModule  *storagelocationfeature.Module
 	Sessions                sessionfeature.Service
-	Documents               *documentfeature.Service
 	Clients                 *clientfeature.Service
 	Users                   *userfeature.Service
 	Diseases                *surveillancefeature.DiseaseService
@@ -165,14 +163,6 @@ func buildServices(deps serviceDependencies) services {
 	storageLocationService := storageLocationsModule.Service
 
 	sessionService := sessionfeature.NewService(deps.Repositories.Sessions)
-	documentService := documentfeature.NewService(
-		deps.Repositories.Documents,
-		deps.Repositories.Processes,
-		notificationsService,
-		deps.FileStorage,
-		deps.Config,
-	)
-
 	clientService := clientfeature.NewService(
 		deps.Repositories.Clients,
 		notificationsService,
@@ -270,7 +260,6 @@ func buildServices(deps serviceDependencies) services {
 		StorageLocations:        storageLocationService,
 		StorageLocationsModule:  storageLocationsModule,
 		Sessions:                sessionService,
-		Documents:               documentService,
 		Clients:                 clientService,
 		Users:                   userService,
 		Diseases:                diseaseService,

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	dataqualitymodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality"
+	documentsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/documents"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -161,6 +162,19 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 			}
 			// The middleware only names the caller for created_by/reported_by fields.
 			modulehttp.Register(routes.ContextScoped.Group("", kitadapter.CallerNameMiddleware()), handlers.DataQuality)
+		},
+	}, module.Definition{
+		Info:     module.Info{ID: documentsmodule.ID, Version: documentsmodule.Version(), Enabled: enabled[documentsmodule.ID]},
+		Requires: []string{storagelocationsmodule.ID},
+		Initialize: func(ctx context.Context) (module.Stop, error) {
+			if handlers.Documents == nil {
+				return nil, errors.New("documents module is required")
+			}
+			// Runs the document processing worker until shutdown.
+			return handlers.Documents.Initialize(ctx)
+		},
+		Register: func(routes module.Routes) {
+			modulehttp.Register(routes.ContextScoped, handlers.Documents)
 		},
 	})
 }

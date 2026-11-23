@@ -16,7 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	documentRepository "github.com/moh-sso-dashboard/internal/features/documents"
+	documentRepository "github.com/moh-sso-dashboard/internal/repository/document_imports"
 	processRepository "github.com/moh-sso-dashboard/internal/repository/processes"
 	"github.com/moh-sso-dashboard/internal/storage"
 	documenttemplates "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
