@@ -1,5 +1,33 @@
 # @moh-sso/rbac
 
+## 1.7.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/users@1.7.0
+  - @moh-sso/api@1.8.0
+  - @moh-sso/auth@1.8.0
+  - @moh-sso/microfrontend@1.8.0
+  - @moh-sso/types@1.8.0
+  - @moh-sso/ui@1.8.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.6.0`.
+
+- Use tabs for governance tasks and dialogs for destructive governance actions (`2040bbfd`)
+- Rebuild the RBAC page around application and portal-wide scopes (`363d111e`)
+- Add the portal-wide realm permission and group panels (`6db3d5ee`)
+- Add the application panels of the RBAC workspace (`67e71aff`)
+- Stage permission changes and save them after review (`6b49198c`)
+- Add shared RBAC workspace helpers for confirmations, unsaved changes and inline errors (`aa02bacd`)
+
 ## 1.6.0
 
 ### Minor Changes
@@ -22,6 +50,7 @@
   - @moh-sso/ui@1.7.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.5.1`.
