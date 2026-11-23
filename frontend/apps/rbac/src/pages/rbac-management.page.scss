@@ -1211,3 +1211,77 @@
     margin-bottom: 0;
   }
 }
+
+// Identity sync (IdentitySyncPanel)
+.rbac-identity-sync {
+  display: grid;
+  gap: 1rem;
+  // Keep the last table row clear of the shell's fixed footer.
+  padding-bottom: 5rem;
+}
+
+.rbac-identity-sync__form {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  align-items: end;
+}
+
+.rbac-identity-sync__actions,
+.rbac-identity-sync__counts,
+.rbac-identity-sync__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rbac-identity-sync__toolbar {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-items: end;
+  margin: 1rem 0;
+}
+
+.rbac-identity-sync__run {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.rbac-identity-sync__descriptor,
+.rbac-identity-sync__muted {
+  color: var(--cds-text-secondary);
+}
+
+.rbac-identity-sync__table {
+  overflow-x: auto;
+
+  &--wide table {
+    min-width: 64rem;
+  }
+
+  th,
+  td {
+    white-space: nowrap;
+  }
+
+  .rbac-identity-sync__wrap {
+    min-width: 16rem;
+    white-space: normal;
+  }
+}
+
+.rbac-identity-sync__run h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.rbac-identity-sync__binding {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  grid-column: 1 / -1;
+}

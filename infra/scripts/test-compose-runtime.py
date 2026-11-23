@@ -102,6 +102,14 @@ touch /data/uploads/runtime-permission-check
 printf 'secret-loading-and-nonroot-upload-ok'
 ''')
             executable.chmod(0o755)
+            cli = backend / 'fixture/moh-sso'
+            cli.write_text('''#!/bin/sh
+set -eu
+test "$(id -u)" != 0
+test "$CLIMS_SYNC_CLIENT_SECRET" = 'fixture-sync-secret'
+printf 'cli-sync-secret-ok'
+''')
+            cli.chmod(0o755)
             stage = (ROOT / 'infra/docker/backend/Dockerfile').read_text().split('FROM alpine:', 1)[1]
             (backend / 'Dockerfile').write_text('FROM nginx:1.30.6-alpine AS builder\nCOPY fixture /app\nFROM alpine:' + stage)
             image = prefix + ':backend'
@@ -122,6 +130,15 @@ printf 'secret-loading-and-nonroot-upload-ok'
                             '-e', 'OBSERVATORY_DB_PASSWORD=placeholder',
                             '-e', 'OBSERVATORY_DB_PASSWORD_FILE=/run/secrets/db', image)
             assert result == 'secret-loading-and-nonroot-upload-ok'
+            # The operator CLI runs through the entrypoint: per-application
+            # identity-sync secrets load from <APP>_SYNC_CLIENT_SECRET_FILE.
+            sync_secret = tmp / 'sync-secret'
+            sync_secret.write_text('fixture-sync-secret\n')
+            sync_secret.chmod(0o600)
+            result = docker('run', '--rm', '-v', f'{sync_secret}:/run/secrets/clims_sync:ro',
+                            '-e', 'CLIMS_SYNC_CLIENT_SECRET_FILE=/run/secrets/clims_sync',
+                            '--entrypoint', '/usr/local/bin/sso-entrypoint', image, '/app/moh-sso')
+            assert result == 'cli-sync-secret-ok', result
 
             # Use the exact development healthcheck against a fresh local IdP.
             spec = importlib.util.spec_from_file_location('compose_contracts', ROOT / 'infra/scripts/test-compose.py')

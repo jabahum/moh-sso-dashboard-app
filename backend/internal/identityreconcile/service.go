@@ -30,7 +30,17 @@ const (
 	Review Action = "review"
 	Reuse  Action = "reuse"
 	Create Action = "create"
+	// Linked: the account is already linked for the configured issuer. Single
+	// apply never grants it (the batch's linked / linked_no_access rule).
+	Linked Action = "linked"
+	// Revoked: the matched or linked identity has an active revocation for the
+	// application; only an explicit restore lets a later sync grant it.
+	Revoked Action = "revoked"
 )
+
+// ErrAccountAlreadyLinked reports that single apply refused an account that is
+// already linked for the configured issuer.
+var ErrAccountAlreadyLinked = errors.New("account is already linked")
 
 type Decision struct {
 	Account  identitysync.Account
@@ -53,6 +63,34 @@ type Service struct {
 	Accounts  Accounts
 	Directory Directory
 	Issuer    string
+	// Application and Revocations, when Revocations is set, make Apply refuse
+	// an identity whose access to Application was revoked (Track C), checked
+	// before the link and again before the grant. Nil keeps the old behaviour
+	// (used only for applications outside the registry, which cannot have
+	// revocations).
+	Application string
+	Revocations RevocationChecker
+}
+
+// ErrIdentityRevoked reports that Apply refused an identity whose access to the
+// application was revoked and not restored.
+var ErrIdentityRevoked = errors.New("identity access to this application is revoked; restore it first")
+
+func (s Service) checkRevoked(ctx context.Context, identity identitysync.Identity) error {
+	if s.Revocations == nil {
+		return nil
+	}
+	if strings.TrimSpace(s.Application) == "" {
+		return errors.New("revocation check needs the application")
+	}
+	revoked, err := s.Revocations.IsRevoked(ctx, s.Application, identity.Issuer, identity.Subject)
+	if err != nil {
+		return fmt.Errorf("check revocation: %w", err)
+	}
+	if revoked {
+		return ErrIdentityRevoked
+	}
+	return nil
 }
 
 // Preview performs reads only. Directory errors stop the preview instead of
@@ -76,8 +114,32 @@ func (s Service) Preview(ctx context.Context, cursor string, limit int) (Preview
 	return result, nil
 }
 
+// isRevoked reports an active revocation; false when no revocation list is set.
+func (s Service) isRevoked(ctx context.Context, identity identitysync.Identity) (bool, error) {
+	err := s.checkRevoked(ctx, identity)
+	if errors.Is(err, ErrIdentityRevoked) {
+		return true, nil
+	}
+	return false, err
+}
+
 func (s Service) propose(ctx context.Context, account identitysync.Account) (Decision, error) {
 	decision := Decision{Account: account, Action: Review}
+	if account.Link != (identitysync.Identity{}) {
+		// Linked to another issuer: a person must look at it.
+		if !s.valid(account.Link) {
+			return decision, nil
+		}
+		decision.Action, decision.Identity = Linked, account.Link
+		revoked, err := s.isRevoked(ctx, account.Link)
+		if err != nil {
+			return Decision{}, err
+		}
+		if revoked {
+			decision.Action = Revoked
+		}
+		return decision, nil
+	}
 	if account.ID == "" || strings.TrimSpace(account.Email) == "" {
 		return decision, nil
 	}
@@ -92,6 +154,13 @@ func (s Service) propose(ctx context.Context, account identitysync.Account) (Dec
 		if s.valid(matches[0]) {
 			decision.Action = Reuse
 			decision.Identity = matches[0]
+			revoked, err := s.isRevoked(ctx, matches[0])
+			if err != nil {
+				return Decision{}, err
+			}
+			if revoked {
+				decision.Action = Revoked
+			}
 		}
 	}
 	return decision, nil
@@ -103,6 +172,15 @@ func (s Service) propose(ctx context.Context, account identitysync.Account) (Dec
 func (s Service) Apply(ctx context.Context, reviewed Decision, current identitysync.Account) error {
 	if current != reviewed.Account || (reviewed.Action != Reuse && reviewed.Action != Create) {
 		return errors.New("decision requires a fresh review")
+	}
+	// An account the application already reports as linked is never granted
+	// here: it is either linked with access (nothing to do) or linked without
+	// access (linked_no_access), and access removed on purpose must stay removed.
+	if current.Link != (identitysync.Identity{}) {
+		return fmt.Errorf("%w: account %s is linked to %s %s; single apply never grants a linked account. "+
+			"If it has no access, that is linked_no_access: restore access explicitly (grant the access role in the portal, "+
+			"which also clears an active revocation, or 'identity-sync restore' followed by a reviewed grant)",
+			ErrAccountAlreadyLinked, current.ID, current.Link.Issuer, current.Link.Subject)
 	}
 	identity := reviewed.Identity
 	if reviewed.Action == Create {
@@ -126,11 +204,37 @@ func (s Service) Apply(ctx context.Context, reviewed Decision, current identitys
 	if !s.valid(identity) {
 		return errors.New("directory returned an invalid identity")
 	}
+	if err := s.checkRevoked(ctx, identity); err != nil {
+		return err
+	}
 	if err := s.Accounts.LinkIdentity(ctx, current.ID, identity); err != nil {
 		return fmt.Errorf("link local account: %w", err)
 	}
-	if err := s.Directory.GrantAccess(ctx, identity); err != nil {
-		return fmt.Errorf("grant application access after linking: %w", err)
+	// "check revoked -> grant" holds the access lock revocations take, so a
+	// revocation cannot land between the check and the grant (access_lock.go).
+	err := withAccessLock(ctx, accessLockerOf(s.Revocations), s.Application, identity.Subject, func(ctx context.Context) error {
+		if err := s.checkRevoked(ctx, identity); err != nil {
+			return err
+		}
+		if err := s.Directory.GrantAccess(ctx, identity); err != nil {
+			return fmt.Errorf("grant application access after linking: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if enforcer := enforcerOf(s.Revocations); enforcer != nil {
+		enforced, err := enforcer.EnforceRevocation(ctx, s.Application, identity.Issuer, identity.Subject, "identity-sync apply")
+		if enforced {
+			if err != nil {
+				return fmt.Errorf("%w: %v", ErrRevokedDuringApply, err)
+			}
+			return ErrRevokedDuringApply
+		}
+		if err != nil {
+			return fmt.Errorf("re-check revocation after granting access: %w", err)
+		}
 	}
 	return nil
 }

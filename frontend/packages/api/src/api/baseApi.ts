@@ -268,6 +268,7 @@ export const baseApi = createApi({
     "RbacAccessRequest",
     "RbacChangeRequest",
     "RbacAudit",
+    "IdentitySync",
     "Datasets",
     "DataElements",
     "DataValidationRules",

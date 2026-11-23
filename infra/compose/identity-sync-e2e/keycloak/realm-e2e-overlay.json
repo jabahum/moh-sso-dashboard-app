@@ -1,0 +1,731 @@
+{
+ "_comment": "E2E overlay for infra/keycloak/realm-export.json. Every secret and password here is a FAKE fixture value for the disposable idsync-e2e stack.",
+ "smtpServer": {
+  "host": "mailpit",
+  "port": "1025",
+  "from": "no-reply@e2e.test",
+  "fromDisplayName": "MoH SSO e2e",
+  "auth": "false",
+  "ssl": "false",
+  "starttls": "false"
+ },
+ "clients": [
+  {
+   "clientId": "dashboard-admin",
+   "secret": "e2e-fake-dashboard-admin-secret"
+  },
+  {
+   "clientId": "dashboard-web",
+   "secret": "e2e-fake-dashboard-web-secret",
+   "rootUrl": "https://dashboard.e2e.test:18443/portal",
+   "baseUrl": "https://dashboard.e2e.test:18443/portal",
+   "redirectUris": [
+    "https://dashboard.e2e.test:18443/api/v1/auth/callback"
+   ],
+   "webOrigins": [
+    "https://dashboard.e2e.test:18443"
+   ]
+  },
+  {
+   "clientId": "clims",
+   "secret": "e2e-fake-clims-oidc-secret",
+   "baseUrl": "https://clims.e2e.test:18443/api/v1/auth/sso/start",
+   "redirectUris": [
+    "https://clims.e2e.test:18443/api/v1/auth/sso/callback"
+   ],
+   "attributes": {
+    "ui.launchUrl": "https://clims.e2e.test:18443/api/v1/auth/sso/start"
+   }
+  },
+  {
+   "clientId": "poesgo",
+   "secret": "e2e-fake-poesgo-oidc-secret",
+   "baseUrl": "https://poes.e2e.test:18443/api/v1/auth/sso/start",
+   "redirectUris": [
+    "https://poes.e2e.test:18443/api/v1/auth/sso/callback"
+   ],
+   "attributes": {
+    "ui.launchUrl": "https://poes.e2e.test:18443/api/v1/auth/sso/start"
+   }
+  },
+  {
+   "clientId": "clims-identity-sync",
+   "secret": "e2e-fake-clims-sync-secret"
+  },
+  {
+   "clientId": "poesgo-identity-sync",
+   "secret": "e2e-fake-poesgo-sync-secret"
+  },
+  {
+   "clientId": "e2e-other-service",
+   "name": "e2e other service",
+   "description": "E2E only: a service client that is not the sync client (conformance other-client / missing-role checks)",
+   "enabled": true,
+   "protocol": "openid-connect",
+   "publicClient": false,
+   "secret": "e2e-fake-other-service-secret",
+   "serviceAccountsEnabled": true,
+   "standardFlowEnabled": false,
+   "directAccessGrantsEnabled": false,
+   "fullScopeAllowed": false,
+   "defaultClientScopes": [
+    "roles"
+   ],
+   "protocolMappers": [
+    {
+     "name": "clims-audience",
+     "protocol": "openid-connect",
+     "protocolMapper": "oidc-audience-mapper",
+     "consentRequired": false,
+     "config": {
+      "included.client.audience": "clims",
+      "id.token.claim": "false",
+      "access.token.claim": "true"
+     }
+    },
+    {
+     "name": "poesgo-audience",
+     "protocol": "openid-connect",
+     "protocolMapper": "oidc-audience-mapper",
+     "consentRequired": false,
+     "config": {
+      "included.client.audience": "poesgo",
+      "id.token.claim": "false",
+      "access.token.claim": "true"
+     }
+    }
+   ],
+   "attributes": {
+    "portal.system": "false",
+    "ui.displayInLauncher": "false",
+    "ui.displayInSideNav": "false"
+   }
+  },
+  {
+   "clientId": "e2e-user-token",
+   "name": "e2e user token",
+   "description": "E2E only: password grant for a test user's access token (conformance user-token check)",
+   "enabled": true,
+   "protocol": "openid-connect",
+   "publicClient": true,
+   "serviceAccountsEnabled": false,
+   "standardFlowEnabled": false,
+   "directAccessGrantsEnabled": true,
+   "fullScopeAllowed": true,
+   "defaultClientScopes": [
+    "roles",
+    "profile",
+    "email"
+   ],
+   "protocolMappers": [
+    {
+     "name": "clims-audience",
+     "protocol": "openid-connect",
+     "protocolMapper": "oidc-audience-mapper",
+     "consentRequired": false,
+     "config": {
+      "included.client.audience": "clims",
+      "id.token.claim": "false",
+      "access.token.claim": "true"
+     }
+    },
+    {
+     "name": "poesgo-audience",
+     "protocol": "openid-connect",
+     "protocolMapper": "oidc-audience-mapper",
+     "consentRequired": false,
+     "config": {
+      "included.client.audience": "poesgo",
+      "id.token.claim": "false",
+      "access.token.claim": "true"
+     }
+    }
+   ],
+   "attributes": {
+    "portal.system": "false",
+    "ui.displayInLauncher": "false",
+    "ui.displayInSideNav": "false"
+   }
+  }
+ ],
+ "users": [
+  {
+   "id": "e2e00000-0000-4000-8000-000000000001",
+   "username": "e2e.admin",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "E2E",
+   "lastName": "Portal Admin",
+   "email": "e2e.admin@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "admin"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_admin"
+    ]
+   },
+   "groups": [
+    "/MOH/Platform Administrators"
+   ]
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000010",
+   "username": "both.apps",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Both",
+   "lastName": "Apps",
+   "email": "both.apps@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000101",
+   "username": "clims.linked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "Linked",
+   "email": "clims.linked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000102",
+   "username": "clims.unlinked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "Unlinked",
+   "email": "clims.unlinked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000103",
+   "username": "clims.noaccess",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "NoAccess",
+   "email": "clims.noaccess@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000104",
+   "username": "clims.disabled",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "Disabled",
+   "email": "clims.disabled@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000105",
+   "username": "clims.orphan",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "Orphan",
+   "email": "clims.orphan@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000106",
+   "username": "clims.kcdisabled",
+   "enabled": false,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "KcDisabled",
+   "email": "clims.kcdisabled@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000201",
+   "username": "poes.linked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Poes",
+   "lastName": "Linked",
+   "email": "poes.linked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000202",
+   "username": "poes.unlinked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Poes",
+   "lastName": "Unlinked",
+   "email": "poes.unlinked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000203",
+   "username": "poes.noaccess",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Poes",
+   "lastName": "NoAccess",
+   "email": "poes.noaccess@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000204",
+   "username": "poes.disabled",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Poes",
+   "lastName": "Disabled",
+   "email": "poes.disabled@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000205",
+   "username": "poes.orphan",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Poes",
+   "lastName": "Orphan",
+   "email": "poes.orphan@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000011",
+   "username": "removal.both",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Removal",
+   "lastName": "Both",
+   "email": "removal.both@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000012",
+   "username": "browser.unlinked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Browser",
+   "lastName": "Unlinked",
+   "email": "browser.unlinked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000013",
+   "username": "browser.noaccess",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Browser",
+   "lastName": "NoAccess",
+   "email": "browser.noaccess@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000301",
+   "username": "contract.user",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Contract",
+   "lastName": "User",
+   "email": "contract.user@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "username": "service-account-clims-identity-sync",
+   "id": "e2e00000-0000-4000-8000-000000000901"
+  },
+  {
+   "username": "service-account-poesgo-identity-sync",
+   "id": "e2e00000-0000-4000-8000-000000000902"
+  },
+  {
+   "username": "service-account-e2e-other-service",
+   "id": "e2e00000-0000-4000-8000-000000000903",
+   "enabled": true,
+   "serviceAccountClientId": "e2e-other-service"
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000107",
+   "username": "clims.unverified",
+   "enabled": true,
+   "emailVerified": false,
+   "firstName": "Clims",
+   "lastName": "Unverified",
+   "email": "clims.unverified@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000108",
+   "username": "clims.recheckdir",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "RecheckDir",
+   "email": "clims.recheckdir@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000109",
+   "username": "clims.recheckacct",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Clims",
+   "lastName": "RecheckAcct",
+   "email": "clims.recheckacct@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000110",
+   "username": "screens.unlinked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Screens",
+   "lastName": "Unlinked",
+   "email": "screens.unlinked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  }
+ ]
+}

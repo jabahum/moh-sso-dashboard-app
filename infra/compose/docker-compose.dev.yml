@@ -183,6 +183,9 @@ services:
       # Realm comes from the private dev env file, so local isolation is configurable.
       KEYCLOAK_REDIRECT_URI: http://localhost:9000/api/v1/auth/callback
       RBAC_STARTUP_SYNC_REALM_EXPORT_PATH: /infra/keycloak/realm-export.json
+      # Identity-sync origins on a private/loopback network (local apps, e2e
+      # stacks) must be listed here; production leaves it empty.
+      IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS: ${IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS:-}
       FRONTEND_BASE_URL: http://localhost:3000/portal
       FRONTEND_REDIRECT_URI: http://localhost:3000/portal
       APP_BASE_URL: http://localhost:9000

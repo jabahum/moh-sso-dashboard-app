@@ -63,6 +63,12 @@ backend:
     clientId: "" # optional; empty keeps platform service APIs disabled
     audience: moh-platform-api
 
+  identitySync:
+    # Comma-separated app hosts allowed to resolve to private/loopback addresses
+    # (split-horizon DNS, in-cluster service names). Empty refuses them all; set
+    # it before upgrading if a registered app origin resolves internally.
+    allowedPrivateHosts: ""
+
   healthBI:
     baseUrl: "" # https://dashboards.health.go.ug/report-browser; enable after configuring the Keycloak service account
     keycloakClientId: report-scheduler-worker

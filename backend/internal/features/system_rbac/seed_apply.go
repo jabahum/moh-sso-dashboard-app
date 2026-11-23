@@ -375,16 +375,18 @@ func upsertSystemRole(ctx context.Context, tx *sql.Tx, systemID string, role See
 	var id string
 	err = tx.QueryRowContext(ctx, `
 		INSERT INTO ihp_system_roles (
-			system_id, role_name, display_name, description, enabled, metadata
-		) VALUES ($1::uuid, $2, NULLIF($3, ''), NULLIF($4, ''), TRUE, $5)
+			system_id, role_name, display_name, description, enabled, metadata, service_only
+		) VALUES ($1::uuid, $2, NULLIF($3, ''), NULLIF($4, ''), TRUE, $5, $6)
 		ON CONFLICT (system_id, role_name) DO UPDATE SET
 			display_name = EXCLUDED.display_name,
 			description = EXCLUDED.description,
 			enabled = EXCLUDED.enabled,
 			metadata = EXCLUDED.metadata,
+			-- A seed can mark a role service-only but never silently re-expose one to people.
+			service_only = ihp_system_roles.service_only OR EXCLUDED.service_only,
 			updated_at = now()
 		RETURNING id::text
-	`, systemID, strings.ToLower(strings.TrimSpace(role.Name)), role.DisplayName, role.Description, metadata).Scan(&id)
+	`, systemID, strings.ToLower(strings.TrimSpace(role.Name)), role.DisplayName, role.Description, metadata, role.ServiceOnly).Scan(&id)
 
 	return id, err
 }

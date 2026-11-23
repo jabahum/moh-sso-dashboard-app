@@ -21,7 +21,7 @@ import (
 func manifestTestRepository(t *testing.T) (*postgresRepository, *sql.DB) {
 	t.Helper()
 	db := registryTestDatabase(t)
-	for _, name := range []string{"000026_create_system_rbac_schema.up.sql", "000027_extend_rbac_governance.up.sql", "000030_add_realm_role_system_roles.up.sql", "000033_extend_system_launch_behavior.up.sql", "000048_application_registry_lifecycle.up.sql", "000059_grandfather_existing_client_lifecycle.up.sql"} {
+	for _, name := range []string{"000026_create_system_rbac_schema.up.sql", "000027_extend_rbac_governance.up.sql", "000030_add_realm_role_system_roles.up.sql", "000033_extend_system_launch_behavior.up.sql", "000038_add_rbac_groups.up.sql", "000048_application_registry_lifecycle.up.sql", "000059_grandfather_existing_client_lifecycle.up.sql", "000061_service_only_system_roles.up.sql"} {
 		raw, err := os.ReadFile(filepath.Join("..", "..", "db", "migrations", name))
 		if err != nil {
 			t.Fatal(err)

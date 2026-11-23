@@ -127,3 +127,25 @@ func (r *PostgresRepository) UserAccess(ctx context.Context, application string,
 	}
 	return result, rows.Err()
 }
+
+// ListIdentities returns an application's registered service identities.
+func (r *PostgresRepository) ListIdentities(ctx context.Context, application string) ([]Identity, error) {
+	rows, err := r.DB.QueryContext(ctx, `SELECT oauth_client_id, subject, scopes, enabled FROM ihp_application_identities
+ WHERE application_client_id = $1 ORDER BY oauth_client_id`, application)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	identities := []Identity{}
+	for rows.Next() {
+		identity := Identity{ApplicationID: application}
+		if err := rows.Scan(&identity.ClientID, &identity.Subject, pq.Array(&identity.Scopes), &identity.Enabled); err != nil {
+			return nil, err
+		}
+		if identity.Scopes == nil {
+			identity.Scopes = []string{}
+		}
+		identities = append(identities, identity)
+	}
+	return identities, rows.Err()
+}

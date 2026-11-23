@@ -25,6 +25,7 @@ data:
   KEYCLOAK_WEB_CLIENT_ID: "dashboard-web"
   PLATFORM_AUTH_CLIENT_ID: {{ .Values.backend.platformAuth.clientId | quote }}
   PLATFORM_AUTH_AUDIENCE: {{ .Values.backend.platformAuth.audience | quote }}
+  IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS: {{ .Values.backend.identitySync.allowedPrivateHosts | default "" | quote }}
   KEYCLOAK_REDIRECT_URI: {{ include "moh-sso.keycloak.redirectUri" . | quote }}
 
   # --------------------------------------------------

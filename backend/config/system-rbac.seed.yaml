@@ -220,6 +220,7 @@ systems:
       - name: report_scheduler_service
         displayName: Report Scheduler Service
         description: Service-account access to Health BI generation APIs; no portal user permissions
+        serviceOnly: true
         permissions: []
       - name: report-scheduler_access
         displayName: Report Scheduler Access
@@ -549,7 +550,7 @@ systems:
   - clientId: clims
     displayName: CLIMS
     description: Laboratory orders, specimens and results.
-    launchUrl: https://clims.health.go.ug/
+    launchUrl: https://clims.health.go.ug/api/v1/auth/sso/start
     category: laboratory
     systemType: external
     displayInLauncher: true
@@ -565,6 +566,11 @@ systems:
           - portal:access
           - systems:read
           - systems:launch
+      - name: identity_sync
+        displayName: CLIMS Identity Sync
+        description: Service-account access for the dashboard reconciler to list CLIMS accounts and record identity links; no portal user permissions
+        serviceOnly: true
+        permissions: []
   - clientId: poesgo
     displayName: Poesgo
     description: Point-of-entry screening.
@@ -584,6 +590,11 @@ systems:
           - portal:access
           - systems:read
           - systems:launch
+      - name: identity_sync
+        displayName: Poesgo Identity Sync
+        description: Service-account access for the dashboard reconciler to list Poesgo accounts and record identity links; no portal user permissions
+        serviceOnly: true
+        permissions: []
   - clientId: digital-timesheets
     displayName: Health Workforce Portal
     description: Digital timesheets and clinical training.

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
 	systemrbac "github.com/moh-sso-dashboard/internal/features/system_rbac"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	"github.com/moh-sso-dashboard/internal/model"
@@ -22,6 +23,8 @@ var (
 	ErrInvalidInput      = errors.New("invalid input")
 	ErrPermissionMissing = errors.New("permission does not exist")
 	ErrLastAccessRole    = errors.New("cannot remove last access role")
+	// ErrServiceOnlyRole wraps ErrInvalidInput so existing handlers return 400.
+	ErrServiceOnlyRole = fmt.Errorf("%w: service-only system roles cannot be granted to people", ErrInvalidInput)
 )
 
 type Service struct {
@@ -214,7 +217,7 @@ func (s *Service) ListAssignableUserAccess(ctx context.Context) (AssignableUserA
 
 		roles := make([]AssignableSystemRole, 0, len(detail.Roles))
 		for _, role := range detail.Roles {
-			if !role.Enabled {
+			if !role.Enabled || role.ServiceOnly {
 				continue
 			}
 			roles = append(roles, AssignableSystemRole{
@@ -291,6 +294,13 @@ func (s *Service) UpdateUserAccess(
 		return UserAccessProfileResponse{}, fmt.Errorf("%w: invalid user id", ErrInvalidInput)
 	}
 
+	// Collect non-fatal warnings (an incomplete identity-sync revocation) from
+	// the role changes below; reuse a caller's collector when there is one.
+	warnings := accesswarnings.From(ctx)
+	if warnings == nil {
+		ctx, warnings = accesswarnings.WithCollector(ctx)
+	}
+
 	assignable, err := s.ListAssignableUserAccess(ctx)
 	if err != nil {
 		return UserAccessProfileResponse{}, err
@@ -350,6 +360,7 @@ func (s *Service) UpdateUserAccess(
 			Permissions: []Permission{},
 		},
 		Assignable: assignable,
+		Warnings:   warnings.Warnings(),
 	}, nil
 }
 
@@ -383,6 +394,15 @@ func (s *Service) UpdateSystemRole(ctx context.Context, roleID string, input Rol
 	if roleID == "" || input.Name == "" {
 		return SystemRole{}, fmt.Errorf("%w: roleId and role name are required", ErrInvalidInput)
 	}
+	if input.ServiceOnly != nil && *input.ServiceOnly {
+		current, err := s.repository.GetSystemRole(ctx, roleID)
+		if err != nil {
+			return SystemRole{}, err
+		}
+		if !current.ServiceOnly && len(current.Permissions) > 0 {
+			return SystemRole{}, fmt.Errorf("%w: remove the role's permissions before marking it service-only", ErrInvalidInput)
+		}
+	}
 	role, err := s.repository.UpdateSystemRole(ctx, roleID, input)
 	if err != nil {
 		return SystemRole{}, err
@@ -414,10 +434,16 @@ func (s *Service) AssignSystemRolePermission(ctx context.Context, roleID string,
 	if err := s.requirePermission(ctx, permissionKey); err != nil {
 		return err
 	}
+	role, err := s.repository.GetSystemRole(ctx, roleID)
+	if err != nil {
+		return err
+	}
+	if role.ServiceOnly {
+		return ErrServiceOnlyRole
+	}
 	if err := s.repository.AssignSystemRolePermission(ctx, roleID, permissionKey); err != nil {
 		return err
 	}
-	role, _ := s.repository.GetSystemRole(ctx, roleID)
 	return s.recordAudit(ctx, "system_role.permission_assigned", "system-role", roleID, role.ClientID, role.Name, permissionKey, nil)
 }
 
@@ -788,6 +814,9 @@ func (s *Service) AssignGroupSystemRole(ctx context.Context, groupID string, inp
 	if groupID == "" || input.ClientID == "" || input.RoleName == "" {
 		return fmt.Errorf("%w: groupId, clientId, and roleName are required", ErrInvalidInput)
 	}
+	if err := s.rejectServiceOnlyRole(ctx, input.ClientID, input.RoleName); err != nil {
+		return err
+	}
 	group, _ := s.repository.GetGroup(ctx, groupID)
 	if err := s.repository.AssignGroupSystemRole(ctx, groupID, input.ClientID, input.RoleName); err != nil {
 		return err
@@ -841,6 +870,9 @@ func (s *Service) AddSystemAccessRole(ctx context.Context, clientID string, role
 	roleName = strings.ToLower(strings.TrimSpace(roleName))
 	if clientID == "" || roleName == "" {
 		return fmt.Errorf("%w: clientId and roleName are required", ErrInvalidInput)
+	}
+	if err := s.rejectServiceOnlyRole(ctx, clientID, roleName); err != nil {
+		return err
 	}
 	if err := s.repository.AddSystemAccessRole(ctx, clientID, roleName); err != nil {
 		return err
@@ -1195,6 +1227,7 @@ func (s *Service) ExportSeed(ctx context.Context) (systemrbac.SeedFile, error) {
 				DisplayName: role.DisplayName,
 				Description: role.Description,
 				Permissions: permissions,
+				ServiceOnly: role.ServiceOnly,
 			})
 		}
 		seed.Systems = append(seed.Systems, seedSystem)
@@ -2044,4 +2077,30 @@ func diffClientRoles(before map[string][]string, after map[string][]string) (map
 	}
 
 	return added, removed
+}
+
+// rejectServiceOnlyRole blocks person-facing grants (groups, access roles) of a
+// service-account role. The database triggers from migration 61 enforce the same rule.
+func (s *Service) rejectServiceOnlyRole(ctx context.Context, clientID string, roleName string) error {
+	roles, err := s.repository.ListSystemRoles(ctx, clientID)
+	if err != nil {
+		return err
+	}
+	for _, role := range roles {
+		if normalize(role.Name) == normalize(roleName) && role.ServiceOnly {
+			return ErrServiceOnlyRole
+		}
+	}
+	return nil
+}
+
+// IsServiceOnlyRole reports whether a system's client role is reserved for service accounts.
+func (s *Service) IsServiceOnlyRole(ctx context.Context, clientID string, roleName string) (bool, error) {
+	if err := s.rejectServiceOnlyRole(ctx, clientID, roleName); err != nil {
+		if errors.Is(err, ErrServiceOnlyRole) {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
 }
