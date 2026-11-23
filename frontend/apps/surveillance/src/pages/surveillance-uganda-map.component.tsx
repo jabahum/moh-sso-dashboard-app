@@ -59,6 +59,14 @@ const STATUS_COLORS: Record<StatusKey, string> = {
   default: "var(--surveillance-status-default)",
 };
 
+/** Legend entries in the same order and wording as the severity tiles above the map. */
+const LEGEND_ITEMS: { key: Exclude<StatusKey, "default">; label: string }[] = [
+  { key: "maroon", label: "Immediate action" },
+  { key: "red", label: "Take action" },
+  { key: "yellow", label: "Alert" },
+  { key: "green", label: "Watch" },
+];
+
 const STATUS_PRIORITY: Record<StatusKey, number> = {
   default: 0,
   green: 1,
@@ -559,31 +567,27 @@ export default function SurveillanceUgandaMap({
         </p>
       ) : null}
       <div className="surveillance-map__footer">
-        <div className="surveillance-map__legend" aria-label="Disease status record counts">
-          <span className="surveillance-map__legend-item">
-            <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--yellow" />
-            Yellow {summary.yellow ? `(${summary.yellow})` : ""}
-          </span>
-
-          <span className="surveillance-map__legend-item">
-            <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--green" />
-            Green {summary.green ? `(${summary.green})` : ""}
-          </span>
-
-          <span className="surveillance-map__legend-item">
-            <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--red" />
-            Red {summary.red ? `(${summary.red})` : ""}
-          </span>
-
-          <span className="surveillance-map__legend-item">
-            <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--maroon" />
-            Maroon {summary.maroon ? `(${summary.maroon})` : ""}
-          </span>
-          <span className="surveillance-map__legend-item">
-            <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--no-data" />
+        <ul
+          className="surveillance-map__legend"
+          aria-label="Map legend: disease status record counts"
+        >
+          {LEGEND_ITEMS.map(({ key, label }) => (
+            <li key={key} className="surveillance-map__legend-item">
+              <span
+                className={`surveillance-map__legend-swatch surveillance-map__legend-swatch--${key}`}
+                aria-hidden="true"
+              />
+              {label} {summary[key] ? `(${summary[key]})` : ""}
+            </li>
+          ))}
+          <li className="surveillance-map__legend-item">
+            <span
+              className="surveillance-map__legend-swatch surveillance-map__legend-swatch--no-data"
+              aria-hidden="true"
+            />
             No status data
-          </span>
-        </div>
+          </li>
+        </ul>
 
         <div className="surveillance-map__actions">
           <button type="button" className="surveillance-map__tool-button" onClick={handleReset}>

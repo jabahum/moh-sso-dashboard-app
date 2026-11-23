@@ -82,6 +82,13 @@ function countStatuses(rows: WeeklyStatusDetailed[]) {
   );
 }
 
+const FALLBACK_LEGEND_ITEMS = [
+  { key: "maroon", tone: "immediate-action", label: "Immediate action" },
+  { key: "red", tone: "take-action", label: "Take action" },
+  { key: "yellow", tone: "alert", label: "Alert" },
+  { key: "green", tone: "watch", label: "Watch" },
+] as const;
+
 function normalizeLabel(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : "";
 }
@@ -113,27 +120,20 @@ function DefaultMapFallback({
         <div className="surveillance-map__placeholder-shape">Uganda Map</div>
       </div>
 
-      <div className="surveillance-map__legend">
-        <span className="surveillance-map__legend-item">
-          <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--alert" />
-          Yellow: Alert {summary.yellow ? `(${summary.yellow})` : ""}
-        </span>
-
-        <span className="surveillance-map__legend-item">
-          <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--watch" />
-          Green: Watch {summary.green ? `(${summary.green})` : ""}
-        </span>
-
-        <span className="surveillance-map__legend-item">
-          <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--take-action" />
-          Red: Take Action {summary.red ? `(${summary.red})` : ""}
-        </span>
-
-        <span className="surveillance-map__legend-item">
-          <span className="surveillance-map__legend-swatch surveillance-map__legend-swatch--immediate-action" />
-          Maroon: Immediate Action {summary.maroon ? `(${summary.maroon})` : ""}
-        </span>
-      </div>
+      <ul
+        className="surveillance-map__legend"
+        aria-label="Map legend: disease status record counts"
+      >
+        {FALLBACK_LEGEND_ITEMS.map(({ key, tone, label }) => (
+          <li key={key} className="surveillance-map__legend-item">
+            <span
+              className={`surveillance-map__legend-swatch surveillance-map__legend-swatch--${tone}`}
+              aria-hidden="true"
+            />
+            {label} {summary[key] ? `(${summary[key]})` : ""}
+          </li>
+        ))}
+      </ul>
 
       <div className="surveillance-map__meta">
         <p>
