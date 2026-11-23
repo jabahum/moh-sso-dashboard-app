@@ -1,8 +1,9 @@
-package data_quality
+package dataquality
 
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 )
 
@@ -11,12 +12,16 @@ type ScheduleWorker struct {
 	store    *DQAStore
 	dwhDB    *sql.DB
 	interval time.Duration
-	log      func(args ...any)
+	log      *slog.Logger
 }
 
-func NewScheduleWorker(store *DQAStore, dwhDB *sql.DB, interval time.Duration, log func(args ...any)) *ScheduleWorker {
+// NewScheduleWorker builds the worker. A non-positive interval means one minute.
+func NewScheduleWorker(store *DQAStore, dwhDB *sql.DB, interval time.Duration, log *slog.Logger) *ScheduleWorker {
 	if interval <= 0 {
 		interval = time.Minute
+	}
+	if log == nil {
+		log = slog.Default()
 	}
 	return &ScheduleWorker{store: store, dwhDB: dwhDB, interval: interval, log: log}
 }
@@ -44,7 +49,7 @@ func (w *ScheduleWorker) drain(ctx context.Context) {
 		}
 		scheduled, found, err := w.store.claimDueRun(ctx, time.Now())
 		if err != nil {
-			w.logf("dqa: claiming a scheduled run failed: ", err)
+			w.log.Error("dqa: claiming a scheduled run failed", "error", err)
 			return
 		}
 		if !found {
@@ -56,16 +61,10 @@ func (w *ScheduleWorker) drain(ctx context.Context) {
 		if runErr == nil {
 			runID = result.RunID
 		} else {
-			w.logf("dqa: scheduled run failed: ", runErr)
+			w.log.Error("dqa: scheduled run failed", "error", runErr)
 		}
 		if err := w.store.finishScheduledRun(ctx, scheduled.ID, runID, runErr); err != nil {
-			w.logf("dqa: recording a scheduled run result failed: ", err)
+			w.log.Error("dqa: recording a scheduled run result failed", "error", err)
 		}
-	}
-}
-
-func (w *ScheduleWorker) logf(args ...any) {
-	if w.log != nil {
-		w.log(args...)
 	}
 }

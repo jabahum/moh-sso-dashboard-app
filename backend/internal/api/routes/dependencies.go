@@ -3,7 +3,6 @@ package routes
 import (
 	authfeature "github.com/moh-sso-dashboard/internal/features/auth"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
-	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
 	documenttemplatesfeature "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentsfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
@@ -18,6 +17,7 @@ import (
 	"github.com/moh-sso-dashboard/module"
 	adminunitsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	auditfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	dataqualityfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality"
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
@@ -39,7 +39,7 @@ type Dependencies struct {
 	DocumentTemplateColumns *documenttemplatesfeature.ColumnHandler
 	StorageLocations        *storagelocationfeature.Module
 	Sessions                *sessionfeature.Handler
-	DataQuality             *dataqualityfeature.Handler
+	DataQuality             *dataqualityfeature.Module
 
 	AdminUnits     *adminunitsfeature.Module
 	Visualiser     *visualiserfeature.Handler

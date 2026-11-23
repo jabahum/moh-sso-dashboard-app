@@ -13,7 +13,6 @@ import (
 	authfeature "github.com/moh-sso-dashboard/internal/features/auth"
 	"github.com/moh-sso-dashboard/internal/features/authsession"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
-	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
 	documenttemplatesfeature "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentsfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
@@ -116,7 +115,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 	)
 
 	sessionHandler := sessionfeature.NewHandler(deps.Services.Sessions)
-	dataQualityHandler := dataqualityfeature.NewHandler(deps.Databases.DWH, deps.Databases.DQA, deps.Databases.Primary, deps.AdminKeycloak, deps.Services.Email, deps.Config)
+	dataQualityHandler := buildDataQualityModule(deps)
 	announcementHandler := buildAnnouncementsModule(deps)
 
 	var adminunitsHandler *adminunitsfeature.Module

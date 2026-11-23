@@ -5,7 +5,6 @@ import (
 
 	"github.com/moh-sso-dashboard/internal/authz"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
-	dataqualityfeature "github.com/moh-sso-dashboard/internal/features/data_quality"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
 	notificationsfeature "github.com/moh-sso-dashboard/internal/features/notifications"
@@ -29,7 +28,6 @@ func RegisterProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {
 
 	contextScoped := ContextScopedGroup(protected, deps.HealthContexts)
 	registerDocumentRoutes(contextScoped, deps)
-	registerDataQualityRoutes(contextScoped, deps)
 	registerVisualiserRoutes(contextScoped, deps)
 	registerSurveillanceRoutes(contextScoped, deps)
 
@@ -61,10 +59,6 @@ func registerUserRoutes(protected *gin.RouterGroup, deps Dependencies) {
 
 func registerSessionRoutes(protected *gin.RouterGroup, deps Dependencies) {
 	sessionfeature.RegisterProtectedRoutes(protected, deps.Sessions)
-}
-
-func registerDataQualityRoutes(protected *gin.RouterGroup, deps Dependencies) {
-	dataqualityfeature.RegisterProtectedRoutes(protected, deps.DataQuality)
 }
 
 func registerRBACProtectedRoutes(protected *gin.RouterGroup, deps Dependencies) {

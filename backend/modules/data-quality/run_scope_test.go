@@ -1,10 +1,10 @@
-package data_quality
+package dataquality
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/moh-sso-dashboard/internal/features/data_quality/dqa"
+	"github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality/dqa"
 )
 
 func testTableConfig() TableMapping {

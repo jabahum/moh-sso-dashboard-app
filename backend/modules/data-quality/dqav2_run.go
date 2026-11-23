@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 // Orchestration: compile a table's enabled rules and execute them against
 // the DWH, persisting the run + flags + measurements. This is the Go
@@ -9,7 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/moh-sso-dashboard/internal/features/data_quality/dqa"
+	"github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality/dqa"
 )
 
 // RunResult is what a triggered scan reports back to the caller.

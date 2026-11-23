@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	kitadapter "github.com/moh-sso-dashboard/internal/adapters/modulekit"
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	"github.com/moh-sso-dashboard/internal/config"
 	"github.com/moh-sso-dashboard/internal/middleware"
@@ -16,6 +17,7 @@ import (
 	adminunitsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	announcementmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	auditmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
+	dataqualitymodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality"
 	geojsonmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	schedulermodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
@@ -118,6 +120,21 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 		},
 		Register: func(routes module.Routes) {
 			modulehttp.Register(routes.Protected, handlers.StorageLocations)
+		},
+	}, module.Definition{
+		Info: module.Info{ID: dataqualitymodule.ID, Version: dataqualitymodule.Version(), Enabled: enabled[dataqualitymodule.ID]},
+		Initialize: func(ctx context.Context) (module.Stop, error) {
+			if handlers.DataQuality == nil {
+				return nil, errors.New("data quality module is required")
+			}
+			return handlers.DataQuality.Initialize(ctx)
+		},
+		Register: func(routes module.Routes) {
+			if routes.ContextScoped == nil {
+				return
+			}
+			// The middleware only names the caller for created_by/reported_by fields.
+			modulehttp.Register(routes.ContextScoped.Group("", kitadapter.CallerNameMiddleware()), handlers.DataQuality)
 		},
 	})
 }

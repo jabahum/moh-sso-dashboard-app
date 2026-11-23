@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/moh-sso-dashboard/internal/features/data_quality/dqa"
+	"github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality/dqa"
 )
 
 // Rule mapping: take rules that already exist on other tables and work out which

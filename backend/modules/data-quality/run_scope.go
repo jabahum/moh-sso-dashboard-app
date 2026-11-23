@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moh-sso-dashboard/internal/features/data_quality/dqa"
+	"github.com/mohuganda/moh-sso-dashboard/backend/modules/data-quality/dqa"
 )
 
 // RunScope narrows a scan to chosen reporting periods and filter values. It is

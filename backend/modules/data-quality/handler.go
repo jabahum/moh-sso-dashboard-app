@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 import (
 	"database/sql"
@@ -6,46 +6,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/moh-sso-dashboard/internal/config"
-	"github.com/moh-sso-dashboard/internal/http/response"
-	"github.com/moh-sso-dashboard/internal/keycloak"
-	sharedservice "github.com/moh-sso-dashboard/internal/service"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
 )
 
-type Handler struct {
+type handlers struct {
 	service        Service
-	keyAdminClient *keycloak.KeyAdminClient
+	keyAdminClient UserDirectory
 	dwhDB          *sql.DB
 	dqaStore       *DQAStore
+	caller         CallerName
 }
 
-// NewHandler wires the feature. dqaDB persists DQA results as the role that owns
-// the dqa schema; dwhDB still reads the source tables during a scan.
-func NewHandler(
-	dwhDB *sql.DB,
-	dqaDB *sql.DB,
-	primaryDB *sql.DB,
-	keyAdminClient *keycloak.KeyAdminClient,
-	emailService sharedservice.EmailService,
-	cfg ...*config.Config,
-) *Handler {
-	var appCfg *config.Config
-	if len(cfg) > 0 {
-		appCfg = cfg[0]
-	}
-	if dqaDB == nil {
-		dqaDB = dwhDB
-	}
-	return &Handler{
-		service:        NewService(NewRepository(dwhDB, primaryDB), emailService, keyAdminClient, appCfg),
-		keyAdminClient: keyAdminClient,
-		dwhDB:          dwhDB,
-		dqaStore:       NewDQAStore(dqaDB),
-	}
-}
-
-func parseListLimit(c *gin.Context, defaultValue int, maxValue int) int {
+func parseListLimit(c *modulekit.Context, defaultValue int, maxValue int) int {
 	limit := defaultValue
 	if raw := c.Query("limit"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
@@ -61,7 +33,7 @@ func parseListLimit(c *gin.Context, defaultValue int, maxValue int) int {
 	return limit
 }
 
-func parseListOffset(c *gin.Context) int {
+func parseListOffset(c *modulekit.Context) int {
 	offset := 0
 	if raw := c.Query("offset"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
@@ -80,41 +52,38 @@ func issueDBErrorMessage(err error, fallback string) string {
 	return fallback
 }
 
-func getUserEmailOrUsername(c *gin.Context) string {
-	if u, exists := c.Get("user"); exists {
-		if user, ok := u.(*keycloak.AuthUser); ok && user != nil {
-			if email := strings.TrimSpace(user.Email); email != "" {
-				return email
-			}
-			if username := strings.TrimSpace(user.Username); username != "" {
-				return username
-			}
+// callerName returns the caller's email, else username (from the host), else
+// the verified subject.
+func (h *handlers) callerName(c *modulekit.Context) string {
+	if h.caller != nil {
+		if name := strings.TrimSpace(h.caller(c.Request)); name != "" {
+			return name
 		}
 	}
-	return strings.TrimSpace(c.GetString("user_id"))
+	return strings.TrimSpace(c.Subject())
 }
 
-func (h *Handler) CreateIssue(c *gin.Context) {
+func (h *handlers) CreateIssue(c *modulekit.Context) {
 	var req createIssueRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+	if err := bindJSON(c, &req); err != nil {
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
 
 	issueText := strings.TrimSpace(req.Issue)
 	if issueText == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "issue is required")
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "issue is required")
 		return
 	}
 
 	if req.IssueType != nil && strings.TrimSpace(*req.IssueType) == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "issue_type cannot be empty")
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "issue_type cannot be empty")
 		return
 	}
 
 	reportedBy := dqNullableString(req.ReportedBy)
 	if !reportedBy.Valid {
-		userEmail := getUserEmailOrUsername(c)
+		userEmail := h.callerName(c)
 		if userEmail != "" {
 			reportedBy = sql.NullString{
 				String: userEmail,
@@ -128,7 +97,7 @@ func (h *Handler) CreateIssue(c *gin.Context) {
 		timePeriod = req.TimePeriodAlt
 	}
 
-	issue, err := h.service.CreateIssue(c.Request.Context(), createIssueInput{
+	issue, err := h.service.CreateIssue(c.Context(), createIssueInput{
 		Program:     dqNullableString(req.Program),
 		Dataset:     dqNullableString(req.Dataset),
 		DataElement: dqNullableString(req.DataElement),
@@ -141,14 +110,14 @@ func (h *Handler) CreateIssue(c *gin.Context) {
 		TimePeriod:  dqNullableString(timePeriod),
 	}, healthContextScopeFromRequest(c))
 	if err != nil {
-		response.Fail(c, http.StatusInternalServerError, "CREATE_ISSUE_FAILED", issueDBErrorMessage(err, "failed to create issue"))
+		c.Fail(http.StatusInternalServerError, "CREATE_ISSUE_FAILED", issueDBErrorMessage(err, "failed to create issue"))
 		return
 	}
 
-	response.OK(c, http.StatusCreated, toIssueResponse(issue))
+	c.OK(http.StatusCreated, toIssueResponse(issue))
 }
 
-func (h *Handler) ListIssues(c *gin.Context) {
+func (h *handlers) ListIssues(c *modulekit.Context) {
 	limit := parseListLimit(c, 20, 10000)
 	offset := parseListOffset(c)
 
@@ -179,67 +148,67 @@ func (h *Handler) ListIssues(c *gin.Context) {
 		filter.AssignedTo = strings.TrimSpace(c.Query("assignedTo"))
 	}
 
-	issues, err := h.service.ListIssues(c.Request.Context(), filter)
+	issues, err := h.service.ListIssues(c.Context(), filter)
 	if err != nil {
-		response.Fail(c, http.StatusInternalServerError, "LIST_ISSUES_FAILED", issueDBErrorMessage(err, "failed to list issues"))
+		c.Fail(http.StatusInternalServerError, "LIST_ISSUES_FAILED", issueDBErrorMessage(err, "failed to list issues"))
 		return
 	}
 
-	total, err := h.service.CountIssues(c.Request.Context(), filter)
+	total, err := h.service.CountIssues(c.Context(), filter)
 	if err != nil {
-		response.Fail(c, http.StatusInternalServerError, "LIST_ISSUES_FAILED", issueDBErrorMessage(err, "failed to count issues"))
+		c.Fail(http.StatusInternalServerError, "LIST_ISSUES_FAILED", issueDBErrorMessage(err, "failed to count issues"))
 		return
 	}
 
 	c.Header("X-Total-Count", strconv.FormatInt(total, 10))
 	c.Header("Access-Control-Expose-Headers", "X-Total-Count")
 
-	response.OK(c, http.StatusOK, toIssueResponses(issues))
+	c.OK(http.StatusOK, toIssueResponses(issues))
 }
 
-func (h *Handler) GetIssueByCode(c *gin.Context) {
+func (h *handlers) GetIssueByCode(c *modulekit.Context) {
 	issueCode := strings.TrimSpace(c.Param("issueCode"))
 	if issueCode == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
+		c.Fail(http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
 		return
 	}
 
-	issue, err := h.service.GetIssueByCode(c.Request.Context(), issueCode, healthContextScopeFromRequest(c))
+	issue, err := h.service.GetIssueByCode(c.Context(), issueCode, healthContextScopeFromRequest(c))
 	if err != nil {
 		if isNotFound(err) {
-			response.Fail(c, http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
+			c.Fail(http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
 			return
 		}
-		response.Fail(c, http.StatusInternalServerError, "GET_ISSUE_FAILED", issueDBErrorMessage(err, "failed to get issue"))
+		c.Fail(http.StatusInternalServerError, "GET_ISSUE_FAILED", issueDBErrorMessage(err, "failed to get issue"))
 		return
 	}
 
-	response.OK(c, http.StatusOK, toIssueResponse(issue))
+	c.OK(http.StatusOK, toIssueResponse(issue))
 }
 
-func (h *Handler) ListIssueSummaryByProgram(c *gin.Context) {
+func (h *handlers) ListIssueSummaryByProgram(c *modulekit.Context) {
 	limit := parseListLimit(c, 50, 500)
 	offset := parseListOffset(c)
 
-	summary, err := h.service.ListIssueSummaryByProgram(c.Request.Context(), limit, offset, healthContextScopeFromRequest(c))
+	summary, err := h.service.ListIssueSummaryByProgram(c.Context(), limit, offset, healthContextScopeFromRequest(c))
 	if err != nil {
-		response.Fail(c, http.StatusInternalServerError, "LIST_ISSUE_SUMMARY_FAILED", issueDBErrorMessage(err, "failed to list issue summary"))
+		c.Fail(http.StatusInternalServerError, "LIST_ISSUE_SUMMARY_FAILED", issueDBErrorMessage(err, "failed to list issue summary"))
 		return
 	}
 
-	response.OK(c, http.StatusOK, toIssueProgramSummaryResponses(summary))
+	c.OK(http.StatusOK, toIssueProgramSummaryResponses(summary))
 }
 
-func (h *Handler) UpdateIssue(c *gin.Context) {
+func (h *handlers) UpdateIssue(c *modulekit.Context) {
 	issueCode := strings.TrimSpace(c.Param("issueCode"))
 	if issueCode == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
+		c.Fail(http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
 		return
 	}
 
 	var req updateIssueRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+	if err := bindJSON(c, &req); err != nil {
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
 
@@ -261,7 +230,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 		req.Severity == nil &&
 		req.UpdatedBy == nil &&
 		timePeriod == nil {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "at least one field is required")
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "at least one field is required")
 		return
 	}
 
@@ -269,7 +238,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 	if req.Issue != nil {
 		trimmedIssue := strings.TrimSpace(*req.Issue)
 		if trimmedIssue == "" {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "issue cannot be empty")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "issue cannot be empty")
 			return
 		}
 		issueParam = trimmedIssue
@@ -279,7 +248,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 	if req.DateReported != nil {
 		parsedDate, err := parseDateOnly(*req.DateReported)
 		if err != nil {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "date_reported must be in YYYY-MM-DD format")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "date_reported must be in YYYY-MM-DD format")
 			return
 		}
 		dateReportedParam = parsedDate
@@ -289,7 +258,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 	if req.Status != nil {
 		trimmedStatus := strings.TrimSpace(*req.Status)
 		if trimmedStatus == "" {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "status cannot be empty")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "status cannot be empty")
 			return
 		}
 		statusParam = trimmedStatus
@@ -299,7 +268,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 	if req.Priority != nil {
 		trimmedPriority := strings.TrimSpace(*req.Priority)
 		if trimmedPriority == "" {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "priority cannot be empty")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "priority cannot be empty")
 			return
 		}
 		priorityParam = trimmedPriority
@@ -309,7 +278,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 	if req.Severity != nil {
 		trimmedSeverity := strings.TrimSpace(*req.Severity)
 		if trimmedSeverity == "" {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "severity cannot be empty")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "severity cannot be empty")
 			return
 		}
 		severityParam = trimmedSeverity
@@ -319,7 +288,7 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 	if req.IssueType != nil {
 		trimmedIssueType := strings.TrimSpace(*req.IssueType)
 		if trimmedIssueType == "" {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "issue_type cannot be empty")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "issue_type cannot be empty")
 			return
 		}
 		issueTypeParam = trimmedIssueType
@@ -327,13 +296,13 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 
 	updatedByParam := optionalTrimmedParam(req.UpdatedBy, true)
 	if updatedByParam == nil {
-		userEmail := getUserEmailOrUsername(c)
+		userEmail := h.callerName(c)
 		if userEmail != "" {
 			updatedByParam = userEmail
 		}
 	}
 
-	issue, err := h.service.UpdateIssue(c.Request.Context(), updateIssueInput{
+	issue, err := h.service.UpdateIssue(c.Context(), updateIssueInput{
 		IssueCode:    issueCode,
 		Program:      optionalTrimmedParam(req.Program, false),
 		Dataset:      optionalTrimmedParam(req.Dataset, false),
@@ -351,26 +320,26 @@ func (h *Handler) UpdateIssue(c *gin.Context) {
 	}, healthContextScopeFromRequest(c))
 	if err != nil {
 		if isNotFound(err) {
-			response.Fail(c, http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
+			c.Fail(http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
 			return
 		}
-		response.Fail(c, http.StatusInternalServerError, "UPDATE_ISSUE_FAILED", issueDBErrorMessage(err, "failed to update issue"))
+		c.Fail(http.StatusInternalServerError, "UPDATE_ISSUE_FAILED", issueDBErrorMessage(err, "failed to update issue"))
 		return
 	}
 
-	response.OK(c, http.StatusOK, toIssueResponse(issue))
+	c.OK(http.StatusOK, toIssueResponse(issue))
 }
 
-func (h *Handler) ResolveIssue(c *gin.Context) {
+func (h *handlers) ResolveIssue(c *modulekit.Context) {
 	issueCode := strings.TrimSpace(c.Param("issueCode"))
 	if issueCode == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
+		c.Fail(http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
 		return
 	}
 
 	var req createIssueResolutionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+	if err := bindJSON(c, &req); err != nil {
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
 
@@ -382,7 +351,7 @@ func (h *Handler) ResolveIssue(c *gin.Context) {
 		// Backward compatibility for existing clients using "stage".
 		status = strings.TrimSpace(*req.Stage)
 	default:
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "status is required")
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "status is required")
 		return
 	}
 
@@ -390,7 +359,7 @@ func (h *Handler) ResolveIssue(c *gin.Context) {
 	if req.ResolutionDate != nil {
 		parsedDate, err := parseDateOnly(*req.ResolutionDate)
 		if err != nil {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "resolution_date must be in YYYY-MM-DD format")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "resolution_date must be in YYYY-MM-DD format")
 			return
 		}
 		resolutionDateParam = parsedDate
@@ -400,7 +369,7 @@ func (h *Handler) ResolveIssue(c *gin.Context) {
 	if req.VerificationDate != nil {
 		parsedDate, err := parseDateOnly(*req.VerificationDate)
 		if err != nil {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "verification_date must be in YYYY-MM-DD format")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "verification_date must be in YYYY-MM-DD format")
 			return
 		}
 		verificationDateParam = parsedDate
@@ -410,7 +379,7 @@ func (h *Handler) ResolveIssue(c *gin.Context) {
 	if req.DueDate != nil {
 		parsedDate, err := parseDateOnly(*req.DueDate)
 		if err != nil {
-			response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "due_date must be in YYYY-MM-DD format")
+			c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "due_date must be in YYYY-MM-DD format")
 			return
 		}
 		dueDateParam = parsedDate
@@ -418,10 +387,10 @@ func (h *Handler) ResolveIssue(c *gin.Context) {
 
 	resolvedBy := optionalTrimmedParam(req.ResolvedBy, true)
 	if resolvedBy == nil {
-		resolvedBy = getUserEmailOrUsername(c)
+		resolvedBy = h.callerName(c)
 	}
 
-	stageRow, err := h.service.ResolveIssue(c.Request.Context(), resolveIssueInput{
+	stageRow, err := h.service.ResolveIssue(c.Context(), resolveIssueInput{
 		IssueCode:          issueCode,
 		Status:             status,
 		ResolutionAction:   optionalTrimmedParam(req.ResolutionAction, true),
@@ -437,48 +406,48 @@ func (h *Handler) ResolveIssue(c *gin.Context) {
 	}, healthContextScopeFromRequest(c))
 	if err != nil {
 		if isNotFound(err) {
-			response.Fail(c, http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
+			c.Fail(http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
 			return
 		}
-		response.Fail(c, http.StatusInternalServerError, "CREATE_ISSUE_STAGE_FAILED", issueDBErrorMessage(err, "failed to create issue resolution"))
+		c.Fail(http.StatusInternalServerError, "CREATE_ISSUE_STAGE_FAILED", issueDBErrorMessage(err, "failed to create issue resolution"))
 		return
 	}
 
-	response.OK(c, http.StatusCreated, toIssueStageResponse(stageRow))
+	c.OK(http.StatusCreated, toIssueStageResponse(stageRow))
 }
 
-func (h *Handler) ListIssueResolutionTransactions(c *gin.Context) {
+func (h *handlers) ListIssueResolutionTransactions(c *modulekit.Context) {
 	issueCode := strings.TrimSpace(c.Param("issueCode"))
 	if issueCode == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
+		c.Fail(http.StatusBadRequest, "INVALID_ISSUE_CODE", "issue code is required")
 		return
 	}
 
 	limit := parseListLimit(c, 20, 100)
 	offset := parseListOffset(c)
 
-	transactions, err := h.service.ListIssueResolutionTransactions(c.Request.Context(), issueCode, limit, offset, healthContextScopeFromRequest(c))
+	transactions, err := h.service.ListIssueResolutionTransactions(c.Context(), issueCode, limit, offset, healthContextScopeFromRequest(c))
 	if err != nil {
 		if isNotFound(err) {
-			response.Fail(c, http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
+			c.Fail(http.StatusNotFound, "ISSUE_NOT_FOUND", "issue not found")
 			return
 		}
-		response.Fail(c, http.StatusInternalServerError, "LIST_ISSUE_TRANSACTIONS_FAILED", issueDBErrorMessage(err, "failed to list issue transactions"))
+		c.Fail(http.StatusInternalServerError, "LIST_ISSUE_TRANSACTIONS_FAILED", issueDBErrorMessage(err, "failed to list issue transactions"))
 		return
 	}
 
-	response.OK(c, http.StatusOK, toIssueStageResponses(transactions))
+	c.OK(http.StatusOK, toIssueStageResponses(transactions))
 }
 
-func (h *Handler) ListKeycloakGroups(c *gin.Context) {
-	if h.keyAdminClient == nil {
-		response.OK(c, http.StatusOK, []keycloakGroupResponse{})
+func (h *handlers) ListKeycloakGroups(c *modulekit.Context) {
+	if isNilInterface(h.keyAdminClient) {
+		c.OK(http.StatusOK, []keycloakGroupResponse{})
 		return
 	}
 
-	groups, err := h.keyAdminClient.ListGroups(c.Request.Context())
+	groups, err := h.keyAdminClient.ListGroups(c.Context())
 	if err != nil {
-		response.Fail(c, http.StatusInternalServerError, "KEYCLOAK_GROUPS_FAILED", "failed to fetch Keycloak groups")
+		c.Fail(http.StatusInternalServerError, "KEYCLOAK_GROUPS_FAILED", "failed to fetch Keycloak groups")
 		return
 	}
 
@@ -491,24 +460,24 @@ func (h *Handler) ListKeycloakGroups(c *gin.Context) {
 		})
 	}
 
-	response.OK(c, http.StatusOK, out)
+	c.OK(http.StatusOK, out)
 }
 
-func (h *Handler) ListKeycloakGroupMembers(c *gin.Context) {
+func (h *handlers) ListKeycloakGroupMembers(c *modulekit.Context) {
 	groupID := strings.TrimSpace(c.Param("groupId"))
 	if groupID == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_GROUP_ID", "group ID is required")
+		c.Fail(http.StatusBadRequest, "INVALID_GROUP_ID", "group ID is required")
 		return
 	}
 
-	if h.keyAdminClient == nil {
-		response.OK(c, http.StatusOK, []keycloakGroupMemberResponse{})
+	if isNilInterface(h.keyAdminClient) {
+		c.OK(http.StatusOK, []keycloakGroupMemberResponse{})
 		return
 	}
 
-	members, err := h.keyAdminClient.ListGroupMembers(c.Request.Context(), groupID)
+	members, err := h.keyAdminClient.ListGroupMembers(c.Context(), groupID)
 	if err != nil {
-		response.Fail(c, http.StatusInternalServerError, "KEYCLOAK_MEMBERS_FAILED", "failed to fetch Keycloak group members")
+		c.Fail(http.StatusInternalServerError, "KEYCLOAK_MEMBERS_FAILED", "failed to fetch Keycloak group members")
 		return
 	}
 
@@ -523,19 +492,19 @@ func (h *Handler) ListKeycloakGroupMembers(c *gin.Context) {
 		})
 	}
 
-	response.OK(c, http.StatusOK, out)
+	c.OK(http.StatusOK, out)
 }
 
-func (h *Handler) AssignIssues(c *gin.Context) {
+func (h *handlers) AssignIssues(c *modulekit.Context) {
 	var req assignIssuesRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+	if err := bindJSON(c, &req); err != nil {
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
 
 	assignedTo := strings.TrimSpace(req.AssignedTo)
 	if assignedTo == "" {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "assigned_to (user email) is required")
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "assigned_to (user email) is required")
 		return
 	}
 
@@ -556,11 +525,11 @@ func (h *Handler) AssignIssues(c *gin.Context) {
 	}
 
 	if len(issueCodes) == 0 {
-		response.Fail(c, http.StatusBadRequest, "INVALID_PAYLOAD", "at least one issue code is required")
+		c.Fail(http.StatusBadRequest, "INVALID_PAYLOAD", "at least one issue code is required")
 		return
 	}
 
-	assignedBy := getUserEmailOrUsername(c)
+	assignedBy := h.callerName(c)
 	if assignedBy == "" {
 		assignedBy = "System"
 	}
@@ -570,16 +539,16 @@ func (h *Handler) AssignIssues(c *gin.Context) {
 		comment = strings.TrimSpace(*req.Comment)
 	}
 
-	results, err := h.service.AssignIssues(c.Request.Context(), assignIssuesInput{
+	results, err := h.service.AssignIssues(c.Context(), assignIssuesInput{
 		IssueCodes: issueCodes,
 		AssignedTo: assignedTo,
 		AssignedBy: assignedBy,
 		Comment:    comment,
 	}, healthContextScopeFromRequest(c))
 	if err != nil {
-		response.Fail(c, http.StatusInternalServerError, "ASSIGN_ISSUES_FAILED", issueDBErrorMessage(err, "failed to assign issue(s)"))
+		c.Fail(http.StatusInternalServerError, "ASSIGN_ISSUES_FAILED", issueDBErrorMessage(err, "failed to assign issue(s)"))
 		return
 	}
 
-	response.OK(c, http.StatusOK, toIssueStageResponses(results))
+	c.OK(http.StatusOK, toIssueStageResponses(results))
 }

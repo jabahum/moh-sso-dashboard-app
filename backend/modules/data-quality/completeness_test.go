@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 import (
 	"testing"

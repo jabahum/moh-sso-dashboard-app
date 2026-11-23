@@ -1,4 +1,4 @@
-package data_quality
+package dataquality
 
 import (
 	"context"
@@ -7,11 +7,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/moh-sso-dashboard/internal/config"
-	"github.com/moh-sso-dashboard/internal/email"
-	"github.com/moh-sso-dashboard/internal/keycloak"
-	"github.com/moh-sso-dashboard/internal/model"
-	sharedservice "github.com/moh-sso-dashboard/internal/service"
 )
 
 func isNilInterface(i interface{}) bool {
@@ -41,26 +36,24 @@ type Service interface {
 
 type service struct {
 	repository     Repository
-	emailService   sharedservice.EmailService
-	keyAdminClient *keycloak.KeyAdminClient
-	cfg            *config.Config
+	mailer         Mailer
+	keyAdminClient UserDirectory
+	// frontendBaseURL is the portal's public base URL used in email links.
+	frontendBaseURL string
 }
 
+// NewService builds the issue-tracker service. mailer and directory may be nil.
 func NewService(
 	repository Repository,
-	emailService sharedservice.EmailService,
-	keyAdminClient *keycloak.KeyAdminClient,
-	cfg ...*config.Config,
+	mailer Mailer,
+	directory UserDirectory,
+	frontendBaseURL string,
 ) Service {
-	var appCfg *config.Config
-	if len(cfg) > 0 {
-		appCfg = cfg[0]
-	}
 	return &service{
-		repository:     repository,
-		emailService:   emailService,
-		keyAdminClient: keyAdminClient,
-		cfg:            appCfg,
+		repository:      repository,
+		mailer:          mailer,
+		keyAdminClient:  directory,
+		frontendBaseURL: frontendBaseURL,
 	}
 }
 
@@ -170,9 +163,9 @@ func (s *service) sendApprovalEmailToGroupMembers(ctx context.Context, input res
 		return
 	}
 
-	recipientAddresses := make([]model.Address, 0, len(recipientEmailsMap))
+	recipientAddresses := make([]string, 0, len(recipientEmailsMap))
 	for emailAddr := range recipientEmailsMap {
-		recipientAddresses = append(recipientAddresses, model.Address{Email: emailAddr})
+		recipientAddresses = append(recipientAddresses, emailAddr)
 	}
 
 	// 4. Fetch issue details for description and metadata
@@ -207,8 +200,8 @@ func (s *service) sendApprovalEmailToGroupMembers(ctx context.Context, input res
 
 	// Determine portal link
 	portalURL := "https://dashboards.health.go.ug/portal"
-	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
-		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
+	if strings.TrimSpace(s.frontendBaseURL) != "" {
+		portalURL = strings.TrimRight(strings.TrimSpace(s.frontendBaseURL), "/")
 	}
 	if !strings.HasSuffix(portalURL, "/portal") {
 		portalURL = portalURL + "/portal"
@@ -256,19 +249,15 @@ func (s *service) sendApprovalEmailToGroupMembers(ctx context.Context, input res
 
 	textBuilder.WriteString(fmt.Sprintf("View Issue Details in MOH Integrated Portal:\n%s\n", issueLink))
 
-	msg := model.Message{
+	msg := EmailMessage{
 		To:       recipientAddresses,
 		Subject:  subject,
 		HTMLBody: bodyBuilder.String(),
 		TextBody: textBuilder.String(),
 	}
 
-	// Send notification using dedicated GM/Gmail SMTP config function
-	if err := email.SendEmailViaGM(ctx, msg, s.cfg); err != nil {
-		if !isNilInterface(s.emailService) {
-			_ = s.emailService.Send(ctx, msg)
-		}
-	}
+	// Send notification using the dedicated issue-tracker SMTP account.
+	s.send(ctx, msg)
 }
 
 func (s *service) AssignIssues(ctx context.Context, input assignIssuesInput, scope healthContextScope) ([]issueStageResponse, error) {
@@ -312,8 +301,8 @@ func (s *service) sendAssignmentEmail(ctx context.Context, input assignIssuesInp
 
 	// Determine portal link
 	portalURL := "https://dashboards.health.go.ug/portal"
-	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
-		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
+	if strings.TrimSpace(s.frontendBaseURL) != "" {
+		portalURL = strings.TrimRight(strings.TrimSpace(s.frontendBaseURL), "/")
 	}
 	if !strings.HasSuffix(portalURL, "/portal") {
 		portalURL = portalURL + "/portal"
@@ -398,21 +387,15 @@ func (s *service) sendAssignmentEmail(ctx context.Context, input assignIssuesInp
 
 	textBuilder.WriteString(fmt.Sprintf("Please log in to the MOH Dashboard Portal to review and take action:\n%s\n", issueLink))
 
-	msg := model.Message{
-		To: []model.Address{
-			{Email: assignedToEmail},
-		},
+	msg := EmailMessage{
+		To:       []string{assignedToEmail},
 		Subject:  subject,
 		HTMLBody: bodyBuilder.String(),
 		TextBody: textBuilder.String(),
 	}
 
-	// Dedicated email function using SMTP_HOST_GM configurations (Gmail SMTP)
-	if err := email.SendEmailViaGM(ctx, msg, s.cfg); err != nil {
-		if !isNilInterface(s.emailService) {
-			_ = s.emailService.Send(ctx, msg)
-		}
-	}
+	// Dedicated issue-tracker SMTP account (SMTP_HOST_GM), then the platform service.
+	s.send(ctx, msg)
 }
 
 func (s *service) ListIssueResolutionTransactions(ctx context.Context, issueCode string, limit int, offset int, scope healthContextScope) ([]issueStageResponse, error) {
@@ -452,4 +435,15 @@ func (s *service) ListIssueResolutionTransactions(ctx context.Context, issueCode
 
 func (s *service) CountIssues(ctx context.Context, filter listIssuesFilter) (int64, error) {
 	return s.repository.CountIssues(ctx, filter)
+}
+
+// send tries the dedicated issue-tracker SMTP account and falls back to the
+// platform email service when it fails. Delivery is best effort.
+func (s *service) send(ctx context.Context, msg EmailMessage) {
+	if isNilInterface(s.mailer) {
+		return
+	}
+	if err := s.mailer.Send(ctx, msg); err != nil {
+		_ = s.mailer.Fallback(ctx, msg)
+	}
 }
