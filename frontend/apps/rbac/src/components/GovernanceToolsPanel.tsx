@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Dropdown, InlineNotification } from "@carbon/react";
+import { InlineNotification, Tab, TabList, Tabs } from "@carbon/react";
 
 import {
   useApplyRbacImportMutation,
@@ -24,6 +24,7 @@ import { PermissionCatalogPanel } from "./PermissionCatalogPanel";
 import { PolicySimulatorPanel } from "./PolicySimulatorPanel";
 import { RoleTemplatesPanel } from "./RoleTemplatesPanel";
 import { HealthContextsPanel } from "./HealthContextsPanel";
+import { useConfirm } from "./workspace/feedback";
 
 type GovernanceSection =
   | "permissions"
@@ -35,11 +36,23 @@ type GovernanceSection =
   | "health-contexts"
   | "simulator";
 
+const governanceSections: { id: GovernanceSection; label: string }[] = [
+  { id: "permissions", label: "Permission catalog" },
+  { id: "import-export", label: "Import / Export" },
+  { id: "templates", label: "Role templates" },
+  { id: "changes", label: "Change requests" },
+  { id: "access", label: "Access requests" },
+  { id: "audit", label: "Audit trail" },
+  { id: "health-contexts", label: "Health contexts" },
+  { id: "simulator", label: "Policy simulator" },
+];
+
 type GovernanceToolsPanelProps = {
   activeClientId: string;
 };
 
 export function GovernanceToolsPanel({ activeClientId }: GovernanceToolsPanelProps) {
+  const confirmAction = useConfirm();
   const { data: permissions = [] } = useListRbacPermissionsQuery();
   const { data: templates = [] } = useListRbacRoleTemplatesQuery();
   const { data: accessRequests = [] } = useListAccessRequestsQuery();
@@ -101,13 +114,12 @@ export function GovernanceToolsPanel({ activeClientId }: GovernanceToolsPanelPro
   };
 
   const handleApplyImport = async () => {
-    if (
-      !confirm(
-        "Apply this RBAC seed import? This will create/update mappings but will not prune stale records.",
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirmAction({
+      title: "Apply RBAC seed import?",
+      body: <p>This creates and updates mappings but does not prune stale records.</p>,
+      confirmLabel: "Apply import",
+    });
+    if (!confirmed) return;
     await applyImport({ payload: parseSeedPayload() }).unwrap();
     setMessage("RBAC seed import applied.");
   };
@@ -191,37 +203,16 @@ export function GovernanceToolsPanel({ activeClientId }: GovernanceToolsPanelPro
       )}
 
       <div className="rbac-governance-navigation">
-        <Dropdown
-          id="rbac-governance-section"
-          titleText="Governance task"
-          label="Choose a task"
-          items={
-            [
-              "permissions",
-              "import-export",
-              "templates",
-              "changes",
-              "access",
-              "audit",
-              "health-contexts",
-              "simulator",
-            ] as GovernanceSection[]
-          }
-          itemToString={(item) =>
-            ({
-              permissions: "Permission catalog",
-              "import-export": "Import / Export",
-              templates: "Role templates",
-              changes: "Change requests",
-              access: "Access requests",
-              audit: "Audit trail",
-              "health-contexts": "Health contexts",
-              simulator: "Policy simulator",
-            })[item ?? "permissions"]
-          }
-          selectedItem={activeSection}
-          onChange={({ selectedItem }) => selectedItem && setActiveSection(selectedItem)}
-        />
+        <Tabs
+          selectedIndex={governanceSections.findIndex((item) => item.id === activeSection)}
+          onChange={({ selectedIndex }) => setActiveSection(governanceSections[selectedIndex].id)}
+        >
+          <TabList aria-label="Governance tasks" contained>
+            {governanceSections.map((item) => (
+              <Tab key={item.id}>{item.label}</Tab>
+            ))}
+          </TabList>
+        </Tabs>
       </div>
 
       <div className="rbac-governance-grid">

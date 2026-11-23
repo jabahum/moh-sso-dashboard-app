@@ -10,6 +10,7 @@ import {
 } from "../api";
 import { PERMISSIONS, PermissionGuard } from "@moh-sso/auth";
 import type { RbacRoleTemplate } from "../types";
+import { useConfirm } from "./workspace/feedback";
 
 type RoleTemplatesPanelProps = {
   templates: RbacRoleTemplate[];
@@ -17,7 +18,12 @@ type RoleTemplatesPanelProps = {
   onMessage: (message: string) => void;
 };
 
-export function RoleTemplatesPanel({ templates, activeClientId, onMessage }: RoleTemplatesPanelProps) {
+export function RoleTemplatesPanel({
+  templates,
+  activeClientId,
+  onMessage,
+}: RoleTemplatesPanelProps) {
+  const confirmAction = useConfirm();
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [roleName, setRoleName] = useState("");
   const [sourceRoleId, setSourceRoleId] = useState("");
@@ -58,13 +64,29 @@ export function RoleTemplatesPanel({ templates, activeClientId, onMessage }: Rol
   };
 
   const handleBulkAssign = async () => {
-    await bulkAssignPermission({ roleIds: parsedRoleIds(), permissionKey: bulkPermissionKey }).unwrap();
+    await bulkAssignPermission({
+      roleIds: parsedRoleIds(),
+      permissionKey: bulkPermissionKey,
+    }).unwrap();
     onMessage("Permission assigned to selected roles.");
   };
 
   const handleBulkRemove = async () => {
-    if (!confirm(`Remove ${bulkPermissionKey} from ${parsedRoleIds().length} roles?`)) return;
-    await bulkRemovePermission({ roleIds: parsedRoleIds(), permissionKey: bulkPermissionKey }).unwrap();
+    const confirmed = await confirmAction({
+      title: "Remove permission from roles?",
+      body: (
+        <p>
+          Remove <code>{bulkPermissionKey}</code> from {parsedRoleIds().length} roles?
+        </p>
+      ),
+      confirmLabel: "Remove permission",
+      danger: true,
+    });
+    if (!confirmed) return;
+    await bulkRemovePermission({
+      roleIds: parsedRoleIds(),
+      permissionKey: bulkPermissionKey,
+    }).unwrap();
     onMessage("Permission removed from selected roles.");
   };
 
@@ -90,7 +112,11 @@ export function RoleTemplatesPanel({ templates, activeClientId, onMessage }: Rol
         onChange={(event) => setRoleName(event.target.value)}
       />
       <PermissionGuard permission={PERMISSIONS.rbacRolesWrite}>
-        <Button size="sm" disabled={!activeClientId || !selectedTemplate} onClick={handleCreateRole}>
+        <Button
+          size="sm"
+          disabled={!activeClientId || !selectedTemplate}
+          onClick={handleCreateRole}
+        >
           Create role from template
         </Button>
       </PermissionGuard>
@@ -108,7 +134,11 @@ export function RoleTemplatesPanel({ templates, activeClientId, onMessage }: Rol
           onChange={(event) => setTargetRoleId(event.target.value)}
         />
         <PermissionGuard permission={PERMISSIONS.rbacPermissionsWrite}>
-          <Button size="sm" disabled={!sourceRoleId || !targetRoleId} onClick={handleCopyPermissions}>
+          <Button
+            size="sm"
+            disabled={!sourceRoleId || !targetRoleId}
+            onClick={handleCopyPermissions}
+          >
             Copy permissions
           </Button>
         </PermissionGuard>
@@ -128,7 +158,11 @@ export function RoleTemplatesPanel({ templates, activeClientId, onMessage }: Rol
         />
         <PermissionGuard permission={PERMISSIONS.rbacPermissionsWrite}>
           <div className="rbac-sync-actions">
-            <Button size="sm" disabled={parsedRoleIds().length === 0 || !bulkPermissionKey} onClick={handleBulkAssign}>
+            <Button
+              size="sm"
+              disabled={parsedRoleIds().length === 0 || !bulkPermissionKey}
+              onClick={handleBulkAssign}
+            >
               Bulk assign
             </Button>
             <Button
@@ -142,7 +176,9 @@ export function RoleTemplatesPanel({ templates, activeClientId, onMessage }: Rol
           </div>
         </PermissionGuard>
       </div>
-      <small>{roles.length} roles available for {activeClientId || "selected system"}.</small>
+      <small>
+        {roles.length} roles available for {activeClientId || "selected system"}.
+      </small>
       <small>
         {activeClientId
           ? `Templates apply to ${activeClientId}.`
