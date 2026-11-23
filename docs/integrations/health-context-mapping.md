@@ -19,7 +19,7 @@ Recommended namespace examples:
 | `surveillance-facility` | Surveillance facility UUID |
 | `geography-region`, `geography-district`, `geography-sub-county`, `geography-facility` | Primary geography registry UUID |
 
-In the current code, the visualiser (`backend/internal/features/visualiser/health_context.go`)
+In the current code, the visualiser (`backend/modules/visualiser/health_context.go`)
 reads `dwh-org-unit` and `surveillance-*` aliases. The `admin-units` module reads
 `dwh-org-unit`, and surveillance reads `surveillance-*`. Migration
 `000060_primary_geography_registry` creates and maintains `geography-*` aliases

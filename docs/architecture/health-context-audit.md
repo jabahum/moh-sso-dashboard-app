@@ -56,7 +56,7 @@ context-safe.
 | Permission plus system access plus context policy | Implemented as reusable boundary |
 | Shell selector and microfrontend propagation | Implemented |
 | Surveillance row and aggregate enforcement | Implemented: routes are in the context-scoped group and queries receive authorized alias IDs (`backend/internal/features/surveillance/health_context.go`, migration `000056`) |
-| Visualiser enforcement | Implemented: requested organisation units are constrained by `dwh-org-unit` and `surveillance-*` aliases (`backend/internal/features/visualiser/health_context.go`) |
+| Visualiser enforcement | Implemented: requested organisation units are constrained by `dwh-org-unit` and `surveillance-*` aliases (`backend/modules/visualiser/health_context.go`) |
 | Admin-unit hierarchy | Implemented in the `admin-units` module through the shared context selector and `dwh-org-unit` aliases |
 | Report browser enforcement | Pending: depends on the external Health BI service |
 | Document ownership, mutations, downloads, previews, and statistics | Implemented; legacy records are initially classified at the Uganda root |

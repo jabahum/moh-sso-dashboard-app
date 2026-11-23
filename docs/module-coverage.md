@@ -34,7 +34,7 @@ Registry integration does not imply independent Go packaging. Planned domains ar
 | surveillance | planned | host | — | Surveillance and outbreak APIs | health_context, primary-db, observatory-db, geojson | none | core and Observatory | Review primary/Observatory repository boundaries and schema ownership before packaging routes. |
 | system_rbac | core | host | — | Seed application and system behavior policy | primary-db, health_context | none | core | Retain bootstrap policy and manifest configuration precedence in the host. |
 | users | planned | host | — | User administration and bulk import APIs | keycloak, primary-db, notifications, host-audit-recorder | none | core | Define identity/import and delivery ports while preserving user synchronization and existing role checks. |
-| visualiser | planned | host | — | Warehouse visualisation and query APIs | warehouse, health_context | none | external warehouse | Inject query and contextual-scope ports; retain warehouse failure/readiness behavior. |
+| visualiser | published | self-contained | visualiser | Warehouse visualisation and query APIs | warehouse, health_context | none | external warehouse | Built from the repository through a local replace until backend/core v0.2.0 and this module are tagged; then pin the release in backend/go.mod. |
 
 ## Frontend
 

@@ -27,7 +27,6 @@ import (
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
-	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	"github.com/moh-sso-dashboard/internal/middleware"
 	"github.com/moh-sso-dashboard/internal/modulehttp"
@@ -41,6 +40,7 @@ import (
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
+	visualiserfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/visualiser"
 )
 
 type RouterDependencies struct {
@@ -72,7 +72,7 @@ type HandlerSet struct {
 	DataQuality             *dataqualityfeature.Handler
 	Announcements           *announcementfeature.Module
 	AdminUnits              *adminunitsfeature.Module
-	Visualiser              *visualiserfeature.Handler
+	Visualiser              *visualiserfeature.Module
 	Surveillance            *surveillancefeature.Handler
 	GeoJSON                 *geojsonfeature.Module
 	Email                   *emailfeature.Handler

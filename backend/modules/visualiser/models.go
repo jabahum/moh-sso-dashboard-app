@@ -1,9 +1,6 @@
 package visualiser
 
-type DataElementsRequest struct {
-	DataSetID *string `json:"data_set_id" form:"data_set_id"`
-}
-
+// DataValuesRequest is the POST /visualizer/datavalues body.
 type DataValuesRequest struct {
 	// AggregationLevel overrides output grouping; currently only facility level is supported.
 	AggregationLevel string   `json:"aggregationLevel" binding:"omitempty,oneof=6"`
@@ -15,10 +12,6 @@ type DataValuesRequest struct {
 	StartDate        string   `json:"startDate"`
 	EndDate          string   `json:"endDate"`
 	OrgunitLevel     any      `json:"orgunitLevel"`
-}
-
-type DataElementsByThemeRequest struct {
-	ThemeID string `json:"theme_id" binding:"required"`
 }
 
 type DatasetResponse struct {
@@ -53,4 +46,29 @@ type DataValueRowResponse struct {
 
 type DataValuesResponse struct {
 	Rows []DataValueRowResponse `json:"rows"`
+}
+
+func toDatasetResponses(items []DatasetResponse) []DatasetResponse {
+	if items == nil {
+		return []DatasetResponse{}
+	}
+	out := make([]DatasetResponse, 0, len(items))
+	out = append(out, items...)
+	return out
+}
+
+func toDataElementResponses(items []DataElementResponse) []DataElementResponse {
+	if items == nil {
+		return []DataElementResponse{}
+	}
+	out := make([]DataElementResponse, 0, len(items))
+	out = append(out, items...)
+	return out
+}
+
+func toDataValuesResponse(item DataValuesResponse) DataValuesResponse {
+	if item.Rows == nil {
+		item.Rows = []DataValueRowResponse{}
+	}
+	return item
 }
