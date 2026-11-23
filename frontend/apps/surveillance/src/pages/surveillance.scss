@@ -93,15 +93,12 @@
 .surveillance-tile {
   display: flex;
   flex-direction: column;
-  min-height: 160px;
+  /* Height follows content so empty severity bands do not hold a large blank colour block. */
+  min-height: 0;
   border-radius: 4px;
   padding: 1rem;
   /* Text colour per tone is set below; every pairing meets WCAG AA (4.5:1). */
   color: #ffffff;
-}
-
-.surveillance-tile--empty {
-  min-height: 0;
 }
 
 .surveillance-tile__header {
