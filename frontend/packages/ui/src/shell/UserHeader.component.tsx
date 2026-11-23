@@ -21,7 +21,6 @@ export type UserHeaderProps = {
   username?: string | null;
   appMenu?: ReactNode;
   contextSelector?: ReactNode;
-  notifications?: ReactNode;
   onNavigateHome?: () => void;
   onLogout?: () => void;
   onProfile?: () => void;
@@ -36,7 +35,6 @@ const UserHeader: React.FC<UserHeaderProps> = ({
   username,
   appMenu,
   contextSelector,
-  notifications,
   onNavigateHome,
   onLogout,
   onProfile,
@@ -52,7 +50,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({
   };
 
   return (
-    <Header aria-label={`MOH ${appName}`} className="moh-shell-header moh-shell-header--signed-in">
+    <Header aria-label={`MOH ${appName}`} className="moh-shell-header">
       <SkipToContent />
       {onToggleNavigation && (
         <HeaderMenuButton
@@ -86,7 +84,6 @@ const UserHeader: React.FC<UserHeaderProps> = ({
       <HeaderGlobalBar onClickCapture={onGlobalAction}>
         {/* Keep this order in sync with the admin layout header actions. */}
         {contextSelector}
-        {notifications}
         {appMenu ?? <AppMenuAction />}
         <HeaderGlobalAction
           aria-label={`Signed in as ${username ?? "user"}`}

@@ -32,8 +32,14 @@ export function ConnectedUserHeader({
   return (
     <UserHeader
       username={user?.username}
-      contextSelector={<HealthContextSelector />}
-      notifications={<ConnectedNotificationsAction />}
+      // Production builds the shell against the published @moh-sso/ui, so the
+      // bell rides in the existing contextSelector slot rather than a new prop.
+      contextSelector={
+        <>
+          <HealthContextSelector />
+          <ConnectedNotificationsAction />
+        </>
+      }
       navigationExpanded={navigationExpanded}
       onToggleNavigation={onToggleNavigation}
       onGlobalAction={onGlobalAction}

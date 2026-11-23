@@ -273,3 +273,12 @@
     padding-left: 1rem;
   }
 }
+
+// Below md the signed-in header keeps only the logo; the title text would
+// otherwise truncate to a stray glyph next to the header actions. This lives in
+// the shell (not @moh-sso/ui) so it ships with the shell build.
+@media (max-width: 672px) {
+  .user-layout .moh-shell-header .moh-header-name {
+    display: none;
+  }
+}
