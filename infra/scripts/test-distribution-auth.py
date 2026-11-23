@@ -34,6 +34,16 @@ def run(*args, env=None, input=None):
     return result.stdout.strip()
 
 
+def status_of(url, token=None):
+    headers = {'Authorization': 'Bearer ' + token} if token else {}
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=10) as response:
+            return response.code
+    except urllib.error.HTTPError as error:
+        with error:
+            return error.code
+
+
 def request(url, *, method='GET', data=None, token=None, status=200, form=False, extra_headers=None):
     headers = dict(extra_headers or {})
     if token:
@@ -575,7 +585,11 @@ def main():
             admin = token('admin')
             modules = request(api + inventory, token=admin)['data']
             states = {item['id']: item['enabled'] for item in modules}
-            assert states == {'metrics': True, 'audit': False, 'geojson': False, 'report-scheduler': False, 'announcements': False, 'admin-units': False}, states
+            extracted_modules = ('storage-locations', 'visualiser', 'document-templates',
+                                 'data-quality', 'documents', 'surveillance')
+            assert states == {'metrics': True, 'audit': False, 'geojson': False, 'report-scheduler': False,
+                              'announcements': False, 'admin-units': False,
+                              **{module: True for module in extracted_modules}}, states
             for metric_path in metric_paths:
                 request(api + metric_path, token=admin)
             print('Metrics re-enablement preserves SQL-backed reads', flush=True)
@@ -671,6 +685,31 @@ def main():
             assert request(api + '/api/v1/applications/fixture-reports/manifest', token=token('viewer'))['data']['version'] == '1.0.0'
             assert scheduler_runtime().split('|')[0] != retained_runtime.split('|')[0], 'Full profile failed to resume the scheduler'
             print('Full -> core -> full profile switch preserves schema, manifests, audit, announcements and attachments', flush=True)
+            # Each module extracted from the host switches off on its own.
+            extracted_routes = {
+                'storage-locations': '/api/v1/storage-locations',
+                'visualiser': '/api/v1/visualizer/datasets',
+                'document-templates': '/api/v1/document-templates',
+                'data-quality': '/api/v1/data-quality/dqa/rules',
+                'documents': '/api/v1/documents',
+                'surveillance': '/api/v1/surveillance/diseases',
+            }
+            assert tuple(extracted_routes) == extracted_modules
+            for module, route in extracted_routes.items():
+                assert status_of(api + route, admin) != 404, f'{module}: {route} must be served while enabled'
+            backend['environment']['DISABLED_MODULES'] = ','.join(extracted_modules)
+            path.write_text(json.dumps(model))
+            run(*compose, 'up', '-d', '--no-deps', '--no-build', '--force-recreate', 'backend')
+            api = 'http://127.0.0.1:' + run(*compose, 'port', 'backend', '9000').rsplit(':', 1)[1]
+            wait_ready(api + '/health/ready')
+            admin = token('admin')
+            states = {item['id']: item['enabled'] for item in request(api + inventory, token=admin)['data']}
+            assert all(not states[module] for module in extracted_modules), states
+            assert states['metrics'] and states['announcements'], states
+            for route in extracted_routes.values():
+                request(api + route, token=admin, status=404)
+            print('Extracted modules (storage-locations, visualiser, document-templates, data-quality, '
+                  'documents, surveillance) disable individually and remove their routes', flush=True)
             print('PASS: real Keycloak authentication, module inventory, admin/role authorization, reviewed import, '
                   'lifecycle activation, idempotence, backup/restore, startup preservation, clean shutdown, restart recovery and module disablement')
         finally:
