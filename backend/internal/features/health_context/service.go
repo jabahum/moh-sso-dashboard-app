@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	"github.com/moh-sso-dashboard/internal/authz"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 type Service struct {

@@ -11,8 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	"github.com/moh-sso-dashboard/internal/http/response"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 type Handler struct {

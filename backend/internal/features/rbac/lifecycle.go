@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	"github.com/moh-sso-dashboard/internal/authz"
 	systemrbac "github.com/moh-sso-dashboard/internal/features/system_rbac"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 var ErrApplicationExists = errors.New("application already registered")
