@@ -72,11 +72,18 @@ const (
 	GrantNotRequired = "not_required"
 )
 
+// accountMissingAttempts bounds how often resume retries an account absent from
+// the listing before giving up on it.
+const accountMissingAttempts = 3
+
 // Stable row error codes stored in last_error. Upstream bodies are never stored.
 const (
-	CodeAccountIneligible     = "account_ineligible"
-	CodeAccountChanged        = "account_changed"
-	CodeAccountLookupFailed   = "account_lookup_failed"
+	CodeAccountIneligible   = "account_ineligible"
+	CodeAccountChanged      = "account_changed"
+	CodeAccountLookupFailed = "account_lookup_failed"
+	// CodeAccountMissing is final: the account stayed absent from the listing for
+	// accountMissingAttempts consecutive attempts, so the run can complete.
+	CodeAccountMissing        = "account_missing"
 	CodeDirectoryChanged      = "directory_changed"
 	CodeDirectoryLookupFailed = "directory_lookup_failed"
 	CodeInviteFailed          = "invite_failed"
@@ -623,6 +630,7 @@ func (s BatchService) processRow(ctx context.Context, t BatchTarget, row BatchRo
 		return out
 	}
 	// Start the attempt. The row must still be approved by a named reviewer.
+	previousError := row.LastError
 	if !update(func(r *BatchRow) { r.Attempts++; r.LastError = "" }) {
 		return out
 	}
@@ -630,7 +638,12 @@ func (s BatchService) processRow(ctx context.Context, t BatchTarget, row BatchRo
 	if row.LinkStatus != LinkLinked {
 		if !found {
 			// Missing from the walk is not proof of ineligibility (the listing may
-			// have skipped it); resume retries. Only a 404 from PUT is final.
+			// have skipped it), so resume retries. After accountMissingAttempts
+			// attempts that each found it missing, the row becomes final so the run
+			// can complete; a 404 from PUT is the other way to reach ineligible.
+			if previousError == CodeAccountLookupFailed && row.Attempts >= accountMissingAttempts {
+				return fail(CodeAccountMissing, func(r *BatchRow) { r.LinkStatus = LinkIneligible })
+			}
 			return fail(CodeAccountLookupFailed, func(r *BatchRow) { r.LinkStatus = LinkFailed })
 		}
 		if account.Email != row.EmailHint {

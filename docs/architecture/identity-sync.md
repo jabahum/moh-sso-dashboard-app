@@ -248,8 +248,11 @@ named reviewer.
 
 0. `attempts += 1`. A row the re-read walk did not return gets
    `link_status=failed` (`account_lookup_failed`) and resume retries it: a
-   moving page boundary is not proof of ineligibility. Only a 404 from
-   `PUT /accounts/{id}/identity` makes a row `ineligible`. A row whose email
+   moving page boundary is not proof of ineligibility. After 3 attempts that
+   each found the account missing, the row becomes final as `ineligible`
+   (`account_missing`), so a run with a deleted account can still complete.
+   Otherwise only a 404 from `PUT /accounts/{id}/identity` makes a row
+   `ineligible`. A row whose email
    changed since review goes back to `review` (`account_changed`).
 1. `create` rows whose `user_status` is not `invited`: `EnsureUser` (see
    Invitations), then `user_status=invited` and `proposed_subject` set to the new
@@ -284,7 +287,7 @@ Rows proposed `linked_no_access` or `revoked`, and rows that become `revoked`,
 are never granted. Apply selects only approved `reuse`/`create` rows, and
 migration 63 rejects a `linked_no_access` or `revoked` row marked granted.
 
-Stable error codes: `account_ineligible`, `account_lookup_failed`, `account_changed`,
+Stable error codes: `account_ineligible`, `account_lookup_failed`, `account_missing`, `account_changed`,
 `directory_changed`, `directory_lookup_failed`, `invite_failed`,
 `invite_email_collision`, `invite_ambiguous`, `invite_origin_mismatch`,
 `invite_user_disabled`, `invite_attribute_not_stored`, `invite_email_failed`,
