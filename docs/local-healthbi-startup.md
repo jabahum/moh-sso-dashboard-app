@@ -10,14 +10,17 @@ report scheduler.
 Docker, Go, Python 3, and local Chrome/Chromium are required.
 
 The sibling checkout defaults to `../dwh_visualization`. Override it with
-`HEALTHBI_PROJECT_DIR=/path/to/dwh_visualization make dev`. Both checkouts must
+`HEALTHBI_PROJECT_DIR=/path/to/dwh_visualization make sso-up`. Both checkouts must
 contain the unified-startup changes.
 
 ## Start the stack
 
-Run `make dev` (or `make sso-up`) from `moh-sso-dashboard`. It:
+Run `make sso-up` from `moh-sso-dashboard` (it runs `infra/scripts/local-sso.py up`).
+Plain `make dev` is `make compose-dev-up`: it builds and starts the development
+Compose stack only and does not prepare or start Health BI. `make sso-up`:
 
-1. starts the Docker SSO infrastructure;
+1. starts the Docker SSO infrastructure (`keycloak-db`, `keycloak`, `backend-db`,
+   `redis`, `mailhog`);
 2. prepares Health BI's synthetic PostgreSQL database;
 3. starts its host Go/Air server;
 4. starts the portal backend and frontend.
@@ -27,7 +30,7 @@ update clients. It verifies a worker token against Health BI's protected API bef
 reporting success.
 
 Existing development images are reused; missing images are built by Compose.
-Use `SSO_BUILD=1 make dev` when Dockerfiles or image dependencies change.
+Use `SSO_BUILD=1 make sso-up` when Dockerfiles or image dependencies change.
 
 Health BI's existing `make dev` remains usable on its own. `make dev-native`
 retains the portal's former native backend/frontend command when infrastructure is
@@ -40,13 +43,14 @@ For a persisted realm created before this change, run once:
 
 ```sh
 make sso-reconcile-keycloak
-make dev
+make sso-up
 ```
 
 The reconciliation command reads the same realm export and applies only the
 Health BI clients and service-role mappings. It retains existing credentials,
-redirects, user accounts, and realm data. It does not delete the older
-`datawarehouse-report-browser` client or its sessions; new Health BI configuration
+redirects, user accounts, and realm data. It does not delete any other client, so a
+`health-bi` browser client left in a realm reconciled while that name was in use
+remains (with its sessions) until removed manually; current Health BI configuration
 uses `datawarehouse-report-browser`. No database reset or full realm replacement is required.
 
 ## Check status and stop services
@@ -66,7 +70,7 @@ for a reused process.
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | Portal report-browser module               | `/apps/dwh/dashboards`, permission `report_browser:read`               |
 | Parent system and existing report roles    | Keycloak client `data-statistics`                                      |
-| Health BI browser login                    | Public PKCE client `datawarehouse-report-browser`                                         |
+| Health BI browser login                    | Public PKCE client `datawarehouse-report-browser`                      |
 | Scheduled generation                       | Confidential client `report-scheduler-worker`                          |
 | Worker grant                               | `data-statistics:report_scheduler_service`, audience `data-statistics` |
 | Portal                                     | `http://localhost:3000`                                                |

@@ -8,19 +8,32 @@ such as in-app display, email, SMS, or future webhook delivery.
 
 ## Delivery channels
 
-- `in_app`: stored for the portal notification center.
-- `email`: processed by the notification email delivery worker.
+- `in_app`: stored for the portal notification center (no worker processes these records).
+- `email`: processed by the notification email delivery worker, which hands the message to the
+  email outbox; the delivery is marked `SENT` with provider `email_queue` and provider status
+  `QUEUED` once queued, and the outbox worker sends it later.
 - `sms`: processed by the notification SMS delivery worker.
-- `webhook`: reserved for future integrations.
+- `webhook`: reserved for future integrations; no worker processes it.
+
+Both delivery workers run only when `NOTIFICATION_DELIVERY_WORKER_ENABLED=true` (the default) and
+the backend is not running in core-only mode; the SMS worker additionally requires
+`SMS_ENABLED=true`. They poll every `NOTIFICATION_DELIVERY_WORKER_INTERVAL` (default `3s`) and claim
+up to `NOTIFICATION_DELIVERY_BATCH_SIZE` (default `20`) due deliveries per channel
+(`backend/internal/bootstrap/workers.go`, `backend/internal/config/config.go`).
 
 ## Delivery statuses
 
 - `PENDING`: queued and ready when `scheduled_at` is due.
 - `PROCESSING`: claimed by a worker.
-- `SENT`: provider accepted or completed the delivery.
-- `FAILED`: exhausted retry attempts.
-- `RETRY`: failed once and scheduled for another attempt.
-- `CANCELLED`: manually cancelled before completion.
+- `SENT`: provider accepted or completed the delivery (for email: queued to the email outbox).
+- `FAILED`: the failed attempt brought `attempts` to `max_attempts`.
+- `RETRY`: an attempt failed with attempts remaining, or an admin queued a manual retry.
+- `CANCELLED`: manually cancelled.
+
+A delivery's `max_attempts` defaults to 5 when the caller does not set one (test SMS uses 3). After
+a failed attempt the worker schedules the next one 30 seconds, 2 minutes, then 5 minutes later
+(`retryDelay` in `backend/internal/worker/notification_delivery_worker.go`). Deliveries left in
+`PROCESSING` (for example after a backend crash) are not reclaimed automatically.
 
 ## Admin dashboard
 
@@ -35,11 +48,11 @@ The dashboard supports:
 - filtering by channel and status
 - searching by recipient JSON, delivery ID, notification ID, or provider message ID
 - viewing delivery details and safe provider metadata
-- retrying retryable deliveries
-- cancelling pending/retry/processing deliveries
+- retrying `FAILED`, `RETRY`, `PENDING` or `CANCELLED` deliveries
+- cancelling `PENDING`, `RETRY` or `PROCESSING` deliveries
 - sending a test SMS
 
-Retries and cancellations require `notifications:write`.
+Retries, cancellations and test SMS require `notifications:write`.
 
 ## API
 
@@ -56,12 +69,20 @@ Supported delivery list query parameters:
 
 - `channel`
 - `status`
-- `search`
-- `limit`
-- `offset`
+- `search` (matches delivery ID, notification ID, recipient JSON or provider message ID)
+- `limit` (default 20)
+- `offset` (default 0)
 
-Provider metadata is returned only as operational delivery metadata. The API must not expose
-secrets, credentials, full provider authentication responses, or message bodies in audit logs.
+The API is less restrictive than the dashboard buttons: retry and cancel accept any delivery that
+is not `SENT`; a `SENT` delivery returns `409 INVALID_DELIVERY_STATE`. A manual retry sets the
+delivery to `RETRY`, due immediately, and increments `attempts`, so a delivery that had already
+reached `max_attempts` becomes `FAILED` again if the next attempt fails. Retry, cancel and test SMS
+are also rate limited by the notifications write policy.
+
+Delivery responses include the recipient, template data and payload (so phone numbers, email
+addresses and message bodies are visible to `notifications:read` holders) plus provider metadata.
+For SMS, the stored provider metadata is limited to provider, message ID and status. Audit logs
+must not contain secrets, credentials, full provider authentication responses or message bodies.
 
 ## Audit
 

@@ -33,7 +33,8 @@ preference and phone availability.
 SMS_ENABLED=false
 ```
 
-SMS queueing APIs reject test SMS requests, and the SMS delivery worker is not started.
+The test SMS API returns `503 SMS_DISABLED`, and the SMS delivery worker is not started, so any
+SMS deliveries that are queued stay `PENDING`.
 
 ### Mock
 
@@ -45,6 +46,9 @@ SMS_PROVIDER=mock
 Use mock for local development. The provider logs delivery attempts and returns a provider
 message ID without contacting an external SMS gateway.
 
+`SMS_PROVIDER=noop` is also accepted; it fails every send with `sms provider is disabled`, so
+deliveries retry and then become `FAILED`.
+
 ### Africa's Talking
 
 ```env
@@ -55,7 +59,9 @@ AFRICASTALKING_API_KEY=...
 AFRICASTALKING_SENDER_ID=...
 ```
 
-The sender ID is optional when the provider account is configured to use a default sender.
+`AFRICASTALKING_USERNAME` and `AFRICASTALKING_API_KEY` are required when SMS is enabled with this
+provider; startup validation fails without them. The sender ID is optional: when it is empty no
+`from` value is sent, so the account's default sender is used.
 
 ### Twilio
 
@@ -68,6 +74,9 @@ TWILIO_AUTH_TOKEN=...
 TWILIO_FROM_NUMBER=...
 ```
 
+All three values are required by startup validation when SMS is enabled with this provider, but
+no Twilio adapter exists: `SMS_PROVIDER=twilio` uses the mock provider, which only logs the message
+and marks the delivery `SENT` with provider `twilio` (`backend/internal/service/sms_service.go`).
 Do not enable Twilio in production until a Twilio provider adapter is completed and verified.
 
 ## Environment variables
@@ -89,6 +98,17 @@ TWILIO_AUTH_TOKEN=
 TWILIO_FROM_NUMBER=
 ```
 
+These are the defaults in `backend/internal/config/config.go` and in `infra/env/dev.env.example`
+and `infra/env/prod.env.example`. Phone numbers are normalised with `SMS_DEFAULT_COUNTRY_CODE`
+(a leading `0` is replaced by the country code) and must have 8 to 15 digits. `SMS_MAX_LENGTH`
+counts characters. `SMS_FROM_NAME` fills an empty message sender, but neither the mock nor the
+Africa's Talking provider uses it (Africa's Talking sends `AFRICASTALKING_SENDER_ID`). Each provider
+call is bounded by `SMS_SEND_TIMEOUT`.
+
+The SMS worker uses the shared `NOTIFICATION_DELIVERY_WORKER_ENABLED`,
+`NOTIFICATION_DELIVERY_WORKER_INTERVAL` (default `3s`) and `NOTIFICATION_DELIVERY_BATCH_SIZE`
+(default `20`) settings.
+
 ## Admin test SMS
 
 Use:
@@ -106,7 +126,9 @@ Body:
 }
 ```
 
-The admin dashboard exposes this as **Send test SMS**.
+The endpoint requires `notifications:write` and returns `202` with the notification ID and status
+`PENDING`. It queues an SMS delivery (`max_attempts` 3) and an in-app delivery. The admin dashboard
+exposes this as **Send test SMS**.
 
 ## Production checklist
 
@@ -122,8 +144,11 @@ The admin dashboard exposes this as **Send test SMS**.
 ## Troubleshooting
 
 - `SMS_DISABLED`: enable SMS and restart the backend.
-- `sms recipient is required`: check user preference phone number or test SMS input.
-- `sms body exceeds max length`: reduce message length or raise `SMS_MAX_LENGTH` intentionally.
-- Delivery stuck in `PENDING`: check worker enabled flag and backend logs.
+- `sms recipient phone is required` or `phone number must be 8 to 15 digits` (delivery last error):
+  check the user preference phone number or test SMS input.
+- `sms body exceeds max length of N characters`: reduce message length or raise `SMS_MAX_LENGTH`
+  intentionally.
+- Delivery stuck in `PENDING`: check `NOTIFICATION_DELIVERY_WORKER_ENABLED`, `SMS_ENABLED` and
+  backend logs.
 - Delivery stuck in `PROCESSING`: check whether the backend crashed during processing; retry or cancel from the admin dashboard.
 - Provider failure: inspect provider metadata and backend logs, then retry after fixing credentials/network issues.

@@ -75,7 +75,7 @@ or supply a reachable service/IP URL. Health BI must run separately.
 | --- | --- |
 | `HEALTH_BI_BASE_URL` | Required for integration. Health BI application base; production example uses `https://dashboards.health.go.ug/report-browser`. |
 | `HEALTH_BI_KEYCLOAK_CLIENT_ID` | Dedicated worker client; default `report-scheduler-worker`. |
-| `HEALTH_BI_KEYCLOAK_CLIENT_SECRET` | Required Keycloak-issued worker credential, or use its existing `_FILE` setting. It cannot be made valid just by generating a random local string. |
+| `HEALTH_BI_KEYCLOAK_CLIENT_SECRET` | Required Keycloak-issued worker credential, or set `HEALTH_BI_KEYCLOAK_CLIENT_SECRET_FILE` (read by the backend container entrypoint, `infra/docker/backend/entrypoint.sh`). It cannot be made valid just by generating a random local string. |
 | `HEALTH_BI_TIMEOUT` | HTTP timeout; default `30s`. |
 | `REPORT_SCHEDULER_WORKER_INTERVAL` | Due-work polling interval; default `30s`. |
 | `REPORT_SCHEDULER_DELIVERY_LINK_TTL` | Lifetime of portal delivery links; default `24h`. |
@@ -85,14 +85,15 @@ Existing `KEYCLOAK_BASE_URL` and `KEYCLOAK_REALM` determine the token endpoint.
 environment's public API base in production, and localhost only for local users.
 Email delivery also uses the normal `SMTP_*` settings. Existing primary database,
 storage and report-generation dependencies still apply. No separate scheduler
-enable flag is needed; the worker starts with the backend and integration readiness
-requires a Health BI URL and service-account credentials.
+enable flag is needed; the worker starts with the backend unless the `report-scheduler`
+module is disabled (for example through `DISABLED_MODULES`), and integration readiness
+requires a Health BI URL and service-account client ID and secret.
 
 ## Health BI settings
 
 | Variable | Purpose |
 | --- | --- |
-| `KEYCLOAK_URL`, `KEYCLOAK_REALM` | Shared public issuer and realm, derived from the selected portal env. |
+| `KEYCLOAK_URL`, `KEYCLOAK_REALM` | Shared public issuer and realm, copied from the selected portal env's `KEYCLOAK_EXTERNAL_URL` and `KEYCLOAK_REALM` (the generator stops if either is missing). |
 | `SCHEDULER_KEYCLOAK_CLIENT_ID` | Authorized worker client; must match the portal's client ID. |
 | `SCHEDULER_KEYCLOAK_AUDIENCE` | `data-statistics`. |
 | `SCHEDULER_KEYCLOAK_ROLE` | `report_scheduler_service`. |
@@ -117,9 +118,10 @@ service accounts and disable browser/password flows. Assign only
 `data-statistics` in its access-token audience. Copy that client's actual secret
 into the portal env. Do not use the portal admin or browser-login client secret.
 
-For a fully local Keycloak/Health BI stack, the existing `make sso-up` tool can
-provision/reconcile the worker account and retrieve its credential; see
-[the scheduler backend contract](scheduler-backend.md).
+For a fully local Keycloak/Health BI stack, the worker client is imported from
+`infra/keycloak/realm-export.json`; `make sso-up` reads its credential and
+`make sso-reconcile-keycloak` adds it to an older persisted realm; see
+[Start the portal and Health BI together](local-healthbi-startup.md).
 For external/production Keycloak, this generator leaves account provisioning to
 the realm administrator.
 

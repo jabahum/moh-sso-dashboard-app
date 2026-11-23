@@ -37,7 +37,8 @@ approved by the incident process.
 
 Use retry when:
 
-- status is `FAILED`, `RETRY`, `PENDING`, or `CANCELLED`
+- status is `FAILED`, `RETRY`, `PENDING`, or `CANCELLED` (the dashboard disables the button for
+  other statuses; the API itself rejects only `SENT`)
 - the underlying provider/network issue has been corrected
 
 The dashboard action calls:
@@ -46,14 +47,17 @@ The dashboard action calls:
 POST /api/v1/admin/notifications/deliveries/:deliveryID/retry
 ```
 
-Retry moves the delivery to `RETRY` and schedules immediate processing.
+Retry moves the delivery to `RETRY`, schedules immediate processing and increments `attempts`.
+If the delivery had already reached `max_attempts`, it returns to `FAILED` after one more failed
+attempt.
 
 ## Cancel a delivery
 
 Use cancel when:
 
 - the message should not be delivered
-- the delivery is still `PENDING`, `RETRY`, or `PROCESSING`
+- the delivery is still `PENDING`, `RETRY`, or `PROCESSING` (the dashboard disables the button for
+  other statuses; the API itself rejects only `SENT`)
 
 The dashboard action calls:
 
@@ -61,7 +65,7 @@ The dashboard action calls:
 POST /api/v1/admin/notifications/deliveries/:deliveryID/cancel
 ```
 
-`SENT` deliveries cannot be cancelled.
+`SENT` deliveries cannot be retried or cancelled; the API returns `409 INVALID_DELIVERY_STATE`.
 
 ## Send a test SMS
 
@@ -70,16 +74,20 @@ Use test SMS after provider configuration changes:
 1. Open the admin delivery dashboard.
 2. Click **Send test SMS**.
 3. Enter a test phone number and message.
-4. Confirm a new SMS delivery appears.
+4. Confirm a new SMS delivery appears (the test also creates an in-app delivery).
 5. Confirm it transitions to `SENT`.
+
+The request is rejected with `503 SMS_DISABLED` when `SMS_ENABLED=false`.
 
 ## Stuck processing deliveries
 
-If a delivery stays in `PROCESSING`:
+Deliveries left in `PROCESSING` are not reclaimed automatically. If a delivery stays in
+`PROCESSING`:
 
 1. Check if the backend worker is running.
 2. Check backend logs around the last `locked_at` timestamp.
-3. If the delivery is safe to reprocess, use retry.
+3. If the delivery is safe to reprocess, cancel it and then retry it (the dashboard does not offer
+   retry for `PROCESSING` deliveries; the retry API accepts them).
 4. If the notification should no longer be sent, use cancel.
 
 ## Provider outage
@@ -92,10 +100,10 @@ If a delivery stays in `PROCESSING`:
 
 ## Metrics to watch
 
-- total deliveries by channel
-- failed SMS deliveries by provider
-- retry SMS deliveries by provider
-- average processing duration by channel/provider
+The metrics endpoint groups deliveries by channel and provider and returns:
+
+- total deliveries and per-status counts (pending, processing, sent, failed, retry, cancelled)
+- average processing duration (`sent_at` minus `created_at`, over sent deliveries)
 
 Metric labels must remain low-cardinality. Never add phone numbers, emails, user IDs,
 notification IDs, or provider message IDs as metric labels.
