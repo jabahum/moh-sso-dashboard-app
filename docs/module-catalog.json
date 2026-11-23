@@ -111,18 +111,19 @@
     },
     {
       "id": "document_templates",
-      "stage": "planned",
+      "stage": "published",
       "scope": "Template, sheet and column APIs",
-      "moduleId": "",
+      "moduleId": "document-templates",
       "dependencies": [
         "primary-db",
-        "blob-storage",
-        "host-audit-recorder"
+        "warehouse",
+        "notifications",
+        "health_context"
       ],
       "workers": [],
       "migrations": "core",
-      "next": "Keep all three handler families together and define template/storage ports and publication permissions.",
-      "integration": "host"
+      "next": "Built from the repository through a local replace until backend/core v0.2.0 and this module are tagged; then pin the release in backend/go.mod.",
+      "integration": "self-contained"
     },
     {
       "id": "documents",

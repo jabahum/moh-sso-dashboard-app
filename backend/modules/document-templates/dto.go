@@ -1,18 +1,6 @@
-package document_templates
+package documenttemplates
 
-import (
-	"github.com/google/uuid"
-	"github.com/moh-sso-dashboard/internal/model"
-)
-
-type processValueRequest struct {
-	Column model.DocumentTemplateColumn `json:"column"`
-	Value  any                          `json:"value"`
-}
-
-type ExistsResponse struct {
-	Exists bool `json:"exists"`
-}
+import "github.com/google/uuid"
 
 type TemplateResponse struct {
 	ID            uuid.UUID      `json:"id"`
@@ -140,18 +128,4 @@ type ColumnStructureResponse struct {
 	AllowedValues []string       `json:"allowed_values"`
 	Aliases       []string       `json:"aliases"`
 	Configuration map[string]any `json:"configuration"`
-}
-
-type ProcessedColumnValueResponse struct {
-	ColumnKey string               `json:"column_key"`
-	RawValue  any                  `json:"raw_value"`
-	Value     any                  `json:"value"`
-	IsValid   bool                 `json:"is_valid"`
-	Error     *ColumnErrorResponse `json:"error,omitempty"`
-}
-
-type ColumnErrorResponse struct {
-	Code         string `json:"code"`
-	Message      string `json:"message"`
-	InvalidValue any    `json:"invalid_value"`
 }

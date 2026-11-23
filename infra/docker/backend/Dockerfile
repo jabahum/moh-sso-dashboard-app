@@ -20,6 +20,7 @@ COPY backend/core/go.mod ./core/go.mod
 # Modules built from this repository through local replace directives.
 COPY backend/modules/storage-locations/go.mod ./modules/storage-locations/go.mod
 COPY backend/modules/visualiser/go.mod ./modules/visualiser/go.mod
+COPY backend/modules/document-templates/go.mod ./modules/document-templates/go.mod
 RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
 
 COPY backend/ .

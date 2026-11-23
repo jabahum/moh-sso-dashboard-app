@@ -16,11 +16,10 @@ import (
 
 	"github.com/google/uuid"
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	documenttemplates "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentRepository "github.com/moh-sso-dashboard/internal/features/documents"
-	"github.com/moh-sso-dashboard/internal/model"
 	processRepository "github.com/moh-sso-dashboard/internal/repository/processes"
 	"github.com/moh-sso-dashboard/internal/storage"
+	documenttemplates "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -225,7 +224,7 @@ func (c *ExcelProcessor) Process(ctx context.Context, p db.Process) error {
 // applyForwardFill forward-fills blank cell values for columns listed in the
 // sheet configuration under "forward_fill_columns". This replaces the old
 // hard-coded normalizeGHSCRows function.
-func applyForwardFill(rows []extractedExcelRow, sheet model.TemplateSheetStructure) []extractedExcelRow {
+func applyForwardFill(rows []extractedExcelRow, sheet documenttemplates.TemplateSheetStructure) []extractedExcelRow {
 	raw, ok := sheet.Configuration["forward_fill_columns"]
 	if !ok {
 		return rows
@@ -267,7 +266,7 @@ func applyForwardFill(rows []extractedExcelRow, sheet model.TemplateSheetStructu
 // blankHeaderOverrides reads positional blank-header overrides from the sheet
 // configuration key "blank_header_overrides" (map of 1-based col index → column_key).
 // This replaces the old hard-coded blankHeaderOverrides() switch.
-func blankHeaderOverrides(sheet model.TemplateSheetStructure) map[int]string {
+func blankHeaderOverrides(sheet documenttemplates.TemplateSheetStructure) map[int]string {
 	raw, ok := sheet.Configuration["blank_header_overrides"]
 	if !ok {
 		return nil
@@ -331,7 +330,7 @@ type extractedExcelRow struct {
 func (c *ExcelProcessor) extractSheetRows(
 	ctx context.Context,
 	workbook *excelize.File,
-	sheet model.TemplateSheetStructure,
+	sheet documenttemplates.TemplateSheetStructure,
 	positionalOverrides map[int]string,
 ) ([]extractedExcelRow, error) {
 	_ = ctx
@@ -420,7 +419,7 @@ func (c *ExcelProcessor) extractSheetRows(
 				value = strings.TrimSpace(row[colIndex])
 			}
 
-			var column model.TemplateColumnStructure
+			var column documenttemplates.TemplateColumnStructure
 			var ok bool
 
 			if header != "" {
@@ -535,7 +534,7 @@ func expandMergedCellValues(
 	return rows, nil
 }
 
-func resolveWorkbookSheetName(workbook *excelize.File, sheet model.TemplateSheetStructure) string {
+func resolveWorkbookSheetName(workbook *excelize.File, sheet documenttemplates.TemplateSheetStructure) string {
 	candidates := sheetNameCandidates(sheet)
 
 	visibleSheets := make([]string, 0)
@@ -606,7 +605,7 @@ func resolveWorkbookSheetName(workbook *excelize.File, sheet model.TemplateSheet
 	return ""
 }
 
-func sheetNameCandidates(sheet model.TemplateSheetStructure) []string {
+func sheetNameCandidates(sheet documenttemplates.TemplateSheetStructure) []string {
 	values := []string{sheet.Code, sheet.Name, sheet.DisplayName}
 
 	if aliases, ok := sheet.Configuration["aliases"]; ok {
@@ -658,8 +657,8 @@ func hashRawData(documentID uuid.UUID, sheetCode string, rowNumber int, rawData 
 	return hex.EncodeToString(sum[:])
 }
 
-func buildColumnMap(columns []model.TemplateColumnStructure) map[string]model.TemplateColumnStructure {
-	result := make(map[string]model.TemplateColumnStructure)
+func buildColumnMap(columns []documenttemplates.TemplateColumnStructure) map[string]documenttemplates.TemplateColumnStructure {
+	result := make(map[string]documenttemplates.TemplateColumnStructure)
 	for _, column := range columns {
 		result[normalizeHeader(column.ColumnName)] = column
 		result[normalizeHeader(column.ColumnKey)] = column

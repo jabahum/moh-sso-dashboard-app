@@ -9,7 +9,6 @@ import (
 	"github.com/moh-sso-dashboard/internal/config"
 	storepkg "github.com/moh-sso-dashboard/internal/db/sqlc"
 	clientfeature "github.com/moh-sso-dashboard/internal/features/clients"
-	documenttemplatefeature "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentfeature "github.com/moh-sso-dashboard/internal/features/documents"
 	emailfeature "github.com/moh-sso-dashboard/internal/features/email"
 	healthcontextfeature "github.com/moh-sso-dashboard/internal/features/health_context"
@@ -23,6 +22,7 @@ import (
 	importsvc "github.com/moh-sso-dashboard/internal/service/import"
 	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/moh-sso-dashboard/internal/worker"
+	documenttemplatesmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
 	"github.com/redis/go-redis/v9"
@@ -50,9 +50,7 @@ type services struct {
 	WeeklyStatus            *surveillancefeature.WeeklyStatusService
 	SurveillanceImport      *surveillancefeature.ImportService
 	Alerts                  *surveillancefeature.AlertService
-	DocumentTemplates       documenttemplatefeature.Service
-	DocumentTemplateSheets  documenttemplatefeature.SheetService
-	DocumentTemplateColumns documenttemplatefeature.ColumnService
+	DocumentTemplatesModule *documenttemplatesmodule.Module
 	Import                  *importsvc.Service
 	RBAC                    *rbacfeature.Service
 	HealthContexts          *healthcontextfeature.Service
@@ -238,32 +236,14 @@ func buildServices(deps serviceDependencies) services {
 		deps.Config,
 	)
 
-	documentTemplateService := documenttemplatefeature.NewService(
-		deps.Repositories.DocumentTemplates,
-		deps.Repositories.DocumentTemplateSheets,
-		deps.Repositories.DocumentTemplateColumns,
-		notificationsService,
-		deps.Config,
-	)
-
-	documentTemplateSheetService := documenttemplatefeature.NewSheetService(
-		deps.Repositories.DocumentTemplateSheets,
-		notificationsService,
-		deps.Config,
-	)
-
-	documentTemplateColumnService := documenttemplatefeature.NewColumnService(
-		deps.Repositories.DocumentTemplateColumns,
-		notificationsService,
-		deps.Config,
-	)
+	documentTemplatesModule := buildDocumentTemplatesModule(deps, notificationsService)
 
 	importService := importsvc.NewService(
 		deps.Repositories.Documents,
 		deps.Repositories.Processes,
 		deps.Repositories.DocumentFiles,
 		deps.Repositories.Surveillance.Imports,
-		documentTemplateService,
+		documentTemplatesModule.Service,
 		facilityWeeklyMetricsService,
 		weeklyStatusService,
 		alertsService,
@@ -301,9 +281,7 @@ func buildServices(deps serviceDependencies) services {
 		WeeklyStatus:            weeklyStatusService,
 		SurveillanceImport:      surveillanceImportService,
 		Alerts:                  alertsService,
-		DocumentTemplates:       documentTemplateService,
-		DocumentTemplateSheets:  documentTemplateSheetService,
-		DocumentTemplateColumns: documentTemplateColumnService,
+		DocumentTemplatesModule: documentTemplatesModule,
 		Import:                  importService,
 		RBAC:                    rbacService,
 		HealthContexts:          healthContextService,

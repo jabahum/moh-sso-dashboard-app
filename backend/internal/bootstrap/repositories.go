@@ -6,7 +6,6 @@ import (
 	"github.com/moh-sso-dashboard/internal/config"
 	storepkg "github.com/moh-sso-dashboard/internal/db/sqlc"
 	clientRepo "github.com/moh-sso-dashboard/internal/features/clients"
-	documentTemplateRepo "github.com/moh-sso-dashboard/internal/features/document_templates"
 	documentRepo "github.com/moh-sso-dashboard/internal/features/documents"
 	healthcontextRepo "github.com/moh-sso-dashboard/internal/features/health_context"
 	rbacRepo "github.com/moh-sso-dashboard/internal/features/rbac"
@@ -32,9 +31,6 @@ type repositories struct {
 	NotificationPreferences notificationPreferencesRepo.NotificationPreferencesRepository
 	Documents               documentRepo.DocumentRepository
 	DocumentFiles           documentRepo.FileRepository
-	DocumentTemplates       documentTemplateRepo.DocumentTemplateRepository
-	DocumentTemplateColumns documentTemplateRepo.DocumentTemplateColumnRepository
-	DocumentTemplateSheets  documentTemplateRepo.DocumentTemplateSheetRepository
 	Processes               processRepo.ProcessRepository
 	Sessions                sessionRepo.SessionRepository
 	Email                   emailRepo.EmailRepository
@@ -76,9 +72,6 @@ func buildRepositories(
 		NotificationPreferences: notificationPreferencesRepo.NewNotificationPreferencesRepository(store),
 		Documents:               documentRepo.NewDocumentRepository(cfg, store, *appLogger),
 		DocumentFiles:           documentRepo.NewFileRepository(),
-		DocumentTemplates:       documentTemplateRepo.NewDocumentTemplateRepository(store),
-		DocumentTemplateColumns: documentTemplateRepo.NewDocumentTemplateColumnRepository(store),
-		DocumentTemplateSheets:  documentTemplateRepo.NewDocumentTemplateSheetRepository(store),
 		Processes:               processRepo.NewProcessRepository(cfg, store, *appLogger),
 		Sessions:                sessionRepo.NewSessionRepository(adminKC, cfg, *appLogger),
 		Email:                   emailRepo.NewEmailRepository(cfg, store, *appLogger),

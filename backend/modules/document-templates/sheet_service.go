@@ -1,4 +1,4 @@
-package document_templates
+package documenttemplates
 
 import (
 	"context"
@@ -10,11 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/moh-sso-dashboard/internal/config"
-	db "github.com/moh-sso-dashboard/internal/db/sqlc"
-	"github.com/moh-sso-dashboard/internal/model"
-	sharedservice "github.com/moh-sso-dashboard/internal/service"
-	"github.com/moh-sso-dashboard/internal/utils"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
+	db "github.com/mohuganda/moh-sso-dashboard/backend/modules/document-templates/internal/postgres"
 )
 
 var (
@@ -27,49 +24,42 @@ var (
 )
 
 type SheetService interface {
-	CreateSheet(ctx context.Context, req model.CreateSheetRequest) (*model.DocumentTemplateSheet, error)
-	GetSheet(ctx context.Context, id uuid.UUID) (*model.DocumentTemplateSheet, error)
-	GetSheetByCode(ctx context.Context, templateID uuid.UUID, code string) (*model.DocumentTemplateSheet, error)
-	ListSheets(ctx context.Context, templateID uuid.UUID) ([]model.DocumentTemplateSheet, error)
-	ListRequiredSheets(ctx context.Context, templateID uuid.UUID) ([]model.DocumentTemplateSheet, error)
-	UpdateSheet(ctx context.Context, req model.UpdateSheetRequest) (*model.DocumentTemplateSheet, error)
+	CreateSheet(ctx context.Context, req CreateSheetRequest) (*DocumentTemplateSheet, error)
+	GetSheet(ctx context.Context, id uuid.UUID) (*DocumentTemplateSheet, error)
+	GetSheetByCode(ctx context.Context, templateID uuid.UUID, code string) (*DocumentTemplateSheet, error)
+	ListSheets(ctx context.Context, templateID uuid.UUID) ([]DocumentTemplateSheet, error)
+	ListRequiredSheets(ctx context.Context, templateID uuid.UUID) ([]DocumentTemplateSheet, error)
+	UpdateSheet(ctx context.Context, req UpdateSheetRequest) (*DocumentTemplateSheet, error)
 	ArchiveSheet(ctx context.Context, id uuid.UUID) error
 	DeleteSheet(ctx context.Context, id uuid.UUID) error
 
 	// runtime helpers
 	GetSheetRuntime(
 		ctx context.Context,
-		tpl *model.TemplateRuntime,
+		tpl *TemplateRuntime,
 		sheetCode string,
-	) (*model.TemplateSheetRuntime, error)
+	) (*TemplateSheetRuntime, error)
 
 	ValidateSheetExists(
 		ctx context.Context,
-		tpl *model.TemplateRuntime,
+		tpl *TemplateRuntime,
 		sheetCode string,
 	) error
 }
 
 type documentTemplateSheetService struct {
-	repo          SheetRepository
-	notifications sharedservice.NotificationsService
-	cfg           *config.Config
+	repo SheetRepository
+	alerts
 }
 
 func NewSheetService(
 	repo SheetRepository,
-	notifications sharedservice.NotificationsService,
-	cfg ...*config.Config,
+	notifier modulekit.Notifier,
+	platform modulekit.Platform,
 ) SheetService {
-	var appConfig *config.Config
-	if len(cfg) > 0 {
-		appConfig = cfg[0]
-	}
-
 	return &documentTemplateSheetService{
-		repo:          repo,
-		notifications: notifications,
-		cfg:           appConfig,
+		repo:   repo,
+		alerts: alerts{notifier: notifier, platform: platform},
 	}
 }
 
@@ -79,8 +69,8 @@ func NewSheetService(
 
 func (s *documentTemplateSheetService) CreateSheet(
 	ctx context.Context,
-	req model.CreateSheetRequest,
-) (*model.DocumentTemplateSheet, error) {
+	req CreateSheetRequest,
+) (*DocumentTemplateSheet, error) {
 	if s == nil {
 		return nil, errors.New("document template sheet service is nil")
 	}
@@ -167,13 +157,13 @@ func (s *documentTemplateSheetService) CreateSheet(
 	mapped := mapSheet(sheet)
 
 	// In-app only.
-	s.notify(ctx, model.Notification{
+	s.notify(ctx, modulekit.Notification{
 		Type:       "DOCUMENT_TEMPLATE_SHEET_CREATED",
 		Title:      "Template sheet created",
 		Severity:   "info",
 		Message:    "Document template sheet created",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"sheet_id":                mapped.ID.String(),
 			"template_id":             mapped.TemplateID.String(),
 			"code":                    mapped.Code,
@@ -198,7 +188,7 @@ func (s *documentTemplateSheetService) CreateSheet(
 func (s *documentTemplateSheetService) GetSheet(
 	ctx context.Context,
 	id uuid.UUID,
-) (*model.DocumentTemplateSheet, error) {
+) (*DocumentTemplateSheet, error) {
 	if s == nil {
 		return nil, errors.New("document template sheet service is nil")
 	}
@@ -223,7 +213,7 @@ func (s *documentTemplateSheetService) GetSheetByCode(
 	ctx context.Context,
 	templateID uuid.UUID,
 	code string,
-) (*model.DocumentTemplateSheet, error) {
+) (*DocumentTemplateSheet, error) {
 	if s == nil {
 		return nil, errors.New("document template sheet service is nil")
 	}
@@ -252,7 +242,7 @@ func (s *documentTemplateSheetService) GetSheetByCode(
 func (s *documentTemplateSheetService) ListSheets(
 	ctx context.Context,
 	templateID uuid.UUID,
-) ([]model.DocumentTemplateSheet, error) {
+) ([]DocumentTemplateSheet, error) {
 	if s == nil {
 		return nil, errors.New("document template sheet service is nil")
 	}
@@ -270,7 +260,7 @@ func (s *documentTemplateSheetService) ListSheets(
 		return nil, fmt.Errorf("list document template sheets: %w", err)
 	}
 
-	result := make([]model.DocumentTemplateSheet, 0, len(items))
+	result := make([]DocumentTemplateSheet, 0, len(items))
 	for _, it := range items {
 		result = append(result, *mapSheet(it))
 	}
@@ -281,7 +271,7 @@ func (s *documentTemplateSheetService) ListSheets(
 func (s *documentTemplateSheetService) ListRequiredSheets(
 	ctx context.Context,
 	templateID uuid.UUID,
-) ([]model.DocumentTemplateSheet, error) {
+) ([]DocumentTemplateSheet, error) {
 	if s == nil {
 		return nil, errors.New("document template sheet service is nil")
 	}
@@ -299,7 +289,7 @@ func (s *documentTemplateSheetService) ListRequiredSheets(
 		return nil, fmt.Errorf("list required document template sheets: %w", err)
 	}
 
-	result := make([]model.DocumentTemplateSheet, 0, len(items))
+	result := make([]DocumentTemplateSheet, 0, len(items))
 	for _, it := range items {
 		result = append(result, *mapSheet(it))
 	}
@@ -313,8 +303,8 @@ func (s *documentTemplateSheetService) ListRequiredSheets(
 
 func (s *documentTemplateSheetService) UpdateSheet(
 	ctx context.Context,
-	req model.UpdateSheetRequest,
-) (*model.DocumentTemplateSheet, error) {
+	req UpdateSheetRequest,
+) (*DocumentTemplateSheet, error) {
 	if s == nil {
 		return nil, errors.New("document template sheet service is nil")
 	}
@@ -381,13 +371,13 @@ func (s *documentTemplateSheetService) UpdateSheet(
 	mapped := mapSheet(sheet)
 
 	// In-app only.
-	s.notify(ctx, model.Notification{
+	s.notify(ctx, modulekit.Notification{
 		Type:       "DOCUMENT_TEMPLATE_SHEET_UPDATED",
 		Title:      "Template sheet updated",
 		Severity:   "info",
 		Message:    "Document template sheet updated",
 		TargetRole: "admin",
-		Metadata: utils.MustJSON(map[string]any{
+		Metadata: mustJSON(map[string]any{
 			"sheet_id":                mapped.ID.String(),
 			"template_id":             mapped.TemplateID.String(),
 			"code":                    mapped.Code,
@@ -434,13 +424,13 @@ func (s *documentTemplateSheetService) ArchiveSheet(
 	if sheet.ID != uuid.Nil {
 		mapped := mapSheet(sheet)
 
-		notification := model.Notification{
+		notification := modulekit.Notification{
 			Type:       "DOCUMENT_TEMPLATE_SHEET_ARCHIVED",
 			Title:      "Template sheet archived",
 			Severity:   "warning",
 			Message:    "Document template sheet archived",
 			TargetRole: "admin",
-			Metadata: utils.MustJSON(map[string]any{
+			Metadata: mustJSON(map[string]any{
 				"sheet_id":    mapped.ID.String(),
 				"template_id": mapped.TemplateID.String(),
 				"code":        mapped.Code,
@@ -506,13 +496,13 @@ func (s *documentTemplateSheetService) DeleteSheet(
 	if sheet.ID != uuid.Nil {
 		mapped := mapSheet(sheet)
 
-		notification := model.Notification{
+		notification := modulekit.Notification{
 			Type:       "DOCUMENT_TEMPLATE_SHEET_DELETED",
 			Title:      "Template sheet deleted",
 			Severity:   "critical",
 			Message:    "Document template sheet deleted",
 			TargetRole: "admin",
-			Metadata: utils.MustJSON(map[string]any{
+			Metadata: mustJSON(map[string]any{
 				"sheet_id":    mapped.ID.String(),
 				"template_id": mapped.TemplateID.String(),
 				"code":        mapped.Code,
@@ -559,9 +549,9 @@ func (s *documentTemplateSheetService) DeleteSheet(
 
 func (s *documentTemplateSheetService) GetSheetRuntime(
 	ctx context.Context,
-	tpl *model.TemplateRuntime,
+	tpl *TemplateRuntime,
 	sheetCode string,
-) (*model.TemplateSheetRuntime, error) {
+) (*TemplateSheetRuntime, error) {
 	sheetCode = strings.TrimSpace(sheetCode)
 
 	if tpl == nil || tpl.Sheets == nil {
@@ -578,7 +568,7 @@ func (s *documentTemplateSheetService) GetSheetRuntime(
 
 func (s *documentTemplateSheetService) ValidateSheetExists(
 	ctx context.Context,
-	tpl *model.TemplateRuntime,
+	tpl *TemplateRuntime,
 	sheetCode string,
 ) error {
 	sheetCode = strings.TrimSpace(sheetCode)
@@ -598,7 +588,7 @@ func (s *documentTemplateSheetService) ValidateSheetExists(
  * MAPPER / HELPERS
  * ========================================================= */
 
-func mapSheet(s db.DocumentTemplateSheet) *model.DocumentTemplateSheet {
+func mapSheet(s db.DocumentTemplateSheet) *DocumentTemplateSheet {
 	var display string
 	if s.DisplayName.Valid {
 		display = s.DisplayName.String
@@ -618,7 +608,7 @@ func mapSheet(s db.DocumentTemplateSheet) *model.DocumentTemplateSheet {
 		config = map[string]any{}
 	}
 
-	return &model.DocumentTemplateSheet{
+	return &DocumentTemplateSheet{
 		ID:                    s.ID,
 		TemplateID:            s.TemplateID,
 		Code:                  s.Code,
@@ -632,124 +622,4 @@ func mapSheet(s db.DocumentTemplateSheet) *model.DocumentTemplateSheet {
 		AllowDuplicateHeaders: s.AllowDuplicateHeaders,
 		Configuration:         config,
 	}
-}
-
-func (s *documentTemplateSheetService) notify(
-	ctx context.Context,
-	notification model.Notification,
-) {
-	if s == nil || s.notifications == nil {
-		return
-	}
-
-	if strings.TrimSpace(notification.TargetRole) == "" {
-		notification.TargetRole = "admin"
-	}
-
-	_, _ = s.notifications.Notify(ctx, notification)
-}
-
-func (s *documentTemplateSheetService) attachAdminEmailDelivery(
-	notification *model.Notification,
-	templateName string,
-	subject string,
-	textBody string,
-	templateData map[string]any,
-) {
-	if notification == nil {
-		return
-	}
-
-	adminEmail := strings.TrimSpace(s.systemAdminEmail())
-	if adminEmail == "" {
-		return
-	}
-
-	if templateData == nil {
-		templateData = map[string]any{}
-	}
-
-	if _, ok := templateData["Name"]; !ok {
-		templateData["Name"] = s.systemAdminName()
-	}
-
-	if _, ok := templateData["Platform"]; !ok {
-		templateData["Platform"] = s.platformName()
-	}
-
-	if _, ok := templateData["ActionURL"]; !ok {
-		templateData["ActionURL"] = s.adminTemplatesURL()
-	}
-
-	notification.Deliveries = []model.NotificationDeliveryRequest{
-		{
-			Channel: model.NotificationChannelInApp,
-			Recipient: map[string]any{
-				"target_role": notification.TargetRole,
-			},
-			Payload: map[string]any{
-				"title":    notification.Title,
-				"message":  notification.Message,
-				"type":     notification.Type,
-				"severity": notification.Severity,
-			},
-			MaxAttempts: 1,
-		},
-		{
-			Channel: model.NotificationChannelEmail,
-			Recipient: map[string]any{
-				"name":  s.systemAdminName(),
-				"email": adminEmail,
-			},
-			TemplateName: templateName,
-			TemplateData: templateData,
-			Payload: map[string]any{
-				"subject":   subject,
-				"text_body": textBody,
-			},
-			MaxAttempts: 5,
-		},
-	}
-}
-
-func (s *documentTemplateSheetService) platformName() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.PlatformName) != "" {
-		return strings.TrimSpace(s.cfg.Notification.PlatformName)
-	}
-
-	return "MOH Integrated Health Portal"
-}
-
-func (s *documentTemplateSheetService) systemAdminName() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.SystemAdminName) != "" {
-		return strings.TrimSpace(s.cfg.Notification.SystemAdminName)
-	}
-
-	return "System Administrator"
-}
-
-func (s *documentTemplateSheetService) systemAdminEmail() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.SystemAdminEmail) != "" {
-		return strings.TrimSpace(s.cfg.Notification.SystemAdminEmail)
-	}
-
-	return ""
-}
-
-func (s *documentTemplateSheetService) adminDashboardURL() string {
-	if s != nil && s.cfg != nil && strings.TrimSpace(s.cfg.Notification.AdminDashboardURL) != "" {
-		return strings.TrimSpace(s.cfg.Notification.AdminDashboardURL)
-	}
-
-	return "http://localhost:3000/admin/home"
-}
-
-func (s *documentTemplateSheetService) adminTemplatesURL() string {
-	base := strings.TrimRight(s.adminDashboardURL(), "/")
-
-	if strings.HasSuffix(base, "/admin/home") {
-		return strings.TrimSuffix(base, "/admin/home") + "/admin/document-templates"
-	}
-
-	return base + "/document-templates"
 }
