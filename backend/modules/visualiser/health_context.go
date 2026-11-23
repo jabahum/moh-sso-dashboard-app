@@ -4,9 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	healthcontext "github.com/moh-sso-dashboard/internal/features/health_context"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
 )
 
 var errHealthContextAliasMissing = errors.New("health context has no DWH organisation-unit alias")
@@ -19,34 +17,35 @@ var visualiserOrgUnitAliasNamespaces = map[string]struct{}{
 	"surveillance-facility":   {},
 }
 
-func (h *Handler) scopeDataValuesRequest(
-	c *gin.Context,
+// scopeDataValuesRequest constrains the requested organisation units to the
+// warehouse aliases of the caller's selected health context. Without a
+// selection the request is unconstrained.
+func (h handlers) scopeDataValuesRequest(
+	c *modulekit.Context,
 	request DataValuesRequest,
 ) (DataValuesRequest, error) {
-	rawID, exists := c.Get("health_context_id")
-	if !exists {
+	selection := c.HealthContext()
+	if selection == nil {
 		return request, nil
 	}
-	contextID, ok := rawID.(uuid.UUID)
-	if !ok || contextID == uuid.Nil {
+	contextID := strings.TrimSpace(selection.NodeID)
+	if contextID == "" {
 		return request, errHealthContextAliasMissing
 	}
 
-	node, err := h.healthContexts.GetNode(c.Request.Context(), contextID)
+	node, err := h.healthContexts.GetNode(c.Context(), contextID)
 	if err != nil {
 		return request, err
 	}
-	rawMode, _ := c.Get("health_context_scope_mode")
-	mode, _ := rawMode.(healthcontext.ScopeMode)
-	includeDescendants := mode == healthcontext.ScopeNodeAndDescendants
+	includeDescendants := selection.IncludeDescendants
 
 	// Uganda with descendant scope already represents the complete DWH domain.
-	if node.Code == "UG" && includeDescendants {
+	if node.Code == modulekit.NationalContextCode && includeDescendants {
 		return request, nil
 	}
 
 	aliases, err := h.healthContexts.ListAliasesInScope(
-		c.Request.Context(),
+		c.Context(),
 		contextID,
 		includeDescendants,
 	)

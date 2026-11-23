@@ -20,6 +20,7 @@ import (
 	metricsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	schedulermodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 	storagelocationsmodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
+	visualisermodule "github.com/mohuganda/moh-sso-dashboard/backend/modules/visualiser"
 )
 
 // NewModuleRegistry is the distribution's explicit composition root. Legacy
@@ -118,6 +119,17 @@ func NewModuleRegistry(handlers HandlerSet, disabled string, limiter *ratelimit.
 		},
 		Register: func(routes module.Routes) {
 			modulehttp.Register(routes.Protected, handlers.StorageLocations)
+		},
+	}, module.Definition{
+		Info: module.Info{ID: visualisermodule.ID, Version: visualisermodule.Version(), Enabled: enabled[visualisermodule.ID]},
+		Initialize: func(context.Context) (module.Stop, error) {
+			if handlers.Visualiser == nil {
+				return nil, errors.New("visualiser module is required")
+			}
+			return nil, nil
+		},
+		Register: func(routes module.Routes) {
+			modulehttp.Register(routes.ContextScoped, handlers.Visualiser)
 		},
 	})
 }

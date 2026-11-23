@@ -353,17 +353,17 @@
     },
     {
       "id": "visualiser",
-      "stage": "planned",
+      "stage": "published",
       "scope": "Warehouse visualisation and query APIs",
-      "moduleId": "",
+      "moduleId": "visualiser",
       "dependencies": [
         "warehouse",
         "health_context"
       ],
       "workers": [],
       "migrations": "external warehouse",
-      "next": "Inject query and contextual-scope ports; retain warehouse failure/readiness behavior.",
-      "integration": "host"
+      "next": "Built from the repository through a local replace until backend/core v0.2.0 and this module are tagged; then pin the release in backend/go.mod.",
+      "integration": "self-contained"
     }
   ],
   "frontend": [

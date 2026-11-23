@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/lib/pq"
@@ -20,7 +21,9 @@ type postgresRepository struct {
 	db *sql.DB
 }
 
-func NewRepository(db *sql.DB) Repository {
+// NewPostgresRepository queries the warehouse. A nil db is accepted: every call
+// then fails with "DWH connection is not configured", as before extraction.
+func NewPostgresRepository(db *sql.DB) Repository {
 	return &postgresRepository{db: db}
 }
 
@@ -424,4 +427,38 @@ func resolveRequestedAggregationLevel(requested *string) string {
 		}
 	}
 	return "6"
+}
+
+func normalizeOrgunitLevel(v any) *string {
+	switch x := v.(type) {
+	case nil:
+		return nil
+	case string:
+		s := strings.TrimSpace(x)
+		if s == "" {
+			return nil
+		}
+		return &s
+	case float64:
+		// JSON numbers decode to float64 by default.
+		s := strconv.FormatInt(int64(x), 10)
+		return &s
+	default:
+		return nil
+	}
+}
+
+func aggregationExpressions(level string) (orgUnitExpr, facilityExpr, levelExpr, regionExpr, districtExpr, subCountyExpr string) {
+	switch level {
+	case "1":
+		return "'National'", "'National'", "'1'", "''", "''", "''"
+	case "2":
+		return "COALESCE(NULLIF(hs.region, ''), 'Unknown Region')", "COALESCE(NULLIF(hs.region, ''), 'Unknown Region')", "'2'", "COALESCE(NULLIF(hs.region, ''), 'Unknown Region')", "''", "''"
+	case "3":
+		return "COALESCE(NULLIF(hs.district, ''), 'Unknown District')", "COALESCE(NULLIF(hs.district, ''), 'Unknown District')", "'3'", "COALESCE(hs.region, '')", "COALESCE(NULLIF(hs.district, ''), 'Unknown District')", "''"
+	case "5":
+		return "COALESCE(NULLIF(hs.sub_county, ''), 'Unknown Subcounty')", "COALESCE(NULLIF(hs.sub_county, ''), 'Unknown Subcounty')", "'5'", "COALESCE(hs.region, '')", "COALESCE(hs.district, '')", "COALESCE(NULLIF(hs.sub_county, ''), 'Unknown Subcounty')"
+	default:
+		return "hs.org_unit_id", "COALESCE(NULLIF(hs.facility, ''), hs.org_unit_id)", "COALESCE(NULLIF(hs.\"level\", ''), '6')", "COALESCE(hs.region, '')", "COALESCE(hs.district, '')", "COALESCE(hs.sub_county, '')"
+	}
 }

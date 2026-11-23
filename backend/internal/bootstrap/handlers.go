@@ -24,7 +24,6 @@ import (
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
-	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	db "github.com/moh-sso-dashboard/internal/migrate"
 	"github.com/moh-sso-dashboard/internal/modulehttp"
@@ -134,11 +133,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 			panic(err)
 		}
 	}
-	visualiserHandler := visualiserfeature.NewHandler(
-		deps.Config,
-		deps.Databases.DWH,
-		deps.Services.HealthContexts,
-	)
+	visualiserHandler := buildVisualiserModule(deps)
 	var geoJSONHandler *geojsonfeature.Module
 	if deps.Config.ModuleEnabled("geojson") {
 		var err error

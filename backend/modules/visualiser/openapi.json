@@ -1,0 +1,481 @@
+{
+  "components": {
+    "schemas": {
+      "visualiser.DataElementResponse": {
+        "properties": {
+          "data_element_id": {
+            "type": "string"
+          },
+          "data_element_long_name": {
+            "type": "string"
+          },
+          "data_element_short_name": {
+            "type": "string"
+          },
+          "data_set_id": {
+            "type": "string"
+          },
+          "dim_data_element_map_key": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "is_current": {
+            "type": "boolean"
+          },
+          "row_version": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "visualiser.DataValueRowResponse": {
+        "properties": {
+          "data_element_id": {
+            "type": "string"
+          },
+          "dataelement": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "level_of_care": {
+            "type": "string"
+          },
+          "org_unit_id": {
+            "type": "string"
+          },
+          "org_unit_name": {
+            "type": "string"
+          },
+          "ownership": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "value": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "visualiser.DataValuesRequest": {
+        "properties": {
+          "aggregationLevel": {
+            "enum": [
+              "6"
+            ],
+            "type": "string"
+          },
+          "dx": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "levelOfCare": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "orgunitLevel": {},
+          "ou": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ownership": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pe": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "startDate": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "visualiser.DataValuesResponse": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/visualiser.DataValueRowResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "visualiser.DatasetResponse": {
+        "properties": {
+          "create_date": {
+            "type": "string"
+          },
+          "dataset_id": {
+            "type": "string"
+          },
+          "dataset_key": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "is_current": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "paths": {
+    "/visualizer/dataelements": {
+      "get": {
+        "operationId": "get_api_v1_visualizer_dataelements",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "data_set_id",
+            "required": false,
+            "schema": {
+              "nullable": true,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/visualiser.DataElementResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Data Elements",
+        "tags": [
+          "visualiser"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/visualiser.(*Handler).GetDataElements"
+      }
+    },
+    "/visualizer/datasets": {
+      "get": {
+        "operationId": "get_api_v1_visualizer_datasets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/visualiser.DatasetResponse"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Datasets",
+        "tags": [
+          "visualiser"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/visualiser.(*Handler).GetDatasets"
+      }
+    },
+    "/visualizer/datavalues": {
+      "post": {
+        "operationId": "post_api_v1_visualizer_datavalues",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/visualiser.DataValuesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/visualiser.DataValuesResponse"
+                    },
+                    "meta": {
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error response; error.code identifies the failure."
+          }
+        },
+        "summary": "Get Data Values",
+        "tags": [
+          "visualiser"
+        ],
+        "x-go-handler": "github.com/moh-sso-dashboard/internal/features/visualiser.(*Handler).GetDataValues"
+      }
+    }
+  }
+}

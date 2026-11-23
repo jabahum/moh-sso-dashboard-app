@@ -59,7 +59,12 @@ class Coverage(unittest.TestCase):
             catalog.load_catalog(self.root)
 
     def test_removed_backend_feature_is_not_silently_retained(self):
-        self.update(lambda data: data['backend'].pop())
+        def drop_host_feature(data):
+            # Published modules no longer have a feature directory to drift from.
+            entry = next(item for item in reversed(data['backend']) if item['stage'] != 'published')
+            data['backend'].remove(entry)
+
+        self.update(drop_host_feature)
         with self.assertRaisesRegex(ValueError, 'Backend catalogue drift'):
             catalog.load_catalog(self.root)
 
