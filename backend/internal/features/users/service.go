@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
 	"github.com/moh-sso-dashboard/internal/config"
 	"github.com/moh-sso-dashboard/internal/http/apierror"
 	"github.com/moh-sso-dashboard/internal/keycloak"
@@ -67,12 +68,67 @@ func (s *Service) SetAccessRoleRemovalHook(hook AccessRoleRemovalHook) {
 	s.accessRemoval = hook
 }
 
+// AccessRoleGrantHook is optionally implemented by the AccessRoleRemovalHook. It
+// is told, after the fact, that client roles were granted to a person, so an
+// active identity-sync revocation for that application can be restored
+// explicitly by the granting admin. An error never undoes the grant.
+type AccessRoleGrantHook interface {
+	ClientRolesAdded(ctx context.Context, userID, clientID string, roles []string, actorID string) error
+}
+
+// warningCoder is implemented by hook errors that carry a stable warning code
+// (identityreconcile.IncompleteRevocationError).
+type warningCoder interface {
+	WarningCode() string
+}
+
 func (s *Service) clientRolesRemoved(ctx context.Context, userID, clientID string, roles []string, adminID uuid.UUID) {
 	if s == nil || s.accessRemoval == nil || len(roles) == 0 {
 		return
 	}
-	if err := s.accessRemoval.ClientRolesRemoved(ctx, userID, clientID, roles, adminID.String()); err != nil {
-		log.Printf("WARN: client roles removed from user %s on %s, but access removal is incomplete: %v", userID, clientID, err)
+	err := s.accessRemoval.ClientRolesRemoved(ctx, userID, clientID, roles, adminID.String())
+	if err == nil {
+		return
+	}
+	log.Printf("WARN: client roles removed from user %s on %s, but access removal is incomplete: %v", userID, clientID, err)
+	code := accesswarnings.CodeRevocationIncomplete
+	var coded warningCoder
+	if errors.As(err, &coded) && coded.WarningCode() != "" {
+		code = coded.WarningCode()
+	}
+	// The role removal stands; the caller and the admins are told what is left.
+	accesswarnings.Add(ctx, accesswarnings.Warning{Code: code, ClientID: clientID, UserID: userID, Message: err.Error()})
+	nt := models.IdentitySyncRevocationIncomplete
+	s.notify(ctx, models.Notification{
+		Type:       string(nt),
+		Title:      nt.Title(),
+		Severity:   nt.Severity(),
+		Message:    fmt.Sprintf("Access to %s was removed from user %s, but not every session was ended: %v", clientID, userID, err),
+		TargetRole: "admin",
+		UserID:     userID,
+		ClientID:   clientID,
+		Metadata: utils.MustJSON(map[string]any{
+			"user_id":   userID,
+			"client_id": clientID,
+			"roles":     roles,
+			"code":      code,
+			"admin_id":  adminID.String(),
+			"action":    "identity-sync revocations --resume --app " + clientID,
+		}),
+	})
+}
+
+func (s *Service) clientRolesAdded(ctx context.Context, userID, clientID string, roles []string, adminID uuid.UUID) {
+	if s == nil || s.accessRemoval == nil || len(roles) == 0 {
+		return
+	}
+	grants, ok := s.accessRemoval.(AccessRoleGrantHook)
+	if !ok {
+		return
+	}
+	if err := grants.ClientRolesAdded(ctx, userID, clientID, roles, adminID.String()); err != nil {
+		log.Printf("WARN: client roles granted to user %s on %s, but the identity-sync restore was not recorded: %v", userID, clientID, err)
+		accesswarnings.Add(ctx, accesswarnings.Warning{Code: accesswarnings.CodeRestoreFailed, ClientID: clientID, UserID: userID, Message: err.Error()})
 	}
 }
 
@@ -912,6 +968,7 @@ func (s *Service) UpdateUserClientRoles(
 		); err != nil {
 			return fmt.Errorf("add user client roles: %w", err)
 		}
+		s.clientRolesAdded(ctx, userID.String(), clientID, toAdd, adminID)
 	}
 
 	if len(toRemove) > 0 {
@@ -1037,6 +1094,7 @@ func (s *Service) AddUserClientRoles(
 	); err != nil {
 		return fmt.Errorf("add user client roles: %w", err)
 	}
+	s.clientRolesAdded(ctx, userID.String(), clientID, roles, adminID)
 
 	user, err := s.repo.GetUserByID(userID)
 	if err != nil {

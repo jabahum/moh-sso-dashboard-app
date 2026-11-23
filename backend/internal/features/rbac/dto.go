@@ -1,6 +1,10 @@
 package rbac
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
+)
 
 type System struct {
 	ID                     string `json:"id"`
@@ -351,6 +355,9 @@ type UserAccessProfileResponse struct {
 	EffectiveAccess EffectiveAccessResponse      `json:"effectiveAccess"`
 	DirectAccess    DirectUserAccessResponse     `json:"directAccess"`
 	Assignable      AssignableUserAccessResponse `json:"assignable"`
+	// Warnings report non-fatal problems of a successful update, for example an
+	// identity-sync revocation that could not end every application session.
+	Warnings []accesswarnings.Warning `json:"warnings,omitempty"`
 }
 
 type DirectUserAccessResponse struct {

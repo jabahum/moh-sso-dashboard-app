@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
 	"github.com/moh-sso-dashboard/internal/cache"
 	"github.com/moh-sso-dashboard/internal/http/apierror"
 	"github.com/moh-sso-dashboard/internal/http/response"
@@ -461,8 +462,9 @@ func (h *Handler) UpdateUserClientRoles(c *gin.Context) {
 
 	adminID, _ := uuid.Parse(c.GetString("user_id"))
 
+	warnCtx, warnings := accesswarnings.WithCollector(c.Request.Context())
 	if err := h.service.UpdateUserClientRoles(
-		c.Request.Context(),
+		warnCtx,
 		userID,
 		body.ClientID,
 		clientUUID.String(),
@@ -501,7 +503,7 @@ func (h *Handler) UpdateUserClientRoles(c *gin.Context) {
 
 	h.invalidateUsersCache(c.Request.Context())
 
-	c.Status(http.StatusNoContent)
+	respondAccessChange(c, warnings)
 }
 
 /* =========================================================
@@ -532,8 +534,9 @@ func (h *Handler) AddUserClientRoles(c *gin.Context) {
 
 	adminID, _ := uuid.Parse(c.GetString("user_id"))
 
+	warnCtx, warnings := accesswarnings.WithCollector(c.Request.Context())
 	if err := h.service.AddUserClientRoles(
-		c.Request.Context(),
+		warnCtx,
 		userID,
 		body.ClientID,
 		clientUUID.String(),
@@ -558,7 +561,7 @@ func (h *Handler) AddUserClientRoles(c *gin.Context) {
 
 	h.invalidateUsersCache(c.Request.Context())
 
-	c.Status(http.StatusNoContent)
+	respondAccessChange(c, warnings)
 }
 
 /* =========================================================
@@ -589,8 +592,9 @@ func (h *Handler) RemoveUserClientRoles(c *gin.Context) {
 
 	adminID, _ := uuid.Parse(c.GetString("user_id"))
 
+	warnCtx, warnings := accesswarnings.WithCollector(c.Request.Context())
 	if err := h.service.RemoveUserClientRoles(
-		c.Request.Context(),
+		warnCtx,
 		userID,
 		body.ClientID,
 		clientUUID.String(),
@@ -611,7 +615,7 @@ func (h *Handler) RemoveUserClientRoles(c *gin.Context) {
 
 	h.invalidateUsersCache(c.Request.Context())
 
-	c.Status(http.StatusNoContent)
+	respondAccessChange(c, warnings)
 }
 
 /* =========================================================
@@ -788,6 +792,25 @@ func (h *Handler) audit(
 
 func listUsersCacheKey() string {
 	return "users:all"
+}
+
+// AccessChangeWarnings is the body of a successful client-role change that has
+// something to report (for example an identity-sync revocation that could not
+// end every application session).
+type AccessChangeWarnings struct {
+	Warnings []accesswarnings.Warning `json:"warnings"`
+}
+
+// respondAccessChange answers a successful client-role change: 204 when there
+// is nothing to report, otherwise 200 with the warnings. The change succeeded
+// either way.
+func respondAccessChange(c *gin.Context, collector *accesswarnings.Collector) {
+	warnings := collector.Warnings()
+	if len(warnings) == 0 {
+		c.Status(http.StatusNoContent)
+		return
+	}
+	response.OK(c, http.StatusOK, AccessChangeWarnings{Warnings: warnings})
 }
 
 func (h *Handler) invalidateUsersCache(ctx context.Context) {

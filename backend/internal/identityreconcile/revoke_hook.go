@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
 )
 
 // DefaultHookTimeout bounds the synchronous revocation a portal role removal
@@ -71,11 +73,78 @@ func (h *PortalRevocationHook) ClientRolesRemoved(ctx context.Context, userID, c
 	if err != nil {
 		return fmt.Errorf("identity-sync revocation for %s: %w", clientID, err)
 	}
-	if !revocation.Complete() {
-		return fmt.Errorf("identity-sync revocation %s for %s is incomplete (%s); run identity-sync revocations --resume", revocation.ID, clientID, revocation.LastError)
+	if !revocation.Complete() || revocation.SessionsRevoked == StepUnsupported {
+		return &IncompleteRevocationError{Revocation: revocation}
 	}
-	if revocation.SessionsRevoked == StepUnsupported {
-		return fmt.Errorf("identity-sync revocation %s for %s: the application cannot end existing sessions (contract 1.0); they last until local expiry", revocation.ID, clientID)
+	return nil
+}
+
+// IncompleteRevocationError is the portal hook's error when the revocation was
+// recorded but did not finish (resume retries it) or the application cannot
+// end sessions (contract 1.0). WarningCode gives the portal a stable code.
+type IncompleteRevocationError struct {
+	Revocation Revocation
+}
+
+func (e *IncompleteRevocationError) Error() string {
+	r := e.Revocation
+	if r.Complete() && r.SessionsRevoked == StepUnsupported {
+		return fmt.Sprintf("identity-sync revocation %s for %s: the application cannot end existing sessions (contract 1.0); they last until local expiry", r.ID, r.ApplicationClientID)
+	}
+	return fmt.Sprintf("identity-sync revocation %s for %s is incomplete (%s); run identity-sync revocations --resume", r.ID, r.ApplicationClientID, r.LastError)
+}
+
+// WarningCode returns accesswarnings.CodeSessionsNotEnded for a 1.0
+// application and accesswarnings.CodeRevocationIncomplete otherwise.
+func (e *IncompleteRevocationError) WarningCode() string {
+	if e.Revocation.Complete() && e.Revocation.SessionsRevoked == StepUnsupported {
+		return accesswarnings.CodeSessionsNotEnded
+	}
+	return accesswarnings.CodeRevocationIncomplete
+}
+
+// PortalReGrantReason is the restore reason recorded when a portal admin grants
+// the access role again to a person with an active revocation.
+const PortalReGrantReason = "portal re-grant"
+
+// ClientRolesAdded is called after roles were granted to userID on clientID
+// through the portal. When the roles include a registered application's access
+// role and the person has an active revocation for it, the revocation is
+// restored by that admin (reason "portal re-grant", audited), so the revocation
+// list matches reality. It never grants anything itself.
+func (h *PortalRevocationHook) ClientRolesAdded(ctx context.Context, userID, clientID string, roles []string, actorID string) error {
+	if h == nil || h.Service == nil || h.Service.Integrations == nil || h.Service.Repository == nil {
+		return nil
+	}
+	clientID = strings.TrimSpace(clientID)
+	if !applicationIDPattern.MatchString(clientID) {
+		return nil
+	}
+	integration, err := h.Service.Integrations.Get(ctx, clientID)
+	if errors.Is(err, ErrIntegrationNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("identity-sync restore for %s: read integration: %w", clientID, err)
+	}
+	if !containsRole(roles, integration.AccessRole) {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+	revoked, err := h.Service.IsRevoked(ctx, clientID, h.Service.Issuer, userID)
+	if err != nil {
+		return fmt.Errorf("identity-sync restore for %s: %w", clientID, err)
+	}
+	if !revoked {
+		return nil
+	}
+	actor := "portal"
+	if actorID = strings.TrimSpace(actorID); actorID != "" {
+		actor = "portal:" + actorID
+	}
+	if _, err := h.Service.Restore(ctx, clientID, userID, actor, PortalReGrantReason); err != nil && !errors.Is(err, ErrRevocationNotFound) {
+		return fmt.Errorf("identity-sync restore for %s: %w", clientID, err)
 	}
 	return nil
 }

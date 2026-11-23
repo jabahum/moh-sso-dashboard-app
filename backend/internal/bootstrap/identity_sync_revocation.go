@@ -29,6 +29,10 @@ func newIdentitySyncRevokeService(cfg *config.Config, db *sql.DB, admin *keycloa
 		identityreconcile.KeycloakAccessDirectory{Admin: admin}, external+"/realms/"+cfg.KeycloakRealm)
 }
 
+// The portal hook also restores an active revocation when an admin grants the
+// access role again (users.AccessRoleGrantHook).
+var _ userfeature.AccessRoleGrantHook = (*identityreconcile.PortalRevocationHook)(nil)
+
 // newIdentitySyncRevocationHook returns the users-service hook that ends access to
 // a registered application (sessions included) when its access role is removed
 // through portal RBAC or the users API, or nil when revocation is unavailable.

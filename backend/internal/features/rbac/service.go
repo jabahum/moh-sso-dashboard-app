@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
 	systemrbac "github.com/moh-sso-dashboard/internal/features/system_rbac"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	"github.com/moh-sso-dashboard/internal/model"
@@ -293,6 +294,13 @@ func (s *Service) UpdateUserAccess(
 		return UserAccessProfileResponse{}, fmt.Errorf("%w: invalid user id", ErrInvalidInput)
 	}
 
+	// Collect non-fatal warnings (an incomplete identity-sync revocation) from
+	// the role changes below; reuse a caller's collector when there is one.
+	warnings := accesswarnings.From(ctx)
+	if warnings == nil {
+		ctx, warnings = accesswarnings.WithCollector(ctx)
+	}
+
 	assignable, err := s.ListAssignableUserAccess(ctx)
 	if err != nil {
 		return UserAccessProfileResponse{}, err
@@ -352,6 +360,7 @@ func (s *Service) UpdateUserAccess(
 			Permissions: []Permission{},
 		},
 		Assignable: assignable,
+		Warnings:   warnings.Warnings(),
 	}, nil
 }
 
