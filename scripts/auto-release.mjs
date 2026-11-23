@@ -44,6 +44,7 @@ export function prepareRelease({
   bump = "patch",
   remote = "upstream",
   npm = "npm",
+  go = "go",
   run = execFileSync,
 }) {
   if (!["both", "backend", "frontend"].includes(component))
@@ -78,30 +79,43 @@ export function prepareRelease({
       "--",
       ".release/plan.json",
     );
-    if (
-      planCommit === sourceCommit &&
-      plan.component === component &&
-      plan.bump === bump
-    ) {
-      const selectedTags = releaseTags(
-        component,
-        plan.backendVersion,
-        plan.frontendVersion,
-        read(shellPath).version,
-      );
-      if (selectedTags.every((tag) => !tags.includes(tag))) {
+    const planTags = releaseTags(
+      plan.component,
+      plan.backendVersion,
+      plan.frontendVersion,
+      read(shellPath).version,
+    );
+    const unpublished = planTags.every((tag) => !tags.includes(tag));
+    // A prepare PR is usually merged before tagging, so HEAD is then a merge
+    // commit rather than the prepare commit. Its tree is still the prepared
+    // tree as long as nothing else was merged in between.
+    const preparedTree =
+      planCommit &&
+      (planCommit === sourceCommit ||
+        git("rev-parse", `${planCommit}^{tree}`) ===
+          git("rev-parse", "HEAD^{tree}"));
+    if (preparedTree && plan.component === component && plan.bump === bump) {
+      if (unpublished) {
         if (
           component !== "frontend" &&
           readFileSync(backendPath, "utf8").trim() !== plan.backendVersion
         )
           throw new Error("Prepared backend version has drifted");
-        console.log(`Reusing prepared release: ${selectedTags.join(", ")}`);
+        console.log(`Reusing prepared release: ${planTags.join(", ")}`);
         return plan;
       }
       throw new Error(
         "Prepared release tags already exist; inspect local/remote tags and retry the pending atomic push or CI run instead of bumping versions again",
       );
     }
+    // Never prepare past a prepared version that was never published: that
+    // silently skips it (for example 1.6.0 prepared and merged, 1.7.0 tagged).
+    if (planCommit && unpublished)
+      throw new Error(
+        `Release ${planTags.join(", ")} was prepared in ${planCommit.slice(0, 12)} with component=${plan.component} and BUMP=${plan.bump} but never published. ` +
+          `Publish exactly those versions from the prepared tree (make release-manual BACKEND_VERSION=${plan.backendVersion} FRONTEND_VERSION=${plan.frontendVersion}), ` +
+          "or rerun with the same component and BUMP while the tree is unchanged, instead of preparing another version.",
+      );
   }
 
   // Check Git author identity before changing any version files.
@@ -129,6 +143,13 @@ export function prepareRelease({
     plan.backendVersion = nextBackendVersion(plan.backendVersion, tags, bump);
     writeFileSync(backendPath, `${plan.backendVersion}\n`);
     paths.push("backend/VERSION");
+    // The generated API contract embeds the backend version (info.version);
+    // the release check refuses a stale contract.
+    run(go, ["run", "./cmd/cli", "openapi", "generate"], {
+      cwd: join(root, "backend"),
+      stdio: "inherit",
+    });
+    paths.push("backend/docs/openapi.yaml");
   }
   if (component !== "backend") {
     const packages = [];
@@ -206,7 +227,13 @@ function main() {
   ] = process.argv.slice(2);
   if (!["prepare", "release"].includes(action))
     throw new Error("Action must be prepare or release");
-  const plan = prepareRelease({ component, bump, remote, npm });
+  const plan = prepareRelease({
+    component,
+    bump,
+    remote,
+    npm,
+    go: process.env.GO_CMD || "go",
+  });
   if (action === "prepare") return;
   const target =
     component === "both" ? "release-manual" : `release-${component}-manual`;
