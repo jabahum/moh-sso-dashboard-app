@@ -352,6 +352,38 @@ shared infrastructure Makefile: `make helm-lint`, `helm-template-local`,
 `local-up`, `dev-up`, and `prod-up` retain their Kubernetes meaning; use the
 `compose-*-up` names for Docker Compose.
 
+### Chart checks
+
+Run these from the repository root after changing the chart. They mirror the CI checks:
+
+```bash
+make helm-lint
+make helm-check                                         # lint + local and dev templates
+make helm-check-prod BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3
+make helm-template-prod BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3
+```
+
+The production targets require immutable image tags.
+
+### Local cluster smoke test (Apple Silicon)
+
+To check the chart and the local stack in deployment order:
+
+```bash
+make helm-lint
+make helm-check
+make helm-check-prod BACKEND_TAG=1.2.3 FRONTEND_TAG=1.2.3
+make local-build
+make local-up
+make local-forward
+curl -fsS http://localhost:9000/version
+curl -fsS http://localhost:9000/health/live
+```
+
+If Docker Buildx needs a refresh, run `docker buildx inspect --bootstrap` first. This
+confirms that the templates render, production requires immutable tags, arm64 images
+build, the stack starts, and backend runtime metadata is reachable.
+
 ## Contracts and checks
 
 ```bash
