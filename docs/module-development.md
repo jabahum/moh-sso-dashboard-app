@@ -18,18 +18,21 @@ are registered through application manifests and the database application regist
 
 ### Current expansion examples
 
-Audit read APIs and GeoJSON are the first expansion after Metrics. Their
-constructors, cache/storage adapters and migration ownership remain in the host.
-They require no module workers or cleanup resources. Audit-event recording is a
-separate core service and remains active when the audit read module is disabled.
-Metrics remains the independent Go-package reference in `backend/modules/metrics`.
+All six compiled registry modules (`metrics`, `audit`, `geojson`,
+`report-scheduler`, `announcements` and `admin-units`) are now `published` and
+`self-contained`: each one's handlers, OpenAPI metadata and persistence live in
+`backend/modules/<module-id>`, and no host adapter remains. Primary-schema
+migrations stay with the host. Audit-event recording is a separate core service
+and remains active when the Audit read module is disabled. Metrics remains the
+independent Go-package reference in `backend/modules/metrics`.
 
 Choose a bounded migration rather than moving unrelated domains together.
 Worker-bearing domains need their processing lifecycle migrated with their
 routes. Report Scheduler follows Metrics as an independently versioned Go
 module in `backend/modules/report-scheduler`. It owns its public and protected
 HTTP routes and OpenAPI contract. The dashboard pins the module in
-`backend/go.mod` and supplies authenticated context, per-IP rate limiting,
+`backend/go.mod` (currently at a pseudo-version rather than a release tag; see
+[Current status](modular-distribution.md#current-status)) and supplies authenticated context, per-IP rate limiting,
 platform services, and schema migrations. The registry manages worker
 readiness, startup, and shutdown.
 
@@ -106,7 +109,9 @@ version, then update host `go.mod`/`go.sum` and mark the catalogue entry publish
 Update the exact module pin in `backend/go.mod` and commit both checksums
 recorded in `backend/go.sum`. Run
 `python3 infra/scripts/backend_module_pins.py` with the backend Go toolchain
-available. It checks the selected dependency, rejects replacements, and compares
+available. It reads every `backend/modules/*` requirement in `backend/go.mod`
+(a release version or a pseudo-version), checks the selected dependency, rejects
+replacements, and compares
 the downloaded module and manifest checksums with the reviewed values.
 Distribution metadata, runtime inventory checks, and standalone release
 fixtures all read the expected versions from the backend pins.
@@ -118,7 +123,9 @@ under `backend/internal/features`. Its versioned implementation belongs in
 `backend/modules/<module-id>`; the dashboard consumes its reviewed version and
 checksums without a local replacement.
 
-For modules still using `integration: adapter`, dashboard HTTP authorization/
+No published module currently uses `integration: adapter`
+(`backend/internal/adapters/modules` contains only a README); the rules below
+apply if one is added. For modules using `integration: adapter`, dashboard HTTP authorization/
 routes, SQLC mappings and shared provider adapters belong under
 `backend/internal/adapters/modules/<feature-id>`. These transitional adapters
 delegate domain behavior to the selected package. Core event recording,
@@ -148,7 +155,7 @@ only verified context and fails closed. Headers do not become identity claims.
 
 Modules can provide `OpenAPI() []byte` as a structural contract. API generation
 merges their declared operations only for actual registered routes, alongside
-existing typed Gin operations. GeoJSON v0.2.0 is the first integrated example.
+existing typed Gin operations. All six published modules supply this method.
 Keep the published operation metadata and actual permission checks aligned.
 
 Review and commit the package, publish an immutable directory-prefixed tag,

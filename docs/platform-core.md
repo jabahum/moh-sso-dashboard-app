@@ -261,6 +261,10 @@ The current full-distribution Compose entry point remains unchanged.
 
 1. Align frontend shell/extension contracts and verify an optional application
    against the core, then decide independent release/version boundaries.
+   `backend/core` is not yet released independently: `backend/go.mod` requires
+   it as `v0.0.0` through a local `replace ... => ./core` directive, and no
+   `backend/core/v*` tag exists in this checkout. `backend/core/README.md` reserves that tag prefix
+   for future releases.
 
 Document, template and storage-location extraction remains deferred.
 
@@ -276,10 +280,17 @@ python3 infra/scripts/test-distribution-auth.py --backend-image <candidate> --pr
 
 ## Self-contained HTTP modules
 
-GeoJSON v0.2.0 consumes shared HTTP/security/trace registration directly.
-The generic `internal/modulehttp` registrar bridges verified Gin access to the
-module's standard HTTP request context and mounts its declared route. It owns no
-application behavior. The GeoJSON-specific adapter and loose assets have been
-removed; embedded maps and their HTTP/API contracts belong to the published
-package. Both full and core-only profiles retain the same module enablement
-rules. Other published modules continue their explicit transitional adapters.
+All six published modules (Administrative Units, Announcements, Audit, GeoJSON,
+Metrics and Report Scheduler) are self-contained in `docs/module-catalog.json`:
+each package owns its HTTP handlers, DTOs, OpenAPI metadata and any persistence, and
+no host adapter tree remains (`backend/internal/adapters/modules` holds only a
+README). `NewModuleRegistry` in `backend/internal/api/modules.go` mounts all of
+them through the generic `internal/modulehttp` registrar: `Register` for
+protected-only modules and `RegisterSurfaces` for modules with public and
+protected routes (Announcements, and Report Scheduler via
+`RegisterReportScheduler` in `backend/internal/api/report_scheduler.go`, which
+first adds a per-IP rate limit to the public delivery-download group). The
+module owns route dispatch and authorization. The registrar bridges verified Gin
+access to the module's standard HTTP request context and owns no application
+behavior. Both full and core-only profiles apply the same module enablement
+rules.

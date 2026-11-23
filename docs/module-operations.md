@@ -79,18 +79,24 @@ cancel notifications already queued in the shared notification outbox; that
 worker serves other modules and retains its host lifecycle. Re-enable the module
 and restart to restore access to existing records and attachment downloads.
 
-Announcements selects `v0.1.0` from
+Announcements selects `v0.2.0` from
 `github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements`, published
-under `backend/modules/announcements/v0.1.0`. Its inventory version comes from
-the selected dependency. The host retains SQLC/persistence mapping, identity and
-storage adapters, HTTP authorization/rate limits, email normalization, shared
-notification workers and audit recording. A version change requires reviewing
+under `backend/modules/announcements/v0.2.0`. Its inventory version comes from
+the selected dependency. The module is self-contained: it owns its persistence,
+lifecycle and audience policy, attachments, all 26 HTTP operations, their
+OpenAPI metadata and its per-user write/publish rate policies. The host supplies
+the primary pool, verified identity and user/group lookup, contextual expansion,
+blob storage, notification forwarding, attachment normalization, core audit
+recording and the shared notification workers. A version change requires reviewing
 the Go pin/checksums and rebuilding the backend image. Publishing the module
 does not deploy a running installation.
 
 ### Report Scheduler
 
-Report Scheduler is pinned to its published Go package and owns its worker through the registry. Its initial persistence
+Report Scheduler is pinned to its Go package (at a pseudo-version of a
+main-line commit rather than a release tag; see
+[Current status](modular-distribution.md#current-status)) and owns its worker
+through the registry. Its initial persistence
 heartbeat must succeed within ten seconds before jobs can be claimed. Startup
 fails if scheduler persistence is unavailable. Cleanup cancels and joins the worker
 within the host shutdown deadline before database resources close. Disablement
@@ -112,11 +118,15 @@ review scheduler schema compatibility before promoting the image pair. See the
 
 ### Audit read APIs
 
-Audit read APIs select `v0.1.0` from
-`github.com/mohuganda/moh-sso-dashboard/backend/modules/audit`, published under `backend/modules/audit/v0.1.0`. Its compiled inventory
-version comes from the selected dependency. SQLC queries/mapping, optional Redis
-cache, HTTP authorization and export limits remain host adapters. Core event
-recording and all audit migrations retain host ownership. Publishing a library
+Audit read APIs select `v0.2.0` from
+`github.com/mohuganda/moh-sso-dashboard/backend/modules/audit`, published under
+`backend/modules/audit/v0.2.0`. Its compiled inventory version comes from the
+selected dependency. The module is self-contained: it owns its seven read
+routes, PostgreSQL read queries, response caching and CSV/JSON exports. The host
+supplies the primary pool, an optional Redis cache, verified administrator and
+`audit:read` checks, request IDs and a per-user rate capability (exports are
+limited to 10 requests per minute). Core event recording and all audit
+migrations retain host ownership. Publishing a library
 tag does not deploy the running dashboard; rebuild and promote the verified
 backend image to consume an updated pin.
 
@@ -136,7 +146,8 @@ pin/checksums and rebuild. Verify releases with
 
 ### Administrative Units
 
-Administrative Units is registry-hosted under `admin-units`. Set
+Administrative Units is a published, self-contained module with runtime ID
+`admin-units`. Set
 `DISABLED_MODULES=admin-units` and restart/recreate the backend to omit all nine
 `/api/v1/visualizer/adminunits/*` endpoints. It owns no workers and does not
 modify warehouse data or schemas. Re-enable and restart to restore existing
@@ -144,9 +155,11 @@ lookups. Enabled registration retains the same system access, selected health
 context and read-permission alternatives as the legacy route path. Other
 Visualizer routes retain their registration and guards.
 
-Administrative Units selects `v0.1.0` from
+Administrative Units selects `v0.2.0` from
 `github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units`, published
-under `backend/modules/admin-units/v0.1.0`. Its inventory reports the selected
-dependency. Warehouse queries/connections, health-context authorization and HTTP
-guards remain host adapters. Version changes require reviewing Go pins/checksums
+under `backend/modules/admin-units/v0.2.0`. Its inventory reports the selected
+dependency. The module owns its HTTP handlers, OpenAPI schemas, warehouse
+queries and hierarchy construction. The host supplies the warehouse (DWH)
+connection pool, system/permission checks, health-context selection and alias
+lookups, and request IDs. Version changes require reviewing Go pins/checksums
 and rebuilding the backend image; publishing a library does not deploy it.
