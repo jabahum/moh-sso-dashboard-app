@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	router "github.com/moh-sso-dashboard/internal/api"
 	"github.com/moh-sso-dashboard/internal/authz"
 	"github.com/moh-sso-dashboard/internal/config"
@@ -15,6 +14,7 @@ import (
 	"github.com/moh-sso-dashboard/internal/middleware"
 	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/moh-sso-dashboard/internal/version"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

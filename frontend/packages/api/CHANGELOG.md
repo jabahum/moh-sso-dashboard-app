@@ -1,5 +1,25 @@
 # @moh-sso/api
 
+## 1.7.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/auth@1.7.0
+  - @moh-sso/config@1.7.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.5.1`.
+
+- Add identity-sync screens to the RBAC workspace (`1a5fd228`)
+- Feature Unresolved Aging Issues (#338) (`97d5fe98`)
+
 ## 1.6.0
 
 ### Patch Changes
@@ -10,6 +30,7 @@
   - @moh-sso/config@1.6.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.5.0`.

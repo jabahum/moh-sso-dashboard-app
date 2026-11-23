@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	db "github.com/moh-sso-dashboard/internal/db/sqlc"
 	logger "github.com/moh-sso-dashboard/internal/log"
 	"github.com/moh-sso-dashboard/internal/model"
 	notificationDeliveryRepo "github.com/moh-sso-dashboard/internal/repository/notification_delivery"
 	"github.com/moh-sso-dashboard/internal/service"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	"github.com/sqlc-dev/pqtype"
 )
 

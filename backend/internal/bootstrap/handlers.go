@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	router "github.com/moh-sso-dashboard/internal/api"
 	"github.com/moh-sso-dashboard/internal/api/handler"
 	"github.com/moh-sso-dashboard/internal/authz"
@@ -32,6 +31,7 @@ import (
 	"github.com/moh-sso-dashboard/internal/modulehttp"
 	"github.com/moh-sso-dashboard/internal/ratelimit"
 	"github.com/moh-sso-dashboard/internal/storage"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	adminunitsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
 	auditfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/audit"
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
@@ -207,8 +207,8 @@ func buildHandlers(deps handlerDependencies) handlers {
 				WorkerStatuses:   deps.WorkerStatuses,
 				WorkerStaleAfter: 3 * deps.Config.NotificationDelivery.WorkerInterval,
 				CoreReady:        healthHandler.CheckCore, RequiredWorkers: enabledDeliveryWorkers(deps.Config),
-				Repository:   &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
-				IdentitySync: platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm),
+				Repository:      &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
+				IdentitySync:    platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm),
 				IdentitySyncOps: identitySyncOperationsHandler(deps.Config, deps.Databases.Primary, deps.AdminKeycloak),
 				ServiceAccounts: serviceAccountResolver(deps.AdminKeycloak),
 				Verifier: &platformfeature.Introspector{

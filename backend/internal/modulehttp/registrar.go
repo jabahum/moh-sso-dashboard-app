@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	"github.com/moh-sso-dashboard/internal/authz"
 	"github.com/moh-sso-dashboard/internal/http/apierror"
 	"github.com/moh-sso-dashboard/internal/http/response"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 )
 
 type accessKey struct{}
