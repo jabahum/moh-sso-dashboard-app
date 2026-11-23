@@ -346,7 +346,9 @@ func setDefaults() {
 	viper.SetDefault("RBAC_STARTUP_SYNC_REALM_EXPORT", true)
 	viper.SetDefault("RBAC_STARTUP_SYNC_REALM_EXPORT_PATH", "")
 	viper.SetDefault("RBAC_STARTUP_SYNC_LIVE_KEYCLOAK", true)
-	viper.SetDefault("RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK", true)
+	// Pushing creates clients/roles and rewrites client attributes in Keycloak, so
+	// it is opt-in, matching every shipped infra/env template.
+	viper.SetDefault("RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK", false)
 	viper.SetDefault("RBAC_STARTUP_SYNC_USERS", true)
 	viper.SetDefault("RBAC_STARTUP_SYNC_FAIL_ON_ERROR", false)
 

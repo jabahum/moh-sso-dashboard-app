@@ -206,7 +206,7 @@ RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=false
 RBAC_STARTUP_SYNC_FAIL_ON_ERROR=false
 ```
 
-The compiled default for `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK` is `true` (`internal/config/config.go`), so keep it set to `false` explicitly unless you intend startup to create missing Keycloak clients and roles.
+`RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK` defaults to `false` (`internal/config/config.go`); set it to `true` only when you intend startup to create missing Keycloak clients and roles.
 
 See:
 

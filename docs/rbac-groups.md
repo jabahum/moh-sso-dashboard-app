@@ -135,7 +135,7 @@ Startup sync applies group records after system/client roles have been discovere
 
 - keep Keycloak as source of truth for membership
 - use the portal group members panel only for Keycloak-backed membership changes, not local DB overrides
-- keep push-to-Keycloak (`RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK`) disabled unless intentionally provisioning systems/roles. The compiled default is `true`, so set it to `false` explicitly, as `infra/env/prod.env.example` does
+- keep push-to-Keycloak (`RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK`) disabled unless intentionally provisioning systems/roles. It is off by default (the compiled default and `infra/env/prod.env.example` are both `false`)
 - do not delete Keycloak groups automatically
 - treat sync warnings as operational signals unless fail-on-error is explicitly enabled
 
