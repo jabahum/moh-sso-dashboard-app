@@ -196,7 +196,8 @@ All three operations are idempotent, so the dashboard retries them safely:
 [design](../architecture/identity-sync.md#conformance-suite)) runs the
 contract's checks against a registered application in a test environment:
 authorization refusals, pagination, idempotent linking, both conflict cases,
-session revocation, and the response headers and limits. Run it with synthetic
+session revocation, retry safety (repeated reads, and duplicate link and revoke
+requests sent at once), and the response headers and limits. Run it with synthetic
 accounts. Some checks create links.
 
 ## Appendix: Test-only session probe

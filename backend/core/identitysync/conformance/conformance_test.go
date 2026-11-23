@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -142,12 +143,12 @@ func TestAdapterPassesEveryCheck(t *testing.T) {
 	report := newEnv().run(t, nil)
 	pass, fail, skip := report.Counts()
 	for _, r := range report.Results {
-		if r.Status == conformance.Fail || (r.Status == conformance.Skip && r.ID != "transport.retries") {
+		if r.Status == conformance.Fail || r.Status == conformance.Skip {
 			dump(t, report)
 			t.Fatalf("%s: %s %s", r.ID, r.Status, r.Detail)
 		}
 	}
-	if report.Failed() || fail != 0 || skip != 1 || pass < 35 {
+	if report.Failed() || fail != 0 || skip != 0 || pass < 40 {
 		t.Fatalf("pass=%d fail=%d skip=%d", pass, fail, skip)
 	}
 	// Every check of the design's conformance table is present.
@@ -161,6 +162,7 @@ func TestAdapterPassesEveryCheck(t *testing.T) {
 		"linking.ineligible", "linking.wrong-issuer",
 		"sessions.revoke", "sessions.revoke-repeat", "sessions.revoke-unknown", "sessions.revoked-session-rejected",
 		"transport.no-store", "transport.no-redirects", "transport.request-body-limit", "transport.response-size",
+		"retries.page-replay", "retries.link-concurrent", "retries.revoke-concurrent", "retries.retry-after",
 	} {
 		if r, ok := report.Result(id); !ok || r.Status != conformance.Pass {
 			t.Errorf("%s: %+v", id, r)
@@ -217,7 +219,7 @@ func TestMissingInputsAreSkippedNotPassed(t *testing.T) {
 		"authorization.expired-token", "authorization.wrong-audience", "authorization.user-token",
 		"authorization.other-client", "authorization.missing-role",
 		"sessions.probe-create", "sessions.probe-active", "sessions.probe-unlinked",
-		"sessions.revoked-session-rejected", "transport.retries",
+		"sessions.revoked-session-rejected",
 	} {
 		r, ok := report.Result(id)
 		if !ok || r.Status != conformance.Skip || r.Detail == "" {
@@ -283,6 +285,58 @@ func (s overlappingPagesStore) ListEligibleAccounts(ctx context.Context, cursor 
 	return page, err
 }
 
+// racyStore links non-atomically: a second request for an account whose first
+// link is still being written fails with a conflict, as an unguarded
+// check-then-insert hitting a unique index would.
+type racyStore struct {
+	*memory.Store
+	mu       sync.Mutex
+	inflight map[string]bool
+}
+
+func (s *racyStore) LinkIdentity(ctx context.Context, id string, identity identitysync.Identity) error {
+	s.mu.Lock()
+	if s.inflight[id] {
+		s.mu.Unlock()
+		return identitysync.ErrLinkConflict
+	}
+	s.inflight[id] = true
+	s.mu.Unlock()
+	time.Sleep(50 * time.Millisecond)
+	err := s.Store.LinkIdentity(ctx, id, identity)
+	s.mu.Lock()
+	delete(s.inflight, id)
+	s.mu.Unlock()
+	return err
+}
+
+// overloadOnce answers the first concurrent-retry link request (account
+// linkB, second subject) with 503, setting Retry-After when retryAfter is set.
+func overloadOnce(retryAfter string) func(http.Handler) http.Handler {
+	var once sync.Once
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/accounts/"+linkB+"/identity") {
+				body, _ := io.ReadAll(r.Body)
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				if bytes.Contains(body, []byte("synthetic-subject-2")) {
+					overloaded := false
+					once.Do(func() { overloaded = true })
+					if overloaded {
+						w.Header().Set("Cache-Control", "no-store")
+						if retryAfter != "" {
+							w.Header().Set("Retry-After", retryAfter)
+						}
+						w.WriteHeader(http.StatusServiceUnavailable)
+						return
+					}
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 type headerStrippingWriter struct {
 	http.ResponseWriter
 }
@@ -309,6 +363,19 @@ func TestBrokenApplicationsFailTheRightChecks(t *testing.T) {
 			name:  "replaces existing links",
 			setup: func(e *env) { e.appStore = replacingStore{e.store} },
 			fails: []string{"linking.other-subject", "linking.visible"},
+		},
+		{
+			name:  "link not safe to retry concurrently",
+			setup: func(e *env) { e.appStore = &racyStore{Store: e.store, inflight: map[string]bool{}} },
+			fails: []string{"retries.link-concurrent"},
+			pass:  []string{"linking.link", "linking.repeat", "linking.visible"},
+		},
+		{
+			name:  "overloaded without Retry-After",
+			setup: func(e *env) { e.wrap = overloadOnce("") },
+			fails: []string{"retries.retry-after"},
+			// The suite retries the 503 like the dashboard does, so the link itself succeeds.
+			pass: []string{"retries.link-concurrent"},
 		},
 		{
 			name:  "wrong status on conflict",
@@ -481,6 +548,23 @@ func TestBrokenApplicationsFailTheRightChecks(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestOverloadWithRetryAfterIsRetriedAndPasses(t *testing.T) {
+	e := newEnv()
+	e.wrap = overloadOnce("1")
+	report := e.run(t, nil)
+	if report.Failed() {
+		dump(t, report)
+		t.Fatal("an app that sheds load with Retry-After must pass")
+	}
+	r, _ := report.Result("retries.retry-after")
+	if r.Status != conformance.Pass || r.Detail != "" {
+		t.Fatalf("retry-after = %+v, want a pass that saw the 503", r)
+	}
+	if e.store.Link(linkB) != "synthetic-subject-2" {
+		t.Fatalf("account %s link = %q", linkB, e.store.Link(linkB))
 	}
 }
 

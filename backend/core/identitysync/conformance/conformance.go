@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mohuganda/moh-sso-dashboard/backend/core/identitysync"
@@ -167,6 +168,7 @@ type exchange struct {
 }
 
 type runner struct {
+	mu      sync.Mutex // guards seen and tokens for concurrent checks
 	cfg     Config
 	base    string
 	client  *http.Client
@@ -193,6 +195,7 @@ func Run(ctx context.Context, cfg Config) (Report, error) {
 	fixturesOK := r.pagination(ctx)
 	linked := r.linking(ctx, fixturesOK)
 	r.sessions(ctx, linked)
+	r.retries(ctx, linked)
 	r.transport(ctx, linked)
 	return r.report, nil
 }
@@ -300,7 +303,9 @@ func (r *runner) do(ctx context.Context, q request) (exchange, error) {
 		if token == "" {
 			return exchange{}, errors.New("token source returned an empty token")
 		}
+		r.mu.Lock()
 		r.tokens[token] = true
+		r.mu.Unlock()
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	for k, v := range q.headers {
@@ -316,7 +321,9 @@ func (r *runner) do(ctx context.Context, q request) (exchange, error) {
 		return exchange{}, fmt.Errorf("%s: read body: %w", label, err)
 	}
 	ex := exchange{label: label, status: resp.StatusCode, header: resp.Header, body: body, tooLarge: len(body) > maxResponseBody}
+	r.mu.Lock()
 	r.seen = append(r.seen, ex)
+	r.mu.Unlock()
 	return ex, nil
 }
 
@@ -939,8 +946,216 @@ func (r *runner) transport(ctx context.Context, linked bool) {
 	} else {
 		r.add("transport.https", area, "the base URL uses HTTPS", Skip, "run with an http:// base URL; HTTPS not verified")
 	}
-	r.add("transport.retries", area, "retry behaviour", Skip,
-		"client-side retries are covered by the dashboard connector's unit tests, not by this suite")
+}
+
+// ---- Retries --------------------------------------------------------------
+
+// The dashboard retries network errors, timeouts, 429, 502, 503 and 504 (the
+// contract's "Errors and retries"). These checks show the application is safe
+// to retry: a repeated read returns the same page, a link or revoke sent again
+// while the first is still in flight (a client that timed out) succeeds instead
+// of conflicting, and overload answers say when to come back.
+
+const (
+	concurrentRetries = 5
+	maxSettleAttempts = 3
+	maxRetryAfterWait = 5 * time.Second
+	defaultRetryWait  = 500 * time.Millisecond
+	replayPageLimit   = 7
+)
+
+func retryableStatus(status int) bool {
+	return status == http.StatusTooManyRequests || status == http.StatusBadGateway ||
+		status == http.StatusServiceUnavailable || status == http.StatusGatewayTimeout
+}
+
+// retryAfter parses a Retry-After header (delay seconds or an HTTP date).
+func retryAfter(h http.Header) (time.Duration, bool) {
+	v := strings.TrimSpace(h.Get("Retry-After"))
+	if v == "" {
+		return 0, false
+	}
+	if secs, err := strconv.Atoi(v); err == nil && secs >= 0 {
+		return time.Duration(secs) * time.Second, true
+	}
+	if at, err := http.ParseTime(v); err == nil {
+		return max(time.Until(at), 0), true
+	}
+	return 0, false
+}
+
+// settle performs q and, while the answer is retryable, retries it the way the
+// dashboard does (Retry-After honoured, capped for the suite).
+func (r *runner) settle(ctx context.Context, q request) (exchange, error) {
+	var ex exchange
+	var err error
+	for attempt := 1; attempt <= maxSettleAttempts; attempt++ {
+		ex, err = r.do(ctx, q)
+		if err != nil || !retryableStatus(ex.status) || attempt == maxSettleAttempts {
+			return ex, err
+		}
+		wait, ok := retryAfter(ex.header)
+		if !ok {
+			wait = defaultRetryWait
+		}
+		select {
+		case <-ctx.Done():
+			return ex, ctx.Err()
+		case <-time.After(min(wait, maxRetryAfterWait)):
+		}
+	}
+	return ex, err
+}
+
+// concurrent sends q n times at once and reports every answer that is not want
+// once retryable answers have been retried.
+func (r *runner) concurrent(ctx context.Context, q request, n, want int) []string {
+	if q.token != nil {
+		token, err := q.token(ctx)
+		if err != nil {
+			return []string{"get token: " + err.Error()}
+		}
+		q.token = StaticToken(token)
+	}
+	results := make([]string, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ex, err := r.settle(ctx, q)
+			switch {
+			case err != nil:
+				results[i] = err.Error()
+			case ex.status != want:
+				results[i] = fmt.Sprintf("%s returned %d, want %d", ex.label, ex.status, want)
+			}
+		}()
+	}
+	wg.Wait()
+	var problems []string
+	for _, p := range results {
+		if p != "" {
+			problems = append(problems, p)
+		}
+	}
+	return problems
+}
+
+func sameAccounts(a, b []listedAccount) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].id != b[i].id || (a[i].link == nil) != (b[i].link == nil) || a[i].link != nil && *a[i].link != *b[i].link {
+			return false
+		}
+	}
+	return true
+}
+
+// pageReplay reads the first two pages twice each and compares them.
+func (r *runner) pageReplay(ctx context.Context) []string {
+	read := func(cursor string) ([]listedAccount, string, string) {
+		q := url.Values{"limit": {strconv.Itoa(replayPageLimit)}}
+		if cursor != "" {
+			q.Set("after", cursor)
+		}
+		ex, err := r.settle(ctx, request{method: http.MethodGet, path: "/accounts?" + q.Encode(), token: r.cfg.Tokens.Sync})
+		if err != nil {
+			return nil, "", err.Error()
+		}
+		if ex.status != http.StatusOK {
+			return nil, "", fmt.Sprintf("%s returned %d, want 200", ex.label, ex.status)
+		}
+		accounts, next, err := r.parsePage(ex.body, replayPageLimit)
+		if err != nil {
+			return nil, "", err.Error()
+		}
+		return accounts, next, ""
+	}
+	var problems []string
+	cursor := ""
+	for page := 1; page <= 2; page++ {
+		first, next, p := read(cursor)
+		if p != "" {
+			return append(problems, p)
+		}
+		again, nextAgain, p := read(cursor)
+		if p != "" {
+			return append(problems, p)
+		}
+		if !sameAccounts(first, again) || next != nextAgain {
+			problems = append(problems, fmt.Sprintf("page %d changed when read again with the same cursor", page))
+		}
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+	return problems
+}
+
+func (r *runner) retries(ctx context.Context, linked bool) {
+	const area = "retries"
+	f := r.cfg.Fixtures
+	r.check("retries.page-replay", area, "reading a page again with the same cursor returns the same accounts and cursor", r.pageReplay(ctx))
+
+	name := fmt.Sprintf("%d identical link requests sent at once all return 204 and leave one link", concurrentRetries)
+	if linked {
+		b := f.LinkableAccounts[1]
+		problems := r.concurrent(ctx, request{method: http.MethodPut, path: r.linkPath(b), token: r.cfg.Tokens.Sync,
+			body: r.identityBody(f.Issuer, r.s2)}, concurrentRetries, http.StatusNoContent)
+		if len(problems) == 0 {
+			found, err := r.findAccounts(ctx, b)
+			switch lb, ok := found[b]; {
+			case err != nil:
+				problems = append(problems, err.Error())
+			case !ok:
+				problems = append(problems, fmt.Sprintf("account %s is no longer listed", b))
+			case lb.link == nil || *lb.link != (identitysync.Identity{Issuer: f.Issuer, Subject: r.s2}):
+				problems = append(problems, fmt.Sprintf("account %s does not show exactly the requested link", b))
+			}
+		}
+		r.check("retries.link-concurrent", area, name, summarize(problems, concurrentRetries))
+	} else {
+		r.add("retries.link-concurrent", area, name, Skip, "blocked by linking.link")
+	}
+
+	name = fmt.Sprintf("%d identical session revokes sent at once all return 204", concurrentRetries)
+	switch {
+	case !r.revoke:
+		r.add("retries.revoke-concurrent", area, name, Skip, "the descriptor does not list sessions.revoke")
+	case !linked:
+		r.add("retries.revoke-concurrent", area, name, Skip, "blocked by linking.link")
+	default:
+		problems := r.concurrent(ctx, request{method: http.MethodPost, path: "/sessions/revoke", token: r.cfg.Tokens.Sync,
+			body: r.identityBody(f.Issuer, r.s1)}, concurrentRetries, http.StatusNoContent)
+		r.check("retries.revoke-concurrent", area, name, summarize(problems, concurrentRetries))
+	}
+
+	var overload []string
+	count := 0
+	r.mu.Lock()
+	for _, ex := range r.seen {
+		if ex.status != http.StatusTooManyRequests && ex.status != http.StatusServiceUnavailable {
+			continue
+		}
+		count++
+		if _, ok := retryAfter(ex.header); !ok {
+			overload = append(overload, fmt.Sprintf("%s (%d)", ex.label, ex.status))
+		}
+	}
+	r.mu.Unlock()
+	name = "every 429 or 503 answer carries a valid Retry-After"
+	switch {
+	case len(overload) > 0:
+		r.add("retries.retry-after", area, name, Fail, "without Retry-After: "+strings.Join(summarize(overload, count), "; "))
+	case count == 0:
+		r.add("retries.retry-after", area, name, Pass, "no 429 or 503 answers were seen during the run")
+	default:
+		r.add("retries.retry-after", area, name, Pass, "")
+	}
 }
 
 func (r *runner) errorBodyProblem(ex exchange) string {

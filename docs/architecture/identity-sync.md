@@ -568,7 +568,7 @@ The suite runs against a disposable environment with synthetic accounts.
 | Linking | Link → 204. Repeat → 204. Other subject → 409. Same subject on another account → 409. Ineligible account → 404. Wrong issuer → 400. |
 | Sessions | Revoke → 204. Revoke again → 204. Unknown subject → 204. A session created before the revoke is rejected afterwards (via an app-provided probe hook in the test environment). |
 | Transport | `Cache-Control: no-store` on every response. No redirects. Body size limits. |
-| Retries | Covered by connector unit tests with a fault-injecting fake server |
+| Retries | The application is safe to retry: a page read again with the same cursor is identical; five identical link requests sent at once all return 204 and leave one link; five identical session revokes sent at once all return 204; every 429 or 503 carries `Retry-After`. The suite retries 429/502/503/504 like the dashboard does. The dashboard's own retry policy (backoff, attempts, `Retry-After`) stays covered by the connector unit tests. |
 
 **Owned files:** `backend/core/identitysync/**` (except `accounts.go`, which
 Phase 0 owns) and `docs/integrations/identity-sync-adapter.md`.

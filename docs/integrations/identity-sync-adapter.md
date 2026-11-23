@@ -231,7 +231,8 @@ not enabled, or a failed earlier check that it depends on (for example
 | Pagination | `pagination.walk-limit-1`, `-7`, `-100` (each account exactly once, strictly ascending, ending on an empty cursor), `pagination.consistent`, `pagination.fixtures`, `pagination.bad-cursor`, `pagination.bad-limit` |
 | Linking | `linking.link`, `.repeat`, `.other-subject` (409), `.subject-taken` (409), `.ineligible` (404), `.wrong-issuer` (400), `.malformed` (400), `.visible` (the new link is listed and refused requests changed nothing) |
 | Sessions | `sessions.supported`, `.probe-create`, `.probe-active`, `.probe-unlinked`, `.revoke`, `.revoked-session-rejected`, `.revoke-repeat`, `.revoke-unknown`, `.wrong-issuer`, `.link-kept` |
-| Transport | `transport.request-body-limit`, `.no-store`, `.no-redirects`, `.response-size`, `.error-bodies`, `.https`, `.retries` (always skipped: client retries are tested in the dashboard connector) |
+| Retries | `retries.page-replay` (a page read again with the same cursor is identical), `.link-concurrent` (5 identical link requests at once all return 204 and leave one link: a retry racing its original must not conflict), `.revoke-concurrent` (5 identical revokes at once all return 204), `.retry-after` (every 429 or 503 carries `Retry-After`). Retryable answers are retried as the dashboard would. |
+| Transport | `transport.request-body-limit`, `.no-store`, `.no-redirects`, `.response-size`, `.error-bodies`, `.https` |
 
 `sessions.supported` fails when the descriptor lacks `sessions.revoke`,
 because access removal must end an application's sessions immediately.

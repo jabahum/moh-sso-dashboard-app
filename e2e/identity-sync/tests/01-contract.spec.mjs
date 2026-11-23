@@ -96,14 +96,14 @@ for (const app of ["clims", "poesgo"]) {
       const failed = results.filter((r) => r.status === "fail");
       const skipped = results.filter((r) => r.status === "skip");
       expect(failed, "failed conformance checks").toEqual([]);
-      // Every token and the probe are supplied, so the only allowed skip is the one
-      // the design assigns elsewhere ("Retries | Covered by connector unit tests
-      // with a fault-injecting fake server"), and it must state that reason.
-      expect(skipped.map((r) => r.id), "skipped conformance checks").toEqual(["transport.retries"]);
-      expect(skipped[0].detail).toMatch(/unit tests/);
+      // Every token and the probe are supplied, so nothing may be skipped.
+      expect(skipped.map((r) => r.id), "skipped conformance checks").toEqual([]);
+      for (const id of ["retries.page-replay", "retries.link-concurrent", "retries.revoke-concurrent", "retries.retry-after"]) {
+        expect(results.find((r) => r.id === id)?.status, id).toBe("pass");
+      }
       expect(results.length).toBeGreaterThan(20);
       expect(res.code).toBe(0);
-      for (const area of ["authorization", "descriptor", "pagination", "linking", "sessions", "transport"]) {
+      for (const area of ["authorization", "descriptor", "pagination", "linking", "sessions", "retries", "transport"]) {
         expect(results.some((r) => r.area.toLowerCase() === area), `area ${area} ran`).toBe(true);
       }
     });
