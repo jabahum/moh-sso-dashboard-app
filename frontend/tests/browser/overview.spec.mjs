@@ -90,7 +90,12 @@ for (const width of [1440, 390]) {
     await expect(main.getByRole("heading", { name: "Admin Overview", exact: true })).toBeVisible();
     await expect(main.locator(".moh-page-shell")).toHaveCount(1);
     await expect(main.locator(".app-tile")).toHaveCount(8);
-    await expect(main.getByRole("button", { name: "Create user", exact: true })).toBeVisible();
+    await expect(main.getByRole("button", { name: "Add user", exact: true })).toBeVisible();
+    await expect(main.locator(".home-actions .quick-action")).toHaveCount(6);
+    await expect(main.locator(".home-signals .signal-tile")).toHaveCount(4);
+    await expect(
+      main.locator(".signal-tile").filter({ hasText: "Unread notifications" }),
+    ).toContainText("1");
     const card = main.locator(".app-tile").first();
     expect((await card.boundingBox()).height).toBeLessThan(220);
     expect(await main.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
@@ -103,7 +108,7 @@ for (const width of [1440, 390]) {
     await expect(main.getByRole("heading", { name: "No matching applications" })).toBeVisible();
     await main.getByRole("button", { name: "Clear search", exact: true }).click();
     await expect(main.locator(".app-tile")).toHaveCount(8);
-    const create = main.getByRole("button", { name: "Create user", exact: true });
+    const create = main.getByRole("button", { name: "Add user", exact: true });
     await create.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog", { name: "Create user", exact: true })).toBeVisible();

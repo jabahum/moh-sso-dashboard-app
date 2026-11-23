@@ -1,4 +1,14 @@
-import { Add, Application, Security, Need, Time, UserAvatar } from "@carbon/react/icons";
+import {
+  Application,
+  Apps,
+  Bullhorn,
+  DocumentView,
+  Email,
+  Security,
+  Time,
+  UserFollow,
+  UserMultiple,
+} from "@carbon/react/icons";
 import { Tile, Tag, Search, InlineLoading } from "@carbon/react";
 import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -8,6 +18,13 @@ import "./home.scss";
 import { EmptyState, PageShell, useHeaderPanel } from "@moh-sso/ui";
 import { ApplicationTile } from "@/app/home/components/app/ApplicationTile";
 import { QuickAction } from "@/app/home/components/quick-action/quick-action.component";
+import { SignalTile } from "@/app/home/components/signal-tile/signal-tile.component";
+import {
+  useGetAdminOverviewClientsQuery,
+  useGetAdminOverviewFailedLoginsQuery,
+  useGetAdminOverviewUsersQuery,
+} from "@/app/home/api/admin-overview.api";
+import { useGetUnreadNotificationsCountQuery } from "@/app/api";
 import { NotificationsTable } from "@/app/notifications/components/NotificationsTable";
 import { PERMISSIONS, selectUser, useAuthorization } from "@moh-sso/auth";
 import { setActiveClient } from "@moh-sso/state";
@@ -22,6 +39,8 @@ const UserFormPanel = lazy(() =>
 const ManageAnnouncementsPanel = lazy(() =>
   import("@moh-sso/announcements").then((module) => ({ default: module.ManageAnnouncementsPanel })),
 );
+
+const MAX_QUICK_ACTIONS = 6;
 
 function normalizePortalPath(href?: string): string | undefined {
   if (!href || /^https?:\/\//i.test(href)) return href;
@@ -64,13 +83,21 @@ export default function HomePage() {
     );
   }, [visibleClients, search]);
   const lastLogin = formatLastLogin(user?.lastLoginAt);
+  const displayName = user ? user.firstName || user.username : "";
+
+  const canReadUsers = can(PERMISSIONS.usersRead);
+  const canReadClients = can(PERMISSIONS.clientsRead);
+  const canReadAudit = can(PERMISSIONS.auditRead);
+  const canReadNotifications = can(PERMISSIONS.notificationsRead);
+
+  // Ordered by priority; only the first MAX_QUICK_ACTIONS the user may perform are shown.
   const actions = [
     {
       id: "user",
       allowed: can(PERMISSIONS.usersWrite),
-      icon: <Add size={20} />,
-      label: "Create user",
-      description: "Add a person and set up their account.",
+      icon: <UserFollow size={20} />,
+      label: "Add user",
+      description: "Create an account and set up their access.",
       onClick: () =>
         openPanel({
           title: "Create user",
@@ -82,7 +109,7 @@ export default function HomePage() {
       id: "client",
       allowed: can(PERMISSIONS.clientsWrite),
       icon: <Application size={20} />,
-      label: "Create client",
+      label: "Onboard client",
       description: "Connect an application to Ministry sign-in.",
       onClick: () =>
         openPanel({
@@ -90,6 +117,27 @@ export default function HomePage() {
           content: lazyPanel(<ClientFormPanel mode="create" />),
           size: "md",
         }),
+    },
+    {
+      id: "announcement",
+      allowed: can(PERMISSIONS.announcementsWrite),
+      icon: <Bullhorn size={20} />,
+      label: "Post announcement",
+      description: "Draft an update for portal users.",
+      onClick: () =>
+        openPanel({
+          title: "Create announcement",
+          content: lazyPanel(<ManageAnnouncementsPanel mode="create" />),
+          size: "lg",
+        }),
+    },
+    {
+      id: "users",
+      allowed: canReadUsers,
+      icon: <UserMultiple size={20} />,
+      label: "Manage users",
+      description: "Find accounts and enable, disable, or update them.",
+      onClick: () => navigate("/admin/users"),
     },
     {
       id: "access",
@@ -100,129 +148,226 @@ export default function HomePage() {
       onClick: () => navigate("/admin/rbac"),
     },
     {
-      id: "announcement",
-      allowed: can(PERMISSIONS.announcementsWrite),
-      icon: <Need size={20} />,
-      label: "New announcement",
-      description: "Draft an update for portal users.",
-      onClick: () =>
-        openPanel({
-          title: "Create announcement",
-          content: lazyPanel(<ManageAnnouncementsPanel mode="create" />),
-          size: "lg",
-        }),
+      id: "audit",
+      allowed: canReadAudit,
+      icon: <DocumentView size={20} />,
+      label: "View audit logs",
+      description: "Trace sign-ins and administrative changes.",
+      onClick: () => navigate("/admin/audit-logs"),
     },
-  ].filter((action) => action.allowed);
+    {
+      id: "clients",
+      allowed: canReadClients,
+      icon: <Apps size={20} />,
+      label: "Manage clients",
+      description: "Review connected applications and their settings.",
+      onClick: () => navigate("/admin/clients"),
+    },
+    {
+      id: "deliveries",
+      allowed: canReadNotifications,
+      icon: <Email size={20} />,
+      label: "Notification deliveries",
+      description: "Check failed or pending email and SMS deliveries.",
+      onClick: () => navigate("/admin/notifications/deliveries"),
+    },
+  ]
+    .filter((action) => action.allowed)
+    .slice(0, MAX_QUICK_ACTIONS);
+
+  // Fixed for the lifetime of the page so the query key stays stable.
+  const [failedLoginsRange] = useState(() => {
+    const to = new Date();
+    const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
+    return { from: from.toISOString(), to: to.toISOString() };
+  });
+  const usersSummary = useGetAdminOverviewUsersQuery(undefined, { skip: !canReadUsers });
+  const clientsSummary = useGetAdminOverviewClientsQuery(undefined, { skip: !canReadClients });
+  const failedLogins = useGetAdminOverviewFailedLoginsQuery(failedLoginsRange, {
+    skip: !canReadAudit,
+  });
+  const unreadNotifications = useGetUnreadNotificationsCountQuery(undefined, {
+    skip: !canReadNotifications,
+  });
+
+  // A failed request renders "—" in its tile rather than breaking the page.
+  const signals = [
+    {
+      id: "users",
+      allowed: canReadUsers,
+      label: "Users",
+      href: "/admin/users",
+      loading: usersSummary.isLoading,
+      value: usersSummary.isError ? null : usersSummary.data?.total,
+    },
+    {
+      id: "disabled-users",
+      allowed: canReadUsers,
+      label: "Disabled users",
+      href: "/admin/users",
+      loading: usersSummary.isLoading,
+      value: usersSummary.isError ? null : usersSummary.data?.disabled,
+    },
+    {
+      id: "clients",
+      allowed: canReadClients,
+      label: "Client applications",
+      href: "/admin/clients",
+      loading: clientsSummary.isLoading,
+      value: clientsSummary.isError ? null : clientsSummary.data?.total,
+      helperText:
+        !clientsSummary.isError && clientsSummary.data?.disabled
+          ? `${clientsSummary.data.disabled.toLocaleString()} disabled`
+          : undefined,
+    },
+    {
+      id: "failed-logins",
+      allowed: canReadAudit,
+      label: "Failed sign-ins (24h)",
+      href: "/admin/audit-logs",
+      loading: failedLogins.isLoading,
+      value: failedLogins.isError ? null : failedLogins.data,
+    },
+    {
+      id: "unread",
+      allowed: canReadNotifications,
+      label: "Unread notifications",
+      loading: unreadNotifications.isLoading,
+      value: unreadNotifications.isError ? null : unreadNotifications.data,
+    },
+  ].filter((signal) => signal.allowed);
+
+  const hasAdminSections = actions.length > 0 || signals.length > 0;
+
+  const applicationsSection = (
+    <section
+      className={`home-applications${hasAdminSections ? " home-applications--secondary" : ""}`}
+      aria-labelledby="home-applications-title"
+    >
+      <header className="home-section-heading">
+        <div>
+          <div className="home-section-heading__title">
+            <h4 id="home-applications-title">Your applications</h4>
+            <Tag type="cool-gray" size="sm">
+              {visibleClients.length}
+            </Tag>
+          </div>
+          {(visibleClients.length > 0 || !hasAdminSections) && (
+            <p>Open the tools available to your account.</p>
+          )}
+        </div>
+        {visibleClients.length > 0 && (
+          <Search
+            id="home-application-search"
+            size="md"
+            labelText="Search your applications"
+            placeholder="Find an application"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onClear={() => setSearch("")}
+          />
+        )}
+      </header>
+      {visibleClients.length === 0 ? (
+        hasAdminSections ? (
+          <p className="home-applications__empty">
+            No applications are assigned to your account yet.
+          </p>
+        ) : (
+          <EmptyState
+            title="No applications assigned"
+            description="Applications will appear here when access is assigned to your account."
+          />
+        )
+      ) : (
+        <>
+          <p className="home-applications__results" role="status">
+            {search.trim()
+              ? `${filteredClients.length} of ${visibleClients.length} applications`
+              : `${visibleClients.length} applications available`}
+          </p>
+          {filteredClients.length === 0 ? (
+            <EmptyState
+              title="No matching applications"
+              description="Try a different application name or clear your search."
+              primaryAction={{ label: "Clear search", onClick: () => setSearch("") }}
+            />
+          ) : (
+            <div className="home-applications__grid">
+              {filteredClients.map((client) => (
+                <ApplicationTile
+                  key={client.clientId}
+                  clientId={client.clientId}
+                  name={client.name}
+                  description={client.description}
+                  enabled={client.enabled}
+                  rootUrl={normalizePortalPath(client.baseUrl)}
+                  launchMode={
+                    (client.attributes?.["ui.launchMode"] as "internal" | "new_tab" | "same_tab") ||
+                    "internal"
+                  }
+                  onLaunch={() =>
+                    dispatch(
+                      setActiveClient(client.attributes?.["ui.parentClientId"] || client.clientId),
+                    )
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
 
   return (
     <div className="home-page">
       <PageShell
         title="Admin Overview"
-        subtitle="Your applications, administrative tasks, and latest activity."
+        subtitle={
+          displayName
+            ? `Welcome back, ${displayName}. Manage people, applications, and access from here.`
+            : "Manage people, applications, and access from here."
+        }
       >
-        <Tile className="home-hero">
-          {!user ? (
-            <InlineLoading description="Loading your workspace…" />
-          ) : (
-            <>
-              <div className="home-hero__welcome">
-                <span className="home-hero__avatar" aria-hidden="true">
-                  <UserAvatar size={28} />
-                </span>
-                <div>
-                  <p className="home-hero__eyebrow">Your workspace</p>
-                  <h4 className="home-hero__title">
-                    Welcome back, {user.firstName || user.username}
-                  </h4>
-                  {user.email && <p className="home-hero__email">{user.email}</p>}
-                </div>
-              </div>
-              <div className="home-hero__context">
-                <Tag type="blue" size="sm">
-                  {user.isAdmin ? "Administrator" : "Signed in"}
-                </Tag>
-                {lastLogin && (
-                  <p className="home-hero__last-login">
-                    <Time size={16} aria-hidden="true" />
-                    <span>Last sign-in: {lastLogin}</span>
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-        </Tile>
-
-        <section className="home-applications" aria-labelledby="home-applications-title">
-          <header className="home-section-heading">
-            <div>
-              <div className="home-section-heading__title">
-                <h4 id="home-applications-title">Your applications</h4>
-                <Tag type="cool-gray" size="sm">
-                  {visibleClients.length}
-                </Tag>
-              </div>
-              <p>Open the tools available to your account.</p>
-            </div>
-            {visibleClients.length > 0 && (
-              <Search
-                id="home-application-search"
-                size="md"
-                labelText="Search your applications"
-                placeholder="Find an application"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                onClear={() => setSearch("")}
-              />
+        {!user ? (
+          <InlineLoading description="Loading your workspace…" />
+        ) : (
+          <div className="home-context">
+            <Tag type="blue" size="sm">
+              {user.isAdmin ? "Administrator" : "Signed in"}
+            </Tag>
+            {user.email && <span className="home-context__item">{user.email}</span>}
+            {lastLogin && (
+              <span className="home-context__item">
+                <Time size={16} aria-hidden="true" />
+                Last sign-in: {lastLogin}
+              </span>
             )}
-          </header>
-          {visibleClients.length === 0 ? (
-            <EmptyState
-              title="No applications assigned"
-              description="Applications will appear here when access is assigned to your account."
-            />
-          ) : (
-            <>
-              <p className="home-applications__results" role="status">
-                {search.trim()
-                  ? `${filteredClients.length} of ${visibleClients.length} applications`
-                  : `${visibleClients.length} applications available`}
-              </p>
-              {filteredClients.length === 0 ? (
-                <EmptyState
-                  title="No matching applications"
-                  description="Try a different application name or clear your search."
-                  primaryAction={{ label: "Clear search", onClick: () => setSearch("") }}
+          </div>
+        )}
+
+        {!hasAdminSections && applicationsSection}
+
+        {signals.length > 0 && (
+          <section aria-labelledby="home-signals-title">
+            <h4 id="home-signals-title" className="cds--visually-hidden">
+              At a glance
+            </h4>
+            <div className="home-signals">
+              {signals.map(({ id, label, href, loading, value, ...rest }) => (
+                <SignalTile
+                  key={id}
+                  label={label}
+                  href={href}
+                  loading={loading}
+                  value={value}
+                  helperText={"helperText" in rest ? rest.helperText : undefined}
                 />
-              ) : (
-                <div className="home-applications__grid">
-                  {filteredClients.map((client) => (
-                    <ApplicationTile
-                      key={client.clientId}
-                      clientId={client.clientId}
-                      name={client.name}
-                      description={client.description}
-                      enabled={client.enabled}
-                      rootUrl={normalizePortalPath(client.baseUrl)}
-                      launchMode={
-                        (client.attributes?.["ui.launchMode"] as
-                          | "internal"
-                          | "new_tab"
-                          | "same_tab") || "internal"
-                      }
-                      onLaunch={() =>
-                        dispatch(
-                          setActiveClient(
-                            client.attributes?.["ui.parentClientId"] || client.clientId,
-                          ),
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
 
         {actions.length > 0 && (
           <section aria-labelledby="home-actions-title">
@@ -233,18 +378,26 @@ export default function HomePage() {
               </div>
             </header>
             <div className="home-actions">
-              {actions.map(({ id, ...action }) => (
-                <QuickAction key={id} {...action} />
+              {actions.map(({ id, icon, label, description, onClick }) => (
+                <QuickAction
+                  key={id}
+                  icon={icon}
+                  label={label}
+                  description={description}
+                  onClick={onClick}
+                />
               ))}
             </div>
           </section>
         )}
 
-        {can(PERMISSIONS.notificationsRead) && (
+        {canReadNotifications && (
           <Tile className="home-notifications">
             <NotificationsTable />
           </Tile>
         )}
+
+        {hasAdminSections && applicationsSection}
       </PageShell>
     </div>
   );
