@@ -109,12 +109,22 @@ version, then update host `go.mod`/`go.sum` and mark the catalogue entry publish
 Update the exact module pin in `backend/go.mod` and commit both checksums
 recorded in `backend/go.sum`. Run
 `python3 infra/scripts/backend_module_pins.py` with the backend Go toolchain
-available. It reads every `backend/modules/*` requirement in `backend/go.mod`
-(a release version or a pseudo-version), checks the selected dependency, rejects
-replacements, and compares
-the downloaded module and manifest checksums with the reviewed values.
-Distribution metadata, runtime inventory checks, and standalone release
-fixtures all read the expected versions from the backend pins.
+available. It reads every published `backend/modules/*` requirement in
+`backend/go.mod` (a release version or a pseudo-version), checks the selected
+dependency, rejects replacements, and compares the downloaded module and
+manifest checksums with the reviewed values. Distribution metadata, runtime
+inventory checks, and standalone release fixtures all read the expected
+versions from the backend pins.
+
+A module extracted from the host but not yet tagged is built from the
+repository instead: `backend/go.mod` requires it at `v0.0.0` and replaces it
+with `./modules/<module-id>` (the directory name must equal the module ID).
+`local_modules()` in `infra/scripts/backend_module_pins.py` lists these; they are
+excluded from pin verification, report the version `dev` in the module
+inventory, and the backend Dockerfiles copy their `go.mod` before downloading
+dependencies. To publish one, tag `backend/core` first if the module needs a
+newer core, tag the module, then replace the local `replace` line with the
+reviewed pin and checksums.
 
 ## Published implementation ownership
 
@@ -163,6 +173,60 @@ verify the downloaded artifact/checksums from a fresh cache and an independent
 consumer, then pin it and remove the host-specific adapter and asset copies.
 Shared platform infrastructure and migration history remain host-owned unless
 an explicit module migration transition has been reviewed.
+
+## Build a module on core/modulekit
+
+`backend/core/modulekit` is the shared contract for modules extracted from the
+host. It is standard-library only, so a module depending on it gains no
+framework or host dependency. `backend/modules/storage-locations` is the
+reference.
+
+The host authenticates the caller and attaches the verified request state
+(`modulekit.WithRequest`: access, request ID and the selected health context)
+in `internal/modulehttp`. A module declares its operations and the router
+enforces each declaration before the handler runs, with the same status codes
+and error bodies as the host middleware:
+
+```go
+router, err := modulekit.NewRouter([]modulekit.Endpoint{
+	{Method: "GET", Path: "/storage-locations/{id}", Permission: ReadPermission, Handle: h.getByID},
+	{Method: "POST", Path: "/uploads", Permission: WritePermission,
+		RateLimit: &modulekit.RateLimit{Name: "uploads-write", Limit: 30, Window: time.Minute},
+		Handle: h.upload},
+}, modulekit.WithLimiter(deps.Limiter))
+module, err := modulekit.NewHTTPModule(router, openAPIDocument) // embedded openapi.json
+```
+
+| Requirement | Field | Failure |
+| --- | --- | --- |
+| No authentication | `Public` | none |
+| Authenticated caller | any non-public endpoint | 401 `UNAUTHORIZED` |
+| Administrator | `Admin` | 403 `admin access required` |
+| System access | `System` | 403 `system access required: <system>` |
+| Permissions | `Permission`, `AnyPermissions`, `AllPermissions` | 403 with the host middleware's message |
+| Rate limit | `RateLimit` (host `modulehttp.PolicyLimiter`) | 429 `RATE_LIMIT_EXCEEDED` |
+
+Handlers receive a `*modulekit.Context` with request helpers (`Param`, `Query`,
+`BindJSON`, `FormFile`, ...), the verified caller (`Access`, `Subject`,
+`HealthContext`) and the platform response envelope (`OK`, `Fail`). `BindJSON`
+applies `binding:"required|omitempty|oneof=..."` tags like the host framework.
+
+Core services reach modules as contracts in `Dependencies`, adapted by the host:
+
+| Contract | Host adapter |
+| --- | --- |
+| `modulekit.Notifier` | `internal/adapters/modulekit.Notifier` over the notification service |
+| `modulekit.Platform` | `internal/adapters/modulekit.Platform(cfg)` |
+| `modulekit.HealthContextDirectory` | `health_context.ModuleDirectory` |
+| `core.AuditRecorder` | the shared audit service |
+| `modulekit.Limiter` | `modulehttp.PolicyLimiter` |
+
+Anything else a module needs from the host (a database handle, a file-storage
+provider, a directory lookup) is a narrow interface the module declares in its
+own package. Register the module in `internal/api/modules.go`; use
+`module.Routes.ContextScoped` for routes that require the data-statistics
+system and a health-context selection. Copy the module's existing operations
+into `openapi.json` so the generated contract stays unchanged.
 
 ## Frontend packages and hosted applications
 
