@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -36,6 +37,19 @@ type KeycloakPushResult struct {
 	ClientRolesCreated int      `json:"clientRolesCreated"`
 	CompositesSynced   int      `json:"compositesSynced"`
 	Warnings           []string `json:"warnings,omitempty"`
+}
+
+// KeycloakServiceClientSource creates or completes service-account-only clients.
+type KeycloakServiceClientSource interface {
+	EnsureServiceClient(ctx context.Context, spec keycloak.ServiceClientSpec) (keycloak.ServiceClientResult, error)
+}
+
+// ServiceClientPushResult reports the service clients the push created or
+// completed. Clients that were already complete are counted in Unchanged.
+type ServiceClientPushResult struct {
+	Changed   []keycloak.ServiceClientResult `json:"changed,omitempty"`
+	Unchanged int                            `json:"unchanged"`
+	Warnings  []string                       `json:"warnings,omitempty"`
 }
 
 type keycloakPortalAttributeUpdater interface {
@@ -576,4 +590,67 @@ func discoverLiveKeycloakRBAC(ctx context.Context, source KeycloakSyncSource, kn
 	}
 	sort.Strings(warnings)
 	return discovered, warnings, nil
+}
+
+// PushServiceClientsToKeycloak creates the seed's service clients in Keycloak
+// and completes any that are missing their audience mapper, service-account
+// roles or scope mappings. It runs after PushMissingRBACRolesToKeycloak so the
+// roles exist. A client that exists in another shape (for example with a
+// browser flow) is left alone and reported as a warning; other Keycloak errors
+// stop the push. Secrets are never read or written: Keycloak generates them.
+func (s *Service) PushServiceClientsToKeycloak(
+	ctx context.Context,
+	source KeycloakServiceClientSource,
+	clients []systemrbac.SeedServiceClient,
+) (ServiceClientPushResult, error) {
+	result := ServiceClientPushResult{}
+	if len(clients) == 0 {
+		return result, nil
+	}
+	if source == nil {
+		return result, fmt.Errorf("%w: keycloak source is required", ErrInvalidInput)
+	}
+
+	for _, client := range clients {
+		spec := keycloak.ServiceClientSpec{
+			ClientID:    strings.TrimSpace(client.ClientID),
+			Name:        strings.TrimSpace(client.DisplayName),
+			Description: strings.TrimSpace(client.Description),
+			Audience:    strings.ToLower(strings.TrimSpace(client.Audience)),
+		}
+		for _, role := range client.Roles {
+			spec.Roles = append(spec.Roles, keycloak.ServiceClientRole{
+				ClientID: strings.ToLower(strings.TrimSpace(role.System)),
+				Role:     normalize(role.Role),
+			})
+		}
+		ensured, err := source.EnsureServiceClient(ctx, spec)
+		if errors.Is(err, keycloak.ErrNotServiceClient) {
+			result.Warnings = append(result.Warnings, fmt.Sprintf(
+				"service client %q exists in Keycloak but is not a service-account-only client; left unchanged",
+				spec.ClientID,
+			))
+			continue
+		}
+		if err != nil {
+			return result, fmt.Errorf("ensure keycloak service client %q: %w", spec.ClientID, err)
+		}
+		if ensured.Changed() {
+			result.Changed = append(result.Changed, ensured)
+		} else {
+			result.Unchanged++
+		}
+	}
+
+	if len(result.Changed) == 0 && len(result.Warnings) == 0 {
+		return result, nil
+	}
+	if err := s.recordAudit(ctx, "rbac.keycloak_service_clients_pushed", "sync", "live-keycloak", "", "", "", map[string]any{
+		"changed":   result.Changed,
+		"unchanged": result.Unchanged,
+		"warnings":  result.Warnings,
+	}); err != nil {
+		return result, err
+	}
+	return result, nil
 }

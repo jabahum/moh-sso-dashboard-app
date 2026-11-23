@@ -26,6 +26,7 @@ export default {
           label: 'Onboarding handbook',
         },
         'docs/system-onboarding',
+        'docs/application-manifests',
         'docs/identity-environments',
         'docs/cross-application-sso',
         'docs/external-app-header',
@@ -52,6 +53,21 @@ export default {
             'docs/rbac-groups',
             'docs/rbac-keycloak-sync',
             'docs/standard-user-defaults',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Identity sync (CLIMS, POES)',
+          items: [
+            {
+              type: 'doc',
+              id: 'docs/integrations/connected-applications',
+              label: 'Connected applications',
+            },
+            'docs/integrations/identity-sync-contract',
+            'docs/integrations/identity-sync-adapter',
+            'docs/architecture/identity-sync',
+            'docs/operations/identity-sync-pilot',
           ],
         },
         {

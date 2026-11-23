@@ -127,8 +127,8 @@ docker compose run --rm --no-deps \
 The rest of this runbook writes that prefix as `moh-sso`.
 
 **In the portal.** Steps 1 to 7 can also be done in the portal by an
-administrator with `rbac:write` and `rbac:roles:write`: Admin → RBAC → select
-the application → Operations → **Identity sync**. The page registers the
+administrator with `rbac:write` and `rbac:roles:write`: Admin → RBAC → **This
+application** → select the application → **Identity sync** tab. The page registers the
 integration and checks its live descriptor, starts runs (as background jobs),
 lets the reviewer select and approve rows (recorded under their own portal
 identity), applies and resumes runs, and lists access removals with a retry and
@@ -317,10 +317,45 @@ support tickets). Then, with the reviewer's agreement:
 1. A second batch with a few `create` rows. Each invited person gets one email
    to verify their address and set a password.
 2. Larger `reuse` batches.
-3. POES (`poesgo`), from step 0.
+3. POES (`poesgo`), from step 0, with the substitutions in
+   [Running the pilot for POES](#running-the-pilot-for-poes).
 
 Scheduled reconciliation is out of scope for the pilot. If it is added later it
 must only re-propose and report; it never approves `create` or `review` rows.
+
+## Running the pilot for POES
+
+Run every step above with these substitutions once CLIMS has finished its
+pilot. The values for both applications are side by side in
+[Connected applications](../integrations/connected-applications.md).
+
+| In this runbook | For POES |
+|---|---|
+| `--app clims` | `--app poesgo` |
+| CLIMS owner | POES technical lead |
+| Deployed CLIMS `feat/clims-identity-sync-v1.1` | poesGo `main` from PR #7 (`feat/poes-identity-sync-v1.1`, contract 1.1), with migrations `000002_user_oidc_identities` and `000003_user_session_versions` applied |
+| Sync client `clims-identity-sync`, audience `clims` | `poesgo-identity-sync`, audience `poesgo` |
+| Access role `clims_access`, ID-token claim `clims_roles` | `poesgo_access`, `poesgo_roles` |
+| `CLIMS_SYNC_CLIENT_SECRET_FILE`, `env:CLIMS_SYNC_CLIENT_SECRET` | `POESGO_SYNC_CLIENT_SECRET_FILE`, `env:POESGO_SYNC_CLIENT_SECRET` |
+| `--origin https://clims.health.go.ug` | `--origin https://poes.health.go.ug` (or the deployed POES origin) |
+| Service identity `PUT …/applications/clims/identities/clims-identity-sync` | `PUT …/applications/poesgo/identities/poesgo-identity-sync` |
+| Descriptor `accountIdFormat` `uuid` | `positive-integer` |
+
+POES settings for step 0, in its `.env.deploy`: `AUTH_PROVIDER=oidc`,
+`OIDC_ISSUER` (the public issuer), `OIDC_CLIENT_ID=poesgo`, `OIDC_CLIENT_SECRET`,
+`OIDC_PUBLIC_ORIGIN`, a `JWT_SECRET` of at least 32 bytes, and
+`IDENTITY_SYNC_CLIENT_ID=poesgo-identity-sync`. `IDENTITY_SYNC_TEST_PROBE` stays
+unset; POES refuses to start with it in production.
+
+Two POES differences change what to check:
+
+- In `AUTH_PROVIDER=oidc`, POES accepts only its SSO session and refuses
+  password sign-in. Its Next.js admin and mobile apps can't sign in to that
+  deployment yet. Confirm with the POES owner which deployment the pilot uses
+  before switching it.
+- Step 6's removal works the same way: POES ends every session of the account
+  on its next request, and a new portal sign-in is refused once `poesgo_access`
+  is gone.
 
 ## Rollback
 

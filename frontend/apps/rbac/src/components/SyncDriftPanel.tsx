@@ -1,26 +1,18 @@
 import { useMemo, useState } from "react";
-import {
-  Button,
-  InlineLoading,
-  InlineNotification,
-  Tag,
-  TextArea,
-} from "@carbon/react";
+import { Button, InlineLoading, InlineNotification, Tag, TextArea } from "@carbon/react";
 import { Renew, Save } from "@carbon/react/icons";
 
-import {
-  useApplyRbacSyncMutation,
-  useGetRbacDriftQuery,
-  usePreviewRbacSyncMutation,
-} from "../api";
+import { useApplyRbacSyncMutation, useGetRbacDriftQuery, usePreviewRbacSyncMutation } from "../api";
 import { PERMISSIONS, PermissionGuard } from "@moh-sso/auth";
 import type { RbacDriftReport, RbacSyncPayload, RbacSyncPreview } from "../types";
+import { useConfirm } from "./workspace/feedback";
 
 type SyncDriftPanelProps = {
   onSynced?: () => void;
 };
 
 export function SyncDriftPanel({ onSynced }: SyncDriftPanelProps) {
+  const confirmAction = useConfirm();
   const { data: defaultReport, isFetching, refetch } = useGetRbacDriftQuery();
   const [realmExportText, setRealmExportText] = useState("");
   const [preview, setPreview] = useState<RbacSyncPreview | null>(null);
@@ -64,9 +56,12 @@ export function SyncDriftPanel({ onSynced }: SyncDriftPanelProps) {
       setLocalError("Paste a valid Keycloak realm-export JSON object before applying sync.");
       return;
     }
-    if (!confirm("Apply this Keycloak sync preview to portal RBAC? New roles will not receive permissions automatically.")) {
-      return;
-    }
+    const confirmed = await confirmAction({
+      title: "Apply Keycloak sync to portal RBAC?",
+      body: <p>New roles will not receive permissions automatically.</p>,
+      confirmLabel: "Apply sync",
+    });
+    if (!confirmed) return;
 
     try {
       setLocalError(null);

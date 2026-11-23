@@ -1,5 +1,8 @@
 # Application manifests
 
+The full guide, with the field reference, workflow and error messages, is
+[docs/application-manifests.md](../../docs/application-manifests.md).
+
 Import a YAML or JSON application document from **Systems → Import manifest**.
 The importing account needs administrator access and `rbac:read`, `rbac:write`
 and `rbac:roles:write`. Uploads are limited to 128 KiB.

@@ -70,10 +70,47 @@ Startup order (`backend/internal/bootstrap/rbac_sync.go`):
 3. Sync systems, roles and groups (with their members, realm-role and client-role mappings) from live Keycloak, if enabled and a Keycloak admin client is configured.
 4. Sync Keycloak users into the local portal DB user cache, if enabled. This step is skipped in the core-only profile.
 5. Push to Keycloak, if enabled. This creates missing portal-defined clients, client roles and realm roles, updates the portal attributes on registered clients, and ensures the configured realm-role composites (for example the `user` defaults).
+6. Push the seed's service clients to Keycloak, if push is enabled and the seed was applied in step 1. See [Service clients](#service-clients).
 
 Startup runs are insert-only for system configuration: the seed runs first, and later discovery does not overwrite an existing system's metadata. Known portal metadata and permission mappings therefore win over generic Keycloak metadata. Role and permission discovery still runs for existing systems.
 
 Group membership can grant inherited realm roles, client roles, and portal group permissions. For the effective-access model, admin workflow, and QA checklist, see [RBAC Groups](./rbac-groups.md).
+
+### Service clients
+
+Some Keycloak clients only obtain tokens with the client-credentials grant and are never launched by people, for example `clims-identity-sync` and `poesgo-identity-sync`, which the dashboard uses to call the CLIMS and POES identity-sync APIs. They are not portal systems, so they are listed under `serviceClients:` in `backend/config/system-rbac.seed.yaml`, not under `systems:`:
+
+```yaml
+serviceClients:
+  - clientId: poesgo-identity-sync
+    displayName: Poesgo identity sync
+    description: MoH SSO Dashboard service client for Poesgo identity reconciliation
+    audience: poesgo
+    roles:
+      - system: poesgo
+        role: identity_sync
+```
+
+| Field | Meaning |
+| --- | --- |
+| `clientId` | Keycloak client ID, lowercase. It must not also be a `systems:` entry. |
+| `displayName`, `description` | Keycloak client name and description, used when the client is created. |
+| `audience` | A seeded system's client ID, added to the access token's `aud` claim by an audience mapper. |
+| `roles` | Roles granted to the service account. Each must be a role of a seeded system marked `serviceOnly: true`, so the seed cannot give a service account a role meant for people. |
+
+`system-rbac validate` and startup reject an entry that breaks these rules.
+
+When push-to-Keycloak runs (step 6 above), `EnsureServiceClient` (`backend/internal/keycloak/service_clients.go`) brings each entry into line with the shape used in `infra/keycloak/realm-export.json`:
+
+- **Missing client:** created confidential (`client-secret`), with only service accounts enabled, no browser or password flows, `fullScopeAllowed` off, the `roles` default client scope, the audience mapper, and `portal.system=false` so it never appears in the launcher or the RBAC system list.
+- **Existing service-account-only client:** a missing audience mapper, service-account role or dedicated-scope mapping is added. Nothing is removed or renamed, and a client that is already complete is left untouched.
+- **Existing client of another kind** (public, bearer-only, without a service account, or with a browser or password flow): left unchanged, reported as a startup warning and in the `rbac.keycloak_service_clients_pushed` audit event. An administrator has to resolve the conflict.
+
+Each role is assigned to the service account and also added to the client's dedicated scope (`<client>-dedicated` → Scope). Because `fullScopeAllowed` is off, the role reaches the token only through that scope mapping.
+
+The push never reads or writes a client secret: Keycloak generates one when it creates the client. Copy it into its destination without displaying it (for the identity-sync clients, the dashboard's `CLIMS_SYNC_CLIENT_SECRET_FILE` or `POESGO_SYNC_CLIENT_SECRET_FILE`), as described in [Connected applications](integrations/connected-applications.md#3-credentials-who-holds-what).
+
+Service clients exist only in the seed file. `system-rbac export-db` keeps the `serviceClients:` already in the target file, because the database does not store them.
 
 ### Default access for the `user` realm role
 

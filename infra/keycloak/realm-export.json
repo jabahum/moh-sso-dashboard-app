@@ -814,7 +814,8 @@
       ],
       "clims": [
         {
-          "name": "clims_access"
+          "name": "clims_access",
+          "description": "Portal access to CLIMS"
         },
         {
           "name": "identity_sync",
@@ -827,7 +828,7 @@
         },
         {
           "name": "identity_sync",
-          "description": "Lets the dashboard reconciler list accounts and record identity links"
+          "description": "Lets the MoH SSO Dashboard call Poesgo's identity-sync API. Never assign to people."
         }
       ]
     }
@@ -1309,6 +1310,8 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "fullScopeAllowed": false,
+      "redirectUris": [],
+      "webOrigins": [],
       "defaultClientScopes": [
         "roles"
       ],
@@ -1333,16 +1336,19 @@
     },
     {
       "clientId": "poesgo-identity-sync",
-      "name": "poesgo identity sync",
-      "description": "MoH SSO Dashboard reconciler: lists poesgo accounts and records Keycloak identity links",
+      "name": "Poesgo identity sync",
+      "description": "MoH SSO Dashboard service client for Poesgo identity reconciliation",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "fullScopeAllowed": false,
+      "redirectUris": [],
+      "webOrigins": [],
       "defaultClientScopes": [
         "roles"
       ],
