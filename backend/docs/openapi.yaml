@@ -4540,6 +4540,13 @@ components:
             $ref: '#/components/schemas/platform.WorkerHealth'
           type: array
       type: object
+    platform.ServiceAccount:
+      properties:
+        clientId:
+          type: string
+        subject:
+          type: string
+      type: object
     platform.UserAccess:
       properties:
         applicationId:
@@ -16543,6 +16550,70 @@ paths:
       x-go-handler: github.com/moh-sso-dashboard/internal/features/notifications.(*Handler).TestSMS
       x-route-permissions:
         - notifications:write
+  /api/v1/admin/platform/applications/{clientId}/identities:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identities
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    properties:
+                      identities:
+                        items:
+                          $ref: '#/components/schemas/platform.Identity'
+                        type: array
+                    type: object
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: List Identities
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ListIdentities
   /api/v1/admin/platform/applications/{clientId}/identities/{oauthClientId}:
     put:
       operationId: put_api_v1_admin_platform_applications_clientId_identities_oauthClientId
@@ -16613,6 +16684,76 @@ paths:
       tags:
         - admin-platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).SaveIdentity
+  /api/v1/admin/platform/applications/{clientId}/identities/{oauthClientId}/service-account:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identities_oauthClientId_service-account
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: oauthClientId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.ServiceAccount'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Get Service Account
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetServiceAccount
   /api/v1/admin/platform/applications/{clientId}/identity-sync:
     delete:
       operationId: delete_api_v1_admin_platform_applications_clientId_identity-sync

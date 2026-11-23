@@ -21,6 +21,9 @@ import {
   useApplyIdentitySyncRunMutation,
   useDecideIdentitySyncRowsMutation,
   useDescribeIdentitySyncMutation,
+  useListServiceIdentitiesQuery,
+  useResolveServiceAccountMutation,
+  useSaveServiceIdentityMutation,
   useGetIdentitySyncIntegrationQuery,
   useGetIdentitySyncRunQuery,
   useListIdentitySyncRevocationsQuery,
@@ -166,6 +169,9 @@ function IntegrationCard({ clientId, canWrite }: Props) {
   const [descriptor, setDescriptor] = useState<IdentitySyncDescriptor | null>(null);
   const [save, { isLoading: saving }] = useSaveIdentitySyncIntegrationMutation();
   const [describe, { isLoading: describing }] = useDescribeIdentitySyncMutation();
+  const { data: identities } = useListServiceIdentitiesQuery(clientId);
+  const [resolveServiceAccount, { isLoading: resolving }] = useResolveServiceAccountMutation();
+  const [saveServiceIdentity, { isLoading: binding }] = useSaveServiceIdentityMutation();
 
   useEffect(() => {
     setDraft(toIntegrationDraft(clientId, integration));
@@ -211,6 +217,37 @@ function IntegrationCard({ clientId, canWrite }: Props) {
       setMessage({
         kind: "error",
         text: getIdentitySyncErrorMessage(err, "Unable to reach the application."),
+      });
+    }
+  };
+
+  const syncClient = draft.syncClientId.trim();
+  const serviceIdentity = identities?.find((identity) => identity.clientId === syncClient);
+
+  // Registers (or re-enables) the sync client as a service identity of this
+  // application. The subject is looked up in Keycloak, never typed by hand.
+  const handleBindServiceIdentity = async () => {
+    setMessage(null);
+    try {
+      const account = await resolveServiceAccount({ clientId, oauthClientId: syncClient }).unwrap();
+      await saveServiceIdentity({
+        clientId,
+        oauthClientId: syncClient,
+        data: {
+          subject: account.subject,
+          scopes: serviceIdentity?.scopes ?? [],
+          enabled: true,
+          reason: draft.reason.trim(),
+        },
+      }).unwrap();
+      setMessage({
+        kind: "success",
+        text: `Service identity ${syncClient} registered (Keycloak service account ${account.subject}).`,
+      });
+    } catch (err) {
+      setMessage({
+        kind: "error",
+        text: getIdentitySyncErrorMessage(err, "Unable to register the service identity."),
       });
     }
   };
@@ -326,6 +363,36 @@ function IntegrationCard({ clientId, canWrite }: Props) {
             disabled={!canWrite}
             onChange={(event) => update({ reason: event.target.value })}
           />
+          <div className="rbac-identity-sync__binding" aria-label="Sync client service identity">
+            <span>
+              Service identity <code>{syncClient || "—"}</code>:{" "}
+            </span>
+            {serviceIdentity ? (
+              <Tag size="sm" type={serviceIdentity.enabled ? "green" : "red"}>
+                {serviceIdentity.enabled ? "Registered" : "Disabled"}
+              </Tag>
+            ) : (
+              <Tag size="sm" type="gray">
+                Not registered
+              </Tag>
+            )}
+            {canWrite && syncClient !== "" && !serviceIdentity?.enabled && (
+              <Button
+                size="sm"
+                kind="tertiary"
+                disabled={draft.reason.trim() === "" || resolving || binding}
+                onClick={handleBindServiceIdentity}
+              >
+                {serviceIdentity ? "Enable service identity" : "Register service identity"}
+              </Button>
+            )}
+            {canWrite && syncClient !== "" && !serviceIdentity?.enabled && (
+              <small className="rbac-identity-sync__muted">
+                The sync client must be a service identity of this application before the
+                integration can be enabled. Enter a reason first.
+              </small>
+            )}
+          </div>
           {downgradeRefused && (
             <Checkbox
               id="identity-sync-downgrade"

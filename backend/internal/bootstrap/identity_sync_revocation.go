@@ -80,3 +80,12 @@ func identitySyncOperationsHandler(cfg *config.Config, db *sql.DB, admin *keyclo
 	}
 	return nil
 }
+
+// serviceAccountResolver keeps the platform handler's resolver nil (503) when
+// there is no Keycloak admin client.
+func serviceAccountResolver(admin *keycloak.KeyAdminClient) platformfeature.ServiceAccountResolver {
+	if admin == nil {
+		return nil
+	}
+	return admin
+}

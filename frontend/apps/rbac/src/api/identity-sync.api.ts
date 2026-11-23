@@ -9,12 +9,16 @@ import type {
   IdentitySyncRun,
   IdentitySyncRunDetail,
   IdentitySyncRow,
+  ServiceIdentity,
 } from "../types";
 
 type ApiEnvelope<T> = {
   success: boolean;
   data: T;
 };
+
+const identitiesBase = (clientId: string) =>
+  `/admin/platform/applications/${encodeURIComponent(clientId)}/identities`;
 
 const base = (clientId: string) =>
   `/admin/platform/applications/${encodeURIComponent(clientId)}/identity-sync`;
@@ -34,6 +38,40 @@ export const identitySyncApi = baseApi.injectEndpoints({
       transformResponse: (res: ApiEnvelope<IdentitySyncIntegration>) => res.data,
       invalidatesTags: (_r, _e, { clientId }) => [
         { type: "IdentitySync", id: `integration:${clientId}` },
+      ],
+    }),
+    listServiceIdentities: builder.query<ServiceIdentity[], string>({
+      query: (clientId) => identitiesBase(clientId),
+      transformResponse: (res: ApiEnvelope<{ identities: ServiceIdentity[] }>) =>
+        res.data.identities,
+      providesTags: (_r, _e, clientId) => [{ type: "IdentitySync", id: `identities:${clientId}` }],
+    }),
+    resolveServiceAccount: builder.mutation<
+      { clientId: string; subject: string },
+      { clientId: string; oauthClientId: string }
+    >({
+      query: ({ clientId, oauthClientId }) => ({
+        url: `${identitiesBase(clientId)}/${encodeURIComponent(oauthClientId)}/service-account`,
+        method: "GET",
+      }),
+      transformResponse: (res: ApiEnvelope<{ clientId: string; subject: string }>) => res.data,
+    }),
+    saveServiceIdentity: builder.mutation<
+      ServiceIdentity,
+      {
+        clientId: string;
+        oauthClientId: string;
+        data: { subject: string; scopes: string[]; enabled: boolean; reason: string };
+      }
+    >({
+      query: ({ clientId, oauthClientId, data }) => ({
+        url: `${identitiesBase(clientId)}/${encodeURIComponent(oauthClientId)}`,
+        method: "PUT",
+        body: data,
+      }),
+      transformResponse: (res: ApiEnvelope<ServiceIdentity>) => res.data,
+      invalidatesTags: (_r, _e, { clientId }) => [
+        { type: "IdentitySync", id: `identities:${clientId}` },
       ],
     }),
     describeIdentitySync: builder.mutation<IdentitySyncDescriptor, string>({
@@ -132,6 +170,9 @@ export const {
   useGetIdentitySyncIntegrationQuery,
   useSaveIdentitySyncIntegrationMutation,
   useDescribeIdentitySyncMutation,
+  useListServiceIdentitiesQuery,
+  useResolveServiceAccountMutation,
+  useSaveServiceIdentityMutation,
   useListIdentitySyncRunsQuery,
   useStartIdentitySyncRunMutation,
   useGetIdentitySyncRunQuery,

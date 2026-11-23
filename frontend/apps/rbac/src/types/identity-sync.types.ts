@@ -119,3 +119,12 @@ export type IdentitySyncRevocation = {
   complete: boolean;
   sessionsStillOpen: boolean;
 };
+
+/** A registered service identity (ihp_application_identities) of an application. */
+export type ServiceIdentity = {
+  applicationId: string;
+  clientId: string;
+  subject: string;
+  scopes: string[];
+  enabled: boolean;
+};
