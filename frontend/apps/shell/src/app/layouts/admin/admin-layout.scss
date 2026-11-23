@@ -282,6 +282,21 @@
   margin: 0;
 }
 
+/*
+ * Keep the footer in page flow. Production builds the shell against the
+ * published @moh-sso/ui, so this must not depend on the PublicFooter.scss
+ * version: older releases pin the footer with position: fixed.
+ */
+.admin-layout .public-footer {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: auto;
+  flex-shrink: 0;
+  margin-left: var(--moh-footer-left-offset, 0);
+  width: calc(100% - var(--moh-footer-left-offset, 0px) - var(--moh-panel-space, 0px));
+}
+
 /* Breadcrumb strip alignment */
 .admin-layout .moh-breadcrumb-bar {
   flex: 0 0 auto;
