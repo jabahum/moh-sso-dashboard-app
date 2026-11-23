@@ -502,6 +502,118 @@
    }
   },
   {
+   "id": "e2e00000-0000-4000-8000-000000000011",
+   "username": "removal.both",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Removal",
+   "lastName": "Both",
+   "email": "removal.both@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000012",
+   "username": "browser.unlinked",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Browser",
+   "lastName": "Unlinked",
+   "email": "browser.unlinked@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ],
+    "clims": [
+     "clims_access"
+    ],
+    "poesgo": [
+     "poesgo_access"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000013",
+   "username": "browser.noaccess",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Browser",
+   "lastName": "NoAccess",
+   "email": "browser.noaccess@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
+   "id": "e2e00000-0000-4000-8000-000000000301",
+   "username": "contract.user",
+   "enabled": true,
+   "emailVerified": true,
+   "firstName": "Contract",
+   "lastName": "User",
+   "email": "contract.user@e2e.test",
+   "credentials": [
+    {
+     "type": "password",
+     "value": "E2e-Fixture-Only-1",
+     "temporary": false
+    }
+   ],
+   "realmRoles": [
+    "user"
+   ],
+   "clientRoles": {
+    "dashboard-web": [
+     "dashboard-web_access",
+     "portal_user"
+    ]
+   }
+  },
+  {
    "username": "service-account-clims-identity-sync",
    "id": "e2e00000-0000-4000-8000-000000000901"
   },

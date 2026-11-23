@@ -89,6 +89,8 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
+      # Built on the host by scripts/build-portal.sh (make identity-sync-e2e-up runs it).
+      - ./generated/portal-root:/srv/portal-root:ro
     ports: ["127.0.0.1:18443:18443"]
     networks:
       edge:
@@ -250,6 +252,10 @@ services:
       dashboard-seed: { condition: service_completed_successfully }
       clims-seed: { condition: service_completed_successfully }
       poes-backend: { condition: service_healthy }
+      # Last job to start: once it is running every long-running service is healthy.
+      clims-frontend: { condition: service_healthy }
+      caddy: { condition: service_healthy }
+      mailpit: { condition: service_healthy }
 
   # Ad-hoc CLI: docker compose -p idsync-e2e -f ... run --rm cli identity-sync describe --app clims
   cli:

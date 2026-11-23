@@ -15,15 +15,22 @@ INSERT INTO users (id, username, email, full_name, role_key, country_code, accou
     (11, 'poes.filler1',     NULL,                        'Filler One',       'poe_officer',  'UG', 'staff', true,  NULL),
     (12, 'poes.filler2',     NULL,                        'Filler Two',       'poe_officer',  'UG', 'staff', true,  NULL),
     (13, 'poes.filler3',     NULL,                        'Filler Three',     'poe_officer',  'UG', 'staff', true,  NULL),
-    (14, 'poes.roleless',    'poes.roleless@e2e.test',    'Poes Roleless',    '',             'UG', 'staff', true,  NULL);
+    (14, 'poes.roleless',    'poes.roleless@e2e.test',    'Poes Roleless',    '',             'UG', 'staff', true,  NULL),
+    -- Per-suite fixtures (e2e/identity-sync): removal suite, browser suite.
+    (15, 'removal.both',     'removal.both@e2e.test',     'Removal Both',     'poe_officer',  'UG', 'staff', true,  NULL),
+    (16, 'browser.unlinked', 'browser.unlinked@e2e.test', 'Browser Unlinked', 'poe_officer',  'UG', 'staff', true,  NULL),
+    (17, 'browser.noaccess', 'browser.noaccess@e2e.test', 'Browser NoAccess', 'poe_officer',  'UG', 'staff', true,  NULL);
 
 INSERT INTO user_assignments (id, user_id, country_code, district_code, poe_code, is_primary) VALUES
     (1, 1, 'UG', 'D-E2E-01', 'POE-E2E-ALPHA', true),
     (2, 2, 'UG', 'D-E2E-02', 'POE-E2E-BRAVO', true),
-    (3, 3, 'UG', 'D-E2E-01', 'POE-E2E-ALPHA', true);
+    (3, 3, 'UG', 'D-E2E-01', 'POE-E2E-ALPHA', true),
+    (4, 15, 'UG', 'D-E2E-03', 'POE-E2E-CHARLIE', true);
 
 INSERT INTO user_oidc_identities (issuer, subject, user_id) VALUES
     (:'issuer', 'e2e00000-0000-4000-8000-000000000010', 1),
     (:'issuer', 'e2e00000-0000-4000-8000-000000000201', 2),
     (:'issuer', 'e2e00000-0000-4000-8000-000000000203', 4),
-    (:'issuer', 'e2e00000-0000-4000-8000-000000000204', 5);
+    (:'issuer', 'e2e00000-0000-4000-8000-000000000204', 5),
+    (:'issuer', 'e2e00000-0000-4000-8000-000000000011', 15),
+    (:'issuer', 'e2e00000-0000-4000-8000-000000000013', 17);

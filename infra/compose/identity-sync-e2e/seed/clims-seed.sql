@@ -19,7 +19,11 @@ INSERT INTO users (id, firstname, lastname, email, username, password, phone_num
     ('c1000000-0000-4000-8000-00000000000b', 'Filler', 'One',       NULL,                        'clims.filler1',    '!e2e-no-password', '', 'active',   now(), now()),
     ('c1000000-0000-4000-8000-00000000000c', 'Filler', 'Two',       NULL,                        'clims.filler2',    '!e2e-no-password', '', 'active',   now(), now()),
     ('c1000000-0000-4000-8000-00000000000d', 'Filler', 'Three',     NULL,                        'clims.filler3',    '!e2e-no-password', '', 'active',   now(), now()),
-    ('c1000000-0000-4000-8000-00000000000e', 'Clims',  'Roleless',  'clims.roleless@e2e.test',   'clims.roleless',   '!e2e-no-password', '', 'active',   now(), now());
+    ('c1000000-0000-4000-8000-00000000000e', 'Clims',  'Roleless',  'clims.roleless@e2e.test',   'clims.roleless',   '!e2e-no-password', '', 'active',   now(), now()),
+    -- Per-suite fixtures (e2e/identity-sync): removal suite, browser suite.
+    ('c1000000-0000-4000-8000-00000000000f', 'Removal', 'Both',     'removal.both@e2e.test',     'removal.both',     '!e2e-no-password', '', 'active',   now(), now()),
+    ('c1000000-0000-4000-8000-000000000010', 'Browser', 'Unlinked', 'browser.unlinked@e2e.test', 'browser.unlinked', '!e2e-no-password', '', 'active',   now(), now()),
+    ('c1000000-0000-4000-8000-000000000011', 'Browser', 'NoAccess', 'browser.noaccess@e2e.test', 'browser.noaccess', '!e2e-no-password', '', 'active',   now(), now());
 
 -- Every account except the roleless one holds one existing CLIMS role.
 INSERT INTO role_user (user_id, role_id)
@@ -31,7 +35,9 @@ INSERT INTO user_oidc_identities (issuer, subject, user_id) VALUES
     (:'issuer', 'e2e00000-0000-4000-8000-000000000010', 'c1000000-0000-4000-8000-000000000001'),
     (:'issuer', 'e2e00000-0000-4000-8000-000000000101', 'c1000000-0000-4000-8000-000000000002'),
     (:'issuer', 'e2e00000-0000-4000-8000-000000000103', 'c1000000-0000-4000-8000-000000000004'),
-    (:'issuer', 'e2e00000-0000-4000-8000-000000000104', 'c1000000-0000-4000-8000-000000000005');
+    (:'issuer', 'e2e00000-0000-4000-8000-000000000104', 'c1000000-0000-4000-8000-000000000005'),
+    (:'issuer', 'e2e00000-0000-4000-8000-000000000011', 'c1000000-0000-4000-8000-00000000000f'),
+    (:'issuer', 'e2e00000-0000-4000-8000-000000000013', 'c1000000-0000-4000-8000-000000000011');
 COMMIT;
 
 SELECT u.username, u.status, string_agg(r.name, ',') AS roles, i.subject IS NOT NULL AS linked

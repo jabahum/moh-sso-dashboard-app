@@ -22,21 +22,26 @@ them when you work from a worktree:
 
 ```sh
 export CLIMS_REPO=/path/to/clims POES_REPO=/path/to/poesGo
-make -C infra identity-sync-e2e-up     # build, start, seed, wait, then run scripts/smoke.sh
+make -C infra identity-sync-e2e-up     # build the portal, build, start, seed, wait, then run scripts/smoke.sh
 make -C infra identity-sync-e2e-smoke  # re-run the health proof against a running stack
-make -C infra identity-sync-e2e-test   # e2e suites (stage 2; currently smoke only, then exits 1)
+make -C infra identity-sync-e2e-test   # fresh stack, every e2e suite, migrations-check, down -v (e2e/identity-sync)
 make -C infra identity-sync-e2e-down   # docker compose -p idsync-e2e down -v
 ```
 
 Without make:
 
 ```sh
-docker compose -p idsync-e2e -f infra/compose/identity-sync-e2e/compose.yaml up -d --build --wait
+infra/compose/identity-sync-e2e/scripts/build-portal.sh   # needs Node 22; skipped when generated/portal-root exists
+docker compose -p idsync-e2e -f infra/compose/identity-sync-e2e/compose.yaml up -d --build
 docker compose -p idsync-e2e -f infra/compose/identity-sync-e2e/compose.yaml wait registry-seed
 infra/compose/identity-sync-e2e/scripts/smoke.sh
 docker compose -p idsync-e2e -f infra/compose/identity-sync-e2e/compose.yaml run --rm cli identity-sync describe --app clims
 docker compose -p idsync-e2e -f infra/compose/identity-sync-e2e/compose.yaml --profile tools down -v
 ```
+
+`up` does not use `--wait`, because a one-shot job that exits during the wait
+fails it. `registry-seed` starts last, once every long-running service is
+healthy, and `wait registry-seed` returns its exit code.
 
 If `docker compose build` fails with `stat ~/.docker/buildx/...: permission denied`
 (a sandboxed shell, for example), point `BUILDX_CONFIG` at a writable directory.
@@ -51,7 +56,7 @@ registered origins are identical everywhere.
 | Host | Serves |
 |---|---|
 | `sso.e2e.test` | Keycloak 26.0.5, realm `moh-realm`. Issuer `https://sso.e2e.test:18443/realms/moh-realm` |
-| `dashboard.e2e.test` | Dashboard backend (core profile) |
+| `dashboard.e2e.test` | The portal SPA at `/portal/` (see below), and the dashboard backend (core profile) for everything else |
 | `clims.e2e.test` | CLIMS: `/api`, `/docs` and `/health` go to the backend, everything else to the Next.js SPA |
 | `poes.e2e.test` | POES backend, including its `/api/v1/auth/sso/session` landing page |
 | `mail.e2e.test` | Mailpit UI and API (`/api/v1/messages`). It catches all SMTP from Keycloak and the dashboard |
@@ -73,14 +78,14 @@ Do not edit `/etc/hosts`. Map the names per command instead:
 
 | Service | Notes |
 |---|---|
-| `caddy` | Internal CA, TLS for every `*.e2e.test` host on 18443 |
+| `caddy` | Internal CA, TLS for every `*.e2e.test` host on 18443. Serves `generated/portal-root` |
 | `ca-export` | One-shot: copies Caddy's root certificate to the `e2e_ca` volume and `generated/` |
 | `realm-merge` | One-shot: `keycloak/merge-realm.py` merges `infra/keycloak/realm-export.json` with `keycloak/realm-e2e-overlay.json` |
 | `keycloak` | `start-dev --import-realm`, H2 on tmpfs, SMTP to mailpit |
 | `mailpit` | `axllent/mailpit:v1.27.0` |
 | `dashboard-backend` | Built by `dashboard.Dockerfile` (server plus `moh-sso` CLI). Runs all migrations at startup. Applies the RBAC seed and syncs from the merged realm and live Keycloak. `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS=clims.e2e.test,poes.e2e.test` |
 | `dashboard-postgres`, `redis` | tmpfs and no persistence |
-| `dashboard-seed` | One-shot: `seed/dashboard-bindings.sql` makes `clims-identity-sync` and `poesgo-identity-sync` enabled service identities of their apps, with an audit row |
+| `dashboard-seed` | One-shot: `seed/dashboard-bindings.sql` makes `clims-identity-sync` and `poesgo-identity-sync` enabled service identities of their apps, and points the CLIMS and POES tiles at the e2e origins (the RBAC seed carries production launch URLs). Each change gets an audit row |
 | `registry-seed` | One-shot: `scripts/register-apps.sh` runs `identity-sync register --enable` for both apps, then `describe` |
 | `clims-backend` | `$CLIMS_REPO/infra/docker/backend/Dockerfile.prod`. Its own migrations run at startup |
 | `clims-seed` | One-shot: `seed/clims-seed.sql`, applied after those migrations |
@@ -88,6 +93,18 @@ Do not edit `/etc/hosts`. Map the names per command instead:
 | `poes-backend` | `$POES_REPO/infra/docker/backend/Dockerfile.prod`, `AUTH_PROVIDER=oidc` |
 | `poes-postgres` | Init scripts: `seed/poes-01-base-schema.sql` (synthetic stand-in for the MySQL-dump schema), POES migrations `000002` and `000003` from `$POES_REPO`, then `seed/poes-04-seed.sql` |
 | `cli` | Profile `tools`: `docker compose … run --rm cli identity-sync <subcommand>` |
+
+## Portal
+
+`scripts/build-portal.sh` builds `frontend/` on the host with the workspace
+micro-frontends and assembles it in `generated/portal-root`, which git ignores.
+The production import map loads React and its peers from esm.sh. This stack
+must not reach external services, so, as in the frontend's own browser tests,
+the import map is rewritten to bundles built from the installed lockfile
+(`frontend/scripts/prepare-browser-dependencies.mjs`). `config.js` points the
+portal at the same origin (`/api`). The build rewrites two tracked files under
+`frontend/public`, and the script restores them afterwards. It reuses an
+existing build unless `IDSYNC_E2E_REBUILD_PORTAL=1`.
 
 ## Fixtures
 
@@ -106,6 +123,10 @@ Every Keycloak user's password is `E2e-Fixture-Only-1`, and every email is
 | `clims.orphan` (105) | `clims_access` | none | none | n/a. Sign-in refused (no link) |
 | `clims.kcdisabled` (106) | none, and the Keycloak user is disabled | active, not linked | none | `review` |
 | `poes.linked` / `unlinked` / `noaccess` / `disabled` / `orphan` (201 to 205) | as for CLIMS, with `poesgo_access` | none | ids 2, 3, 4, 5 (inactive), and none for orphan | `linked`, `reuse`, `linked`, not listed, n/a |
+| `removal.both` (11) | `clims_access`, `poesgo_access` | active, linked | id 15, active, linked | `linked`. Owned by the removal suite |
+| `browser.unlinked` (12) | `clims_access`, `poesgo_access` | active, not linked | id 16, active, not linked | `reuse`. Browser suite: refused by both apps |
+| `browser.noaccess` (13) | none | active, linked | id 17, active, linked | `linked_no_access`. Browser suite: no tiles, refused |
+| `contract.user` (301) | none | none | none | n/a. The conformance suite's user token |
 | no Keycloak user | none | `clims.invitee@e2e.test` | id 6 `poes.invitee@e2e.test` | `create`. Exercises invitations; mail arrives in mailpit |
 
 Each app also has accounts without an email: `conf1`, `conf2`, `filler1` to
@@ -115,7 +136,8 @@ Each app also has one ineligible account with an email: CLIMS
 `clims.roleless`, which has no role; POES `poes.locked` (id 7) and
 `poes.roleless` (id 14). CLIMS account IDs are
 `c1000000-0000-4000-8000-0000000000NN`. With `NN` in hex, the order follows the
-table: 01 `both.apps` … 0e `roleless`. POES IDs are 1 to 14.
+table: 01 `both.apps` … 0e `roleless`, then 0f `removal.both`, 10
+`browser.unlinked` and 11 `browser.noaccess`. POES IDs are 1 to 17.
 
 Extra realm clients for the conformance tokens:
 
