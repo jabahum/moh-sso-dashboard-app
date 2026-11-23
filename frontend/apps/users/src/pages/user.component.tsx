@@ -285,10 +285,7 @@ export default function UsersPage() {
                             if (cell.info.header === "status") {
                               return (
                                 <TableCell key={cell.id}>
-                                  <TableStatusTag
-                                    status={String(cell.value)}
-                                    kind={!user.isAdmin ? "green" : "red"}
-                                  />
+                                  <TableStatusTag status={String(cell.value)} />
                                 </TableCell>
                               );
                             }
