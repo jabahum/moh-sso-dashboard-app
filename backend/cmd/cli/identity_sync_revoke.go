@@ -47,6 +47,28 @@ var openIdentitySyncRevokeService = func(ctx context.Context, rt *identitySyncRu
 	}, nil
 }
 
+// openIdentitySyncRevocationList opens the revocation list on the dashboard
+// database only (no Keycloak settings), for listing. Tests replace it.
+var openIdentitySyncRevocationList = func(ctx context.Context) (*identityreconcile.RevokeService, func(), error) {
+	db, err := openIdentitySyncDB(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open the dashboard database: %w", err)
+	}
+	return &identityreconcile.RevokeService{Repository: &identityreconcile.PostgresRevocations{DB: db}}, func() { db.Close() }, nil
+}
+
+// withRevocationList runs a read-only revocation command on the database alone.
+func withRevocationList(cmd *cobra.Command, run func(context.Context, *identityreconcile.RevokeService) error) error {
+	service, closeDB, err := openIdentitySyncRevocationList(cmd.Context())
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+	ctx, cancel := context.WithTimeout(cmd.Context(), revokeTimeout)
+	defer cancel()
+	return run(ctx, service)
+}
+
 func withRevokeService(cmd *cobra.Command, run func(context.Context, *identityreconcile.RevokeService) error) error {
 	rt, err := openIdentitySyncRuntime(cmd.Context())
 	if err != nil {
@@ -185,13 +207,19 @@ func newIdentitySyncRevocationsCommand() *cobra.Command {
 		Short: "List revocations and their step status; --resume retries failed steps",
 		Long: "Lists active revocations (add --all for restored ones) with each step's status: pending,\n" +
 			"done, failed or unsupported. --resume retries every pending or failed step of active\n" +
-			"revocations and exits non-zero if any is still incomplete or cannot end sessions.",
-		Args: cobra.NoArgs,
+			"revocations and exits non-zero if any is still incomplete or cannot end sessions.\n" +
+			"Listing reads only the dashboard database; --resume also needs the Keycloak settings.",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{annotationNoKeycloakAdmin: "unless:resume"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if resume && includeRestored {
 				return errors.New("--resume works on active revocations only; drop --all")
 			}
-			return withRevokeService(cmd, func(ctx context.Context, service *identityreconcile.RevokeService) error {
+			open := withRevokeService
+			if !resume {
+				open = withRevocationList
+			}
+			return open(cmd, func(ctx context.Context, service *identityreconcile.RevokeService) error {
 				var revocations []identityreconcile.Revocation
 				var err error
 				if resume {

@@ -166,9 +166,10 @@ func newRunShowCommand() *cobra.Command {
 	var runID, app, proposal, decision string
 	var summaryOnly bool
 	cmd := &cobra.Command{
-		Use:   "show",
-		Short: "Show a run and its rows (--run), or list an application's recent runs (--app)",
-		Args:  cobra.NoArgs,
+		Use:         "show",
+		Short:       "Show a run and its rows (--run), or list an application's recent runs (--app)",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{annotationNoKeycloakAdmin: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if (runID == "") == (app == "") {
 				return errors.New("pass exactly one of --run or --app")
@@ -228,7 +229,8 @@ func newRunDecideCommand(approve bool) *cobra.Command {
 		Short: short,
 		Long: short + ".\nThe reviewer is recorded on each row with the time and the optional note. A row's decision\n" +
 			"can change until apply first touches it.",
-		Args: cobra.NoArgs,
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{annotationNoKeycloakAdmin: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(reviewer) == "" {
 				return identityreconcile.ErrReviewerRequired

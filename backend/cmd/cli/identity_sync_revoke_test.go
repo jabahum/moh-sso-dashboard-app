@@ -120,6 +120,12 @@ func installRevokeServiceFor(t *testing.T, sessions *cliSessions, alerts identit
 		}, nil
 	}
 	t.Cleanup(func() { openIdentitySyncRevokeService = previous })
+	// Listing reads the same revocation table without Keycloak.
+	previousList := openIdentitySyncRevocationList
+	openIdentitySyncRevocationList = func(context.Context) (*identityreconcile.RevokeService, func(), error) {
+		return &identityreconcile.RevokeService{Repository: repo}, func() {}, nil
+	}
+	t.Cleanup(func() { openIdentitySyncRevocationList = previousList })
 	return repo, directory
 }
 

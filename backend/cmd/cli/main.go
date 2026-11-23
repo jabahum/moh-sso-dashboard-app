@@ -111,7 +111,25 @@ func isLocalToolCommand(cmd *cobra.Command) bool {
 			return true
 		}
 	}
-	return false
+	return needsNoKeycloakAdmin(cmd)
+}
+
+// annotationNoKeycloakAdmin marks a command that reads or writes only the
+// dashboard database, so the root does not demand Keycloak admin credentials.
+// Value "true", or "unless:<flag>" when setting that boolean flag makes the
+// command talk to Keycloak (for example "revocations --resume").
+const annotationNoKeycloakAdmin = "moh-sso/no-keycloak-admin"
+
+func needsNoKeycloakAdmin(cmd *cobra.Command) bool {
+	value, ok := cmd.Annotations[annotationNoKeycloakAdmin]
+	if !ok {
+		return false
+	}
+	if flag, found := strings.CutPrefix(value, "unless:"); found {
+		set, err := cmd.Flags().GetBool(flag)
+		return err == nil && !set
+	}
+	return value == "true"
 }
 
 func newAdminKC() *keycloak.KeyAdminClient {
