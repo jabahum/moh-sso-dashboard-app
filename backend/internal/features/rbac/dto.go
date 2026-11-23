@@ -1,6 +1,10 @@
 package rbac
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
+)
 
 type System struct {
 	ID                     string `json:"id"`
@@ -48,13 +52,15 @@ type Permission struct {
 }
 
 type SystemRole struct {
-	ID          string       `json:"id"`
-	SystemID    string       `json:"systemId"`
-	ClientID    string       `json:"clientId"`
-	Name        string       `json:"name"`
-	DisplayName string       `json:"displayName,omitempty"`
-	Description string       `json:"description,omitempty"`
-	Enabled     bool         `json:"enabled"`
+	ID          string `json:"id"`
+	SystemID    string `json:"systemId"`
+	ClientID    string `json:"clientId"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName,omitempty"`
+	Description string `json:"description,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	// ServiceOnly roles belong to Keycloak service accounts and are never granted to people.
+	ServiceOnly bool         `json:"serviceOnly"`
 	Permissions []Permission `json:"permissions"`
 }
 
@@ -176,6 +182,8 @@ type RoleInput struct {
 	DisplayName string `json:"displayName"`
 	Description string `json:"description"`
 	Enabled     *bool  `json:"enabled"`
+	// ServiceOnly is left unchanged on update when omitted.
+	ServiceOnly *bool `json:"serviceOnly"`
 }
 
 type PermissionInput struct {
@@ -347,6 +355,9 @@ type UserAccessProfileResponse struct {
 	EffectiveAccess EffectiveAccessResponse      `json:"effectiveAccess"`
 	DirectAccess    DirectUserAccessResponse     `json:"directAccess"`
 	Assignable      AssignableUserAccessResponse `json:"assignable"`
+	// Warnings report non-fatal problems of a successful update, for example an
+	// identity-sync revocation that could not end every application session.
+	Warnings []accesswarnings.Warning `json:"warnings,omitempty"`
 }
 
 type DirectUserAccessResponse struct {

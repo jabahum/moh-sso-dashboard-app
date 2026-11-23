@@ -15,9 +15,14 @@ def docker(*args):
 
 def main():
     name = 'moh-migrations-' + uuid.uuid4().hex[:12]
+    # Loopback only. Empty means an ephemeral port; MIGRATIONS_CHECK_HOST_PORT pins
+    # it (the identity-sync e2e run keeps every host port in 18400-18499).
+    host_port = os.environ.get('MIGRATIONS_CHECK_HOST_PORT', '')
+    if host_port and not (host_port.isdigit() and 1 <= int(host_port) <= 65535):
+        raise SystemExit('MIGRATIONS_CHECK_HOST_PORT must be a port number')
     try:
         docker('run', '-d', '--name', name, '--label', 'moh.fixture=migrations',
-               '--tmpfs', '/var/lib/postgresql/data', '-p', '127.0.0.1::5432',
+               '--tmpfs', '/var/lib/postgresql/data', '-p', f'127.0.0.1:{host_port}:5432',
                '-e', 'POSTGRES_PASSWORD=fixture-only', 'postgres:15-alpine')
         deadline = time.monotonic() + 60
         while subprocess.run(['docker', 'exec', name, 'pg_isready', '-U', 'postgres'], capture_output=True).returncode:
@@ -35,9 +40,11 @@ def main():
         subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/health_context', '-run', '^(TestGeographySyncAcrossDatabases|TestNationalDefaultPostgres)$', '-count=1', '-v', '-timeout=3m'],
                        cwd=ROOT / 'backend', env=env, check=True)
         env['MOH_REGISTRY_TEST_DATABASE_URL'] = env['TEST_MIGRATION_DATABASE_URL']
-        subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/rbac', '-run', '^TestApplicationRegistryPostgres$', '-count=1', '-v', '-timeout=5m'],
+        subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/rbac', '-run', '^(TestApplicationRegistryPostgres|TestServiceOnlyRolesPostgres)$', '-count=1', '-v', '-timeout=5m'],
                        cwd=ROOT / 'backend', env=env, check=True)
         subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/features/platform', '-run', '^TestPlatformPostgres$', '-count=1', '-v', '-timeout=5m'],
+                       cwd=ROOT / 'backend', env=env, check=True)
+        subprocess.run([os.environ.get('GO_CMD', 'go'), 'test', './internal/identityreconcile', '-run', '^(TestIdentitySyncRegistryPostgres|TestIdentitySyncBatchPostgres|TestIdentitySyncRevocationsPostgres|TestIdentitySyncAccessLockPostgres|TestIdentitySyncGrantRevokeInterleavingPostgres|TestIdentitySyncIntegrationDisableAfterBindingBreaksPostgres)$', '-count=1', '-v', '-timeout=5m'],
                        cwd=ROOT / 'backend', env=env, check=True)
     finally:
         subprocess.run(['docker', 'rm', '-f', name], capture_output=True)

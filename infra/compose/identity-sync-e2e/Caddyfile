@@ -1,0 +1,58 @@
+# Identity-sync e2e edge. Every origin is HTTPS from Caddy's internal CA and
+# uses port 18443 both inside the compose network and on the host, so issuer,
+# redirect URIs and registered origins are identical everywhere.
+{
+	https_port 18443
+	http_port 18480
+	local_certs
+	skip_install_trust
+	auto_https disable_redirects
+	admin off
+}
+
+(internal_tls) {
+	tls internal
+}
+
+sso.e2e.test:18443 {
+	import internal_tls
+	reverse_proxy keycloak:8080
+}
+
+dashboard.e2e.test:18443 {
+	import internal_tls
+	# The portal SPA (scripts/build-portal.sh output) is served like the
+	# production frontend; everything else goes to the dashboard backend.
+	redir /portal /portal/ 308
+	handle /__browser_dependencies__/* {
+		root * /srv/portal-root
+		file_server
+	}
+	handle /portal/* {
+		root * /srv/portal-root
+		header Cache-Control no-store
+		try_files {path} /portal/index.html
+		file_server
+	}
+	handle {
+		reverse_proxy dashboard-backend:9000
+	}
+}
+
+clims.e2e.test:18443 {
+	import internal_tls
+	# Same split as CLIMS's own nginx (infra/nginx/app.prod.conf).
+	@backend path /api /api/* /docs /docs/* /health /health/*
+	reverse_proxy @backend clims-backend:8080
+	reverse_proxy clims-frontend:3000
+}
+
+poes.e2e.test:18443 {
+	import internal_tls
+	reverse_proxy poes-backend:8080
+}
+
+mail.e2e.test:18443 {
+	import internal_tls
+	reverse_proxy mailpit:8025
+}

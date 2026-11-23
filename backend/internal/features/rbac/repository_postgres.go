@@ -255,7 +255,7 @@ func (r *postgresRepository) ListPermissions(ctx context.Context) ([]Permission,
 func (r *postgresRepository) ListSystemRoles(ctx context.Context, clientID string) ([]SystemRole, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT sr.id::text, sr.system_id::text, s.client_id, sr.role_name,
-		       COALESCE(sr.display_name, ''), COALESCE(sr.description, ''), sr.enabled
+		       COALESCE(sr.display_name, ''), COALESCE(sr.description, ''), sr.enabled, sr.service_only
 		FROM ihp_system_roles sr
 		JOIN ihp_systems s ON s.id = sr.system_id
 		WHERE s.client_id = $1
@@ -277,6 +277,7 @@ func (r *postgresRepository) ListSystemRoles(ctx context.Context, clientID strin
 			&role.DisplayName,
 			&role.Description,
 			&role.Enabled,
+			&role.ServiceOnly,
 		); err != nil {
 			return nil, err
 		}
@@ -294,7 +295,7 @@ func (r *postgresRepository) GetSystemRole(ctx context.Context, roleID string) (
 	var role SystemRole
 	err := r.db.QueryRowContext(ctx, `
 		SELECT sr.id::text, sr.system_id::text, s.client_id, sr.role_name,
-		       COALESCE(sr.display_name, ''), COALESCE(sr.description, ''), sr.enabled
+		       COALESCE(sr.display_name, ''), COALESCE(sr.description, ''), sr.enabled, sr.service_only
 		FROM ihp_system_roles sr
 		JOIN ihp_systems s ON s.id = sr.system_id
 		WHERE sr.id = $1::uuid
@@ -306,6 +307,7 @@ func (r *postgresRepository) GetSystemRole(ctx context.Context, roleID string) (
 		&role.DisplayName,
 		&role.Description,
 		&role.Enabled,
+		&role.ServiceOnly,
 	)
 	if err != nil {
 		return SystemRole{}, err
@@ -322,12 +324,12 @@ func (r *postgresRepository) CreateSystemRole(ctx context.Context, clientID stri
 
 	var role SystemRole
 	err := r.db.QueryRowContext(ctx, `
-		INSERT INTO ihp_system_roles (system_id, role_name, display_name, description, enabled)
-		SELECT id, $2, NULLIF($3, ''), NULLIF($4, ''), $5
+		INSERT INTO ihp_system_roles (system_id, role_name, display_name, description, enabled, service_only)
+		SELECT id, $2, NULLIF($3, ''), NULLIF($4, ''), $5, COALESCE($6::boolean, FALSE)
 		FROM ihp_systems
 		WHERE client_id = $1
-		RETURNING id::text, system_id::text, $1::text, role_name, COALESCE(display_name, ''), COALESCE(description, ''), enabled
-	`, clientID, input.Name, input.DisplayName, input.Description, enabled).Scan(
+		RETURNING id::text, system_id::text, $1::text, role_name, COALESCE(display_name, ''), COALESCE(description, ''), enabled, service_only
+	`, clientID, input.Name, input.DisplayName, input.Description, enabled, input.ServiceOnly).Scan(
 		&role.ID,
 		&role.SystemID,
 		&role.ClientID,
@@ -335,6 +337,7 @@ func (r *postgresRepository) CreateSystemRole(ctx context.Context, clientID stri
 		&role.DisplayName,
 		&role.Description,
 		&role.Enabled,
+		&role.ServiceOnly,
 	)
 	return role, err
 }
@@ -347,17 +350,18 @@ func (r *postgresRepository) UpsertSystemRole(ctx context.Context, clientID stri
 
 	var role SystemRole
 	err := r.db.QueryRowContext(ctx, `
-		INSERT INTO ihp_system_roles (system_id, role_name, display_name, description, enabled)
-		SELECT id, $2, NULLIF($3, ''), NULLIF($4, ''), $5
+		INSERT INTO ihp_system_roles (system_id, role_name, display_name, description, enabled, service_only)
+		SELECT id, $2, NULLIF($3, ''), NULLIF($4, ''), $5, COALESCE($6::boolean, FALSE)
 		FROM ihp_systems
 		WHERE client_id = $1
 		ON CONFLICT (system_id, role_name) DO UPDATE SET
 			display_name = COALESCE(EXCLUDED.display_name, ihp_system_roles.display_name),
 			description = COALESCE(EXCLUDED.description, ihp_system_roles.description),
 			enabled = EXCLUDED.enabled,
+			service_only = COALESCE($6::boolean, ihp_system_roles.service_only),
 			updated_at = now()
-		RETURNING id::text, system_id::text, $1::text, role_name, COALESCE(display_name, ''), COALESCE(description, ''), enabled
-	`, clientID, input.Name, input.DisplayName, input.Description, enabled).Scan(
+		RETURNING id::text, system_id::text, $1::text, role_name, COALESCE(display_name, ''), COALESCE(description, ''), enabled, service_only
+	`, clientID, input.Name, input.DisplayName, input.Description, enabled, input.ServiceOnly).Scan(
 		&role.ID,
 		&role.SystemID,
 		&role.ClientID,
@@ -365,6 +369,7 @@ func (r *postgresRepository) UpsertSystemRole(ctx context.Context, clientID stri
 		&role.DisplayName,
 		&role.Description,
 		&role.Enabled,
+		&role.ServiceOnly,
 	)
 	if err != nil {
 		return SystemRole{}, err
@@ -386,12 +391,13 @@ func (r *postgresRepository) UpdateSystemRole(ctx context.Context, roleID string
 		    display_name = NULLIF($3, ''),
 		    description = NULLIF($4, ''),
 		    enabled = $5,
+		    service_only = COALESCE($6::boolean, sr.service_only),
 		    updated_at = now()
 		FROM ihp_systems s
 		WHERE sr.system_id = s.id AND sr.id = $1::uuid
 		RETURNING sr.id::text, sr.system_id::text, s.client_id, sr.role_name,
-		          COALESCE(sr.display_name, ''), COALESCE(sr.description, ''), sr.enabled
-	`, roleID, input.Name, input.DisplayName, input.Description, enabled).Scan(
+		          COALESCE(sr.display_name, ''), COALESCE(sr.description, ''), sr.enabled, sr.service_only
+	`, roleID, input.Name, input.DisplayName, input.Description, enabled, input.ServiceOnly).Scan(
 		&role.ID,
 		&role.SystemID,
 		&role.ClientID,
@@ -399,6 +405,7 @@ func (r *postgresRepository) UpdateSystemRole(ctx context.Context, roleID string
 		&role.DisplayName,
 		&role.Description,
 		&role.Enabled,
+		&role.ServiceOnly,
 	)
 	if err != nil {
 		return SystemRole{}, err

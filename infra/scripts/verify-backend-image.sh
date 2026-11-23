@@ -58,6 +58,7 @@ docker run --rm --user appuser --entrypoint sh "$image" -ec '
   test "$(id -u)" != 0
   test -r ./sso-server
   test -x ./sso-server
+  test -x ./moh-sso
   test ! -e ./assets/geojson
 '
 

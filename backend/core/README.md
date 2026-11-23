@@ -11,7 +11,9 @@ Core capabilities are composed by the host and are not optional module IDs.
 Run `python3 infra/scripts/test-platform-core.py` from the repository root
 to verify the whole core outside the host tree with an empty dependency cache
 and workspaces/downloads disabled. The check builds, vets and runs uncached
-race tests. This package is not independently published or version-pinned yet.
+race tests. The first tagged release is planned as `backend/core/v0.1.0`; see
+the release steps and `make -C infra core-release-check` in
+[the identity-sync adapter guide](../../docs/integrations/identity-sync-adapter.md#releasing-backendcore).
 
 
 Phase 2 adds verified-claim identity, generic host session-store and
@@ -44,3 +46,14 @@ The `identitysync.AccountStore` contract lets a host expose eligible accounts
 and persist OIDC identity links keyed by issuer and subject. The host owns
 authorization, storage, and roles. Repeating an existing link is safe, and
 conflicting links must fail atomically.
+
+Identity sync (contract 1.1) lives in `identitysync`:
+
+- `identitysync/adapter` is a `net/http` handler that implements the whole
+  application side of the contract on top of an application `Store` and a
+  `TokenVerifier` backed by the application's own OIDC library.
+  `identitysync/adapter/memory` is an in-memory reference store.
+- `identitysync/conformance` runs the contract's checks against any
+  application's base URL and returns pass, fail or skip per check.
+
+See [the adapter guide](../../docs/integrations/identity-sync-adapter.md).

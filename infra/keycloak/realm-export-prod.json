@@ -397,6 +397,24 @@
           }
         }
       ],
+      "clims": [
+        {
+          "name": "clims_access"
+        },
+        {
+          "name": "identity_sync",
+          "description": "Lets the dashboard reconciler list accounts and record identity links"
+        }
+      ],
+      "poesgo": [
+        {
+          "name": "poesgo_access"
+        },
+        {
+          "name": "identity_sync",
+          "description": "Lets the dashboard reconciler list accounts and record identity links"
+        }
+      ],
       "settings": [
         {
           "name": "settings_access",
@@ -694,6 +712,175 @@
         "ui.category": "platform",
         "ui.order": "100",
         "ui.navigation": "[]"
+      }
+    },
+    {
+      "clientId": "clims",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "https://clims.health.go.ug/api/v1/auth/sso/callback"
+      ],
+      "webOrigins": [],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "portal.system": "true",
+        "portal.accessRoles": "clims_access",
+        "ui.systemType": "external",
+        "ui.displayInLauncher": "true",
+        "ui.displayInSideNav": "false",
+        "ui.launchMode": "new_tab",
+        "ui.category": "Laboratory",
+        "ui.launchUrl": "https://clims.health.go.ug/api/v1/auth/sso/start"
+      },
+      "name": "CLIMS",
+      "description": "Laboratory orders, specimens and results",
+      "baseUrl": "https://clims.health.go.ug/api/v1/auth/sso/start",
+      "protocolMappers": [
+        {
+          "name": "CLIMS access roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "claim.name": "clims_roles",
+            "jsonType.label": "String",
+            "usermodel.clientRoleMapping.clientId": "clims"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "poesgo",
+      "name": "Poesgo",
+      "description": "Point-of-Entry Screening",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "baseUrl": "https://poes.health.go.ug/api/v1/auth/sso/start",
+      "redirectUris": [
+        "https://poes.health.go.ug/api/v1/auth/sso/callback"
+      ],
+      "webOrigins": [],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
+      "attributes": {
+        "ui.displayInSideNav": "false",
+        "portal.accessRoles": "poesgo_access",
+        "portal.onboarding.profile": "external",
+        "ui.systemType": "external",
+        "ui.category": "Surveillance",
+        "ui.launchUrl": "https://poes.health.go.ug/api/v1/auth/sso/start",
+        "portal.system": "true",
+        "ui.displayInLauncher": "true",
+        "ui.launchMode": "new_tab",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "Poesgo access roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "claim.name": "poesgo_roles",
+            "jsonType.label": "String",
+            "usermodel.clientRoleMapping.clientId": "poesgo"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "clims-identity-sync",
+      "name": "clims identity sync",
+      "description": "MoH SSO Dashboard reconciler: lists clims accounts and records Keycloak identity links",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "roles"
+      ],
+      "protocolMappers": [
+        {
+          "name": "clims-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "clims",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "attributes": {
+        "portal.system": "false",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "false"
+      }
+    },
+    {
+      "clientId": "poesgo-identity-sync",
+      "name": "poesgo identity sync",
+      "description": "MoH SSO Dashboard reconciler: lists poesgo accounts and records Keycloak identity links",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "roles"
+      ],
+      "protocolMappers": [
+        {
+          "name": "poesgo-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "poesgo",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "attributes": {
+        "portal.system": "false",
+        "ui.displayInLauncher": "false",
+        "ui.displayInSideNav": "false"
       }
     },
     {
@@ -1011,6 +1198,26 @@
       "clientRoles": {
         "data-statistics": ["report_scheduler_service"]
       }
+    },
+    {
+      "username": "service-account-clims-identity-sync",
+      "enabled": true,
+      "serviceAccountClientId": "clims-identity-sync",
+      "clientRoles": {
+        "clims": [
+          "identity_sync"
+        ]
+      }
+    },
+    {
+      "username": "service-account-poesgo-identity-sync",
+      "enabled": true,
+      "serviceAccountClientId": "poesgo-identity-sync",
+      "clientRoles": {
+        "poesgo": [
+          "identity_sync"
+        ]
+      }
     }
   ],
   "clientScopeMappings": {
@@ -1018,6 +1225,35 @@
       {
         "client": "report-scheduler-worker",
         "roles": ["report_scheduler_service"]
+      }
+    ],
+    "clims": [
+      {
+        "client": "clims-identity-sync",
+        "roles": [
+          "identity_sync"
+        ]
+      }
+    ],
+    "poesgo": [
+      {
+        "client": "poesgo-identity-sync",
+        "roles": [
+          "identity_sync"
+        ]
+      }
+    ]
+  },
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"ihp_identity_sync_origin\",\"displayName\":\"Identity-sync origin\",\"validations\":{\"length\":{\"max\":512}},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false,\"group\":\"user-metadata\"}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\":\"ADMIN_EDIT\"}"
+          ]
+        }
       }
     ]
   }

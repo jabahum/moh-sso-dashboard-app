@@ -67,6 +67,7 @@ import type {
 
 import { EffectiveAccessPanel } from "../components/EffectiveAccessPanel";
 import { GovernanceToolsPanel } from "../components/GovernanceToolsPanel";
+import { IdentitySyncPanel } from "../components/IdentitySyncPanel";
 import { SyncDriftPanel } from "../components/SyncDriftPanel";
 import "./rbac-management.page.scss";
 
@@ -108,6 +109,12 @@ const workspaceSections = [
     description: "Review differences between Keycloak and portal access mappings.",
   },
   {
+    id: "identity-sync",
+    label: "Identity sync",
+    description:
+      "Link this application's existing accounts to Keycloak identities, review batch runs, and follow up access removals.",
+  },
+  {
     id: "governance",
     label: "Governance tools",
     description: "Review requests, audit changes, and manage authorization policy.",
@@ -122,7 +129,7 @@ const workspaceFolders: { id: string; label: string; sections: WorkspaceSection[
     sections: ["access-roles", "system-roles", "realm-roles"],
   },
   { id: "access-folder", label: "Groups & access", sections: ["groups", "effective-access"] },
-  { id: "operations-folder", label: "Operations", sections: ["sync", "governance"] },
+  { id: "operations-folder", label: "Operations", sections: ["sync", "identity-sync", "governance"] },
 ];
 
 const applicationSections = [
@@ -917,6 +924,12 @@ export default function RbacManagementPage() {
           <div hidden={activeSection !== "effective-access"}>
             <EffectiveAccessPanel />
           </div>
+          {activeSection === "identity-sync" && (
+            <IdentitySyncPanel
+              clientId={registeringApplication ? "" : activeClientId}
+              canWrite={canWriteSystems && canWriteRoles}
+            />
+          )}
           <div hidden={activeSection !== "governance"}>
             <GovernanceToolsPanel activeClientId={activeClientId} />
           </div>
@@ -1328,7 +1341,15 @@ export default function RbacManagementPage() {
                       onClick={() => setSelectedRoleId(role.id)}
                     >
                       <span>{role.displayName || role.name}</span>
-                      <small>{role.permissions.length} permissions</small>
+                      {role.serviceOnly ? (
+                        <small>
+                          <Tag size="sm" type="purple">
+                            Service only
+                          </Tag>
+                        </small>
+                      ) : (
+                        <small>{role.permissions.length} permissions</small>
+                      )}
                     </button>
                     <PermissionGuard permission={PERMISSIONS.rbacRolesWrite}>
                       <Button

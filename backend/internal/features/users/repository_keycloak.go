@@ -102,6 +102,15 @@ func (r *userRepository) GetUserByID(id uuid.UUID) (*models.User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("keycloak user not found: %w", err)
 	}
+	// GET users/{id} has no role mappings; read them explicitly. Failing here
+	// rather than returning empty roles matters: callers compute role removals
+	// from this set.
+	realmRoles, clientRoles, err := r.keycloakClient.GetUserRoleMappings(ctx, id.String())
+	if err != nil {
+		return nil, fmt.Errorf("keycloak user role mappings: %w", err)
+	}
+	kcUser.RealmRoles = realmRoles
+	kcUser.ClientRoles = clientRoles
 
 	row, err := r.db.GetUserByID(ctx, id)
 	if err != nil && err != sql.ErrNoRows {

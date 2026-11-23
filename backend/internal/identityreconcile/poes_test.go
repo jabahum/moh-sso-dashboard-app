@@ -49,7 +49,13 @@ func TestCLIMSAccountConnector(t *testing.T) {
 	const id = "19a3adb5-71bd-4f32-af89-e23a3f29fef1"
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/internal/identity-sync":
+			// CLIMS implements contract 1.0: no descriptor.
+			w.WriteHeader(http.StatusNotFound)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/internal/identity-sync/accounts" && r.URL.Query().Get("after") == id:
+			if r.URL.Query().Has("limit") {
+				t.Error("a 1.0 application must not receive limit")
+			}
 			_, _ = w.Write([]byte(`{"accounts":[],"nextCursor":""}`))
 		case r.Method == http.MethodPut && r.URL.Path == "/api/v1/internal/identity-sync/accounts/"+id+"/identity":
 			w.WriteHeader(http.StatusNoContent)

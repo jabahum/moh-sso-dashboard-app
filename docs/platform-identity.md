@@ -69,6 +69,28 @@ Use the actual Keycloak service-account subject, not the example UUID. A client 
 
 All platform service endpoints accept only Bearer access tokens. Browser cookies, development auth bypass, refresh tokens and arbitrary JWT claims are not authentication mechanisms for these endpoints. Token introspection validates active state, token type, issuer, audience, subject, client identity, expiry and not-before. Timeouts, oversized/malformed responses and redirects fail closed. Machine identities never gain portal permissions from these endpoints.
 
+## Identity reconciliation (CLIMS, POES)
+
+The backend CLI links accounts that already exist in an external application to their Keycloak users. `clims-identity-sync` and `poes-identity-sync` preview matches page by page and apply one reviewed link at a time; they never create Keycloak users.
+
+Each application has a dedicated machine client in the realm exports: `clims-identity-sync` and `poesgo-identity-sync`. These are confidential clients with only service accounts enabled and `fullScopeAllowed: false`. Each service account holds only its application's `identity_sync` client role, and an audience mapper adds the application's client ID (`clims` or `poesgo`) to the token's `aud`. The application's `/api/v1/internal/identity-sync` endpoints must require that audience and role. The role has no portal permissions and must not be assigned to people.
+
+Configure the CLI with:
+
+- `KEYCLOAK_BASE_URL` (HTTPS), `KEYCLOAK_REALM`, `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET`: operator credentials used to look up users and grant `<clientId>_access`. `KEYCLOAK_BASE_URL` can be an internal address; admin API and token requests go there.
+- `KEYCLOAK_EXTERNAL_URL` (HTTPS): the public Keycloak URL. The issuer written into each identity link is `<KEYCLOAK_EXTERNAL_URL>/realms/<realm>`, which must equal the `iss` claim in users' ID tokens at the application. When it is unset the CLI falls back to `KEYCLOAK_BASE_URL`, which is only correct when that is the public URL. The CLI prints the issuer it uses on stderr; check it before applying links.
+- `CLIMS_SYNC_ORIGIN` / `POES_SYNC_ORIGIN`: the application's HTTPS origin, for example `https://clims.health.go.ug`.
+- `CLIMS_SYNC_CLIENT_ID` + `CLIMS_SYNC_CLIENT_SECRET` / `POES_SYNC_CLIENT_ID` + `POES_SYNC_CLIENT_SECRET`: the identity-sync client's credentials. The CLI requests tokens from `<KEYCLOAK_BASE_URL>/realms/<realm>/protocol/openid-connect/token` with the client-credentials grant and caches each one until 30 seconds before it expires. Run Keycloak with a fixed public hostname (`KC_HOSTNAME`) so these tokens carry the public issuer even when requested through the internal URL.
+- `CLIMS_SYNC_ACCESS_TOKEN` / `POES_SYNC_ACCESS_TOKEN` (optional fallback): a pre-minted token. It is used only when no sync client ID or secret is set.
+
+```sh
+moh-sso clims-identity-sync --limit 25                 # preview
+moh-sso clims-identity-sync --after <cursor>           # next page
+moh-sso clims-identity-sync --apply-account <id> --approved-subject <keycloak-user-id>
+```
+
+Apply re-runs the preview and refuses if the current match no longer equals the approved subject. Matching uses enabled Keycloak users with a verified email only. Rotate the sync client secret in Keycloak, outside this repository.
+
 ## Platform server setup
 
 Configure these additional environment variables:

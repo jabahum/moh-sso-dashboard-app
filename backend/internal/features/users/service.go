@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 
+	"github.com/moh-sso-dashboard/internal/accesswarnings"
 	"github.com/moh-sso-dashboard/internal/config"
 	"github.com/moh-sso-dashboard/internal/http/apierror"
 	"github.com/moh-sso-dashboard/internal/keycloak"
@@ -45,9 +47,119 @@ type UpdateUserRequest struct {
 }
 
 type Service struct {
-	repo          Repository
-	notifications sharedservice.NotificationsService
-	cfg           *config.Config
+	repo             Repository
+	notifications    sharedservice.NotificationsService
+	cfg              *config.Config
+	serviceOnlyRoles ServiceOnlyRoleChecker
+	accessRemoval    AccessRoleRemovalHook
+}
+
+// AccessRoleRemovalHook is told, after the fact, that client roles were removed
+// from a person, so access to a registered identity-sync application can be ended
+// fully (its sessions included). An error never undoes the role removal; the
+// hook records the failure itself (audit and revocation status).
+type AccessRoleRemovalHook interface {
+	ClientRolesRemoved(ctx context.Context, userID, clientID string, roles []string, actorID string) error
+}
+
+// SetAccessRoleRemovalHook enables identity-sync revocation on client-role removal.
+// A nil hook disables it.
+func (s *Service) SetAccessRoleRemovalHook(hook AccessRoleRemovalHook) {
+	s.accessRemoval = hook
+}
+
+// AccessRoleGrantHook is optionally implemented by the AccessRoleRemovalHook. It
+// is told, after the fact, that client roles were granted to a person, so an
+// active identity-sync revocation for that application can be restored
+// explicitly by the granting admin. An error never undoes the grant.
+type AccessRoleGrantHook interface {
+	ClientRolesAdded(ctx context.Context, userID, clientID string, roles []string, actorID string) error
+}
+
+// warningCoder is implemented by hook errors that carry a stable warning code
+// (identityreconcile.IncompleteRevocationError).
+type warningCoder interface {
+	WarningCode() string
+}
+
+func (s *Service) clientRolesRemoved(ctx context.Context, userID, clientID string, roles []string, adminID uuid.UUID) {
+	if s == nil || s.accessRemoval == nil || len(roles) == 0 {
+		return
+	}
+	err := s.accessRemoval.ClientRolesRemoved(ctx, userID, clientID, roles, adminID.String())
+	if err == nil {
+		return
+	}
+	log.Printf("WARN: client roles removed from user %s on %s, but access removal is incomplete: %v", userID, clientID, err)
+	code := accesswarnings.CodeRevocationIncomplete
+	var coded warningCoder
+	if errors.As(err, &coded) && coded.WarningCode() != "" {
+		code = coded.WarningCode()
+	}
+	// The role removal stands; the caller and the admins are told what is left.
+	accesswarnings.Add(ctx, accesswarnings.Warning{Code: code, ClientID: clientID, UserID: userID, Message: err.Error()})
+	nt := models.IdentitySyncRevocationIncomplete
+	s.notify(ctx, models.Notification{
+		Type:       string(nt),
+		Title:      nt.Title(),
+		Severity:   nt.Severity(),
+		Message:    fmt.Sprintf("Access to %s was removed from user %s, but not every session was ended: %v", clientID, userID, err),
+		TargetRole: "admin",
+		UserID:     userID,
+		ClientID:   clientID,
+		Metadata: utils.MustJSON(map[string]any{
+			"user_id":   userID,
+			"client_id": clientID,
+			"roles":     roles,
+			"code":      code,
+			"admin_id":  adminID.String(),
+			"action":    "identity-sync revocations --resume --app " + clientID,
+		}),
+	})
+}
+
+func (s *Service) clientRolesAdded(ctx context.Context, userID, clientID string, roles []string, adminID uuid.UUID) {
+	if s == nil || s.accessRemoval == nil || len(roles) == 0 {
+		return
+	}
+	grants, ok := s.accessRemoval.(AccessRoleGrantHook)
+	if !ok {
+		return
+	}
+	if err := grants.ClientRolesAdded(ctx, userID, clientID, roles, adminID.String()); err != nil {
+		log.Printf("WARN: client roles granted to user %s on %s, but the identity-sync restore was not recorded: %v", userID, clientID, err)
+		accesswarnings.Add(ctx, accesswarnings.Warning{Code: accesswarnings.CodeRestoreFailed, ClientID: clientID, UserID: userID, Message: err.Error()})
+	}
+}
+
+// ErrServiceOnlyRole is returned when an administrator tries to give a person a client
+// role reserved for Keycloak service accounts.
+var ErrServiceOnlyRole = errors.New("service-only system roles cannot be granted to people")
+
+// ServiceOnlyRoleChecker reports whether a client role is reserved for service accounts.
+type ServiceOnlyRoleChecker interface {
+	IsServiceOnlyRole(ctx context.Context, clientID string, roleName string) (bool, error)
+}
+
+// SetServiceOnlyRoleChecker enables the service-only role guard on direct client-role grants.
+func (s *Service) SetServiceOnlyRoleChecker(checker ServiceOnlyRoleChecker) {
+	s.serviceOnlyRoles = checker
+}
+
+func (s *Service) rejectServiceOnlyRoles(ctx context.Context, clientID string, roles []string) error {
+	if s.serviceOnlyRoles == nil {
+		return nil
+	}
+	for _, role := range roles {
+		serviceOnly, err := s.serviceOnlyRoles.IsServiceOnlyRole(ctx, clientID, role)
+		if err != nil {
+			return fmt.Errorf("check service-only role: %w", err)
+		}
+		if serviceOnly {
+			return fmt.Errorf("%w: %s/%s", ErrServiceOnlyRole, clientID, role)
+		}
+	}
+	return nil
 }
 
 func NewService(
@@ -842,6 +954,10 @@ func (s *Service) UpdateUserClientRoles(
 		return nil
 	}
 
+	if err := s.rejectServiceOnlyRoles(ctx, clientID, toAdd); err != nil {
+		return err
+	}
+
 	if len(toAdd) > 0 {
 		if err := s.repo.AddUserClientRoles(
 			ctx,
@@ -852,6 +968,7 @@ func (s *Service) UpdateUserClientRoles(
 		); err != nil {
 			return fmt.Errorf("add user client roles: %w", err)
 		}
+		s.clientRolesAdded(ctx, userID.String(), clientID, toAdd, adminID)
 	}
 
 	if len(toRemove) > 0 {
@@ -864,6 +981,7 @@ func (s *Service) UpdateUserClientRoles(
 		); err != nil {
 			return fmt.Errorf("remove user client roles: %w", err)
 		}
+		s.clientRolesRemoved(ctx, userID.String(), clientID, toRemove, adminID)
 	}
 
 	user, err := s.repo.GetUserByID(userID)
@@ -963,6 +1081,10 @@ func (s *Service) AddUserClientRoles(
 		return nil
 	}
 
+	if err := s.rejectServiceOnlyRoles(ctx, clientID, roles); err != nil {
+		return err
+	}
+
 	if err := s.repo.AddUserClientRoles(
 		ctx,
 		userID.String(),
@@ -972,6 +1094,7 @@ func (s *Service) AddUserClientRoles(
 	); err != nil {
 		return fmt.Errorf("add user client roles: %w", err)
 	}
+	s.clientRolesAdded(ctx, userID.String(), clientID, roles, adminID)
 
 	user, err := s.repo.GetUserByID(userID)
 	if err != nil {
@@ -1045,6 +1168,7 @@ func (s *Service) RemoveUserClientRoles(
 	); err != nil {
 		return fmt.Errorf("remove user client roles: %w", err)
 	}
+	s.clientRolesRemoved(ctx, userID.String(), clientID, roles, adminID)
 
 	user, err := s.repo.GetUserByID(userID)
 	if err != nil {
