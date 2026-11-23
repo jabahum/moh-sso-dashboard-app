@@ -4238,6 +4238,8 @@ components:
           type: string
         accountIdFormat:
           type: string
+        allowContractDowngrade:
+          type: boolean
         credentialRef:
           type: string
         enabled:

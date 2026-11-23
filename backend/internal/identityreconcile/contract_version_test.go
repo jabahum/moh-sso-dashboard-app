@@ -147,12 +147,40 @@ func TestRegistrySaveMayDowngradeA11RegistrationExplicitly(t *testing.T) {
 	if _, err := connector.Describe(context.Background()); err == nil {
 		t.Fatal("use-time describe downgraded a registered 1.1 application")
 	}
-	// An explicit re-register reads the descriptor afresh and records 1.0.
+	// An ordinary enabled save (for example editing another field while the
+	// application briefly answers 404) must not downgrade the registration.
+	if _, err := registry.Save(context.Background(), integration, "operator", "edit access role"); !errors.Is(err, ErrContractDowngrade) {
+		t.Fatalf("plain save = %v, want ErrContractDowngrade", err)
+	}
+	if got := repo.rows["alerts"].ContractVersion; got != "1.1" {
+		t.Fatalf("refused save changed the stored version to %q", got)
+	}
+	// Only an explicit downgrade reads the descriptor afresh and records 1.0.
+	integration.AllowContractDowngrade = true
 	saved, err := registry.Save(context.Background(), integration, "operator", "application rolled back to contract 1.0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if saved.ContractVersion != "1.0" {
-		t.Fatalf("re-register stored %q, want 1.0", saved.ContractVersion)
+		t.Fatalf("explicit downgrade stored %q, want 1.0", saved.ContractVersion)
+	}
+}
+
+// Without a stored 1.1 version (a new registration, or one already at 1.0), a
+// 1.0 application is accepted without the downgrade flag.
+func TestRegistrySaveAcceptsNew10RegistrationWithoutFlag(t *testing.T) {
+	registry, repo, origin := registryFixture(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	integration := validIntegration()
+	integration.Origin = origin
+	integration.Enabled = true
+	repo.rows = map[string]Integration{}
+	saved, err := registry.Save(context.Background(), integration, "operator", "register a 1.0 application")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.ContractVersion != "1.0" {
+		t.Fatalf("new 1.0 registration stored %q, want 1.0", saved.ContractVersion)
 	}
 }

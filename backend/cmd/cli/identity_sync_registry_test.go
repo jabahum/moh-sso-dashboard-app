@@ -307,3 +307,19 @@ func TestKeycloakConfigAndTokenEndpointFromEnv(t *testing.T) {
 		t.Fatalf("registry config must not read per-app settings: %+v, %v", cfg, err)
 	}
 }
+
+func TestIdentitySyncRegisterOffersExplicitContractDowngrade(t *testing.T) {
+	var register *cobra.Command
+	for _, sub := range newIdentitySyncCommand().Commands() {
+		if sub.Name() == "register" {
+			register = sub
+		}
+	}
+	if register == nil {
+		t.Fatal("register subcommand missing")
+	}
+	flag := register.Flags().Lookup("allow-contract-downgrade")
+	if flag == nil || flag.DefValue != "false" {
+		t.Fatalf("--allow-contract-downgrade flag = %+v, want a false-by-default bool", flag)
+	}
+}

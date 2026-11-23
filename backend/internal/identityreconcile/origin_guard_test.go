@@ -171,3 +171,28 @@ func TestRegistryConnectorRefusesNonPublicPeerAtDialTime(t *testing.T) {
 		t.Fatal("the loopback peer received a request")
 	}
 }
+
+// Connectors must dial the registered origin directly. Behind an HTTP(S) proxy
+// the dial-time check would only see the proxy's address, so environment proxy
+// settings must not apply to connector transports (default or injected).
+func TestConnectorTransportIgnoresEnvironmentProxy(t *testing.T) {
+	injected := http.DefaultTransport.(*http.Transport).Clone() // keeps ProxyFromEnvironment
+	for name, registry := range map[string]*RegistryService{
+		"default":  {},
+		"injected": {HTTPClient: &http.Client{Transport: injected}},
+	} {
+		transport, ok := registry.connectorTransport().(*http.Transport)
+		if !ok {
+			t.Fatalf("%s: connector transport is %T", name, registry.connectorTransport())
+		}
+		if transport.Proxy != nil {
+			t.Errorf("%s: connector transport uses a proxy function; the origin check would be bypassed", name)
+		}
+		if transport.DialContext == nil {
+			t.Errorf("%s: connector transport lost its dial-time origin check", name)
+		}
+	}
+	if injected.Proxy == nil {
+		t.Fatal("the injected transport itself must not be modified")
+	}
+}

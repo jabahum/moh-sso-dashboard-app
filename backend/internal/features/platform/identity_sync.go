@@ -34,6 +34,9 @@ type IdentitySyncInput struct {
 	AccountIDFormat string `json:"accountIdFormat" binding:"required"`
 	Enabled         bool   `json:"enabled"`
 	Reason          string `json:"reason" binding:"required"`
+	// AllowContractDowngrade accepts that an application registered at 1.1 or
+	// newer now answers like 1.0 (no GET / descriptor).
+	AllowContractDowngrade bool `json:"allowContractDowngrade"`
 }
 
 // IdentitySyncDeleteInput records why an integration is removed.
@@ -107,6 +110,8 @@ func (h *Handler) SaveIdentitySync(c *gin.Context) {
 		CredentialRef:       input.CredentialRef,
 		AccountIDFormat:     identitysync.AccountIDFormat(input.AccountIDFormat),
 		Enabled:             input.Enabled,
+
+		AllowContractDowngrade: input.AllowContractDowngrade,
 	}
 	if input.Reason == "" || len(input.Reason) > 2000 || !identityreconcile.ValidOrigin(input.Origin) || integration.Validate() != nil {
 		fail(c, ErrInvalid)
@@ -153,6 +158,8 @@ func failIdentitySync(c *gin.Context, err error) {
 		response.Fail(c, http.StatusBadRequest, "INVALID_IDENTITY_SYNC", "the sync client must be an enabled service identity of this application and the access role a person-facing access role")
 	case errors.Is(err, identityreconcile.ErrIntegrationInUse):
 		response.Fail(c, http.StatusConflict, "IDENTITY_SYNC_IN_USE", "identity sync integration is still referenced")
+	case errors.Is(err, identityreconcile.ErrContractDowngrade):
+		response.Fail(c, http.StatusConflict, "IDENTITY_SYNC_CONTRACT_DOWNGRADE", "the application was registered at contract 1.1 or newer but now answers like 1.0; retry later, or set allowContractDowngrade to accept it")
 	case errors.Is(err, identityreconcile.ErrDescriptorUnavailable):
 		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_UNREACHABLE", "the application's identity-sync endpoint could not be described; check the origin, credential reference and sync client")
 	default:

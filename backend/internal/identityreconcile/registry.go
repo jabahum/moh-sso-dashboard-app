@@ -25,6 +25,9 @@ var (
 	// ErrDescriptorUnavailable reports that an integration could not be enabled
 	// because its credential, token or GET / descriptor check failed.
 	ErrDescriptorUnavailable = errors.New("identity sync application could not be described")
+	// ErrContractDowngrade reports that an application registered at contract 1.1
+	// or newer now looks like 1.0 and the caller did not ask for a downgrade.
+	ErrContractDowngrade = errors.New("identity sync application now reports contract 1.0; pass an explicit downgrade to accept it")
 )
 
 // Integration is one row of ihp_identity_sync_integrations. CredentialRef is a
@@ -37,11 +40,14 @@ type Integration struct {
 	CredentialRef       string                       `json:"credentialRef"`
 	AccountIDFormat     identitysync.AccountIDFormat `json:"accountIdFormat"`
 	// ContractVersion is the version last read from GET /; empty until checked.
-	ContractVersion string    `json:"contractVersion"`
-	Enabled         bool      `json:"enabled"`
-	UpdatedBy       string    `json:"updatedBy"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ContractVersion string `json:"contractVersion"`
+	Enabled         bool   `json:"enabled"`
+	// AllowContractDowngrade is a save option, never stored: it lets an enabled
+	// save record 1.0 for an application whose stored version is 1.1 or newer.
+	AllowContractDowngrade bool      `json:"-"`
+	UpdatedBy              string    `json:"updatedBy"`
+	CreatedAt              time.Time `json:"createdAt"`
+	UpdatedAt              time.Time `json:"updatedAt"`
 }
 
 // RegistryRepository persists integrations. Save and Delete write the audit
@@ -216,13 +222,18 @@ func (s *RegistryService) Save(ctx context.Context, integration Integration, act
 		if err := s.Repository.CheckIntegrationBinding(ctx, integration); err != nil {
 			return Integration{}, err
 		}
-		// An explicit (re-)register reads the descriptor afresh: it is the only
-		// place a 1.1 registration may be downgraded to 1.0 on a 404.
+		// An enabled save reads the descriptor afresh. A 404 then looks like 1.0,
+		// so a registration stored at 1.1 or newer is only downgraded when the
+		// caller explicitly allows it (a transient 404 during a deploy must not).
+		stored := integration.ContractVersion
 		fresh := integration
 		fresh.ContractVersion = ""
 		descriptor, err := s.Probe(ctx, fresh)
 		if err != nil {
 			return Integration{}, fmt.Errorf("%w: enable %s: %v", ErrDescriptorUnavailable, integration.ApplicationClientID, err)
+		}
+		if versionAtLeast11(stored) && !versionAtLeast11(descriptor.Version) && !integration.AllowContractDowngrade {
+			return Integration{}, fmt.Errorf("%w: %s was registered at %s", ErrContractDowngrade, integration.ApplicationClientID, stored)
 		}
 		integration.ContractVersion = descriptor.Version
 	}
@@ -320,6 +331,9 @@ func (s *RegistryService) connectorTransport() http.RoundTripper {
 		base = injected
 	}
 	transport := base.Clone()
+	// Connect straight to the registered origin. Through an HTTP(S) proxy the
+	// dial-time check would inspect the proxy's address instead of the origin's.
+	transport.Proxy = nil
 	transport.DialContext = s.originPolicy().dialContext(&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second})
 	return transport
 }

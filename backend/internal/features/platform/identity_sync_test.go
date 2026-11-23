@@ -176,6 +176,7 @@ func TestIdentitySyncAdminMapsRegistryErrors(t *testing.T) {
 		{fmt.Errorf("%w: access role", identityreconcile.ErrInvalidIntegration), 400},
 		{fmt.Errorf("%w: HTTP 403 with secret-looking detail", identityreconcile.ErrDescriptorUnavailable), 422},
 		{identityreconcile.ErrIntegrationInUse, 409},
+		{fmt.Errorf("%w: alerts was registered at 1.1", identityreconcile.ErrContractDowngrade), 409},
 	} {
 		registry := &fakeIdentitySync{saveErr: tc.err, getErr: tc.err, deleteErr: tc.err}
 		router := identitySyncRouter(registry, authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite)
@@ -193,5 +194,19 @@ func TestIdentitySyncAdminMapsRegistryErrors(t *testing.T) {
 	router := identitySyncRouter(nil, authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite)
 	if code, _ := identitySyncRequest(router, "GET", ""); code != 503 {
 		t.Errorf("unconfigured registry: %d", code)
+	}
+}
+
+func TestIdentitySyncAdminPassesExplicitContractDowngrade(t *testing.T) {
+	registry := &fakeIdentitySync{}
+	router := identitySyncRouter(registry, authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite)
+	if code, body := identitySyncRequest(router, "PUT", validIdentitySyncBody(nil)); code != 200 {
+		t.Fatalf("PUT: %d %s", code, body)
+	}
+	if code, body := identitySyncRequest(router, "PUT", validIdentitySyncBody(func(b map[string]any) { b["allowContractDowngrade"] = true })); code != 200 {
+		t.Fatalf("PUT with downgrade: %d %s", code, body)
+	}
+	if len(registry.saved) != 2 || registry.saved[0].AllowContractDowngrade || !registry.saved[1].AllowContractDowngrade {
+		t.Fatalf("downgrade option not passed through exactly when requested: %+v", registry.saved)
 	}
 }

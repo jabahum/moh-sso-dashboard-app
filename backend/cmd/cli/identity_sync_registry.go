@@ -275,6 +275,7 @@ func newIdentitySyncRegisterCommand() *cobra.Command {
 	f.StringVar(&input.CredentialRef, "credential", "", "Sync client secret reference: env:NAME or file:/absolute/path (required)")
 	f.StringVar(&format, "account-id-format", string(identitysync.AccountIDOpaque), "Account ID format for a 1.0 application: uuid, positive-integer or opaque")
 	f.BoolVar(&input.Enabled, "enable", false, "Enable the integration after reading its descriptor")
+	f.BoolVar(&input.AllowContractDowngrade, "allow-contract-downgrade", false, "Accept that an application registered at contract 1.1 or newer now answers like 1.0")
 	f.StringVar(&reason, "reason", "", "Why this change is made, recorded in the audit log (required)")
 	for _, name := range []string{"app", "origin", "sync-client", "access-role", "credential", "reason"} {
 		_ = cmd.MarkFlagRequired(name)
