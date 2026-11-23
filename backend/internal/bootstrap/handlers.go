@@ -209,6 +209,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 				CoreReady:        healthHandler.CheckCore, RequiredWorkers: enabledDeliveryWorkers(deps.Config),
 				Repository:   &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
 				IdentitySync: platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm),
+				IdentitySyncOps: identitySyncOperationsHandler(deps.Config, deps.Databases.Primary, deps.AdminKeycloak),
 				Verifier: &platformfeature.Introspector{
 					Endpoint: strings.TrimRight(deps.Config.KeycloakTokenBaseURL(), "/") + "/realms/" + deps.Config.KeycloakRealm + "/protocol/openid-connect/token/introspect",
 					Issuer:   strings.TrimRight(deps.Config.KeycloakExternalURL, "/") + "/realms/" + deps.Config.KeycloakRealm,

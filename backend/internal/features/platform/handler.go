@@ -28,6 +28,8 @@ type Handler struct {
 	Verifier         TokenVerifier
 	// IdentitySync serves the identity-sync registry admin API; nil answers 503.
 	IdentitySync IdentitySyncRegistry
+	// IdentitySyncOps serves identity-sync runs and revocations; nil answers 503.
+	IdentitySyncOps IdentitySyncOperations
 }
 
 func (h *Handler) AuthenticateToken() gin.HandlerFunc {
