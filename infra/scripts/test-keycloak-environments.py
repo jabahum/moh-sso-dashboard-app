@@ -51,5 +51,43 @@ class Environments(unittest.TestCase):
         self.assertFalse(service['standardFlowEnabled'])
         self.assertEqual(service['defaultClientScopes'], [])
 
+def origin_attribute(realm):
+    """Return the ihp_identity_sync_origin declaration from the realm's user profile."""
+    providers = realm.get('components', {}).get('org.keycloak.userprofile.UserProfileProvider', [])
+    for provider in providers:
+        if provider.get('providerId') != 'declarative-user-profile':
+            continue
+        for raw in provider.get('config', {}).get('kc.user.profile.config', []):
+            profile = json.loads(raw)
+            for attribute in profile.get('attributes', []):
+                if attribute.get('name') == 'ihp_identity_sync_origin':
+                    return profile, attribute
+    return None, None
+
+
+class IdentitySyncUserProfile(unittest.TestCase):
+    """Invitations store ihp_identity_sync_origin; Keycloak 24+ drops undeclared attributes."""
+
+    def assert_admin_only(self, realm, where):
+        profile, attribute = origin_attribute(realm)
+        self.assertIsNotNone(attribute, where + ': ihp_identity_sync_origin is not declared in the user profile')
+        self.assertEqual(attribute['permissions'], {'view': ['admin'], 'edit': ['admin']}, where)
+        self.assertNotIn('required', attribute, where)
+        names = [a['name'] for a in profile['attributes']]
+        for builtin in ('username', 'email', 'firstName', 'lastName'):
+            self.assertIn(builtin, names, where + ': the default attributes must stay declared')
+
+    def test_exports_declare_the_origin_attribute_admin_only(self):
+        root = Path(__file__).resolve().parents[2]
+        for name in ('realm-export.json', 'realm-export-prod.json'):
+            self.assert_admin_only(json.loads((root / 'infra/keycloak' / name).read_text()), name)
+
+    def test_generated_environment_realms_keep_the_user_profile(self):
+        for environment in bootstrap.REALMS:
+            realm = bootstrap.render(environment, 'https://portal.example.org/portal', 'https://portal.example.org/api/v1')
+            self.assert_admin_only(realm, environment)
+            self.assertEqual(set(realm.get('components', {})), {'org.keycloak.userprofile.UserProfileProvider'})
+
+
 if __name__ == '__main__':
     unittest.main()
