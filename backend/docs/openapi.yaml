@@ -26,6 +26,17 @@ components:
         - error
         - meta
       type: object
+    accesswarnings.Warning:
+      properties:
+        clientId:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        userId:
+          type: string
+      type: object
     admin_units.Facility:
       properties:
         country_uid:
@@ -5594,6 +5605,10 @@ components:
           $ref: '#/components/schemas/rbac.DirectUserAccessResponse'
         effectiveAccess:
           $ref: '#/components/schemas/rbac.EffectiveAccessResponse'
+        warnings:
+          items:
+            $ref: '#/components/schemas/accesswarnings.Warning'
+          type: array
       type: object
     report_scheduler.Artifact:
       properties:
@@ -6788,6 +6803,13 @@ components:
           type: string
         systemType:
           type: string
+      type: object
+    users.AccessChangeWarnings:
+      properties:
+        warnings:
+          items:
+            $ref: '#/components/schemas/accesswarnings.Warning'
+          type: array
       type: object
     users.ClientRoleResponse:
       properties:
@@ -22688,6 +22710,27 @@ paths:
               $ref: '#/components/schemas/users.userClientRolesRequest'
         required: true
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/users.AccessChangeWarnings'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
         "204":
           description: No Content
         "400":
@@ -22754,6 +22797,27 @@ paths:
               $ref: '#/components/schemas/users.userClientRolesRequest'
         required: true
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/users.AccessChangeWarnings'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
         "204":
           description: No Content
         "400":
@@ -22904,6 +22968,27 @@ paths:
               $ref: '#/components/schemas/users.userClientRolesRequest'
         required: true
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/users.AccessChangeWarnings'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
         "204":
           description: No Content
         "400":
