@@ -3,6 +3,8 @@
 The portal schedules work; Health BI generates reports and signs artifact URLs.
 Each application needs its own configuration. Portal worker credentials belong
 only on the portal backend. The artifact signing key belongs only on Health BI.
+This page is for operators preparing Report Scheduler settings for the portal and
+Health BI; the runtime contract is in [the scheduler backend contract](scheduler-backend.md).
 
 ## Generate private files
 
@@ -18,6 +20,8 @@ are private, ignored by Git/Docker builds and written with mode 0600. Unrelated
 application settings and existing worker credentials are retained. Reruns retain
 the generated signing key instead of rotating it.
 
+### Missing env files and production
+
 If the mode's default private application env is missing, the generator creates
 it from the matching `infra/env/*.env.example`, preserving the template's full
 application configuration and comments. For production, run
@@ -29,6 +33,8 @@ replaced with template defaults. A custom `ENV_FILE` must already exist.
 The command does not contact Keycloak, register clients, edit a remote Health BI
 deployment, or restart containers. A missing worker client secret stays empty;
 the portal integration remains disabled until that credential is supplied.
+
+### Override the Health BI URL or import a worker secret
 
 Choose another application base or import the actual Keycloak-issued worker
 secret from a private file:
@@ -44,7 +50,7 @@ copies its value into the private application env and clears any previous
 `HEALTH_BI_KEYCLOAK_CLIENT_SECRET_FILE` override, so that override cannot mask the
 new credential. Otherwise existing inline/file-backed credentials are preserved.
 
-Options:
+### Options
 
 | Variable | Meaning |
 | --- | --- |
@@ -54,6 +60,8 @@ Options:
 | `HEALTH_BI_PUBLIC_URL` | Browser-reachable base for Health BI artifact links, if different from the backend address. |
 | `HEALTHBI_ENV_FILE` | Companion Health BI env to update; default `infra/env/scheduler-healthbi.<profile>.env`. Production/gateway/remote share profile `prod`. |
 | `SCHEDULER_CLIENT_SECRET_FILE` | Optional file containing the existing Keycloak worker client secret. |
+
+### Default Health BI URLs
 
 For `external`/production, an unset application base defaults to the production
 example's Health BI URL. `dev` defaults to `http://host.docker.internal:8080`, with

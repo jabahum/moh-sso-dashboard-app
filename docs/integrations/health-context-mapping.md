@@ -1,4 +1,8 @@
-# Health Context Mapping
+# Health context mapping
+
+This page explains how to map health-context nodes to identifiers in other features and systems, how to onboard a district or facility, and how modules adopt the mapping. It is for administrators and integrators.
+
+## Alias namespaces
 
 Aliases link a health-context node to stable identifiers owned by other
 features or systems.

@@ -1,4 +1,8 @@
-# RBAC And Keycloak Sync
+# RBAC and Keycloak sync
+
+This page explains how Keycloak identities and roles are synchronized into portal RBAC, how to onboard a new system (Keycloak client), and how to troubleshoot missing access. It is for administrators, application owners and developers who manage system access. For group-based access, see [RBAC Groups](./rbac-groups.md).
+
+## Ownership model
 
 The MOH Integrated Health Portal uses Keycloak for identity and role assignment, and portal RBAC for application authorization.
 
@@ -13,7 +17,7 @@ This means:
 
 Only clients marked `portal.system=true`, or clients already registered for backward compatibility, participate in system discovery. `portal.accessRoles` identifies the roles that expose a system. Launch behavior is synchronized through `ui.systemType`, `ui.displayInLauncher`, `ui.displayInSideNav`, `ui.launchMode`, `ui.launchUrl`, and optional `ui.navigation`.
 
-## Why Sync Is Needed
+## Why sync is needed
 
 Keycloak can tell us that a user has:
 
@@ -39,7 +43,7 @@ backend/config/system-rbac.seed.yaml
 
 If roles sync from Keycloak but permissions are empty, it usually means the Keycloak catalog was synced but the portal RBAC seed/mapping was not applied.
 
-## Startup Sync
+## Startup sync
 
 Backend startup sync is controlled by `backend/app.env`.
 
@@ -70,7 +74,7 @@ The curated seed is applied after discovery so known portal metadata and permiss
 
 Group membership can grant inherited realm roles, client roles, and portal group permissions. For the effective-access model, admin workflow, and QA checklist, see [RBAC Groups](./rbac-groups.md).
 
-### Default Access For The `user` Realm Role
+### Default access for the `user` realm role
 
 The curated seed maps the `user` realm role to these default system roles:
 
@@ -86,7 +90,7 @@ When `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true`, startup reconciliation also adds
 
 The `accessible_systems` attribute in the local realm export is descriptive seed metadata only. Runtime authorization is derived from realm roles, client-role assignments/composites, and the portal RBAC mappings; changing that attribute alone never grants access.
 
-## Safe Source Of Truth Rules
+## Safe source of truth rules
 
 Use these rules to avoid accidental overwrites:
 
@@ -96,44 +100,11 @@ Use these rules to avoid accidental overwrites:
 - Do not use startup sync to delete Keycloak roles or users.
 - Do not store passwords or credentials in portal RBAC.
 
-## Retiring The Integrated Outbreak System Client
-
-`outbreak-management` is the canonical replacement for the retired
-`integrated-outbreak-system` client. Migration
-`000031_consolidate_outbreak_management_system` merges the legacy portal RBAC
-roles, permissions, access-role markers, realm-role mappings, access requests,
-and audit references into the replacement system.
-
-Startup synchronization is intentionally non-destructive and will not delete a
-live Keycloak client. For an existing realm:
-
-1. Confirm `outbreak-management` exists with the required roles.
-2. Move or recreate user, group, service-account, and realm-role composite
-   assignments on `outbreak-management`.
-3. Refresh a representative user's token and verify portal access.
-4. Delete `integrated-outbreak-system` and its legacy admin client in Keycloak.
-5. Run the RBAC drift report and confirm the retired client is absent.
-
-Do not delete the legacy Keycloak client before its assignments have been
-verified on the replacement. Realm exports in this repository now contain only
-`outbreak-management`.
-
-### Retiring The Report Browser Client
-
-The Report Browser remains a frontend microfrontend under Data & Statistics;
-it is no longer a standalone Keycloak/system client. Migration
-`000032_consolidate_report_browser_system` moves its specialized report roles,
-permissions, realm-role mappings, access requests, and audit references to
-`data-statistics`. Existing Keycloak installations should move assignments to
-the matching roles on `data-statistics`, verify report access, and then delete
-the retired `report-browser` client. Startup synchronization will not perform
-that destructive deletion automatically.
-
-## Adding A New System / Client
+## Adding a new system or client
 
 Use this flow when a new application wants to connect to the portal.
 
-### 1. Create The Keycloak Client
+### 1. Create the Keycloak client
 
 Create a Keycloak client with a stable `clientId`.
 
@@ -167,7 +138,7 @@ At least one role should be an access role. A good convention is:
 <clientId>_access
 ```
 
-### 2. Sync Keycloak Into Portal RBAC
+### 2. Sync Keycloak into portal RBAC
 
 Restart the backend with startup sync enabled, or use the RBAC admin UI drift/sync flow.
 
@@ -192,7 +163,7 @@ go run ./cmd/cli system-rbac sync-keycloak \
   --draft-file /tmp/system-rbac.seed.yaml
 ```
 
-### 3. Map Roles To Permissions
+### 3. Map roles to permissions
 
 Newly discovered roles are intentionally inert until permissions are mapped.
 
@@ -242,7 +213,7 @@ systems:
 
 Only use permission keys that exist in `backend/internal/authz/permissions.go`. If a new system needs new permission keys, add them there first, then add route guards and frontend guards.
 
-### 4. Assign Users In Keycloak
+### 4. Assign users in Keycloak
 
 Assign the user the relevant client roles in Keycloak, assign the user to a Keycloak group that carries those roles, or use the portal user access panel if it writes through to Keycloak.
 
@@ -256,7 +227,7 @@ roles:
   - viewer
 ```
 
-### 5. Verify Effective Access
+### 5. Verify effective access
 
 Use the admin UI:
 
@@ -290,7 +261,7 @@ realmRoles
 clientRoles
 ```
 
-## Managing Client RBAC After Onboarding
+## Managing client RBAC after onboarding
 
 Use `/portal/admin/rbac` for routine updates.
 
@@ -325,7 +296,7 @@ cd backend
 go run ./cmd/cli system-rbac validate --file config/system-rbac.seed.yaml
 ```
 
-## Editing Keycloak Roles
+## Editing Keycloak roles
 
 If a client role is added in Keycloak:
 
@@ -347,9 +318,56 @@ If a client is removed from Keycloak:
 2. Confirm no users still rely on the system.
 3. Disable the system in portal RBAC before deleting any mapping.
 
+## Retiring legacy clients
+
+Startup synchronization never deletes a live Keycloak client, so retiring a client is a manual procedure.
+
+### Retiring the Integrated Outbreak System client
+
+`outbreak-management` is the canonical replacement for the retired
+`integrated-outbreak-system` client. Migration
+`000031_consolidate_outbreak_management_system` merges the legacy portal RBAC
+roles, permissions, access-role markers, realm-role mappings, access requests,
+and audit references into the replacement system.
+
+Startup synchronization is intentionally non-destructive and will not delete a
+live Keycloak client. For an existing realm:
+
+1. Confirm `outbreak-management` exists with the required roles.
+2. Move or recreate user, group, service-account, and realm-role composite
+   assignments on `outbreak-management`.
+3. Refresh a representative user's token and verify portal access.
+4. Delete `integrated-outbreak-system` and its legacy admin client in Keycloak.
+5. Run the RBAC drift report and confirm the retired client is absent.
+
+Do not delete the legacy Keycloak client before its assignments have been
+verified on the replacement. Realm exports in this repository now contain only
+`outbreak-management`.
+
+### Retiring the Report Browser client
+
+The Report Browser remains a frontend microfrontend under Data & Statistics;
+it is no longer a standalone Keycloak/system client. Migration
+`000032_consolidate_report_browser_system` moves its specialized report roles,
+permissions, realm-role mappings, access requests, and audit references to
+`data-statistics`. Existing Keycloak installations should move assignments to
+the matching roles on `data-statistics`, verify report access, and then delete
+the retired `report-browser` client. Startup synchronization will not perform
+that destructive deletion automatically.
+
+## Production notes
+
+In production:
+
+- Keep seed files source-controlled and reviewed.
+- Keep Keycloak admin credentials restricted to the backend.
+- Prefer drift preview before applying major changes.
+- Keep `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true` only when the approved operating procedure allows the portal to create missing registry clients and roles in Keycloak.
+- Use audit logs when changing high-risk role mappings.
+
 ## Troubleshooting
 
-### Roles Exist But Permissions Are Empty
+### Roles exist but permissions are empty
 
 Check that the seed was applied:
 
@@ -372,7 +390,7 @@ bundled into the backend image by default. If `RBAC_STARTUP_SYNC_REALM_EXPORT=tr
 realm export file into the container and set `RBAC_STARTUP_SYNC_REALM_EXPORT_PATH`; otherwise
 set `RBAC_STARTUP_SYNC_REALM_EXPORT=false` and rely on live Keycloak sync plus the seed.
 
-### System Appears But Cannot Launch
+### System appears but cannot launch
 
 Check:
 
@@ -382,7 +400,7 @@ Check:
 - the role maps to `systems:launch` or the UI uses `accessibleSystems`
 - `launchUrl` starts with `/portal` or is a valid absolute URL
 
-### User Has Role In Keycloak But Portal Does Not Show App
+### User has role in Keycloak but portal does not show app
 
 Check Effective Access:
 
@@ -392,7 +410,7 @@ Check Effective Access:
 - Is the system enabled?
 - Is the frontend route guarded by matching permissions/system metadata?
 
-### Startup Sync Fails
+### Startup sync fails
 
 For local development, keep:
 
@@ -407,13 +425,3 @@ RBAC_STARTUP_SYNC_FAIL_ON_ERROR=true
 ```
 
 only when Keycloak availability is mandatory before the backend starts.
-
-## Production Notes
-
-In production:
-
-- Keep seed files source-controlled and reviewed.
-- Keep Keycloak admin credentials restricted to the backend.
-- Prefer drift preview before applying major changes.
-- Keep `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true` only when the approved operating procedure allows the portal to create missing registry clients and roles in Keycloak.
-- Use audit logs when changing high-risk role mappings.

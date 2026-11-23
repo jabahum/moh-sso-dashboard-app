@@ -1,4 +1,6 @@
-# RBAC Groups
+# RBAC groups
+
+This page explains how Keycloak groups feed portal RBAC: who owns group data, how administrators manage groups, how group access affects app visibility and message targeting, and how group sync works. It is for administrators and developers working with group-based access. For the wider sync model, see [RBAC And Keycloak Sync](./rbac-keycloak-sync.md).
 
 Keycloak groups are access containers for many users. The portal treats groups as a first-class RBAC source while keeping Keycloak as the identity source for group identity, group membership, realm roles, and client roles.
 
@@ -11,7 +13,7 @@ Effective access is resolved from:
 - group realm roles mapped to portal permissions
 - group system/client roles mapped to portal permissions and app access
 
-## Data Ownership
+## Data ownership
 
 Keycloak owns:
 
@@ -30,7 +32,7 @@ The portal database owns:
 
 Do not manually edit Keycloak-owned group membership directly in the portal database. If membership is changed through the portal UI, the portal must write the change to Keycloak first and then refresh the local RBAC membership cache.
 
-## Admin Workflow
+## Admin workflow
 
 1. Create or update groups in Keycloak.
 2. Assign realm roles and client roles to the group in Keycloak.
@@ -49,7 +51,7 @@ The users access panel separates:
 
 Inherited access should not be removed from the direct user-role controls. Change the Keycloak group, group membership, or group RBAC mappings instead.
 
-## App Visibility
+## App visibility
 
 The app launcher, side navigation, and microfrontend route guards use the current user's final authorization payload:
 
@@ -67,26 +69,30 @@ Manual QA:
 - Direct navigation without direct or group-derived access shows Access Denied, not a blank page.
 - After Keycloak group changes, refresh login/session or run sync before testing visibility.
 
-## Audit Events
+## Announcement and email targeting
 
-Group RBAC mutations write audit events with safe metadata:
+Groups can also be used as message audiences after they have been synced into portal RBAC.
 
-- `group.upserted`
-- `group.member_added`
-- `group.member_removed`
-- `group.members_synced`
-- `group.members_replaced`
-- `group.permission_assigned`
-- `group.permission_removed`
-- `group.realm_role_assigned`
-- `group.realm_role_removed`
-- `group.system_role_assigned`
-- `group.system_role_removed`
-- `rbac.groups_synced`
+Announcements support a `SPECIFIC_GROUPS` audience type. Admins select one or more synced RBAC groups, and the backend resolves the current group members when the announcement is published or scheduled. The resolver:
 
-Audit details include group ID/path/name and counts where useful. Full Keycloak payloads, tokens, and secrets are not logged.
+- reads members from the synced RBAC group membership cache
+- looks up users through the users repository where possible
+- skips disabled users and users without email addresses
+- deduplicates recipients by email address
+- sends or queues email only when the announcement email notification flag is enabled
 
-## Startup Sync Notes
+Direct admin email also supports group recipients. Admins can select groups instead of manually entering every address. The backend expands selected group IDs or group paths into email recipients before sending or queueing the message.
+
+Operational notes:
+
+- Keycloak remains the source of truth for group membership.
+- Run RBAC sync after group membership changes before sending group-targeted announcements or email. Portal group member add/remove actions perform a group-level sync automatically after Keycloak accepts the change.
+- Group targeting uses a point-in-time snapshot at publish/send time; later group changes do not rewrite already queued delivery records.
+- If a group has no enabled users with email addresses, the email request is rejected with a validation error rather than sending an empty message.
+
+## Startup sync notes
+
+### Sync sources
 
 Group sync can come from two sources:
 
@@ -95,7 +101,7 @@ Group sync can come from two sources:
 
 Realm export sync is useful for local bootstrap and repeatable seed environments. Live Keycloak sync is the production source for an already deployed realm.
 
-Required realm export shape:
+### Required realm export shape
 
 ```json
 {
@@ -125,13 +131,33 @@ Required realm export shape:
 
 Startup sync applies group records after system/client roles have been discovered so group role references can resolve against the system registry.
 
-Recommended production posture:
+### Recommended production posture
+
 
 - keep Keycloak as source of truth for membership
 - use the portal group members panel only for Keycloak-backed membership changes, not local DB overrides
 - keep push-to-Keycloak disabled unless intentionally provisioning systems/roles
 - do not delete Keycloak groups automatically
 - treat sync warnings as operational signals unless fail-on-error is explicitly enabled
+
+## Audit events
+
+Group RBAC mutations write audit events with safe metadata:
+
+- `group.upserted`
+- `group.member_added`
+- `group.member_removed`
+- `group.members_synced`
+- `group.members_replaced`
+- `group.permission_assigned`
+- `group.permission_removed`
+- `group.realm_role_assigned`
+- `group.realm_role_removed`
+- `group.system_role_assigned`
+- `group.system_role_removed`
+- `rbac.groups_synced`
+
+Audit details include group ID/path/name and counts where useful. Full Keycloak payloads, tokens, and secrets are not logged.
 
 ## Troubleshooting
 
@@ -146,24 +172,3 @@ If a user does not see an app expected from group access:
 7. Refresh the user's session or log out/in.
 
 If inherited access appears as removable direct access, verify the users access panel is using `directAccess` for editable controls and `effectiveAccess` only for read-only explanation.
-
-## Announcement And Email Targeting
-
-Groups can also be used as message audiences after they have been synced into portal RBAC.
-
-Announcements support a `SPECIFIC_GROUPS` audience type. Admins select one or more synced RBAC groups, and the backend resolves the current group members when the announcement is published or scheduled. The resolver:
-
-- reads members from the synced RBAC group membership cache
-- looks up users through the users repository where possible
-- skips disabled users and users without email addresses
-- deduplicates recipients by email address
-- sends or queues email only when the announcement email notification flag is enabled
-
-Direct admin email also supports group recipients. Admins can select groups instead of manually entering every address. The backend expands selected group IDs or group paths into email recipients before sending or queueing the message.
-
-Operational notes:
-
-- Keycloak remains the source of truth for group membership.
-- Run RBAC sync after group membership changes before sending group-targeted announcements or email. Portal group member add/remove actions perform a group-level sync automatically after Keycloak accepts the change.
-- Group targeting uses a point-in-time snapshot at publish/send time; later group changes do not rewrite already queued delivery records.
-- If a group has no enabled users with email addresses, the email request is rejected with a validation error rather than sending an empty message.

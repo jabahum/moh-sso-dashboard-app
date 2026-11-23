@@ -1,5 +1,7 @@
 # Standard human-user role defaults
 
+This page describes the default roles every human user receives, how the application, database and Keycloak apply them, and how to reconcile existing Keycloak accounts. It is for administrators and operators who manage Keycloak and portal releases.
+
 The standard baseline is the realm role `user`, with these client-role composites:
 
 | Client | Default roles |
@@ -40,6 +42,8 @@ service accounts may inherit those defaults. Provisioning outside the portal
 human accounts. The reconciliation tool backfills existing human accounts and
 can be rerun after such imports.
 
+### Generate the policy and dry run
+
 Generate the nonsecret policy from the same compiled baseline:
 
 ```sh
@@ -56,6 +60,8 @@ environment without printing their values. The service account needs permission
 to manage realm-role composites and human-user realm-role mappings. A dry run
 reports aggregate counts only and does not change Keycloak.
 
+### Apply the plan
+
 To apply the reviewed plan:
 
 ```sh
@@ -64,12 +70,16 @@ python3 infra/scripts/reconcile-keycloak-user-defaults.py \
   --apply --backup /secure/new-user-defaults-before.json
 ```
 
+### Backup and rollback
+
 The backup must be a new file in an operator-owned directory. It is created with
 mode `0600` before the first write and contains previous composites and the human
 account IDs to backfill. Keep it outside the repository. A partial failure can be
 retried with a fresh backup: role additions are idempotent. For rollback, restore
 the saved `beforeComposites` on realm role `user`; review the snapshot before
 removing any backfilled `user` assignments, since later grants may be intentional.
+
+### Safeguards
 
 The tool validates all baseline roles before writes, paginates accounts and role
 members, explicitly excludes service accounts, and refuses to proceed if a service

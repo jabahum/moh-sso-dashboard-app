@@ -1,4 +1,6 @@
-# Contextual Authorization
+# Contextual authorization
+
+This page defines how scoped operations are authorized against health context: the decision sequence, least-privilege rules, where to enforce checks, temporary access and denial logging. It is for developers implementing context-scoped features; the model is described in [Health context architecture](../architecture/health-context.md).
 
 ## Decision sequence
 
@@ -42,11 +44,11 @@ When ownership is known only after loading a resource, enforce access in the
 feature service. Repositories should accept already-authorized context IDs and
 include them in SQL predicates.
 
+## Temporary and emergency access
+
 Emergency or delegated access is not enabled by default. A future implementation
 must require a reason, approval, explicit expiry, audit events, and administrator
 notification.
-
-## Temporary and emergency access
 
 The assignment model already supports `valid_from` and `valid_until`, so
 time-bound access can be represented without adding a bypass. There is

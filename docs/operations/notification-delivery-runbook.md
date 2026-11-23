@@ -1,7 +1,7 @@
-# Notification Delivery Runbook
+# Notification delivery runbook
 
 This runbook covers operational handling for notification delivery failures across in-app,
-email, SMS, and future webhook channels.
+email, SMS, and future webhook channels. It is for operators and administrators with access to the delivery dashboard.
 
 ## Dashboard
 
@@ -16,7 +16,7 @@ Required permissions:
 - `notifications:read` to view deliveries and metrics
 - `notifications:write` to retry, cancel, or send test SMS
 
-## Common Checks
+## Common checks
 
 1. Filter by `FAILED` and the affected channel.
 2. Open the delivery detail panel.
@@ -33,7 +33,7 @@ Required permissions:
 Do not paste phone numbers, email addresses, or message bodies into tickets unless explicitly
 approved by the incident process.
 
-## Retry A Delivery
+## Retry a delivery
 
 Use retry when:
 
@@ -48,7 +48,7 @@ POST /api/v1/admin/notifications/deliveries/:deliveryID/retry
 
 Retry moves the delivery to `RETRY` and schedules immediate processing.
 
-## Cancel A Delivery
+## Cancel a delivery
 
 Use cancel when:
 
@@ -63,7 +63,7 @@ POST /api/v1/admin/notifications/deliveries/:deliveryID/cancel
 
 `SENT` deliveries cannot be cancelled.
 
-## Send Test SMS
+## Send a test SMS
 
 Use test SMS after provider configuration changes:
 
@@ -73,7 +73,7 @@ Use test SMS after provider configuration changes:
 4. Confirm a new SMS delivery appears.
 5. Confirm it transitions to `SENT`.
 
-## Stuck Processing Deliveries
+## Stuck processing deliveries
 
 If a delivery stays in `PROCESSING`:
 
@@ -82,7 +82,7 @@ If a delivery stays in `PROCESSING`:
 3. If the delivery is safe to reprocess, use retry.
 4. If the notification should no longer be sent, use cancel.
 
-## Provider Outage
+## Provider outage
 
 1. Confirm provider status externally.
 2. Avoid repeated manual retries during a confirmed outage.
@@ -90,7 +90,7 @@ If a delivery stays in `PROCESSING`:
 4. When provider recovers, retry failed deliveries in batches.
 5. Confirm delivery metrics improve.
 
-## Metrics To Watch
+## Metrics to watch
 
 - total deliveries by channel
 - failed SMS deliveries by provider
@@ -100,7 +100,7 @@ If a delivery stays in `PROCESSING`:
 Metric labels must remain low-cardinality. Never add phone numbers, emails, user IDs,
 notification IDs, or provider message IDs as metric labels.
 
-## Audit Events
+## Audit events
 
 Expected audit events:
 

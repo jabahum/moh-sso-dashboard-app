@@ -1,9 +1,13 @@
 # Observatory database for surveillance
 
+This page describes the separate Observatory database used by the surveillance module: how it connects and recovers, how shared geography is owned and synchronized with the primary database, how to run it locally, import surveillance CSV data, and plan a cutover. It is for developers and operators working on surveillance data.
+
 The surveillance module uses a separate Observatory PostgreSQL connection while authentication,
 documents, processes, notifications and other features remain on the primary database.
 Connection settings are still required and validated, but an unreachable database no
 longer blocks the portal from starting. There is no primary-database fallback.
+
+## Connection monitoring and availability
 
 A background monitor checks Observatory every 15 seconds with a three-second ping
 deadline. It initializes the dedicated migrations before enabling surveillance and
@@ -19,56 +23,6 @@ Health contexts and their full geography hierarchy read the primary database dir
 No HTTP health-context operation connects to Observatory. Core readiness continues to
 require its existing primary, remote, Redis and identity dependencies; Observatory
 is reported separately as `unavailable` in aggregated health with status `degraded`.
-
-## Shared geography ownership
-
-Primary migration `000060_primary_geography_registry` creates `geography.regions`,
-`geography.districts`, `geography.sub_counties` and `geography.facilities`. The
-missing-only historical reference snapshot supplies 17 regions, 146 districts,
-177 legacy sub-county/reporting labels and 6,150 facilities even when Observatory
-has never connected. Existing primary health-context aliases are adopted first,
-preserving context UUIDs, assignments and disabled state. Registry row triggers
-maintain context nodes and hierarchy in the same primary transaction.
-
-Observatory retains local geography tables for its fact foreign keys. Its new
-replica metadata maps canonical primary UUIDs to existing local UUIDs; synchronization
-never deletes reference rows, changes existing Observatory UUIDs or rewrites facts.
-`geography-*` context aliases identify canonical rows, while `surveillance-*` aliases
-identify the corresponding Observatory rows. The identifiers can differ safely.
-
-The first successful connection adopts existing Observatory geography and metadata
-into primary once, including custom locations. Its adoption marker commits in primary
-before replica publication, so an interrupted destination update cannot overwrite
-later primary edits by adopting again. Subsequent updates flow only **primary ->
-Observatory**, approximately once per minute and immediately after location writes.
-The 15-second connection monitor retries failures. Surveillance becomes available
-only after migrations, initial synchronization and destination aliases succeed.
-
-Location APIs and transactional metric-import reference creation use a primary-aware
-store. Parent IDs supplied by surveillance are resolved to canonical IDs; responses
-continue to use Observatory IDs. Facts, diseases, indicators, weeks, alerts and import
-staging remain in Observatory. Unknown/ambiguous identities or a replica already
-bound to another primary registry stop synchronization instead of guessing or
-merging unrelated areas. Operators must resolve those conflicts before surveillance
-can be enabled; other portal features remain available.
-
-Shared geography cannot be physically deleted through surveillance APIs: sub-county
-delete returns `409 GEOGRAPHY_DELETE_RESTRICTED`. Disable the associated health
-context to withdraw access while preserving historical records. Assigned or
-registry-backed context nodes cannot be deleted either. This implementation does
-not propagate deletions from either database.
-
-Back up **both databases** before this cutover. Keep primary and Observatory UUIDs,
-replica identity tables and adoption markers together during restores. A primary
-replacement must restore its registry identity; do not manually clear replica origin
-or adoption markers to bypass an ownership conflict. Both new down migrations retain
-data, and reapplying them preserves IDs. Existing applied migrations are unchanged. An older backend image must be supplied
-with these retained migration files before binary rollback; otherwise its migration
-runner cannot recognize the newer database version. Do not force migration history
-backwards or drop geography to make an old image start.
-New geography corrections should be primary migrations, not edits to the historic
-Observatory seed. The historical reference labels are not a verified current
-administrative or facility registry.
 
 ## Relationship to the DQA connection
 
@@ -86,6 +40,24 @@ migrations remain in place. Authentication and other primary stores are unaffect
 `surveillance` and the existing populated volume and versioned migrations are retained.
 The local database container is `sso-observatory-db` on the main development network.
 
+## Observatory configuration names
+
+Settings are `OBSERVATORY_DB_HOST`, `OBSERVATORY_DB_PORT`,
+`OBSERVATORY_DB_NAME`, `OBSERVATORY_DB_USER`, `OBSERVATORY_DB_PASSWORD`, and
+`OBSERVATORY_DB_ENABLE_SSL`. The host and complete credentials are required.
+There is no fallback to the primary database. An exact primary host/port/database
+target is rejected; configure distinct database destinations even when host aliases
+are used. Previous `SURVEILLANCE_DB_*`
+settings are no longer read: migrate private environment and password-file keys
+before restarting an existing installation with this version. The local host-process
+example is `infra/env/observatory.env.example`; Compose sets its internal hostname
+and port explicitly.
+
+The standalone `cmd/surveillance-db` initializer uses the same Observatory settings.
+Its command and the `internal/db/surveillance_migrations` directory retain their
+module names; existing migration versions and data are preserved. Enable the import
+integration test with `OBSERVATORY_DOCKER_TEST=1`. The loader's `--db-user` selects
+a non-default role without renaming the role in an existing container.
 
 ## Local container
 
@@ -135,10 +107,22 @@ project now manages both containers; the separate surveillance Compose files and
 external network override are no longer needed. The existing data volume remains
 external and is retained by Compose teardown. No production configuration is changed.
 
+Keep the adopted-volume override on subsequent local Compose commands. Setting
+an empty Observatory host is no longer a rollback mechanism; it prevents startup.
+
 Load private variables into the environment without printing them, then, from
 `backend/`, initialize the schema with `go run ./cmd/surveillance-db`. The backend
 also applies the dedicated versioned migrations automatically. File-backed passwords
 remain supported through `OBSERVATORY_DB_PASSWORD_FILE` in the backend entrypoint.
+
+### Existing local container rename
+
+The old container name was `sso-surveillance-db`. Stop the backend, then stop and
+remove only that old container before starting `observatory-db` with the main Compose
+file, private Observatory environment and external-volume override described above.
+Compose creates `sso-observatory-db` using the same volume. Do not remove or recreate
+the volume, PostgreSQL role, database, tables or migration history. Keep a private
+backup and verify table counts and readiness after the change.
 
 ## Rename an existing local database
 
@@ -174,6 +158,66 @@ updates efficient. Subject/calendar and geography reference seeds are included.
 The schema has its own migration history. Existing primary migrations remain
 unchanged so upgrades and existing IDs are not silently invalidated.
 
+## Shared geography ownership
+
+Primary migration `000060_primary_geography_registry` creates `geography.regions`,
+`geography.districts`, `geography.sub_counties` and `geography.facilities`. The
+missing-only historical reference snapshot supplies 17 regions, 146 districts,
+177 legacy sub-county/reporting labels and 6,150 facilities even when Observatory
+has never connected. Existing primary health-context aliases are adopted first,
+preserving context UUIDs, assignments and disabled state. Registry row triggers
+maintain context nodes and hierarchy in the same primary transaction.
+
+### Observatory replicas
+
+Observatory retains local geography tables for its fact foreign keys. Its new
+replica metadata maps canonical primary UUIDs to existing local UUIDs; synchronization
+never deletes reference rows, changes existing Observatory UUIDs or rewrites facts.
+`geography-*` context aliases identify canonical rows, while `surveillance-*` aliases
+identify the corresponding Observatory rows. The identifiers can differ safely.
+
+### Adoption and synchronization
+
+The first successful connection adopts existing Observatory geography and metadata
+into primary once, including custom locations. Its adoption marker commits in primary
+before replica publication, so an interrupted destination update cannot overwrite
+later primary edits by adopting again. Subsequent updates flow only **primary ->
+Observatory**, approximately once per minute and immediately after location writes.
+The 15-second connection monitor retries failures. Surveillance becomes available
+only after migrations, initial synchronization and destination aliases succeed.
+
+### Location APIs and conflicts
+
+Location APIs and transactional metric-import reference creation use a primary-aware
+store. Parent IDs supplied by surveillance are resolved to canonical IDs; responses
+continue to use Observatory IDs. Facts, diseases, indicators, weeks, alerts and import
+staging remain in Observatory. Unknown/ambiguous identities or a replica already
+bound to another primary registry stop synchronization instead of guessing or
+merging unrelated areas. Operators must resolve those conflicts before surveillance
+can be enabled; other portal features remain available.
+
+### Deletion
+
+Shared geography cannot be physically deleted through surveillance APIs: sub-county
+delete returns `409 GEOGRAPHY_DELETE_RESTRICTED`. Disable the associated health
+context to withdraw access while preserving historical records. Assigned or
+registry-backed context nodes cannot be deleted either. This implementation does
+not propagate deletions from either database.
+
+### Backup, restore and rollback
+
+Back up **both databases** before this cutover. Keep primary and Observatory UUIDs,
+replica identity tables and adoption markers together during restores. A primary
+replacement must restore its registry identity; do not manually clear replica origin
+or adoption markers to bypass an ownership conflict. Both new down migrations retain
+data, and reapplying them preserves IDs. Existing applied migrations are unchanged. An older backend image must be supplied
+with these retained migration files before binary rollback; otherwise its migration
+runner cannot recognize the newer database version. Do not force migration history
+backwards or drop geography to make an old image start.
+New geography corrections should be primary migrations, not edits to the historic
+Observatory seed. The historical reference labels are not a verified current
+administrative or facility registry.
+
 ## Automatic geography reference data
 
 Observatory migration `000003_reference_geography` supplies 17 regions, 146 districts,
@@ -208,48 +252,6 @@ imports and are never seeded by this geography migration.
 service, not a foreign key across databases. Documents/processes stay on the primary
 connection while the import repository uses the surveillance connection.
 
-## Import the root folder
-
-```sh
-python3 infra/scripts/load-surveillance.py --flag-year 2026
-```
-
-Each file gets a batch and each CSV record is retained as JSON in raw staging. The
-loader uses a disk spool and PostgreSQL COPY, not one database request per source row.
-The filename, SHA-256 checksum and explicit flag year identify a batch, preventing an
-unchanged file from being staged again. `--stage-only` stops before transformation.
-`--reprocess` transactionally rebuilds only the selected loader-owned source batches;
-all source rows remain available for audit. Ordinary retries are idempotent.
-Bulk SQL imports resolve existing replicated geography only. Unknown locations stay
-in failed staging with an explicit message; register them in primary and synchronize
-before retrying. The loader never creates an Observatory-only geography registry.
-
-- `data.csv`: location references and facility disease/indicator metrics. Original
-  years are preserved. Exact known indicator names remain indicators; the suffix
-  ` Cases` maps case labels to disease names. The loader does not sum malaria testing
-  indicators into disease cases or invent epidemiological definitions.
-- `eidsr.csv`: alerts, matching district names case-insensitively and deriving the
-  year from the created date. Missing district/date/week/subject/narrative is held.
-  Identical alert identities map to one alert while all source rows remain staged.
-- `flags.csv`, `region_flags.csv`, `district_flags.csv`: national, regional and district
-  weekly status. Each subject in a color list becomes a status. Lists are parsed with
-  `ast.literal_eval`, never evaluated as executable code. `Maternal Death` is mapped
-  to the seeded `Maternal Deaths` indicator; source text stays in raw JSON.
-
-The agreed flag year is **2026**. Weeks **1–52 remain unchanged**. Source week **0**
-is marked FAILED with a review reason and is never folded into week 1.
-
-Identical facility/subject/week values collapse to one fact with a deterministic
-source record, while each identical source row is counted as processed. If the values
-conflict, **every member of that group is held for review**. Missing numeric values are
-not treated as zero. Source row counts therefore need not equal normalized fact counts.
-A batch can be COMPLETED with failed rows; inspect `success_rows`, `failed_rows`, and
-raw-row error messages rather than treating batch status as full data acceptance.
-
-This loader is an operational folder-import path. It does not repair the existing
-surveillance UI's metadata-only upload action or its incomplete async CSV dispatch.
-Those paths must be addressed separately before promising the same behavior for UI uploads.
-
 ## Primary migration ownership
 
 Primary migration versions 7–19 are now explicit no-ops in both directions. Their
@@ -263,6 +265,58 @@ Already deployed primary tables remain intact for an explicit, backed-up data
 transfer and later removal. This code change does not transfer or delete production
 data. The SQLC schema input includes both migration directories so query bindings
 still describe both stores; runtime repository wiring keeps the connections separate.
+
+## Import the root folder
+
+```sh
+python3 infra/scripts/load-surveillance.py --flag-year 2026
+```
+
+### Batches and staging
+
+Each file gets a batch and each CSV record is retained as JSON in raw staging. The
+loader uses a disk spool and PostgreSQL COPY, not one database request per source row.
+The filename, SHA-256 checksum and explicit flag year identify a batch, preventing an
+unchanged file from being staged again. `--stage-only` stops before transformation.
+`--reprocess` transactionally rebuilds only the selected loader-owned source batches;
+all source rows remain available for audit. Ordinary retries are idempotent.
+Bulk SQL imports resolve existing replicated geography only. Unknown locations stay
+in failed staging with an explicit message; register them in primary and synchronize
+before retrying. The loader never creates an Observatory-only geography registry.
+
+### Source files
+
+- `data.csv`: location references and facility disease/indicator metrics. Original
+  years are preserved. Exact known indicator names remain indicators; the suffix
+  ` Cases` maps case labels to disease names. The loader does not sum malaria testing
+  indicators into disease cases or invent epidemiological definitions.
+- `eidsr.csv`: alerts, matching district names case-insensitively and deriving the
+  year from the created date. Missing district/date/week/subject/narrative is held.
+  Identical alert identities map to one alert while all source rows remain staged.
+- `flags.csv`, `region_flags.csv`, `district_flags.csv`: national, regional and district
+  weekly status. Each subject in a color list becomes a status. Lists are parsed with
+  `ast.literal_eval`, never evaluated as executable code. `Maternal Death` is mapped
+  to the seeded `Maternal Deaths` indicator; source text stays in raw JSON.
+
+### Flag year and weeks
+
+The agreed flag year is **2026**. Weeks **1–52 remain unchanged**. Source week **0**
+is marked FAILED with a review reason and is never folded into week 1.
+
+### Duplicates, conflicts and batch status
+
+Identical facility/subject/week values collapse to one fact with a deterministic
+source record, while each identical source row is counted as processed. If the values
+conflict, **every member of that group is held for review**. Missing numeric values are
+not treated as zero. Source row counts therefore need not equal normalized fact counts.
+A batch can be COMPLETED with failed rows; inspect `success_rows`, `failed_rows`, and
+raw-row error messages rather than treating batch status as full data acceptance.
+
+### Limitations
+
+This loader is an operational folder-import path. It does not repair the existing
+surveillance UI's metadata-only upload action or its incomplete async CSV dispatch.
+Those paths must be addressed separately before promising the same behavior for UI uploads.
 
 ## Existing database cutover
 
@@ -300,34 +354,3 @@ metrics, 51 alerts and 165 source-week-zero flag rows. There were no pending row
 Identical observations and alert identities explain why processed source counts
 are larger than normalized record counts. These are local fixture/import results,
 not evidence of a production migration or cutover.
-
-Keep the adopted-volume override on subsequent local Compose commands. Setting
-an empty Observatory host is no longer a rollback mechanism; it prevents startup.
-
-## Observatory configuration names
-
-Settings are `OBSERVATORY_DB_HOST`, `OBSERVATORY_DB_PORT`,
-`OBSERVATORY_DB_NAME`, `OBSERVATORY_DB_USER`, `OBSERVATORY_DB_PASSWORD`, and
-`OBSERVATORY_DB_ENABLE_SSL`. The host and complete credentials are required.
-There is no fallback to the primary database. An exact primary host/port/database
-target is rejected; configure distinct database destinations even when host aliases
-are used. Previous `SURVEILLANCE_DB_*`
-settings are no longer read: migrate private environment and password-file keys
-before restarting an existing installation with this version. The local host-process
-example is `infra/env/observatory.env.example`; Compose sets its internal hostname
-and port explicitly.
-
-The standalone `cmd/surveillance-db` initializer uses the same Observatory settings.
-Its command and the `internal/db/surveillance_migrations` directory retain their
-module names; existing migration versions and data are preserved. Enable the import
-integration test with `OBSERVATORY_DOCKER_TEST=1`. The loader's `--db-user` selects
-a non-default role without renaming the role in an existing container.
-
-### Existing local container rename
-
-The old container name was `sso-surveillance-db`. Stop the backend, then stop and
-remove only that old container before starting `observatory-db` with the main Compose
-file, private Observatory environment and external-volume override described above.
-Compose creates `sso-observatory-db` using the same volume. Do not remove or recreate
-the volume, PostgreSQL role, database, tables or migration history. Keep a private
-backup and verify table counts and readiness after the change.

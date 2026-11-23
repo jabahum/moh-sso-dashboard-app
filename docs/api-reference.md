@@ -1,4 +1,4 @@
-# API Reference
+# API reference
 
 This document is the human-readable API map for the MOH Integrated Health Portal backend.
 
@@ -31,31 +31,31 @@ Conventions used in the tables:
 
 ## Contents
 
-- [Response Envelope](#response-envelope)
-- [Authentication And Authorization](#authentication-and-authorization)
-- [Health And Version](#health-and-version)
+- [Response envelope](#response-envelope)
+- [Authentication and authorization](#authentication-and-authorization)
+- [Health and version](#health-and-version)
 - [Auth](#auth)
-- [Platform Integration API](#platform-integration-api)
+- [Platform integration API](#platform-integration-api)
 - [Announcements](#announcements)
 - [Users](#users)
-- [Clients And Systems](#clients-and-systems)
-- [RBAC Governance](#rbac-governance)
-- [Health Contexts](#health-contexts)
-- [Audit Logs](#audit-logs)
+- [Clients and systems](#clients-and-systems)
+- [RBAC governance](#rbac-governance)
+- [Health contexts](#health-contexts)
+- [Audit logs](#audit-logs)
 - [Metrics](#metrics)
 - [Notifications](#notifications)
 - [Email](#email)
 - [Documents](#documents)
-- [Document Templates](#document-templates)
-- [Storage Locations](#storage-locations)
+- [Document templates](#document-templates)
+- [Storage locations](#storage-locations)
 - [Sessions](#sessions)
-- [Data Quality](#data-quality)
+- [Data quality](#data-quality)
 - [Report Scheduler](#report-scheduler)
 - [Surveillance](#surveillance)
-- [Visualiser, Admin Units, And GeoJSON](#visualiser-admin-units-and-geojson)
+- [Visualiser, admin units, and GeoJSON](#visualiser-admin-units-and-geojson)
 - [Verification](#verification)
 
-## Response Envelope
+## Response envelope
 
 Successful responses:
 
@@ -89,7 +89,7 @@ General payload conventions:
 - Send date/time values as ISO-8601/RFC3339 strings unless a feature documents another format.
 - IDs are UUID strings unless the route name says otherwise (for example `:clientId`, `:issueCode`, `:permissionKey`).
 
-## Authentication And Authorization
+## Authentication and authorization
 
 Protected routes accept any of:
 
@@ -131,7 +131,7 @@ accessible health context selection. Clients may send the selected context in th
 `X-Health-Context-ID` header. The report scheduler also requires `data-statistics`
 system access.
 
-## Health And Version
+## Health and version
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
@@ -159,7 +159,7 @@ system access.
 uses the normal fixed Keycloak callback URI; callers must not register arbitrary return
 paths as Keycloak redirect URIs.
 
-## Platform Integration API
+## Platform integration API
 
 Used by integrated applications rather than the portal UI. See
 [Platform identity](platform-identity.md) and
@@ -222,7 +222,7 @@ Admin routes, mounted under `/api/v1/admin/announcements`. Write and publish rou
 | `DELETE` | `/:id/attachments/:attachmentId` | `announcements:write` | Delete attachment. |
 | `GET` | `/:id/attachments/:attachmentId/download` | `announcements:read` | Download attachment. |
 
-### Announcement Payloads
+### Announcement payloads
 
 Create announcement (`POST /api/v1/admin/announcements`). `title`, `message`, and `level` are required.
 
@@ -323,11 +323,11 @@ Admin user routes:
 | `DELETE` | `/api/v1/admin/users/:id/clients/:clientID/roles` | `users:roles:write` | Remove client roles from user. |
 | `PUT` | `/api/v1/admin/users/:id/client-roles` | `users:roles:write` | Replace/update user client role assignments. |
 
-User health context assignments are listed under [Health Contexts](#health-contexts).
+User health context assignments are listed under [Health contexts](#health-contexts).
 
 Preferred dynamic access management is through the RBAC user-access endpoints, because they validate Keycloak realm roles, client roles, and portal permission mappings together.
 
-### User Payloads
+### User payloads
 
 Add or remove client roles (`POST`/`DELETE /api/v1/admin/users/:id/clients/:clientID/roles`):
 
@@ -347,7 +347,7 @@ Set enabled state (`PATCH /api/v1/admin/users/:id/enabled`). `enabled` is requir
 }
 ```
 
-## Clients And Systems
+## Clients and systems
 
 Clients are Keycloak clients represented as portal systems.
 
@@ -368,7 +368,7 @@ Clients are Keycloak clients represented as portal systems.
 
 When a system is added to Keycloak, RBAC sync should import it into the portal registry. Users need the relevant client role, such as `<clientId>_access`, before the app appears in menus/launcher. See [System onboarding](system-onboarding.md).
 
-### Client Payload
+### Client payload
 
 Create (`POST /api/v1/clients`) and update (`PUT /api/v1/clients/:id`). `clientId` is
 accepted on create only. Create also accepts Keycloak flow settings (for example
@@ -394,7 +394,7 @@ see the OpenAPI schema `clients.CreateClientRequest` for the full list.
 }
 ```
 
-## RBAC Governance
+## RBAC governance
 
 See [RBAC governance](rbac-governance.md) and [RBAC groups](rbac-groups.md) for concepts.
 
@@ -471,7 +471,7 @@ Sensitive and bulk writes are rate limited.
 | `POST` | `/change-requests` | `rbac:write` | Create change request. |
 | `POST` | `/change-requests/:id/:decision` | `rbac:write` | Approve or reject change request. |
 
-Group health context assignments are listed under [Health Contexts](#health-contexts).
+Group health context assignments are listed under [Health contexts](#health-contexts).
 
 Authenticated users can create access requests:
 
@@ -479,7 +479,7 @@ Authenticated users can create access requests:
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/access-requests` | `portal:access` | Request access to a system or role. |
 
-### RBAC Payloads
+### RBAC payloads
 
 Update user access (`PUT /user-access/users/:userId`):
 
@@ -568,7 +568,7 @@ Simulate access (`POST /simulate`):
 }
 ```
 
-## Health Contexts
+## Health contexts
 
 Health contexts are the administrative hierarchy (for example national, region,
 district, facility) that scopes data access for context-scoped routes.
@@ -610,7 +610,7 @@ Current user, mounted under `/api/v1/me/health-contexts`:
 | `GET` | `/:contextId/explanation` | `health_contexts:read` | Explain why the current user has access to a context. |
 | `POST` | `/select` | `health_contexts:read` | Select the current user's active context. |
 
-## Audit Logs
+## Audit logs
 
 Mounted under `/api/v1/admin/audit-logs`. Requires `audit:read`.
 
@@ -626,7 +626,7 @@ Mounted under `/api/v1/admin/audit-logs`. Requires `audit:read`.
 
 Filters include date range, action, user, client/system, IP, outcome, and frontend actor/module refinement.
 
-RBAC-specific audit events are at `GET /api/v1/admin/rbac/audit` (see [RBAC Governance](#rbac-governance)).
+RBAC-specific audit events are at `GET /api/v1/admin/rbac/audit` (see [RBAC governance](#rbac-governance)).
 
 ## Metrics
 
@@ -687,7 +687,7 @@ Current-user preferences:
 | `GET` | `/api/v1/notifications/preferences` | — | Get the current user's notification preferences. |
 | `PUT` | `/api/v1/notifications/preferences` | — | Update the current user's notification preferences. |
 
-Notifications submitted by integrated applications use the [Platform Integration API](#platform-integration-api).
+Notifications submitted by integrated applications use the [Platform integration API](#platform-integration-api).
 
 ## Email
 
@@ -712,7 +712,7 @@ EMAIL_MAX_ATTACHMENT_BYTES=10485760
 EMAIL_ALLOWED_ATTACHMENT_TYPES=pdf,doc,docx,xls,xlsx,csv,png,jpg,jpeg
 ```
 
-### Email Payload
+### Email payload
 
 Used by `POST /api/v1/emails/send` and `POST /api/v1/emails/queue`. `subject` is
 required; each address needs `email`. Besides `to`, recipients can be resolved from
@@ -757,7 +757,7 @@ Attachment payloads must provide exactly one of `path` or `data_base64`.
 
 ## Documents
 
-Mounted under `/api/v1/documents`. Context-scoped (see [Authentication And Authorization](#authentication-and-authorization)).
+Mounted under `/api/v1/documents`. Context-scoped (see [Authentication and authorization](#authentication-and-authorization)).
 
 | Method | Path | Permission | Purpose |
 | --- | --- | --- | --- |
@@ -776,7 +776,7 @@ Mounted under `/api/v1/documents`. Context-scoped (see [Authentication And Autho
 | `GET` | `/:id/processes` | `documents:read` | Process history. |
 | `POST` | `/:id/reprocess` | `documents:process` | Reprocess. |
 
-### Document Payloads
+### Document payloads
 
 `POST /api/v1/documents` is `multipart/form-data` with fields `file` (required),
 `storage_location` (required), and optional `process_type`, `is_template`, and
@@ -791,7 +791,7 @@ Mounted under `/api/v1/documents`. Context-scoped (see [Authentication And Autho
 }
 ```
 
-## Document Templates
+## Document templates
 
 Mounted under `/api/v1/document-templates`. Context-scoped.
 
@@ -812,7 +812,7 @@ Mounted under `/api/v1/document-templates`. Context-scoped.
 | `GET` | `/:id/sheets` | `document_templates:read` | List sheets. |
 | `GET` | `/:id/sheets/:sheetId/columns` | `document_templates:read` | List sheet columns. |
 
-## Storage Locations
+## Storage locations
 
 Mounted under `/api/v1/storage-locations`.
 
@@ -833,9 +833,9 @@ Mounted under `/api/v1/sessions`. Requires `portal:access`.
 | `GET` | `/` | List current user's sessions. |
 | `DELETE` | `/:id` | End a session. |
 
-## Data Quality
+## Data quality
 
-Context-scoped (see [Authentication And Authorization](#authentication-and-authorization)).
+Context-scoped (see [Authentication and authorization](#authentication-and-authorization)).
 
 Issue tracker, mounted under `/api/v1/issues`:
 
@@ -881,7 +881,7 @@ and `/api/v1/data-validation/dqa`:
 | `GET` | `/completeness/runs/:runId/districts` | `data_quality:read` | List district results for a completeness run. |
 | `GET` | `/completeness/runs/:runId/vhts` | `data_quality:read` | List VHT results for a completeness run. |
 
-### Data Quality Payloads
+### Data quality payloads
 
 Create issue (`POST /api/v1/issues`). `issue` is required. `time_period` is also
 accepted as `time_Period` for older clients.
@@ -959,7 +959,7 @@ download require `data-statistics` system access.
 ## Surveillance
 
 Mounted under `/api/v1/surveillance`. Context-scoped (see
-[Authentication And Authorization](#authentication-and-authorization)). See also the
+[Authentication and authorization](#authentication-and-authorization)). See also the
 [surveillance database guide](surveillance-database.md).
 
 | Method | Path | Permission | Purpose |
@@ -992,7 +992,7 @@ Mounted under `/api/v1/surveillance`. Context-scoped (see
 | `PATCH` | `/imports/:batchID/status` | `surveillance:import` | Update import batch status. |
 | `GET` | `/imports/:batchID/raw-rows` | `surveillance:read` | List raw import rows. |
 
-## Visualiser, Admin Units, And GeoJSON
+## Visualiser, admin units, and GeoJSON
 
 Visualiser and admin-unit routes are mounted under `/api/v1/visualizer`. They are
 context-scoped and require one of `report_browser:read`, `documents:read`,
