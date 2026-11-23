@@ -4,13 +4,18 @@ This page describes how administrators manage the health-context hierarchy, assi
 
 ## Required permissions
 
-Administrators need the corresponding permissions:
+Administrators need the corresponding permissions (route guards in
+`backend/internal/features/health_context/routes.go`):
 
-- `health_contexts:read`
-- `health_contexts:write`
-- `health_contexts:assign`
-- `health_contexts:sync`
-- `health_contexts:audit`
+- `health_contexts:read`: list and read nodes, children, descendants and aliases,
+  and use the `/api/v1/me/health-contexts` endpoints. The seed grants it to the
+  `user` realm role.
+- `health_contexts:write`: create, update and delete nodes and children.
+- `health_contexts:assign`: read and replace user and group assignments.
+- `health_contexts:sync`: drift report, sync preview and apply, and alias upsert
+  and delete.
+- `health_contexts:audit`: defined in `backend/internal/authz/permissions.go` but
+  not currently required by any route.
 
 ## Administration screen
 
@@ -57,6 +62,9 @@ Current hierarchy endpoints:
 
 ```text
 GET    /api/v1/admin/health-contexts
+GET    /api/v1/admin/health-contexts/drift
+POST   /api/v1/admin/health-contexts/sync/preview
+POST   /api/v1/admin/health-contexts/sync/apply
 POST   /api/v1/admin/health-contexts
 GET    /api/v1/admin/health-contexts/:contextId
 PUT    /api/v1/admin/health-contexts/:contextId
@@ -72,8 +80,8 @@ DELETE /api/v1/admin/health-contexts/:contextId/aliases/:aliasId
 Assignment endpoints:
 
 ```text
-GET /api/v1/admin/users/:userId/health-contexts
-PUT /api/v1/admin/users/:userId/health-contexts
+GET /api/v1/admin/users/:id/health-contexts
+PUT /api/v1/admin/users/:id/health-contexts
 GET /api/v1/admin/rbac/groups/:groupId/health-contexts
 PUT /api/v1/admin/rbac/groups/:groupId/health-contexts
 ```

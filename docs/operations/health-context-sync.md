@@ -11,7 +11,8 @@ healthContexts:
   - code: UG
     name: Uganda
     type: NATIONAL
-    scopeMode: NODE_AND_DESCENDANTS
+    source: SYSTEM
+    enabled: true
 
 groupContextMappings:
   - groupPath: /MOH/Platform Administrators
@@ -19,11 +20,17 @@ groupContextMappings:
     scopeMode: NODE_AND_DESCENDANTS
 ```
 
-Mappings are explicit. Group path parsing is not used to infer facilities or
+A `healthContexts` entry takes `code`, `name`, `type`, and optionally
+`parentCode`, `source`, `enabled` and `metadata`. Scope mode belongs to the
+group mapping, not the node (`SeedHealthContext` and `SeedGroupContextMapping`
+in `backend/internal/features/system_rbac/seed.go`). Mappings are explicit. Group path parsing is not used to infer facilities or
 districts. Generic seed files must not contain production user assignments.
 
-Startup applies hierarchy parents before children and maps only known portal
-RBAC groups. Keycloak membership synchronization remains responsible for the
+The seed is applied at startup when `RBAC_STARTUP_SEED_ENABLED=true`, before
+realm-export or live Keycloak group sync. Startup applies hierarchy parents before
+children. A mapping must reference a group that already exists in the portal RBAC
+registry, either defined in the same seed's `groups` or synced earlier. An
+unknown `groupPath` fails the seed transaction. Keycloak membership synchronization remains responsible for the
 members of those groups; health context does not become an identity provider.
 
 ## Operational procedure
@@ -65,8 +72,10 @@ Recipient or group-member identities are not written to sync audit metadata.
 
 ## Troubleshooting
 
-- No contexts in `/auth/me`: verify direct/group assignments and group member
-  synchronization.
+- No contexts in `/auth/me`: every user receives the National `DEFAULT` baseline
+  while the `UG` node is enabled, so check that node first. Then check the
+  backend log for `[AUTH ME] health context resolution failed`, and verify
+  direct/group assignments and group member synchronization.
 - Selection denied: verify node is enabled and assignment covers the selected
   node.
 - Domain record cannot resolve: add the expected namespace/external-ID alias.

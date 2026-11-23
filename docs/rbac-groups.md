@@ -59,7 +59,7 @@ The app launcher, side navigation, and microfrontend route guards use the curren
 - `systems`
 - `accessibleSystems`
 
-Keycloak group realm/client roles are normally included in the token/userinfo role mappings and are therefore available to guards after login/refresh. Portal-only group permission mappings are visible in RBAC effective-access endpoints and should be reflected in auth/session payloads only when the auth layer is wired to the RBAC resolver.
+Keycloak group realm/client roles are normally included in the token/userinfo role mappings and are therefore available to guards after login/refresh. `/auth/me` resolves permissions only from those realm and client roles (`authz.ResolveAccess` in `backend/internal/authz/resolver.go`), so portal-only group permission mappings (`POST /api/v1/admin/rbac/groups/:groupId/permissions`) appear in the RBAC effective-access endpoint but not in the auth payload that drives guards.
 
 Manual QA:
 
@@ -133,10 +133,9 @@ Startup sync applies group records after system/client roles have been discovere
 
 ### Recommended production posture
 
-
 - keep Keycloak as source of truth for membership
 - use the portal group members panel only for Keycloak-backed membership changes, not local DB overrides
-- keep push-to-Keycloak disabled unless intentionally provisioning systems/roles
+- keep push-to-Keycloak (`RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK`) disabled unless intentionally provisioning systems/roles. The compiled default is `true`, so set it to `false` explicitly, as `infra/env/prod.env.example` does
 - do not delete Keycloak groups automatically
 - treat sync warnings as operational signals unless fail-on-error is explicitly enabled
 

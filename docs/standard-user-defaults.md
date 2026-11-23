@@ -23,18 +23,26 @@ lists the baseline roles. Human accounts created through the portal/management C
 are assigned the `user` realm role after creation. Failure to resolve that role
 prevents creation; failure to assign it reports the created account ID for recovery.
 
-Migration 53 replaces only `ihp_realm_role_system_roles` rows for realm role `user`
+Migration 53 (`000053_standard_user_client_role_defaults`) replaces only `ihp_realm_role_system_roles` rows for realm role `user`
 and registers `portal_user` as a portal access role. It preserves individual/group
 grants, role permission definitions, and other realm-role mappings. Its private
 database snapshot allows the down migration to restore the original mappings.
 Startup discovery still uses the existing lifecycle/metadata behavior.
 
-Deploy the branch through the normal release process to apply the migration and
-provisioning change. Updating Keycloak alone does not remove the old application's
+Deploy a release that includes migration 53 through the normal release process
+to apply the migration and provisioning change. Updating Keycloak alone does not remove the old application's
 database-derived Utilities default. Avoid reseeding with an older application
 image after applying the new database baseline.
 
 ## Keycloak reconciliation
+
+The `user` role in `infra/keycloak/realm-export.json` currently has only
+`data-statistics_access`, `document_viewer` and `settings_access` as composites,
+so Keycloak does not hold the full baseline until it is reconciled. When
+`RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK` is enabled, backend startup adds the mapped
+client roles as composites of `user`, but it does not assign `user` to existing
+accounts. The compiled default is `true`, and every shipped `infra/env/*.env.example`
+sets it to `false`. The reconciliation tool below handles both steps.
 
 Do not add `user` to the realm-wide default role or a realm-wide default group:
 service accounts may inherit those defaults. Provisioning outside the portal

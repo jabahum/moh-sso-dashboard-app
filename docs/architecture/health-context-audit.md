@@ -31,8 +31,9 @@ filters without a common contextual-authorization boundary:
 - Data-quality runs and issues.
 - Issue-tracker records.
 
-These endpoints continue to use their existing authorization until each owning
-feature adopts the integration contract. The presence of
+This list records the state before adoption; see the rollout status below for
+what has since been migrated. Endpoints continue to use their existing
+authorization until their owning feature adopts the integration contract. The presence of
 `X-Health-Context-ID` or the frontend selector alone does not make an endpoint
 context-safe.
 
@@ -54,9 +55,12 @@ context-safe.
 | Active context and `/auth/me` summary | Implemented |
 | Permission plus system access plus context policy | Implemented as reusable boundary |
 | Shell selector and microfrontend propagation | Implemented |
-| Surveillance row and aggregate enforcement | Pending feature migration |
-| Report/visualiser enforcement | Pending feature migration |
+| Surveillance row and aggregate enforcement | Implemented: routes are in the context-scoped group and queries receive authorized alias IDs (`backend/internal/features/surveillance/health_context.go`, migration `000056`) |
+| Visualiser enforcement | Implemented: requested organisation units are constrained by `dwh-org-unit` and `surveillance-*` aliases (`backend/internal/features/visualiser/health_context.go`) |
+| Admin-unit hierarchy | Implemented in the `admin-units` module through the shared context selector and `dwh-org-unit` aliases |
+| Report browser enforcement | Pending: depends on the external Health BI service |
 | Document ownership, mutations, downloads, previews, and statistics | Implemented; legacy records are initially classified at the Uganda root |
-| Data-quality and issue-tracker ownership | Pending feature migration |
-| Context-aware communication audiences | Pending feature migration |
-| Keycloak drift UI and live mapping reconciliation | Pending |
+| Issue-tracker (data-quality issue) ownership | Implemented: `data_quality_issue_contexts` (migration `000057`) and scoped `/api/v1/issues` handlers |
+| Data-quality runs, rules and schedules | Pending: the routes sit in the context-scoped group, so the header is validated, but results are not filtered by context |
+| Context-aware communication audiences | Implemented: announcement `SPECIFIC_HEALTH_CONTEXTS` and `HEALTH_CONTEXT_AND_DESCENDANTS` audiences (migration `000058`), audience count preview, and email `to_health_contexts` recipients |
+| Group-mapping drift UI and reconciliation | Implemented: drift report with preview-first apply in RBAC Management (`/api/v1/admin/health-contexts/drift`, `/sync/preview`, `/sync/apply`). Reconciliation applies reviewed mappings; it does not change Keycloak |

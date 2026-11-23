@@ -45,9 +45,9 @@ If roles sync from Keycloak but permissions are empty, it usually means the Keyc
 
 ## Startup sync
 
-Backend startup sync is controlled by `backend/app.env`.
+Backend startup sync is controlled by environment variables. The backend reads an optional `app.env` file from its working directory (`backend/app.env` for a local `go run`), and process environment variables override it; the Compose stacks supply them from `infra/env/*.env` files.
 
-Recommended local/default settings:
+The compiled defaults in `backend/internal/config/config.go` are:
 
 ```env
 RBAC_STARTUP_SYNC_ENABLED=true
@@ -61,32 +61,33 @@ RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true
 RBAC_STARTUP_SYNC_FAIL_ON_ERROR=false
 ```
 
-Startup order:
+The shipped environment templates override several of these. `infra/env/dev.env.example`, `infra/env/prod.env.example`, `infra/env/core.env.example` and `infra/env/external-dev.env.example` all set `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=false`. `prod.env.example` also sets `RBAC_STARTUP_SYNC_REALM_EXPORT=false`, and `core.env.example` turns off realm-export, live Keycloak and user sync. Push-to-Keycloak is therefore on only when the variable is left unset.
 
-1. Sync systems and roles from the local Keycloak realm export, if enabled.
-2. Sync systems and roles from live Keycloak, if enabled.
-3. Apply the curated portal RBAC seed.
-4. Sync Keycloak groups, group memberships, and group role mappings into the local portal RBAC cache.
-5. Sync Keycloak users into the local portal DB user cache.
-6. Optionally create missing portal-defined roles back into Keycloak, if enabled.
+Startup order (`backend/internal/bootstrap/rbac_sync.go`):
 
-The curated seed is applied after discovery so known portal metadata and permission mappings win over generic Keycloak metadata.
+1. Apply the curated portal RBAC seed, if enabled. This includes seed groups and health-context seed data.
+2. Sync systems, roles and groups (with their memberships and role mappings) from the local Keycloak realm export, if enabled.
+3. Sync systems, roles and groups (with their members, realm-role and client-role mappings) from live Keycloak, if enabled and a Keycloak admin client is configured.
+4. Sync Keycloak users into the local portal DB user cache, if enabled. This step is skipped in the core-only profile.
+5. Push to Keycloak, if enabled. This creates missing portal-defined clients, client roles and realm roles, updates the portal attributes on registered clients, and ensures the configured realm-role composites (for example the `user` defaults).
+
+Startup runs are insert-only for system configuration: the seed runs first, and later discovery does not overwrite an existing system's metadata. Known portal metadata and permission mappings therefore win over generic Keycloak metadata. Role and permission discovery still runs for existing systems.
 
 Group membership can grant inherited realm roles, client roles, and portal group permissions. For the effective-access model, admin workflow, and QA checklist, see [RBAC Groups](./rbac-groups.md).
 
 ### Default access for the `user` realm role
 
-The curated seed maps the `user` realm role to these default system roles:
+The curated seed maps the `user` realm role to these default system roles (the same baseline as `authz.DefaultUserClientRoles()` in `backend/internal/authz/user_defaults.go`):
 
-| System | Client role |
+| System | Client roles |
 | --- | --- |
-| Data & Statistics (`data-statistics`) | `data-statistics_access` |
-| Utilities (`utilities`) | `utilities_access` |
+| Integrated Health Portal (`dashboard-web`) | `dashboard-web_access`, `portal_user` |
+| Data & Statistics (`data-statistics`) | `report-scheduler_access`, `report_viewer`, `data-statistics_access`, `issue_tracker_viewer`, `document_viewer` |
 | Settings (`settings`) | `settings_access` |
 
-Migration `000030_add_realm_role_system_roles` stores these defaults in the portal DB. The authorization resolver therefore exposes the three systems to every user carrying the `user` realm role, even before a refreshed Keycloak token contains the composite client roles.
+The mappings live in the `ihp_realm_role_system_roles` table, which migration `000030_add_realm_role_system_roles` created. Migration `000053_standard_user_client_role_defaults` replaced the earlier `user` mappings (which included `utilities_access`) with this baseline. The DB authorization resolver (`backend/internal/authz/db_resolver.go`) reads that table, so it exposes these systems to every user carrying the `user` realm role, even before a refreshed Keycloak token contains the composite client roles. See [Standard human-user role defaults](./standard-user-defaults.md) for the reconciliation procedure.
 
-When `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true`, startup reconciliation also adds those client roles as composites of the Keycloak `user` realm role. Existing users receive the composite roles on their next login or token refresh.
+When push-to-Keycloak runs (step 5 above), startup also adds those client roles as composites of the Keycloak `user` realm role. Existing users receive the composite roles on their next login or token refresh. The `user` role in `infra/keycloak/realm-export.json` currently carries only `data-statistics_access`, `document_viewer` and `settings_access` as composites, so a realm imported from that file needs push-to-Keycloak or the reconciliation tool to receive the full baseline.
 
 The `accessible_systems` attribute in the local realm export is descriptive seed metadata only. Runtime authorization is derived from realm roles, client-role assignments/composites, and the portal RBAC mappings; changing that attribute alone never grants access.
 
@@ -96,7 +97,7 @@ Use these rules to avoid accidental overwrites:
 
 - Assign users to roles in Keycloak or through portal APIs that write to Keycloak.
 - Define what roles can do in portal RBAC.
-- Keep `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true` when startup should create missing portal-defined Keycloak clients, realm/client roles, and configured realm-role composites from the RBAC registry. Apart from explicitly configured realm-role defaults such as `user`, other systems still require explicit client-role assignments.
+- Set `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true` only when startup should create missing portal-defined Keycloak clients, realm/client roles, and configured realm-role composites from the RBAC registry, and overwrite the portal attributes on registered clients. It is the compiled default, but every shipped `infra/env/*.env.example` sets it to `false`. With it off, apply Keycloak changes yourself (for example with `infra/scripts/reconcile-keycloak-user-defaults.py` for the `user` composites). Apart from explicitly configured realm-role defaults such as `user`, other systems still require explicit client-role assignments.
 - Do not use startup sync to delete Keycloak roles or users.
 - Do not store passwords or credentials in portal RBAC.
 
@@ -175,6 +176,8 @@ Map permissions in one of two ways:
 /portal/admin/rbac
 ```
 
+This is the browser URL. The shell router uses the `/portal` basename, so the route is registered as `/admin/rbac` (`frontend/apps/rbac/src/routes.tsx`) and requires `rbac:read`.
+
 2. Seed file:
 
 ```yaml
@@ -251,7 +254,7 @@ Or use the API:
 GET /api/v1/auth/me
 ```
 
-Expected response fields:
+Expected fields on the response's `user` object:
 
 ```text
 permissions
@@ -260,6 +263,8 @@ accessibleSystems
 realmRoles
 clientRoles
 ```
+
+`/auth/me` resolves permissions from the token's realm and client roles. Portal-only group permission mappings appear in Effective Access, not in this payload.
 
 ## Managing client RBAC after onboarding
 
@@ -362,7 +367,7 @@ In production:
 - Keep seed files source-controlled and reviewed.
 - Keep Keycloak admin credentials restricted to the backend.
 - Prefer drift preview before applying major changes.
-- Keep `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true` only when the approved operating procedure allows the portal to create missing registry clients and roles in Keycloak.
+- Set `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true` only when the approved operating procedure allows the portal to create missing registry clients and roles in Keycloak. `infra/env/prod.env.example` sets it to `false`. Do not rely on the compiled default (`true`) by leaving the variable unset.
 - Use audit logs when changing high-risk role mappings.
 
 ## Troubleshooting
@@ -398,7 +403,7 @@ Check:
 - the user has one of the system access roles
 - the access role is listed under `accessRoles`
 - the role maps to `systems:launch` or the UI uses `accessibleSystems`
-- `launchUrl` starts with `/portal` or is a valid absolute URL
+- `launchUrl` starts with `/portal` or `/apps`, or is a valid absolute URL
 
 ### User has role in Keycloak but portal does not show app
 

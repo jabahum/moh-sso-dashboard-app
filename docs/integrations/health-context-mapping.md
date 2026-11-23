@@ -13,10 +13,18 @@ Recommended namespace examples:
 | --- | --- |
 | `dhis2` | DHIS2 organisation-unit UID |
 | `dwh-org-unit` | DWH organisation-unit UID |
-| `surveillance-region` | Surveillance region UUID or stable code |
-| `surveillance-district` | Surveillance district UUID or stable code |
-| `surveillance-sub-county` | Surveillance sub-county UUID or stable code |
-| `surveillance-facility` | Surveillance facility UUID or stable code |
+| `surveillance-region` | Surveillance region UUID |
+| `surveillance-district` | Surveillance district UUID |
+| `surveillance-sub-county` | Surveillance sub-county UUID |
+| `surveillance-facility` | Surveillance facility UUID |
+| `geography-region`, `geography-district`, `geography-sub-county`, `geography-facility` | Primary geography registry UUID |
+
+In the current code, the visualiser (`backend/internal/features/visualiser/health_context.go`)
+reads `dwh-org-unit` and `surveillance-*` aliases. The `admin-units` module reads
+`dwh-org-unit`, and surveillance reads `surveillance-*`. Migration
+`000060_primary_geography_registry` creates and maintains `geography-*` aliases
+automatically for the primary geography registry. No code currently reads
+`dhis2`; it is a recommended namespace only.
 
 Never map by a display name alone. Names can be duplicated or renamed.
 
