@@ -6,7 +6,7 @@
 // User owned by this suite: screens.unlinked (Keycloak n=110, CLIMS account
 // c1...15), unlinked with a verified email, so a run proposes reuse.
 import { test, expect } from "@playwright/test";
-import { APPS, DASHBOARD, ISSUER, cli, climsId, directClientRoles, kcId, sql } from "../lib/stack.mjs";
+import { APPS, DASHBOARD, ISSUER, cli, climsId, dashboardDB, directClientRoles, kcId, serviceAccountUser, sql } from "../lib/stack.mjs";
 import { closeBrowser, newContext, portalSignIn } from "../lib/browser.mjs";
 
 const SUBJECT = kcId(110);
@@ -15,13 +15,13 @@ const ADMIN_ACTOR = "portal:e2e.admin@e2e.test";
 
 test.afterAll(closeBrowser);
 
-/** Opens the RBAC workspace's Identity sync section for CLIMS. */
-async function openIdentitySync(page) {
+/** Opens the RBAC workspace's Identity sync section for an application. */
+async function openIdentitySync(page, clientId = "clims") {
   await page.goto(`${DASHBOARD}/portal/admin/rbac`);
   const app = page.getByRole("combobox", { name: "Selected application" });
   await expect(app).toBeVisible({ timeout: 60_000 });
-  await app.fill("clims");
-  await page.getByRole("option", { name: /\(clims\)$/ }).click();
+  await app.fill(clientId);
+  await page.getByRole("option", { name: new RegExp(`\\(${clientId}\\)$`) }).click();
   const section = page.getByRole("button", { name: "Identity sync", exact: true });
   if (!(await section.isVisible())) {
     await page.getByRole("button", { name: "Operations" }).click();
@@ -114,5 +114,43 @@ test("an admin reviews and applies a run, and clears a revocation, from the RBAC
   });
   // Clearing never grants access again.
   expect(await directClientRoles(SUBJECT, "clims")).not.toContain("clims_access");
+  await context.close();
+});
+
+test("an admin re-enables the sync client's service identity, with the subject read from Keycloak", async () => {
+  const binding = () =>
+    sql(dashboardDB, `SELECT subject, enabled FROM ihp_application_identities WHERE oauth_client_id = 'poesgo-identity-sync'`);
+  const serviceAccount = await serviceAccountUser("poesgo-identity-sync");
+  expect(binding()).toEqual([[serviceAccount.id, "t"]]);
+  // An operator disabled the binding (for example after a suspected leak).
+  sql(dashboardDB, `UPDATE ihp_application_identities SET enabled = false WHERE oauth_client_id = 'poesgo-identity-sync'`);
+
+  const context = await newContext();
+  const page = await context.newPage();
+  await portalSignIn(page, "e2e.admin");
+  await openIdentitySync(page, "poesgo");
+  const integration = page.getByRole("region", { name: "Identity sync integration" });
+  const status = integration.locator(".rbac-identity-sync__binding");
+  await expect(status).toContainText("poesgo-identity-sync");
+  await expect(status).toContainText("Disabled");
+  const enable = integration.getByRole("button", { name: "Enable service identity" });
+  // A reason is required before anything is written.
+  await expect(enable).toBeDisabled();
+  await integration.getByLabel("Reason for this change").fill("e2e: re-enable the sync client");
+  await enable.click();
+  await expect(integration.getByText(`Keycloak service account ${serviceAccount.id}`)).toBeVisible();
+  await expect(status).toContainText("Registered");
+  await expect(enable).toHaveCount(0);
+
+  expect(binding()).toEqual([[serviceAccount.id, "t"]]);
+  const audit = sql(
+    dashboardDB,
+    `SELECT details->>'reason', details->>'subject' FROM ihp_rbac_audit_events
+     WHERE action = 'application.identity.updated' AND resource_id = 'poesgo-identity-sync' ORDER BY created_at DESC LIMIT 1`,
+  );
+  expect(audit).toEqual([["e2e: re-enable the sync client", serviceAccount.id]]);
+  // The integration works again: the live descriptor answers.
+  await integration.getByRole("button", { name: "Check connection" }).click();
+  await expect(integration.getByText(/Live descriptor: contract 1\.1, application poesgo/)).toBeVisible();
   await context.close();
 });
