@@ -16,10 +16,13 @@ type Stop = core.Stop
 // Routes contains host groups. Public has no authentication; its routes must
 // validate their own access tokens and apply appropriate rate limits.
 // Modules must apply their resource permissions to the routes they register.
+// ContextScoped is Protected plus the data-statistics system check and the
+// health-context selection middleware; modules serving health data use it.
 type Routes struct {
-	Public    *gin.RouterGroup
-	Protected *gin.RouterGroup
-	Admin     *gin.RouterGroup
+	Public        *gin.RouterGroup
+	Protected     *gin.RouterGroup
+	Admin         *gin.RouterGroup
+	ContextScoped *gin.RouterGroup
 }
 
 // Definition receives domain dependencies through constructor closures, keeping

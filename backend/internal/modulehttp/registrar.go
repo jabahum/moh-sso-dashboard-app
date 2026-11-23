@@ -10,10 +10,13 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/moh-sso-dashboard/internal/authz"
 	"github.com/moh-sso-dashboard/internal/http/apierror"
 	"github.com/moh-sso-dashboard/internal/http/response"
+	"github.com/moh-sso-dashboard/internal/ratelimit"
 	"github.com/mohuganda/moh-sso-dashboard/backend/core"
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/modulekit"
 )
 
 type accessKey struct{}
@@ -123,7 +126,37 @@ func (r *Registrar) Handle(pattern string, handler http.Handler) {
 		actor, valid := authz.FromGin(c)
 		rawHealth, _ := c.Get("health_context")
 		health, _ := rawHealth.(map[string]string)
-		request := c.Request.WithContext(context.WithValue(c.Request.Context(), accessKey{}, access{actor: actor, valid: valid, healthScope: core.HealthScope{District: strings.TrimSpace(health["district"]), Facility: strings.TrimSpace(health["facility"])}}))
-		mounted.ServeHTTP(c.Writer, request)
+		scope := core.HealthScope{District: strings.TrimSpace(health["district"]), Facility: strings.TrimSpace(health["facility"])}
+		ctx := context.WithValue(c.Request.Context(), accessKey{}, access{actor: actor, valid: valid, healthScope: scope})
+		ctx = modulekit.WithRequest(ctx, kitRequest(c, actor, valid, scope))
+		ctx = context.WithValue(ctx, rateIdentityKey{}, ratelimit.ByUser(c))
+		mounted.ServeHTTP(c.Writer, c.Request.WithContext(ctx))
 	})
+}
+
+// kitRequest exposes the verified caller to modules built on core/modulekit.
+func kitRequest(c *gin.Context, actor authz.Context, valid bool, scope core.HealthScope) modulekit.Request {
+	request := modulekit.Request{RequestID: response.MetaFromRequest(c.Request).RequestID}
+	// Set by the health-context selection middleware on context-scoped routes.
+	if rawID, ok := c.Get("health_context_id"); ok {
+		if id, ok := rawID.(uuid.UUID); ok && id != uuid.Nil {
+			mode, _ := c.Get("health_context_scope_mode")
+			request.HealthContext = &modulekit.HealthContextSelection{
+				NodeID:             id.String(),
+				IncludeDescendants: fmt.Sprint(mode) == core.ContextNodeAndDescendants,
+			}
+		}
+	}
+	if !valid || actor.UserID == "" {
+		return request
+	}
+	request.Authenticated = true
+	request.Access = core.RequestAccess{
+		Identity:    core.Identity{Subject: actor.UserID, RealmRoles: actor.RealmRoles, ClientRoles: actor.ClientRoles},
+		Permissions: actor.PermissionStrings(),
+		Systems:     actor.AccessibleSystems,
+		HealthScope: scope,
+		IsAdmin:     actor.IsAdmin,
+	}
+	return request
 }

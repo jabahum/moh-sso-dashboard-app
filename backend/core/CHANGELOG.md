@@ -4,6 +4,25 @@ Release tags use the `backend/core/vX.Y.Z` prefix. Below 1.0 a minor version
 may contain breaking changes. Check IDs in `identitysync/conformance` are
 stable within a minor version.
 
+## v0.2.0 (unreleased)
+
+### Module kit
+
+- `modulekit`: the HTTP contract between the platform host and compiled
+  application modules. The host attaches verified request state
+  (`WithRequest`: access, request ID, selected health context); modules
+  declare `Endpoint`s whose access requirements (`Public`, `Admin`, `System`,
+  `Permission`, `AnyPermissions`, `AllPermissions`) and optional `RateLimit`
+  the `Router` enforces with the host's exact response bodies. `Context`
+  offers request helpers and the platform response envelope; `BindJSON`
+  applies `binding:"required|omitempty|oneof=..."` tags.
+- `HTTPModule` pairs a router with its OpenAPI document and rejects routes
+  and operations that do not match.
+- Service contracts modules consume: `Notifier`/`Notification` (platform
+  notifications and their deliveries), `Platform` (installation name and
+  administrator contact) and `HealthContextDirectory` (read-only
+  health-context hierarchy and aliases).
+
 ## v0.1.0 (unreleased)
 
 First published version, MIT licensed (`LICENSE`). Standard library only;

@@ -25,7 +25,6 @@ import (
 	platformfeature "github.com/moh-sso-dashboard/internal/features/platform"
 	rbacfeature "github.com/moh-sso-dashboard/internal/features/rbac"
 	sessionfeature "github.com/moh-sso-dashboard/internal/features/sessions"
-	storagelocationfeature "github.com/moh-sso-dashboard/internal/features/storage_locations"
 	surveillancefeature "github.com/moh-sso-dashboard/internal/features/surveillance"
 	userfeature "github.com/moh-sso-dashboard/internal/features/users"
 	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
@@ -41,6 +40,7 @@ import (
 	geojsonfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson"
 	metricsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
+	storagelocationfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/storage-locations"
 )
 
 type RouterDependencies struct {
@@ -67,7 +67,7 @@ type HandlerSet struct {
 	DocumentTemplates       *documenttemplatesfeature.Handler
 	DocumentTemplateSheets  *documenttemplatesfeature.SheetHandler
 	DocumentTemplateColumns *documenttemplatesfeature.ColumnHandler
-	StorageLocations        *storagelocationfeature.Handler
+	StorageLocations        *storagelocationfeature.Module
 	Sessions                *sessionfeature.Handler
 	DataQuality             *dataqualityfeature.Handler
 	Announcements           *announcementfeature.Module
@@ -171,7 +171,11 @@ func SetupRouter(deps RouterDependencies) *gin.Engine {
 		routes.RegisterAdminRoutes(protected, routeDeps)
 	}
 	if deps.Modules != nil {
-		deps.Modules.RegisterRoutes(module.Routes{Public: api, Protected: protected, Admin: protected.Group("/admin")})
+		moduleRoutes := module.Routes{Public: api, Protected: protected, Admin: protected.Group("/admin")}
+		if deps.Handlers.HealthContexts != nil {
+			moduleRoutes.ContextScoped = routes.ContextScopedGroup(protected, deps.Handlers.HealthContexts)
+		}
+		deps.Modules.RegisterRoutes(moduleRoutes)
 		registerModuleInventory(protected, deps.Modules)
 	}
 	docs.Register(r)
