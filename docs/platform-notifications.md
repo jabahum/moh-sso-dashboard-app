@@ -1,8 +1,14 @@
 # Shared notification API v1
 
+This page is the contract for application backends that send email through the
+portal's shared notification API, and for the operators who run its workers. It
+assumes a bound machine identity; see the [identity contract](platform-identity.md).
+
+## Scope
+
 This first shared notification adapter delivers plain-text email through the existing notification-delivery and email-outbox workers. It does not expose arbitrary templates, attachments, HTML, SMS, webhooks, or broadcast role audiences. Existing admin notification features keep their current behavior.
 
-## Submit
+## Submit a notification
 
 `POST /api/v1/platform/notifications`
 
@@ -18,17 +24,23 @@ Use a bound machine access token with `notifications:write` in both its Keycloak
 
 The body is limited to 16 KiB, the title to 200 bytes, message to 10,000 bytes, name to 200 bytes, and email to 254 bytes. Titles/names cannot contain newlines; email must be a plain address. Leading/trailing whitespace is normalized. The authenticated binding determines application ownership; no caller-supplied application ID is used.
 
+### Responses, idempotency and quota
+
 The first submission returns 202 with the status resource and a Location header. Repeating the same application/key and normalized payload returns 200, the same ID, and `replayed:true`; a different payload returns 409. Different applications can independently use the same key. Up to 60 new requests per application per rolling minute are accepted; excess returns 429 and Retry-After. Replays do not consume new-request quota. Database locks serialize the quota and idempotency decisions across backend replicas, independently of Redis availability.
 
 The application request, notification, delivery queue row and audit event commit together. An audit/queue failure rolls back everything. Submission rechecks current lifecycle, identity binding and write grant under transaction locks, so an already-authenticated request cannot enqueue after a completed suspension/revocation.
 
-## Inspect
+## Inspect delivery status
 
 `GET /api/v1/platform/notifications/:id`
 
 Requires `notifications:read`. Responses expose identifiers, channel, status, dispatch status, attempts and creation time, without message/recipient/provider-error details. A request owned by another application returns 404. Operators retain their existing admin delivery tooling.
 
+### Status meanings and retries
+
 `status` follows the existing delivery queue until email handoff, then follows the email outbox. `dispatchStatus:SENT` means handed to the email queue; it is not a claim that SMTP sent the message. `status:SENT` reflects the email worker's completed send, not a mailbox delivery/read receipt. `dispatchAttempts` and `deliveryAttempts` report the two retry stages separately. Existing workers enforce bounded attempts, retry scheduling and failed-state handling. New rows cap attempts at five, while current bootstrap workers impose a three-attempt cap; the smaller cap applies at each stage.
+
+### Expiry and duplicate delivery
 
 If existing cleanup removes delivery/outbox data, status becomes `EXPIRED`. The application request/idempotency mapping remains, and replay never recreates the message. There is no automatic expiry of idempotency keys in v1; operators must preserve these mappings for the required retry lifetime.
 

@@ -1,5 +1,12 @@
 # Identity environments and client onboarding
 
+This page is for operators and identity administrators who set up Keycloak realms for
+each portal environment and onboard or promote OIDC clients between them. It covers
+the realm model, local development, creating realms on an existing Keycloak instance,
+an optional separate identity stack, and the client onboarding workflow.
+
+## Environments and realms
+
 The portal manages one configured realm per deployment. Its credentials never select
 an arbitrary realm from a browser request. Onboarding is blocked when the deployment
 and realm do not match `backend/internal/keycloak/identity-environments.json`:
@@ -44,6 +51,8 @@ realm. It uses the Admin API to create only missing `moh-dev`, `moh-test` and
 `moh-staging` realms. `moh-realm` and all other existing realms are outside its write
 scope. Existing environment realms are skipped without importing or updating them.
 
+### Prepare the plan and operator credentials
+
 Copy `infra/keycloak/environments.shared.example.json` to a private working file
 and replace the example application URLs with those you will use. Each entry has
 `portalUrl` and `apiUrl` (including `/api/v1`). A subset of development/test/staging
@@ -68,6 +77,8 @@ The command does not create a privileged operator identity or grant permissions.
 Keep these bootstrap credentials out of portal deployments; each portal continues
 using its own realm-scoped credentials. Credentials are read only from environment
 variables and are not printed, written to the plan, or passed as command arguments.
+
+### Preview and apply
 
 Preview first:
 
@@ -95,6 +106,8 @@ If a request was interrupted, inspect the record and admin console before cleanu
 There is no automatic realm deletion or rollback, and no migration of production
 users or credentials. Retire bootstrap access after the one-time setup as appropriate.
 
+### Configure each portal deployment
+
 All four portal deployments can use the **same** external identity base URL:
 
 | Environment | Example issuer |
@@ -111,6 +124,8 @@ non-production administrators/test users and configure staging/test SMTP to a te
 inbox or sink. Production users, clients, policies and signing keys stay untouched.
 
 ## Optional: bootstrap a separate identity stack
+
+### Generate the realm import file
 
 Generate an environment-specific import file. Substitute the real staging portal
 and API URLs; the API URL includes `/api/v1`:
@@ -131,6 +146,8 @@ must be onboarded independently in each environment. Only core portal clients st
 enabled. Other retained platform client definitions remain disabled and have their
 old browser URLs removed until configured for this environment.
 
+### Start the stack
+
 Copy `infra/env/identity.env.example` to a private file outside the repository. Set a
 unique project, identity hostname, loopback port, generated import file path and
 private database/bootstrap passwords. Then:
@@ -148,6 +165,8 @@ hostname to its loopback port; forward the configured proxy headers. Avoid routi
 untrusted traffic directly to the internal listener. For local development use a
 loopback HTTP hostname and generate the realm with loopback portal/API URLs.
 
+### Configure the portal after first boot
+
 After first boot, set environment-specific secrets for the portal's existing
 administrative and confidential web clients in the Keycloak admin console. Store
 these in that portal deployment's private environment. Set its `ENVIRONMENT`,
@@ -162,7 +181,7 @@ stack is retained for compatibility; opting into `moh-dev` requires configuring 
 portal deployment to use its `moh-dev` realm on the existing or optional new stack. Do not point both realm names at
 the same application's configuration or reuse old cookies/sessions after switching.
 
-## Admin console walkthrough
+## Onboard a client from the Clients page
 
 Open **Clients → Onboard application** (requires `clients:write`). Register the
 application name, owner, support email and client profile. Review callbacks, logout
@@ -190,6 +209,8 @@ profile and be disabled before an update. The preview shows its previous setting
 changes to the draft or target state require a new review. Audit records contain the
 client ID, environment, realm, profile and operation, never credentials.
 
+### Promote with the operator CLI
+
 For an operator-assisted promotion, use the exported version-1 document:
 
 ```sh
@@ -206,6 +227,8 @@ to enabled or unmanaged clients. Apply requires a new mode-0600 backup. Provisio
 is repeatable; managed scopes/mappers are checked after apply. If a partial create
 fails, leave it disabled, inspect the next preview and retry. For recovery restore
 only the affected client's saved settings/scopes/mappers, never an entire realm.
+
+### Checks before enabling a client
 
 Before enabling: test code exchange, wrong/missing PKCE, logout, issuer/azp validation,
 email-verification refusal and portal access mapping where applicable. Confidential

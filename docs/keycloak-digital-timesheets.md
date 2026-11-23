@@ -1,9 +1,12 @@
 # Health Workforce Portal OIDC setup
 
-This provisions the web and laptop-test clients requested for Digital Timesheet and
-Clinical Training. Production uses the existing **`moh-realm`**. The laptop-test client and synthetic
-users live separately in **`moh-test`**, following the environment isolation setup. It does not activate sign-in in the external application or change any
-live Keycloak instance automatically.
+This page is for identity operators who provision the Keycloak web and laptop-test
+clients requested for Digital Timesheet and Clinical Training, and for the external
+team integrating sign-in. It does not activate sign-in in the external application or
+change any live Keycloak instance automatically.
+
+Production uses the existing **`moh-realm`**. The laptop-test client and synthetic
+users live separately in **`moh-test`**, following the environment isolation setup.
 
 ## Client contract
 
@@ -17,10 +20,14 @@ live Keycloak instance automatically.
 The clients belong to different realms. See [identity environments](identity-environments.md)
 for fresh test-realm bootstrap and per-environment credentials.
 
+### Flows and logout
+
 Both clients are public: **no client secret**. Authorization code with **S256 PKCE**
 is required. Implicit flow, direct password grants, service accounts, authorization
 services and front-channel logout are disabled. Use RP-initiated logout with an
 `id_token_hint` and the registered post-logout URI.
+
+### Scopes and claims
 
 Request `scope=openid profile email`. Only `profile` and `email` are assigned as
 default client scopes; `openid` is the OIDC request scope. Neither `roles` nor
@@ -34,6 +41,8 @@ Access and ID tokens use RS256. Access-token lifetime inherits the actual realm
 default; the setup does not assume that the live default is five minutes. Roles
 and hospital scope remain the external application's responsibility. These clients
 are excluded from portal system enrollment and navigation.
+
+### Issuer and application-side validation
 
 For the expected production host:
 
@@ -53,12 +62,16 @@ The production manifest is `infra/keycloak/clients/digital-timesheets.json`;
 contain only the production client. The separate test manifest targets `moh-test`. **Startup realm import does
 not update an existing realm.** Do not delete/reimport a live realm to add clients.
 
+### Prerequisites
+
 Use the existing private administrative environment, with
 `KEYCLOAK_INTERNAL_URL` (or `KEYCLOAK_BASE_URL`), `KEYCLOAK_REALM=moh-realm`,
 `KEYCLOAK_ADMIN_CLIENT_ID`, and `KEYCLOAK_ADMIN_CLIENT_SECRET`. Do not commit these
 values. The operator needs realm read and client management permissions; creating
 the optional users also needs user query and management permissions. This setup
 does not grant new administrative permissions or create a service account.
+
+### Preview the plan
 
 Start with a read-only plan:
 
@@ -71,6 +84,8 @@ and whether SMTP has configuration. It does not print credentials or test identi
 These readings answer configuration questions without changing shared realm policy.
 SMTP configuration alone does not establish successful delivery, and the script does
 not assert that existing users' emails are verified.
+
+### Apply with a backup
 
 Review the plan, then use a **new**, private backup path outside the repository:
 
@@ -119,6 +134,8 @@ Timesheet server must refuse to establish its application session.
 
 ## Validation and rollback
 
+### Run the tests
+
 ```sh
 python3 infra/scripts/test-digital-timesheets.py
 python3 infra/scripts/test-digital-timesheets-runtime.py
@@ -130,6 +147,8 @@ contacts the production or laptop application URLs. It checks real code exchange
 PKCE/redirect restrictions, token claims, both email-verification cases, CORS, SSO,
 logout and disabled grant types, plus reconciliation idempotence.
 
+### Roll back a failed setup
+
 If setup fails partway through, retain the private backup and inspect the next
 dry run. For newly created clients, disable the selected client ID to stop new logins;
 revoke their sessions before deleting them if rollback is required. For previously
@@ -138,6 +157,8 @@ from `clients[].before` in the backup using the admin console/API. Restore only 
 clients, never the entire realm. Remove test users only after checking the backup's
 `createTestUsers` list and confirming that they have no needed activity. There is
 no automated destructive rollback.
+
+## Out of scope and references
 
 The external team controls pilot activation and continued email/password sign-in.
 Android/offline access, a privileged server service account, portal launcher

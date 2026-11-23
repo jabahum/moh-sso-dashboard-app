@@ -1,11 +1,15 @@
 # Shared MOH header for external applications
 
-External applications can keep their own domain, backend, deployment and OIDC
-session while displaying the same MOH header as the portal. The header reuses
-the portal's `UserHeader`, coat of arms, Carbon actions and application switcher.
-Set `appName` to the application's display name: for example, **MOH Logistics
-Management** replaces **MOH Integrated Health Portal**. Supply the name without
-the `MOH` prefix, which is added by the component.
+This page is for frontend developers of external React applications who want to
+display the portal's MOH header. External applications can keep their own domain,
+backend, deployment and OIDC session while displaying the same MOH header as the portal.
+
+## What the header provides and supports
+
+The header reuses the portal's `UserHeader`, coat of arms, Carbon actions and
+application switcher. Set `appName` to the application's display name: for example,
+**MOH Logistics Management** replaces **MOH Integrated Health Portal**. Supply the
+name without the `MOH` prefix, which is added by the component.
 
 This is an opt-in integration in each external application's frontend. Registering
 an application in the portal does not insert a header into its website. This
@@ -16,11 +20,15 @@ another one.
 
 ## Install and render
 
+### Install the package
+
 Use a released `@moh-sso/ui` version containing `ExternalAppHeader` and its
 `styles.css` export. These changes must be released before external projects can
 install them from the package registry; version 1.1.0 does not contain this API.
 For local development, build the UI workspace and use a locally packed package.
 Use the package's declared React, Carbon and router peer dependency versions.
+
+### Render the header
 
 Import Carbon's global stylesheet once, followed by the shared UI stylesheet:
 
@@ -52,6 +60,8 @@ export function App({ session, permittedApplications, logout }) {
 `Content` reserves space below Carbon's fixed header. Keep exactly one
 `main-content` target so the skip link works. If your layout already reserves
 header space, use its existing main element with that ID instead.
+
+### Supply the launch list
 
 The authenticated application's own backend supplies a launch list such as:
 
