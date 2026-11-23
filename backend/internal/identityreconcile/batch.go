@@ -699,11 +699,44 @@ func (s BatchService) processRow(ctx context.Context, t BatchTarget, row BatchRo
 	if !identitysync.ValidIdentity(identity, t.Issuer) {
 		return fail(CodeInvalidIdentity, func(r *BatchRow) { r.GrantStatus = GrantFailed })
 	}
-	if done, o := s.blockRevoked(ctx, t, identity.Subject, update, &out); done {
-		return o
-	}
-	if err := t.Directory.GrantAccess(ctx, identity); err != nil {
+	// "check revoked -> grant" holds the access lock a revocation takes across
+	// "record revocation -> remove role", so the two cannot interleave.
+	stopped, granted := false, false
+	var grantErr error
+	lockErr := withAccessLock(ctx, accessLockerOf(s.Revocations), t.Application, identity.Subject, func(ctx context.Context) error {
+		if done, o := s.blockRevoked(ctx, t, identity.Subject, update, &out); done {
+			stopped, out = true, o
+			return nil
+		}
+		if grantErr = t.Directory.GrantAccess(ctx, identity); grantErr == nil {
+			granted = true
+		}
+		return nil
+	})
+	switch {
+	case lockErr != nil && !stopped && !granted:
+		return fail(CodeRevocationCheckFailed, func(r *BatchRow) { r.GrantStatus = GrantFailed })
+	case stopped:
+		return out
+	case grantErr != nil:
 		return fail(CodeGrantFailed, func(r *BatchRow) { r.GrantStatus = GrantFailed })
+	}
+	// Second line of defence: a revocation written without the lock between the
+	// check and the grant is re-asserted now (the role is removed again).
+	if enforcer := enforcerOf(s.Revocations); enforcer != nil {
+		enforced, err := enforcer.EnforceRevocation(ctx, t.Application, t.Issuer, identity.Subject, "identity-sync run "+row.RunID)
+		switch {
+		case enforced:
+			if update(func(r *BatchRow) {
+				r.Proposal, r.GrantStatus, r.LastError = ProposalRevoked, GrantNotRequired, CodeIdentityRevoked
+			}) {
+				out.Outcome, out.Code = "revoked", CodeIdentityRevoked
+			}
+			return out
+		case err != nil:
+			// Unknown whether a revocation appeared: resume re-checks before granting again.
+			return fail(CodeRevocationCheckFailed, func(r *BatchRow) { r.GrantStatus = GrantFailed })
+		}
 	}
 	if update(func(r *BatchRow) { r.GrantStatus, r.LastError = GrantGranted, "" }) {
 		out.Outcome, out.Code = "done", ""

@@ -160,11 +160,31 @@ func (s Service) Apply(ctx context.Context, reviewed Decision, current identitys
 	if err := s.Accounts.LinkIdentity(ctx, current.ID, identity); err != nil {
 		return fmt.Errorf("link local account: %w", err)
 	}
-	if err := s.checkRevoked(ctx, identity); err != nil {
+	// "check revoked -> grant" holds the access lock revocations take, so a
+	// revocation cannot land between the check and the grant (access_lock.go).
+	err := withAccessLock(ctx, accessLockerOf(s.Revocations), s.Application, identity.Subject, func(ctx context.Context) error {
+		if err := s.checkRevoked(ctx, identity); err != nil {
+			return err
+		}
+		if err := s.Directory.GrantAccess(ctx, identity); err != nil {
+			return fmt.Errorf("grant application access after linking: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
-	if err := s.Directory.GrantAccess(ctx, identity); err != nil {
-		return fmt.Errorf("grant application access after linking: %w", err)
+	if enforcer := enforcerOf(s.Revocations); enforcer != nil {
+		enforced, err := enforcer.EnforceRevocation(ctx, s.Application, identity.Issuer, identity.Subject, "identity-sync apply")
+		if enforced {
+			if err != nil {
+				return fmt.Errorf("%w: %v", ErrRevokedDuringApply, err)
+			}
+			return ErrRevokedDuringApply
+		}
+		if err != nil {
+			return fmt.Errorf("re-check revocation after granting access: %w", err)
+		}
 	}
 	return nil
 }

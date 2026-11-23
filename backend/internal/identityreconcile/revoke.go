@@ -156,6 +156,35 @@ type RevokeService struct {
 	// Issuer is the public issuer written into application links
 	// (KEYCLOAK_EXTERNAL_URL/realms/<realm>).
 	Issuer string
+	// Locker serialises revocation with grants (see access_lock.go). Nil uses
+	// the repository when it implements AccessLocker (PostgresRevocations does).
+	Locker AccessLocker
+}
+
+var (
+	_ RevocationChecker  = (*RevokeService)(nil)
+	_ AccessLocker       = (*RevokeService)(nil)
+	_ RevocationEnforcer = (*RevokeService)(nil)
+)
+
+func (s *RevokeService) locker() AccessLocker {
+	if s == nil {
+		return nil
+	}
+	if s.Locker != nil {
+		return s.Locker
+	}
+	if locker, ok := s.Repository.(AccessLocker); ok {
+		return locker
+	}
+	return nil
+}
+
+// WithAccessLock runs fn holding the (application, subject) access lock that
+// grants and revocations share. Batch and single apply use it, through the
+// RevocationChecker they are given, around "check revoked -> grant".
+func (s *RevokeService) WithAccessLock(ctx context.Context, application, subject string, fn func(context.Context) error) error {
+	return withAccessLock(ctx, s.locker(), application, subject, fn)
 }
 
 // NewRevokeService wires a revoke service to Track A's registry.
@@ -204,21 +233,94 @@ func (s *RevokeService) Revoke(ctx context.Context, application, subject, revoke
 	if err != nil {
 		return Revocation{}, err
 	}
-	revocation, created, err := s.Repository.BeginRevocation(ctx, Revocation{
-		ApplicationClientID: application, Issuer: s.Issuer, Subject: subject,
-		RevokedBy: strings.TrimSpace(revokedBy), Reason: strings.TrimSpace(reason),
-		RoleRemoved: StepPending, ConsentsRevoked: StepPending, SessionsRevoked: StepPending,
+	var revocation Revocation
+	var codes []string
+	// Record the revocation and remove the role under the access lock, so a
+	// grant that already passed its revocation check finishes first (and its
+	// role is then removed here), and any later grant sees this revocation.
+	err = s.WithAccessLock(ctx, application, subject, func(ctx context.Context) error {
+		var created bool
+		var err error
+		revocation, created, err = s.Repository.BeginRevocation(ctx, Revocation{
+			ApplicationClientID: application, Issuer: s.Issuer, Subject: subject,
+			RevokedBy: strings.TrimSpace(revokedBy), Reason: strings.TrimSpace(reason),
+			RoleRemoved: StepPending, ConsentsRevoked: StepPending, SessionsRevoked: StepPending,
+		})
+		if err != nil {
+			return err
+		}
+		if !created {
+			// A repeated revoke re-asserts every step: the role may have been granted
+			// again by hand, or a 1.0 application may since have added sessions.revoke.
+			// Every step is idempotent, and the existing row is reused.
+			revocation.RoleRemoved, revocation.ConsentsRevoked, revocation.SessionsRevoked = StepPending, StepPending, StepPending
+		}
+		s.removeRoleStep(ctx, &revocation, integration, &codes)
+		return nil
 	})
 	if err != nil {
 		return Revocation{}, err
 	}
-	if !created {
-		// A repeated revoke re-asserts every step: the role may have been granted
-		// again by hand, or a 1.0 application may since have added sessions.revoke.
-		// Every step is idempotent, and the existing row is reused.
-		revocation.RoleRemoved, revocation.ConsentsRevoked, revocation.SessionsRevoked = StepPending, StepPending, StepPending
+	return s.finishSteps(ctx, revocation, integration, strings.TrimSpace(revokedBy), codes)
+}
+
+// EnforceRevocation is called by apply right after it granted the access role.
+// If an active revocation exists for the identity (it was recorded by a path
+// that did not take the access lock), the role removal is recorded as pending
+// again, so resume handles it even if this process stops, and then, when the
+// service has a directory, every removal step runs at once. It returns
+// enforced=true when a revocation exists; err reports a step that could not
+// finish (the pending or failed status is stored either way).
+func (s *RevokeService) EnforceRevocation(ctx context.Context, application, issuer, subject, actor string) (bool, error) {
+	if s == nil || s.Repository == nil {
+		return false, errors.New("identity-sync revocation is not configured")
 	}
-	return s.runSteps(ctx, revocation, integration, strings.TrimSpace(revokedBy))
+	actor = strings.TrimSpace(actor)
+	if actor == "" {
+		actor = "identity-sync"
+	}
+	enforced := false
+	var revocation Revocation
+	var integration Integration
+	var codes []string
+	full := s.configured() == nil
+	err := s.WithAccessLock(ctx, application, subject, func(ctx context.Context) error {
+		active, err := s.Repository.ActiveRevocation(ctx, application, issuer, subject)
+		if errors.Is(err, ErrRevocationNotFound) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("check revocation: %w", err)
+		}
+		enforced = true
+		revocation = active
+		revocation.RoleRemoved, revocation.ConsentsRevoked, revocation.SessionsRevoked = StepPending, StepPending, StepPending
+		if err := s.Repository.SaveRevocationAttempt(ctx, revocation, actor); err != nil {
+			return err
+		}
+		if !full {
+			return nil
+		}
+		if integration, err = s.Integrations.Get(ctx, application); err != nil {
+			return err
+		}
+		s.removeRoleStep(ctx, &revocation, integration, &codes)
+		return nil
+	})
+	if err != nil || !enforced {
+		return enforced, err
+	}
+	if !full {
+		return true, fmt.Errorf("identity-sync revocation %s for %s: role removal recorded as pending; run 'identity-sync revocations --resume'", revocation.ID, application)
+	}
+	revocation, err = s.finishSteps(ctx, revocation, integration, actor, codes)
+	if err != nil {
+		return true, err
+	}
+	if !revocation.Complete() {
+		return true, fmt.Errorf("identity-sync revocation %s for %s is incomplete (%s); run 'identity-sync revocations --resume'", revocation.ID, application, revocation.LastError)
+	}
+	return true, nil
 }
 
 // Resume retries the pending and failed steps of active revocations (of one
@@ -306,28 +408,49 @@ func (s *RevokeService) List(ctx context.Context, filter RevocationFilter) ([]Re
 }
 
 // runSteps runs every unfinished step, continuing past failures, then stores
-// the outcome. Each step is idempotent.
+// the outcome. Each step is idempotent. The role step holds the access lock.
 func (s *RevokeService) runSteps(ctx context.Context, revocation Revocation, integration Integration, actor string) (Revocation, error) {
 	var codes []string
+	if revocation.RoleRemoved.needsRun() {
+		err := s.WithAccessLock(ctx, revocation.ApplicationClientID, revocation.Subject, func(ctx context.Context) error {
+			s.removeRoleStep(ctx, &revocation, integration, &codes)
+			return nil
+		})
+		if err != nil {
+			codes = append(codes, CodeRoleRemovalFailed)
+			revocation.RoleRemoved = StepFailed
+		}
+	}
+	return s.finishSteps(ctx, revocation, integration, actor, codes)
+}
+
+// removeRoleStep is step 2: the access role. The application's OIDC callback
+// refuses new sign-ins once the role claim is gone. Callers hold the access lock.
+func (s *RevokeService) removeRoleStep(ctx context.Context, revocation *Revocation, integration Integration, codes *[]string) {
+	if !revocation.RoleRemoved.needsRun() {
+		return
+	}
+	err := s.Directory.RemoveAccessRole(ctx, revocation.Subject, revocation.ApplicationClientID, integration.AccessRole)
+	switch {
+	case err == nil:
+		revocation.RoleRemoved = StepDone
+	case errors.Is(err, ErrAccessRoleInherited):
+		*codes = append(*codes, CodeAccessRoleInherited)
+		revocation.RoleRemoved = StepFailed
+	default:
+		*codes = append(*codes, CodeRoleRemovalFailed)
+		revocation.RoleRemoved = StepFailed
+	}
+}
+
+// finishSteps runs steps 3 and 4 when unfinished and stores the attempt. codes
+// holds the error codes of earlier steps in this attempt.
+func (s *RevokeService) finishSteps(ctx context.Context, revocation Revocation, integration Integration, actor string, codes []string) (Revocation, error) {
 	fail := func(code string) StepStatus {
 		codes = append(codes, code)
 		return StepFailed
 	}
 	app, subject := revocation.ApplicationClientID, revocation.Subject
-
-	// Step 2: the access role. The application's OIDC callback refuses new
-	// sign-ins once the role claim is gone.
-	if revocation.RoleRemoved.needsRun() {
-		err := s.Directory.RemoveAccessRole(ctx, subject, app, integration.AccessRole)
-		switch {
-		case err == nil:
-			revocation.RoleRemoved = StepDone
-		case errors.Is(err, ErrAccessRoleInherited):
-			revocation.RoleRemoved = fail(CodeAccessRoleInherited)
-		default:
-			revocation.RoleRemoved = fail(CodeRoleRemovalFailed)
-		}
-	}
 
 	// Step 3: consents and offline tokens for this application's client only.
 	if revocation.ConsentsRevoked.needsRun() {

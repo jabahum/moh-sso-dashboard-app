@@ -17,7 +17,37 @@ import (
 // (migration 64) and audit events in ihp_rbac_audit_events.
 type PostgresRevocations struct{ DB *sql.DB }
 
-var _ RevocationRepository = (*PostgresRevocations)(nil)
+var (
+	_ RevocationRepository = (*PostgresRevocations)(nil)
+	_ AccessLocker         = (*PostgresRevocations)(nil)
+)
+
+// accessLockNamespace is the first key of the two-key advisory lock taken by
+// WithAccessLock ("idsync" in ASCII-ish hex), so it cannot collide with
+// single-key advisory locks such as the migration lock.
+const accessLockNamespace = 0x1d5c
+
+// WithAccessLock holds a transaction-scoped advisory lock on (application,
+// subject) while fn runs. Grants (check revoked -> grant) and revocations
+// (record revocation -> remove role) take it, so they cannot interleave. The
+// key is pg_advisory_xact_lock(namespace, hashtext(application/subject));
+// application IDs never contain "/", so the text is unambiguous. A hash
+// collision only makes two unrelated identities wait for each other. The lock
+// is released when the transaction ends, including when the connection drops.
+func (p *PostgresRevocations) WithAccessLock(ctx context.Context, application, subject string, fn func(context.Context) error) error {
+	tx, err := p.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("take identity-sync access lock: %w", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1::int, hashtext($2))`, accessLockNamespace, application+"/"+subject); err != nil {
+		return fmt.Errorf("take identity-sync access lock: %w", err)
+	}
+	if err := fn(ctx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
 // Audit actions written by access removal.
 const (
