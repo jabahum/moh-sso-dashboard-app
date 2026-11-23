@@ -26,6 +26,7 @@ export default {
           label: 'Onboarding handbook',
         },
         'docs/system-onboarding',
+        'docs/application-manifests',
         'docs/identity-environments',
         'docs/cross-application-sso',
         'docs/external-app-header',
