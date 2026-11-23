@@ -36,9 +36,11 @@ image after applying the new database baseline.
 
 ## Keycloak reconciliation
 
-The `user` role in `infra/keycloak/realm-export.json` currently has only
-`data-statistics_access`, `document_viewer` and `settings_access` as composites,
-so Keycloak does not hold the full baseline until it is reconciled. When
+The `user` role in `infra/keycloak/realm-export.json` and
+`infra/keycloak/realm-export-prod.json` carries the full baseline as composites
+(checked against migration 53 by a backend test), so a freshly imported realm starts
+with it. An existing realm keeps whatever composites it already has until it is
+reconciled. When
 `RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK` is enabled, backend startup adds the mapped
 client roles as composites of `user`, but it does not assign `user` to existing
 accounts. It is off by default (the compiled default and every shipped

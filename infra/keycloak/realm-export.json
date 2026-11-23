@@ -249,7 +249,14 @@
         "composite": true,
         "composites": {
           "client": {
-            "data-statistics": ["data-statistics_access", "document_viewer"],
+            "dashboard-web": ["dashboard-web_access", "portal_user"],
+            "data-statistics": [
+              "report-scheduler_access",
+              "report_viewer",
+              "data-statistics_access",
+              "issue_tracker_viewer",
+              "document_viewer"
+            ],
             "settings": ["settings_access"]
           }
         },

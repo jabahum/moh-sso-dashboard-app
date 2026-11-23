@@ -205,7 +205,21 @@
       },
       {
         "name": "user",
-        "description": "Standard user role"
+        "description": "Standard user role",
+        "composite": true,
+        "composites": {
+          "client": {
+            "dashboard-web": ["dashboard-web_access", "portal_user"],
+            "data-statistics": [
+              "report-scheduler_access",
+              "report_viewer",
+              "data-statistics_access",
+              "issue_tracker_viewer",
+              "document_viewer"
+            ],
+            "settings": ["settings_access"]
+          }
+        }
       }
     ],
     "client": {
@@ -329,6 +343,24 @@
           "description": "Health BI scheduler service; no portal user permissions",
           "composite": false,
           "clientRole": true
+        },
+        {
+          "name": "issue_tracker_viewer",
+          "description": "Read-only access to issue tracker records and history",
+          "attributes": {
+            "portal.permissions": ["issue_tracker:read"]
+          }
+        },
+        {
+          "name": "document_viewer",
+          "description": "Read-only access to documents and document templates",
+          "attributes": {
+            "portal.permissions": [
+              "documents:read",
+              "document_templates:read",
+              "storage_locations:read"
+            ]
+          }
         }
       ],
       "eservices": [
