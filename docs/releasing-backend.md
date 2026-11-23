@@ -31,7 +31,7 @@ What those commands do:
 | Command | Purpose |
 | --- | --- |
 | `make next-version BUMP=patch` | Prints the next backend SemVer from existing `backend/v*` tags. `BUMP` can be `patch`, `minor`, or `major`. |
-| `make release-check VERSION=1.2.3` | Runs local release verification: version consistency, formatting check, vet, tests, architecture test, release binary build, and binary metadata verification. Requires a clean worktree. |
+| `make release-check VERSION=1.2.3` | Runs `scripts/release-check.sh`: refuses an existing tag or a dirty worktree, then runs version consistency, formatting check, vet, `make modules-check`, tests, architecture test, release binary build, and binary metadata verification. |
 | `make release-pr VERSION=1.2.3` | Creates or checks out `release/backend-v1.2.3`, adds an empty release marker commit when the branch has no commits ahead of `main`, pushes it, and opens a GitHub release PR. |
 | `make release-dispatch VERSION=1.2.3` | Runs the one-shot `backend-release.yml` workflow manually. Use this when you intentionally do not need a release PR. |
 | `make release-status VERSION=1.2.3` | Shows the GitHub release, recent release workflows, and Docker image manifest when Docker is available. |
@@ -187,14 +187,13 @@ These steps perform the release PR flow with `git` and `gh` directly.
     gh run list --repo mohuganda/moh-sso-dashboard --workflow build.yml --limit 5
     ```
 
-12. Deploy using immutable tags.
+12. Deploy.
+
+    Managed servers are deployed from the verified `main` image bundle by the CD workflows; see the [CD and server setup runbook](cd-pipeline.md). For a hand-run Compose stack, use immutable tags through the Make launcher, which supplies the production env file:
 
     ```bash
-    BACKEND_TAG=1.2.3 FRONTEND_TAG=<frontend-tag> \
-      docker compose -f infra/compose/docker-compose-nginx.yml pull
-
-    BACKEND_TAG=1.2.3 FRONTEND_TAG=<frontend-tag> \
-      docker compose -f infra/compose/docker-compose-nginx.yml up -d
+    BACKEND_TAG=1.2.3 FRONTEND_TAG=<frontend-tag> make compose-pull COMPOSE_ENV=gateway
+    BACKEND_TAG=1.2.3 FRONTEND_TAG=<frontend-tag> make compose-up COMPOSE_ENV=gateway
     ```
 
 If you prefer a one-shot release without a PR, use the manual dispatch flow below.
@@ -221,13 +220,13 @@ Do not include `backend/v` in the `version` input.
 The workflow performs these operations before publishing the release:
 
 1. Validate SemVer and confirm the tag is unused.
-2. Verify formatting, vet, tests, and architecture boundaries.
+2. Verify formatting, vet, tests, independent Go modules (`make modules-check`), and architecture boundaries.
 3. Verify all version package/build paths are consistent.
 4. Build Linux and macOS artifacts for amd64 and arm64.
 5. Execute the Linux binary and verify version, commit, and clean state.
-6. Generate SHA-256 checksums, an SPDX SBOM, and provenance attestations.
+6. Generate SHA-256 checksums and an SPDX SBOM. Provenance attestations run only when `ENABLE_GITHUB_ARTIFACT_ATTESTATIONS` is `true` (currently `false`).
 7. Create and push `backend/v<version>` only for manual dispatch.
-8. Publish the GitHub release artifacts for manual dispatch, tag-push runs, and merged release PRs.
+8. Publish the GitHub release (scoped notes from `scripts/release-notes.mjs` plus artifacts) for manual dispatch and tag-push runs; `backend-release-pr.yml` does the same for merged non-fork release PRs.
 
 Pushing the component tag triggers the backend Docker image build. The image build embeds the same metadata, adds OCI labels, publishes provenance/SBOM data, and runs the image with `--version` as a post-build check.
 

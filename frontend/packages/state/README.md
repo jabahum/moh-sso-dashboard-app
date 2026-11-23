@@ -6,7 +6,8 @@
 
 - Configure the global Redux store.
 - Register RTK Query middleware.
-- Provide global client/navigation state.
+- Hold the `auth` and `clients` slices (registered clients and the active client) next to the
+  `baseApi` reducer.
 - Export selectors shared by shell and apps.
 
 ## Usage

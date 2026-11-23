@@ -15,7 +15,7 @@ edit the examples with real values.
 | --- | --- |
 | `infra/env/dev.env` | Local development with `make compose-dev-up` or `make dev`. Copy to `backend/app.env` instead when running Go outside Docker, and point DB/Redis hosts at `localhost` and the published ports. |
 | `infra/env/external-dev.env` | Local services signing in through the production Keycloak server. Other defaults come from `dev.env.example`. |
-| `infra/env/prod.env` | Production Compose. Real credentials go in `infra/secrets/*.txt`, not in this file. See [deployment](deployment.md#production-and-development-environments). |
+| `infra/env/prod.env` | Production Compose. The database password and Keycloak admin/web client secrets are read from files (`infra/secrets/*.txt` by default, or the `*_SECRET_FILE` paths); other credentials stay in this file. See [deployment](deployment.md#production-and-development-environments). |
 | `infra/env/remote-proxy.env` | Nginx on a separate machine; holds the application's private IP. See [Nginx on a separate machine](deployment.md#nginx-on-a-separate-machine). |
 | `infra/env/core.env` | The core-only distribution profile. See [platform core](platform-core.md). |
 | `infra/env/observatory.env` | A local Observatory PostgreSQL for surveillance. See [surveillance database](surveillance-database.md). |
@@ -67,14 +67,14 @@ back.
 
 ### Storage provider
 
-The backend validates the provider's settings at startup:
+The backend validates the provider's settings at startup (`backend/internal/config/config.go`); an empty `STORAGE_PROVIDER` skips the check:
 
 | `STORAGE_PROVIDER` | Required settings |
 | --- | --- |
 | `local` | `LOCAL_BASE_PATH`, `APP_BASE_URL` |
 | `nfs` | `NFS_BASE_PATH`, `APP_BASE_URL` |
-| `s3` | `S3_BUCKET`, `S3_REGION`, plus access keys |
-| `minio` | `MINIO_ENDPOINT`, `MINIO_BUCKET`, plus access keys |
+| `s3` | `S3_BUCKET`, `S3_REGION` (set `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` for the bucket; they are not checked at startup) |
+| `minio` | `MINIO_ENDPOINT`, `MINIO_BUCKET` (set `MINIO_ACCESS_KEY_ID` and `MINIO_SECRET_ACCESS_KEY`; they are not checked at startup) |
 
 ### Attachment limits
 
@@ -98,8 +98,9 @@ The keys that decide how microfrontends load:
 
 | Mode | `microfrontendMode` | `singleSpaOrchestration` | `microfrontendMountMode` | Use |
 | --- | --- | --- | --- | --- |
-| Local / hybrid | `"local"` | `false` | `"hybrid"` | Fast local development with workspace imports. |
-| Remote / orchestrated | `"remote"` | `true` | `"orchestrated"` | Production-style single-spa orchestration with import maps and separately staged bundles. |
+| Local / hybrid (`config.development.js`) | `"local"` | `false` | `"hybrid"` | Fast local development with workspace imports. |
+| Local remote (`config.local-remote.js`) | `"remote"` | `false` | `"hybrid"` | Workspace shell loading separately served module bundles without single-spa orchestration. |
+| Remote / orchestrated (`config.production.js`) | `"remote"` | `true` | `"orchestrated"` | Production-style single-spa orchestration with import maps and separately staged bundles. |
 
 `API_BASE_URL` in the same object sets where the shell sends API requests. A blank page
 under `/portal` usually means the wrong config is active; see

@@ -13,8 +13,10 @@ npm run build:packages
 npm run build:apps
 npm run build:all
 npm run generate:versions
-npm run build:docker
+FRONTEND_MODULE_SOURCE=workspace npm run build:docker
 ```
+
+`npm run build:docker` without `FRONTEND_MODULE_SOURCE=workspace` stages the published npm releases pinned in `module-sources.json` (`production`) instead of this checkout.
 
 ## Manual direct commands
 
@@ -57,9 +59,12 @@ After `npm run build:docker`, confirm:
 
 ```text
 dist/import-map.json
+dist/version-manifest.json
 dist/mf/*/single-spa.js
 dist/packages/*/index.js
 ```
+
+When built with `FRONTEND_BASE_PATH=/portal` (as the Docker images do), the same files also exist under `dist/portal/`; `npm run runtime:verify` checks that layout.
 
 ## Acceptance checklist
 

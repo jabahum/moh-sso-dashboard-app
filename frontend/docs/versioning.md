@@ -20,16 +20,16 @@ When any shared package has a public change, release all shared packages togethe
 Example:
 
 ```text
-@moh-sso/api@0.2.0
-@moh-sso/types@0.2.0
-@moh-sso/ui@0.2.0
+@moh-sso/api@1.6.0
+@moh-sso/types@1.6.0
+@moh-sso/ui@1.6.0
 ```
 
 This is configured in `.changeset/config.json` through the `fixed` package group.
 
 ## Lane 2: independent app versions
 
-Apps version independently because they are future deployable units:
+Apps version independently because they are deployable units. `@moh-sso/shell` is versioned (its version is the frontend release version) but is `"private": true` and never published to npm:
 
 - `@moh-sso/shell`
 - `@moh-sso/announcements`
@@ -43,6 +43,7 @@ Apps version independently because they are future deployable units:
 - `@moh-sso/issue-tracker`
 - `@moh-sso/rbac`
 - `@moh-sso/report-browser`
+- `@moh-sso/report-scheduler`
 - `@moh-sso/surveillance`
 - `@moh-sso/users`
 - `@moh-sso/utilities`
@@ -50,9 +51,9 @@ Apps version independently because they are future deployable units:
 Examples:
 
 ```text
-@moh-sso/users@0.4.1
-@moh-sso/documents@0.8.0
-@moh-sso/surveillance@1.2.0
+@moh-sso/users@1.5.1
+@moh-sso/documents@1.5.1
+@moh-sso/report-scheduler@0.6.1
 ```
 
 ## SemVer rules
@@ -68,9 +69,9 @@ Apps should depend on shared packages with compatible ranges:
 ```json
 {
   "dependencies": {
-    "@moh-sso/api": "^0.2.0",
-    "@moh-sso/types": "^0.2.0",
-    "@moh-sso/ui": "^0.2.0"
+    "@moh-sso/api": "^1.6.0",
+    "@moh-sso/auth": "^1.6.0",
+    "@moh-sso/ui": "^1.6.0"
   }
 }
 ```
@@ -80,7 +81,7 @@ App-to-app dependencies should use stricter ranges:
 ```json
 {
   "dependencies": {
-    "@moh-sso/clients": "~0.4.0"
+    "@moh-sso/clients": "~1.5.1"
   }
 }
 ```
@@ -93,11 +94,7 @@ From the repository root, `make release` generates a Changeset for every fronten
 
 ## Changesets workflow
 
-Install Changesets if it is not available:
-
-```bash
-npm install -D @changesets/cli
-```
+`@changesets/cli` is a dev dependency of `frontend/package.json`.
 
 Create a changeset:
 
@@ -165,8 +162,9 @@ Output:
 
 ```text
 frontend/public/version-manifest.json
-frontend/dist/version-manifest.json
 ```
+
+The staging step (`stage:mf` / `stage:mf:npm`) copies it to `frontend/dist/version-manifest.json`. App and package versions come from each `package.json` in workspace mode (the default for `generate:versions`), or from the installed modules matching the `production` npm pins when `FRONTEND_MODULE_SOURCE=npm`.
 
 The manifest records current app/package names and versions.
 
@@ -174,7 +172,7 @@ It also records frontend service version, commit, and build time. The service ve
 
 `npm run version:audit` checks every app including the shell, shared release-group alignment, internal dependency compatibility, and lockfile/manifest consistency. `npm run version:packages` refreshes the lockfile and manifest after Changesets applies bumps.
 
-Frontend Docker releases use `frontend/v<shell-version>` tags. The build rejects tags that disagree with the shell's package version and labels images with version, commit, and build time. Branch builds use `<shell-base-version>-dev.<commit>`.
+Frontend Docker releases use `frontend/v<shell-version>` tags. The build rejects tags that disagree with the shell's package version and labels images with version, commit, and build time. Branch builds use the shell's package version as the build version and are tagged with the short commit SHA (plus `latest` on the default branch); only `frontend/v*` tag builds get the version tag (`.github/workflows/build.yml`, `infra/scripts/image_version.py`).
 
 ## Versioned import maps
 
@@ -196,8 +194,8 @@ Example output:
 ```json
 {
   "imports": {
-    "@moh-sso/users": "https://cdn.example.com/mf/users/0.4.1/single-spa.js",
-    "@moh-sso/api": "https://cdn.example.com/packages/api/0.2.0/index.js"
+    "@moh-sso/users": "https://cdn.example.com/mf/users/1.5.1/single-spa.js",
+    "@moh-sso/api": "https://cdn.example.com/packages/api/1.6.0/index.js"
   }
 }
 ```
@@ -209,7 +207,7 @@ Rollback by pointing the import map back to previous versioned URLs:
 ```json
 {
   "imports": {
-    "@moh-sso/users": "https://cdn.example.com/mf/users/0.4.0/single-spa.js"
+    "@moh-sso/users": "https://cdn.example.com/mf/users/1.5.0/single-spa.js"
   }
 }
 ```

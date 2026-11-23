@@ -88,8 +88,9 @@ DOCS_URL="$(node --env-file=infra/env/dev.env -p 'process.env.DOCS_URL')" \
 
 Open http://localhost:3001/docs/. Run `npm --prefix documentation run build` to check
 internal links and generate the static site in `documentation/build/`. The
-Documentation workflow also builds the site on pull requests and uploads it as an
-artifact. Set `DOCS_URL` and `DOCS_BASE_URL` at build time when serving from a different
+Documentation workflow (`.github/workflows/documentation.yml`) also builds the site on
+pull requests and `main` pushes that change `docs/`, `frontend/docs/` or
+`documentation/`, and uploads it as an artifact. Set `DOCS_URL` and `DOCS_BASE_URL` at build time when serving from a different
 host or path.
 
 When you add a guide, put it in `docs/` (or `frontend/docs/` for frontend-only topics)

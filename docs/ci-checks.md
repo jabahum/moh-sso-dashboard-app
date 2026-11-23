@@ -5,20 +5,29 @@ locally before you push. It is for developers and reviewers.
 
 ## Workflow jobs
 
-`PR Quality Checks` runs on pull requests to `main` and is reused by the image
-build before publishing. Jobs are independent: a frontend install failure does
-not suppress backend, migration, workflow or deployment recovery results.
+`PR Quality Checks` (`.github/workflows/pr-check.yml`) runs on pull requests to
+`main` and on manual dispatch, and is reused by the image build (`build.yml`)
+before publishing. Jobs are independent: a frontend install failure does not
+suppress backend, migration, workflow or deployment recovery results.
 
 | Job | Coverage |
 | --- | --- |
-| Frontend Quality Gate | Lockfile URLs before installation, dependency guard tests, Vite dev/production runtime-config paths, package/version declarations, lint/types, architecture, RBAC, scheduler and release tooling. |
-| Backend Quality Gate | Go vet/tests, API contract freshness and backend version consistency. |
+| Distribution installation gate | Reuses `distribution-check.yml`: builds the backend image and a frontend image from published npm pins (`Dockerfile.npm-modules`), verifies image metadata, runs `test-distribution-runtime.py`, `test-distribution-auth.py` (full and `--profile core`), `test-cd.py`, and `test-cd-runtime.py` in default and `--mode distribution`. |
+| Production Nginx contracts | `make compose-config COMPOSE_ENV=gateway` against `infra/env/prod.env.example`, `make infra-check`, `make infra-nginx-check` and `make infra-runtime-check`. |
+| Frontend Quality Gate | Lockfile check before `npm ci`; dependency-guard, npm-release, module-source, runtime-config-path, API-base-URL and client-onboarding tests; OpenAPI bot update tests; version/package audits; local SSO startup contracts; release tooling tests; lint and typecheck; report scheduler parameter/permission tests; `config:validate`, `architecture:check`, `mf:doctor`, `rbac:doctor`, `audit:packages`; deployment verifier and deployment-selection tests. |
+| Backend Quality Gate | With a PostgreSQL 16 service: sqlc compile/generate freshness, Go module downloads, published backend module pins, module catalogue checks, `go vet`, platform-core boundary test, `make modules-check`, standalone/published package tests for Metrics, Audit, GeoJSON, Administrative Units, Announcements and the Report Scheduler schema, `make contracts-check`, `go test ./...`, race-enabled application manifest/registry tests against PostgreSQL, surveillance import tests, platform onboarding examples, Keycloak user-default and realm/client provisioning tests, and backend version consistency. |
 | Fast Quality Gate | Combined frontend/backend result; retains the existing required-check name while the jobs run independently. |
-| Production Frontend Runtime | Complete production build, CSS/import-map/runtime/bundle checks, then Chromium smoke tests. |
-| Production Nginx contracts | Compose/environment/CD unit contracts, real Nginx routing and production runtime fixture tests. |
-| Workflow and Shell Lint | Pinned actionlint with ShellCheck integration; deployment `.sh` scripts and the backup-hook example. The retired Kubernetes workflow is archived at `docs/archive/kubernetes-ci.yaml.example`, outside the active workflow directory. |
-| Database Migration Paths | Fresh primary/remote schemas, upgrade from each stream's penultimate migration, clean version tracking, repeat-apply no-op and preservation of existing data. |
-| Container Deployment Recovery | Actual deployment transaction against local fixture images/containers; rejected version, automatic/manual rollback, image identity, private env restoration and persistent data. |
+| Production Frontend Runtime | `config:prod` plus `build:docker`, then `audit:import-map`, `runtime:verify` and `bundle:budget`; builds workspace packages/apps for `audit:publishability`, `audit:packed` and `test:module-consumption`; stages a workspace frontend and runs the Chromium browser tests. |
+| Workflow and Shell Lint | Pinned actionlint with ShellCheck integration (`make workflow-check`); ShellCheck also checks every `infra/**/*.sh` script and `infra/server/hooks/*.sh.example`. The retired Kubernetes workflow is archived at `docs/archive/kubernetes-ci.yaml.example`, outside the active workflow directory. |
+| Database Migration Paths | `make migrations-check`: fresh primary/remote schemas, upgrade from each stream's penultimate migration, clean version tracking, repeat-apply no-op and preservation of existing data. |
+| Container Deployment Recovery | `make cd-runtime-check`: actual deployment transaction against local fixture images/containers; rejected version, automatic/manual rollback, image identity, private env restoration and persistent data. |
+
+Other workflows that run on pull requests:
+
+| Workflow | Trigger | Runs |
+| --- | --- | --- |
+| Documentation (`documentation.yml`) | Changes under `docs/`, `frontend/docs/`, `documentation/` or the workflow itself; also pushes to `main` and manual dispatch | `npm ci` and `npm run build` in `documentation/` on Node 22, then uploads the `documentation-site` artifact. |
+| Helm Lint (`helm-lint.yml`) | Changes under `infra/helm/`; also pushes to `main` | Helm v3.15.0 `helm lint infra/helm/moh-sso` and `helm template` with `values-dev.yaml` and `values-prod.yaml`. |
 
 Existing branch protection requiring **Fast Quality Gate** continues to work: its
 combined result fails unless both independent jobs succeed. Add the other job
@@ -64,24 +73,32 @@ deployment entrypoints, launchers, bootstrap and backup example directly.
 
 ## Browser smoke tests
 
-From `frontend/`, build the same `/portal` deployment layout used by CI:
+From `frontend/`, stage the same workspace frontend that CI tests:
 
 ```bash
-npm run config:prod
-FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+FRONTEND_MODULE_SOURCE=workspace npm run build:packages
+FRONTEND_MODULE_SOURCE=workspace npm run build:apps
+FRONTEND_MODULE_SOURCE=workspace npm run generate:import-map
+FRONTEND_MODULE_SOURCE=workspace npm run build:shell
+FRONTEND_MODULE_SOURCE=workspace npm run stage:mf
 npx playwright install chromium
 npm run test:browser
 ```
 
-Playwright starts a dedicated server on `127.0.0.1:5417`, serves built assets
-with SPA fallback, and overrides only the runtime API URL to `/ssobackend`.
-API/session responses are local fixtures; no real credentials or application API
-are used. The production import map and shared CDN modules execute unchanged,
-so outbound access to the configured CDN is required. This deliberately covers
-the deployed browser runtime, rather than replacing its shared libraries.
+CI runs these with `FRONTEND_ASSET_BASE_URL=/portal` and `FRONTEND_BASE_PATH=/portal`
+after the production build. Playwright (`frontend/playwright.config.mjs`) starts
+`infra/scripts/serve-browser-fixture.py` on `127.0.0.1:5417`, which serves
+`frontend/dist` with SPA fallback and replaces `/portal/config.js` with a fixture
+that sets the API URL to `/ssobackend` and selects remote, orchestrated
+microfrontend mode. API/session responses are local fixtures; no real credentials
+or application API are used. `scripts/prepare-browser-dependencies.mjs` mirrors the
+import map's `esm.sh` shared modules from `node_modules` for the test server, so no
+CDN access is needed; production artifacts and import maps are unchanged.
 
-Tests cover public startup, the users/clients microfrontends, navigation and a
-deep-route reload. Uncaught browser exceptions, console errors, failed downloads
+Specs live in `frontend/tests/browser/` and cover shell and portal startup,
+navigation and deep links, microfrontend layout and lifecycle, application
+manifests, client onboarding, notifications, health context, surveillance pages
+and user self-disable. Uncaught browser exceptions, console errors, failed downloads
 and HTTP errors fail the tests. Each test gets a fresh browser context.
 Traces/screenshots are retained on failure and uploaded by CI for seven days.
 Reports live in ignored `frontend/playwright-report` and `frontend/test-results`.

@@ -10,19 +10,19 @@ To use npm in either environment, change that environment's `source` to `"npm"` 
 {
   "development": {
     "source": "workspace",
-    "versions": { "@moh-sso/api": "1.3.2", "...": "..." }
+    "versions": { "@moh-sso/api": "1.4.1", "...": "..." }
   },
   "production": {
     "source": "npm",
     "lockfile": "module-locks/production/package-lock.json",
-    "versions": { "@moh-sso/api": "1.3.2", "...": "..." }
+    "versions": { "@moh-sso/api": "1.6.0", "...": "..." }
   }
 }
 ```
 
 The example abbreviates the maps; retain every entry in the real configuration. Versions must exist in npm before switching to npm mode. Publishing modules and selecting deployed versions remain separate operations. Source version bumps do not change deployment pins; update pins intentionally after publishing.
 
-Both selections currently reference the verified published `1.3.2` packages (`0.4.2` for report-scheduler), so the development npm override is usable as well as workspace development. They can be changed independently after verifying the selected releases.
+The selections currently differ. `development` pins apps at `1.4.0` (report-scheduler `0.5.0`) and shared packages at `1.4.1`; it uses these pins only when its source is switched to npm. `production` pins apps at `1.5.1` (report-scheduler `0.6.1`) and shared packages at `1.6.0`, matching the current `package.json` versions. They can be changed independently after verifying the selected releases.
 
 ## Development
 
@@ -32,7 +32,7 @@ npm ci
 npm run dev
 ```
 
-The command reads `development.source`, installs missing npm pins when needed, typechecks the shell against the selected package declarations, then starts Vite. To override the configured source for one run:
+The command reads `development.source` and activates the development runtime config. In npm mode it also installs missing npm pins, typechecks the shell against the selected package declarations (`scripts/check-npm-shell.mjs`) and generates the version manifest. It then starts Vite. To override the configured source for one run:
 
 ```bash
 FRONTEND_MODULE_SOURCE=npm npm run dev
@@ -55,8 +55,10 @@ The standard Dockerfile supports both modes:
 
 ```bash
 docker build -f infra/docker/frontend/Dockerfile .
-docker build -f infra/docker/frontend/Dockerfile --build-arg FRONTEND_MODULE_SOURCE=npm .
+docker build -f infra/docker/frontend/Dockerfile --build-arg FRONTEND_MODULE_SOURCE=workspace .
 ```
+
+With no build argument it follows `production.source` (currently `npm`).
 
 `Dockerfile.npm-modules` defaults to npm mode and uses the same pipeline. Changing pins requires rebuilding and deploying the frontend image. Server runtime environment changes do not change modules inside an existing image.
 

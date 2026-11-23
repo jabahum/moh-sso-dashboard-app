@@ -30,7 +30,7 @@ Build shell:
 npm run build:shell
 ```
 
-Build everything:
+Build everything from the workspace (packages, import map, apps, then the shell with `FRONTEND_MODULE_SOURCE=workspace`):
 
 ```bash
 npm run build:all
@@ -38,17 +38,23 @@ npm run build:all
 
 ### Docker-ready artifact and version metadata
 
-Build the static Docker-ready artifact:
+Build the static Docker-ready artifact (uses the `production` entry of `module-sources.json`, whose source is `npm`):
 
 ```bash
 npm run build:docker
+```
+
+Build the same artifact from this checkout instead of the npm pins:
+
+```bash
+FRONTEND_MODULE_SOURCE=workspace npm run build:docker
 ```
 
 Build the same `/portal`-based artifact that production Docker uses:
 
 ```bash
 npm run config:prod
-FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
 npm run runtime:verify
 npm run config:dev
 ```
@@ -61,15 +67,22 @@ npm run generate:versions
 
 ## What `build:docker` does
 
-`build:docker` runs:
+`build:docker` runs `node scripts/frontend-modules.mjs build`, which selects the `production` entry of `module-sources.json` (overridable with `FRONTEND_MODULE_SOURCE` and `FRONTEND_MODULE_CONFIG`) and sets `NODE_ENV=production`.
 
-1. build packages
-2. generate import map
-3. build apps
-4. build shell
-5. generate version manifest
-6. stage microfrontends into `dist`
-7. inline the generated import map into `dist/index.html`
+With source `workspace` it runs `build:docker:source`:
+
+1. build packages, generate the import map, build apps and build the shell (`build:all`)
+2. generate the version manifest
+3. stage microfrontends into `dist` (`stage:mf`)
+4. inline the generated import map into `dist/index.html`
+5. audit staged microfrontend CSS (`audit:mf-css`)
+
+With source `npm` (the default) it first installs the pinned modules into `.npm-modules/production` from `module-locks/production/package-lock.json`, checks the shell against them (`scripts/check-npm-shell.mjs`), and then runs `build:docker:npm-prepared`:
+
+1. generate the import map and the version manifest
+2. build the shell
+3. stage the installed app and package bundles into `dist` (`stage:mf:npm`) and inline the import map
+4. audit staged microfrontend CSS and the import map
 
 ## Final `dist` layout
 
@@ -84,6 +97,8 @@ dist/mf/<app>/*.css
 dist/packages/<package>/index.js
 ```
 
+When `FRONTEND_BASE_PATH` is set (for example `/portal`), staging also copies the artifact into `dist/<base path>/`, for example `dist/portal/mf/<app>/single-spa.js`.
+
 This layout supports single static deployment and prepares remote import-map deployment.
 
 `stage:mf` copies complete app/package build folders, not only `single-spa.js`, so relative chunks and CSS are available to remote imports.
@@ -96,7 +111,7 @@ From the repository root:
 docker build -f infra/docker/frontend/Dockerfile .
 ```
 
-The default production image builds the frontend from monorepo source and serves the final static files on port `3000`.
+This image is the one `infra/Makefile` builds locally. It runs `npm ci`, `npm run version:audit`, activates the production runtime config and runs `npm run build:docker` with `FRONTEND_ASSET_BASE_URL=/portal` and `FRONTEND_BASE_PATH=/portal`. Its `FRONTEND_MODULE_SOURCE` build argument defaults to empty, so the `production` entry of `module-sources.json` applies (source `npm`); pass `--build-arg FRONTEND_MODULE_SOURCE=workspace` to build the apps and packages from this checkout. It serves the final static files on port `3000` and also contains the documentation site under `/docs/`.
 
 During Docker builds, `node scripts/use-runtime-config.mjs production` activates `public/config.production.js` before `build:docker` runs. That production config enables:
 
@@ -104,9 +119,11 @@ During Docker builds, `node scripts/use-runtime-config.mjs production` activates
 - `singleSpaOrchestration: true`
 - `microfrontendMountMode: "orchestrated"`
 
+`config.production.js` sets `API_BASE_URL` to `https://dashboards.health.go.ug/ssobackend`. At container start, `infra/docker/frontend/40-runtime-config.sh` overwrites `config.js` (and `portal/config.js`) from `API_BASE_URL` (default `/api`), `FRONTEND_MICROFRONTEND_MODE` (default `remote`), `FRONTEND_SINGLE_SPA_ORCHESTRATION` (default `true`), `FRONTEND_MICROFRONTEND_MOUNT_MODE` (default `orchestrated`) and `FRONTEND_SIDE_PANEL_DOCKING` (default `true`), unless `config.js` is a read-only mount (as with the Helm ConfigMap).
+
 The shell build keeps `import-map.json` as a static artifact for inspection and tooling. During staging, the generated map is also inlined into `dist/index.html` so browsers can use it without an import-map shim.
 
-The nginx image is still available:
+`infra/docker/frontend/Dockerfile.nginx` builds the same way:
 
 ```bash
 docker build -f infra/docker/frontend/Dockerfile.nginx .
@@ -121,11 +138,10 @@ Select workspace or npm modules independently for development and production in 
 ```bash
 docker build \
   -f infra/docker/frontend/Dockerfile.npm-modules \
-  --build-arg FRONTEND_MODULE_SOURCE=npm \
   .
 ```
 
-This path builds the shell against pinned public npm exports and stages installed module bundles from an isolated installation. See [module selection](module-source-strategy.md) for development and production configuration.
+`FRONTEND_MODULE_SOURCE` defaults to `npm` in this Dockerfile, and it installs the modules from `module-locks/production/` in a separate cached layer. The CI image build (`.github/workflows/build.yml`) and the distribution check use this Dockerfile. This path builds the shell against pinned public npm exports and stages installed module bundles from an isolated installation. See [module selection](module-source-strategy.md) for development and production configuration.
 
 ## Docker development
 
@@ -162,18 +178,17 @@ Deploy one artifact containing:
 
 This is the simplest deployment mode.
 
-This is also the default source-mode Docker deployment. More detail: [Module Source Strategy](module-source-strategy.md).
+Build it from the workspace with `FRONTEND_MODULE_SOURCE=workspace`. More detail: [Module Source Strategy](module-source-strategy.md).
 
 ### npm package module deployment
 
-Publish apps/packages to npm first, then build a Docker image that stages installed package artifacts:
+Publish apps/packages to npm first, pin them in the `production` entry of `module-sources.json` (and refresh the lock with `npm run modules:lock`), then build an artifact that stages the installed package artifacts:
 
 ```bash
-npm run build:shell
-npm run generate:versions
-npm run stage:mf:npm
-npm run audit:import-map
+npm run build:docker
 ```
+
+This is the default for `build:docker`, `Dockerfile` and `Dockerfile.npm-modules`.
 
 Use this mode only after published package versions are available in the configured npm registry.
 
@@ -190,8 +205,8 @@ In this mode:
 Versioned deployment paths should look like:
 
 ```text
-/mf/users/0.4.1/single-spa.js
-/packages/api/0.2.0/index.js
+/mf/users/1.5.1/single-spa.js
+/packages/api/1.6.0/index.js
 ```
 
 ## Static hosting requirements
@@ -199,12 +214,12 @@ Versioned deployment paths should look like:
 The static server must:
 
 - serve `dist`
-- serve `/*` for the production shell base path
-- provide SPA fallback to `index.html`
-- serve `/mf/*`
-- serve `/packages/*`
-- serve `/config.js`
-- serve `/import-map.json`
+- serve the shell under its `/portal/` base path, with SPA fallback to `/portal/index.html`
+- serve `/portal/mf/*` and `/portal/packages/*` (or `/mf/*` and `/packages/*` for an artifact built without `FRONTEND_BASE_PATH`)
+- serve `/portal/config.js`
+- serve `/portal/import-map.json`
+
+`infra/docker/frontend/nginx.conf` implements these rules.
 
 Before deploying remote/import-map mode, run:
 
@@ -222,7 +237,7 @@ npm run bundle:budget
 - `/portal/packages/*` shared package bundles
 - `version-manifest.json`
 
-`bundle:budget` keeps the current shell and microfrontend bundle sizes from growing silently. Override thresholds with:
+`bundle:budget` keeps the current shell and microfrontend bundle sizes from growing silently. The defaults are 8500 KB for the shell entry JS, 1200 KB for shell CSS and 10000 KB for an app chunk. Override thresholds with `BUNDLE_BUDGET_SHELL_JS_KB`, `BUNDLE_BUDGET_SHELL_CSS_KB` and `BUNDLE_BUDGET_APP_CHUNK_JS_KB`, for example:
 
 ```bash
 BUNDLE_BUDGET_SHELL_JS_KB=9000 BUNDLE_BUDGET_APP_CHUNK_JS_KB=11000 npm run bundle:budget

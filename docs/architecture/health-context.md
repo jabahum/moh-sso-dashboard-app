@@ -30,8 +30,13 @@ Assignments use:
 - `NODE_ONLY`: only the assigned node.
 - `NODE_AND_DESCENDANTS`: the node and closure-table descendants.
 
-A national assignment does not include descendants unless its scope mode says
-so. A facility assignment never implies district access.
+Every authenticated user also receives the enabled Uganda (`UG`) National node
+with `NODE_AND_DESCENDANTS` as a built-in `DEFAULT` baseline. Explicit
+assignments to that node are folded into the baseline, so their scope mode has
+no further effect (`ListEffectiveContexts` in
+`backend/internal/features/health_context/repository_postgres.go`). For any
+other node, the scope mode applies as written. A facility assignment never
+implies district access.
 
 ## Request contract
 
@@ -41,11 +46,18 @@ Context-sensitive requests send:
 X-Health-Context-ID: <authorized-context-uuid>
 ```
 
-The backend parses and authorizes the value. Contextual route groups require
-the header when the caller has one or more health-context assignments. Users
-without assignments retain legacy behavior while rollout is in progress. A
-feature must still load the resource, resolve its context, and apply ownership
-checks in its service or repository. The header is untrusted input.
+The backend parses and authorizes the value. The contextual route group
+(`ContextScopedGroup` in `backend/internal/api/routes/protected_routes.go`) covers
+documents, data quality and issues, visualiser and surveillance routes. It
+requires `data-statistics` system access and runs
+`RequireAccessibleSelection`. That middleware rejects a missing header with
+`400 HEALTH_CONTEXT_REQUIRED` whenever the caller has any effective context.
+Because of the National baseline, that means every user while the `UG` node is
+enabled. A missing header is accepted only when the user has no effective
+contexts at all. A malformed value returns `400`, an unauthorized one `403`,
+and a resolution failure `503`. A feature must still load the resource, resolve
+its context, and apply ownership checks in its service or repository. The
+header is untrusted input.
 
 ### Document ownership
 
@@ -74,13 +86,15 @@ The selector is a working-context convenience, not a security boundary.
 
 ## External and incremental modules
 
-Modules that query another backend, including report browser and issue tracker,
-must propagate `X-Health-Context-ID` and enforce the same context on that
+Modules that query another backend, such as the report browser (an embedded
+Health BI frontend at `HEALTH_BI_BASE_URL`), must propagate `X-Health-Context-ID` and enforce the same context on that
 service. Receiving the value is not authorization: the downstream service must
 validate the caller and constrain list, detail, drill-down, aggregate, export,
 and download operations. Until a downstream service supports this contract,
 the portal may limit navigation with RBAC and system access but must not claim
-that its data is context-isolated.
+that its data is context-isolated. The issue tracker and visualiser call the
+portal's own context-scoped routes unless `VITE_VISUALIZER_API_BASE` points them
+at another backend.
 
 The shared `baseApi` adds the active context header for portal RTK Query
 requests. Single-spa applications also receive the active and available
@@ -90,17 +104,24 @@ must consume that public contract rather than importing shell internals.
 ## Observatory database integration
 
 Health-context ownership, aliases, assignments, and closure remain in the primary
-portal database. Surveillance geography and metrics remain in observatory.
-Geography aliases are synchronized through the two application database connections
-when context geography is requested, with a one-minute cache. Existing context IDs
-are retained when names or parents change. Source/synchronization failures return
-an error instead of falling back to unrestricted data access.
+portal database. Migration `000060_primary_geography_registry` also moves the
+shared geography reference data (regions, districts, sub-counties, facilities) into
+a primary `geography` schema. Its triggers keep matching health-context nodes and
+`geography-*` aliases in step, alongside the existing `surveillance-*` aliases.
+Surveillance facts and metrics remain in observatory. `backend/internal/geography`
+replicates geography one way, from primary to observatory. A full sync runs when
+the observatory connection is (re)established, and later refreshes run at most
+once a minute. Existing context IDs are retained when names or parents change.
+Source/synchronization failures return an error instead of falling back to
+unrestricted data access.
 
 Scoped surveillance queries receive authorized UUID lists resolved in the primary
 database; they do not join primary tables or call primary functions in observatory.
 Hierarchy selectors may include ancestors, while metric and alert queries use only
-the selected scope and its permitted descendants. The new primary migrations use
-versions 54–58, after the current upstream history, to avoid version collisions.
+the selected scope and its permitted descendants. The health-context primary
+migrations are versions 54–58 (`000054_add_health_contexts` to
+`000058_add_announcement_health_context_audience`), and migration 60 adds the
+primary geography registry.
 
 ## Observability contract
 

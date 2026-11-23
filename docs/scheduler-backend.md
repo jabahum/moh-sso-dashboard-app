@@ -65,7 +65,10 @@ and service-account credentials are configured.
 
 ### Keycloak service account
 
-In the shared Keycloak realm:
+`infra/keycloak/realm-export.json`, `infra/keycloak/realm-export-prod.json` and the
+Helm dev realm (`infra/helm/moh-sso/files/dev/realm-export.json`) already define this
+client, its service-role mapping and its audience mapper, so a realm imported from
+them only needs step 4. For a realm created another way, in the shared Keycloak realm:
 
 1. Apply the RBAC seed to create `data-statistics:report_scheduler_service`.
    This service role grants no portal user permissions and is not a launcher role.
@@ -109,6 +112,7 @@ The integration currently expects:
 - `GET /api/v1/reports/{id}/parameters`
 - `POST /api/v1/reports/{id}/generate`
 - `GET /api/v1/report-jobs/{jobId}`
+- `GET /api/v1/report-jobs/{jobId}/artifact` (attachment download; see below)
 
 Responses can be returned directly or in a `{ "data": ... }` envelope. Generation is modeled as asynchronous; Health BI returns a job and the SSO module polls/queries its status and artifact URL.
 
@@ -139,7 +143,7 @@ The client secret is never included in frontend configuration or the ConfigMap.
 
 ### Routes
 
-All routes are under `/api/v1/report-scheduler`, require `data-statistics` system access, and enforce scheduler permissions.
+All routes are under `/api/v1/report-scheduler`. Except the public delivery-link download, they require an authenticated user with `data-statistics` system access and enforce scheduler permissions (`backend/modules/report-scheduler/http_routes.go`).
 
 - `GET /` - module status
 - `GET /reports` - Health BI report catalogue
@@ -157,7 +161,7 @@ All routes are under `/api/v1/report-scheduler`, require `data-statistics` syste
 - `POST /schedules/{scheduleId}/resume` - resume and calculate the next run
 - `POST /schedules/{scheduleId}/duplicate` - create a paused copy
 - `POST /schedules/{scheduleId}/run` - run immediately through the normal execution pipeline
-- `GET /overview` - scheduler health and owner/scoped-manager operational metrics
+- `GET /overview` - scheduler health and owner/scoped-manager operational metrics; requires `report_scheduler:history`
 - `GET /metrics` - admin observability view; requires `metrics:read` and `report_scheduler:manage`
 - `GET /executions` - list execution history
 - `GET /executions/{executionId}` - inspect one execution, artifacts, resolved period, and recipient deliveries

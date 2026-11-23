@@ -2,7 +2,9 @@
 
 The issue tracker app supports tracking and reviewing data quality issues.
 
-It is a standalone React microfrontend exposed as `@moh-sso/issue-tracker` and mounted by the shell at `/apps/dwh/issue-tracker`.
+It is a standalone React microfrontend exposed as `@moh-sso/issue-tracker` and mounted by the shell at `/apps/dwh/issue-tracker`. The shell route requires the
+`data-statistics` system, `systems:launch`, and `issue_tracker:read`
+(`apps/shell/src/app/microfrontends/registry.ts`).
 
 ## Responsibilities
 
@@ -24,7 +26,8 @@ Both pages use the shared `PageShell`, consistent action sizes, and responsive
 spacing. On narrow screens, the registered-issues table scrolls horizontally in a
 keyboard-focusable region instead of compressing its columns.
 
-Registry migration 52 updates existing navigation without changing permissions,
+Registry migration 52
+(`backend/internal/db/migrations/000052_align_issue_tracker_navigation.up.sql`) updates existing navigation without changing permissions,
 activation, or suspended state. Rollback restores the saved Issue Tracker item
 and retains unrelated navigation entries. Seed and Keycloak navigation metadata
 use the same single-entry structure for new installations.
@@ -37,7 +40,11 @@ use the same single-entry structure for new installations.
 
 ## Development
 
+Run from `frontend/`. `npm run dev:mf:issue-tracker` starts the Vite dev server on port 4109;
+`npm run preview:mf:issue-tracker` serves the built bundle on the same port.
+
 ```bash
-npm run dev -w @moh-sso/issue-tracker
+npm run dev:mf:issue-tracker
 npm run build -w @moh-sso/issue-tracker
+npm run preview:mf:issue-tracker
 ```

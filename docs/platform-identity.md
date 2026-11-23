@@ -95,9 +95,9 @@ Apply re-runs the preview and refuses if the current match no longer equals the 
 
 Configure these additional environment variables:
 
-- `PLATFORM_AUTH_CLIENT_ID`: a dedicated confidential introspection client, normally `moh-platform-api`.
-- `PLATFORM_AUTH_CLIENT_SECRET`: its secret, supplied through the deployment's secret mechanism.
-- `PLATFORM_AUTH_AUDIENCE`: required audience, defaults to `moh-platform-api`.
+- `PLATFORM_AUTH_CLIENT_ID`: a dedicated confidential client that the backend uses to call token introspection. It has no default, and the checked-in realm exports do not define such a client; create it in Keycloak.
+- `PLATFORM_AUTH_CLIENT_SECRET`: its secret, supplied through the deployment's secret mechanism. The backend container entrypoint (`infra/docker/backend/entrypoint.sh`) also reads it from the file named by `PLATFORM_AUTH_CLIENT_SECRET_FILE`.
+- `PLATFORM_AUTH_AUDIENCE`: the audience every token must carry; defaults to `moh-platform-api`.
 
 The issuer comes from `KEYCLOAK_EXTERNAL_URL` and `KEYCLOAK_REALM`. Introspection uses `KEYCLOAK_BASE_URL`/`KEYCLOAK_INTERNAL_URL` and the realm's `/protocol/openid-connect/token/introspect` endpoint. Use HTTPS or a protected internal transport consistent with the existing deployment. Never redirect the introspection endpoint. Configure the platform audience mapper and include the introspecting client's audience as required by your deployed Keycloak version. Configure the capability client scopes with **Include in token scope** enabled. Configure role mappers for external interactive access decisions.
 

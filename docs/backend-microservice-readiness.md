@@ -12,6 +12,12 @@ Feature packages live under:
 backend/internal/features/<feature>
 ```
 
+Optional applications that have already been extracted (Administrative Units,
+Announcements, Audit, GeoJSON, Metrics and Report Scheduler) are no longer host
+features: they are published Go modules under `backend/modules/<module-id>`, with
+no directory in `backend/internal/features`. See
+[Modular distribution](modular-distribution.md).
+
 A feature may import:
 
 - standard library packages
@@ -23,27 +29,39 @@ A feature should not import another feature unless the dependency is listed as a
 
 ## Enforced boundary check
 
-The backend has an architecture test:
+The backend has an architecture test
+(`backend/internal/architecture/architecture_test.go`). It scans
+`backend/internal/features` and `backend/internal/adapters/modules`:
 
 ```bash
 cd backend
-GOCACHE=/private/tmp/moh-sso-go-build go test ./internal/architecture
+go test ./internal/architecture
 ```
 
-It also runs as part of:
+`make architecture` runs the same package verbosely, and it also runs as part of:
 
 ```bash
-GOCACHE=/private/tmp/moh-sso-go-build go test ./...
+go test ./...
 ```
 
-Approved cross-feature imports today:
+Approved cross-feature imports today (`allowedFeatureImports` in that test):
 
 | Source feature | Target feature | Reason |
 | --- | --- | --- |
-| `announcements` | `users` | Announcement audiences resolve Keycloak users through the users repository port. |
 | `auth` | `authsession` | Auth owns the auth session backing store as an implementation detail. |
+| `data_quality` | `health_context` | Data-quality issues enforce ownership through the shared contextual scope policy. |
 | `documents` | `storage_locations` | Document upload flows validate configured storage locations. |
+| `email` | `rbac` | Email group targeting resolves recipients through the RBAC repository port. |
+| `email` | `users` | Email group targeting filters resolved members through the users repository port. |
+| `email` | `health_context` | Email audiences validate and resolve contextual recipients. |
 | `rbac` | `system_rbac` | RBAC sync applies the system RBAC seed format. |
+| `surveillance` | `health_context` | Surveillance resources use aliases and the shared contextual scope policy. |
+| `visualiser` | `health_context` | Visualiser queries constrain organisation units through health-context aliases. |
+
+The list also still contains entries for `admin_units` (to `health_context`) and
+`announcements` (to `users`, `rbac` and `health_context`). Neither feature has a
+directory under `backend/internal/features` or `backend/internal/adapters/modules`
+any more, so those entries match no source files.
 
 When adding a new cross-feature import, first ask whether the shared concept should become a small shared package or an explicit interface passed through bootstrap. Add a boundary exception only when the coupling is intentional and documented.
 
@@ -57,6 +75,11 @@ Each extractable feature should expose stable contracts at the HTTP and service 
 - `service.go`: use-case boundary
 - `repository.go`: feature-owned persistence port
 - `repository_postgres.go`, `repository_keycloak.go`, or similar: adapter implementation
+
+Not every host feature has every file (for example `notifications` and
+`surveillance` have no `service.go` or `repository.go`). Published modules under
+`backend/modules` use their own layout, including module-owned HTTP handlers and
+`openapi.go` metadata; see [Developer workflows](module-development.md).
 
 Handlers must return DTOs and safe API errors. They should not return sqlc rows, database models, Keycloak admin payloads, or raw internal error strings.
 
@@ -88,6 +111,10 @@ The current in-process event contract lives in:
 backend/internal/events
 ```
 
+It defines `Event`, the `Publisher` interface and an in-memory publisher. No
+other backend package imports it yet, so none of the event types below is
+currently published through it.
+
 Use `events.Publisher` as the dependency boundary when a feature needs to announce something important. Keep event publishing behind constructors/bootstrap so a future outbox or broker adapter can replace the in-memory publisher without changing feature handlers.
 
 Candidate event streams:
@@ -103,7 +130,7 @@ Candidate event streams:
 | `email.delivery_queued` | Email worker sends queued message. | Email service boundary event. |
 | `audit.recorded` | Persists audit log. | Central audit service event. |
 
-Recommended future shape:
+`events.Event` already has this shape (with JSON tags):
 
 ```go
 type Event struct {
@@ -152,7 +179,8 @@ Recommended extraction order when the monolith boundaries are stable:
    - queue/worker already exists
    - minimal synchronous UI dependency
 2. `announcements`
-   - clear API, attachment storage, notification/email events
+   - done: now the published, self-contained `backend/modules/announcements`
+     module (in-process, not a separate service)
 3. `documents`
    - file processing can become worker/service oriented
 4. `rbac`

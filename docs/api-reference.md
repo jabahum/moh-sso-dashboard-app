@@ -63,7 +63,7 @@ Successful responses:
 {
   "success": true,
   "data": {},
-  "meta": {}
+  "meta": { "requestId": "..." }
 }
 ```
 
@@ -76,10 +76,11 @@ Error responses:
     "code": "INVALID_INPUT",
     "message": "Safe user-facing message"
   },
-  "meta": {}
+  "meta": { "requestId": "..." }
 }
 ```
 
+`meta` carries only an optional `requestId` (`backend/internal/http/response/response.go`).
 File endpoints (downloads, views, exports) stream binary content instead of the envelope.
 
 Handlers should return feature DTOs and safe error messages. They should not expose raw SQL rows, sqlc models, filesystem paths, stack traces, or raw database errors.
@@ -96,6 +97,9 @@ Protected routes accept any of:
 - An existing `sso_session` HttpOnly cookie, set by the Keycloak login flow below. Swagger UI cannot set this cookie manually.
 - A bearer JWT in the `Authorization` header.
 - The legacy `access_token` HttpOnly cookie, kept for backward compatibility.
+
+When more than one is present, the bearer header wins, then the `sso_session` cookie, then the
+legacy cookie (`extractAccessToken` in `backend/internal/middleware/auth.go`).
 
 Admin routes are mounted under:
 
@@ -166,7 +170,8 @@ Used by integrated applications rather than the portal UI. See
 [Platform notifications](platform-notifications.md).
 
 Mounted under `/api/v1/platform`. These routes authenticate a Keycloak access token
-(bearer), not the portal session, and are rate limited per IP.
+(bearer), not the portal session, and are rate limited per IP (120 requests per minute,
+policy `platform-auth`).
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |

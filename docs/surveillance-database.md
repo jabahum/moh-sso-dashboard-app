@@ -44,7 +44,9 @@ The local database container is `sso-observatory-db` on the main development net
 
 Settings are `OBSERVATORY_DB_HOST`, `OBSERVATORY_DB_PORT`,
 `OBSERVATORY_DB_NAME`, `OBSERVATORY_DB_USER`, `OBSERVATORY_DB_PASSWORD`, and
-`OBSERVATORY_DB_ENABLE_SSL`. The host and complete credentials are required.
+`OBSERVATORY_DB_ENABLE_SSL`. Host, port, name, user and password must all be
+non-empty; port, name and user default to `5432`, `observatory` and `surveillance`,
+while host and password have no default (`Config.ObservatoryDBSource()`).
 There is no fallback to the primary database. An exact primary host/port/database
 target is rejected; configure distinct database destinations even when host aliases
 are used. Previous `SURVEILLANCE_DB_*`
@@ -93,10 +95,11 @@ volumes:
     name: moh-surveillance_surveillance_data
 ```
 
-The current workspace keeps this override at `.local-sso/observatory-volume.override.json`
-and credentials at `.local-sso/observatory.env`, both mode 0600. Its saved backend
-environment remains private in `.local-sso/backend-before-surveillance.override.json`.
-Start the adopted service and backend with:
+Keep this override, the Observatory credentials and any saved backend environment in
+private, Git-ignored files with mode 0600. The example below uses
+`.local-sso/observatory-volume.override.json`, `.local-sso/observatory.env` and
+`.local-sso/backend-before-surveillance.override.json`; these files are not part of the
+repository and must be created for your workspace. Start the adopted service and backend with:
 
 ```sh
 docker compose --env-file .local-sso/observatory.env -f infra/compose/docker-compose.dev.yml -f .local-sso/backend-before-surveillance.override.json -f .local-sso/observatory-volume.override.json up -d --no-deps --wait observatory-db backend
@@ -271,6 +274,11 @@ still describe both stores; runtime repository wiring keeps the connections sepa
 ```sh
 python3 infra/scripts/load-surveillance.py --flag-year 2026
 ```
+
+The loader reads the CSV files from `surveillance/` at the repository root (override with
+`--directory`) and writes through `docker exec` into the `sso-observatory-db` container
+(`--container`), database `observatory` (`--database`) as role `surveillance` (`--db-user`).
+`--flag-year` is required.
 
 ### Batches and staging
 

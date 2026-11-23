@@ -20,7 +20,7 @@ frontend/apps/<app>/vite.config.ts
 
 ## Exports
 
-The app package should expose:
+The app package should expose at least the following (existing apps such as `users` also export `./api` and `./types`):
 
 ```json
 {
@@ -73,10 +73,13 @@ Use `paths` when an app owns multiple activation paths.
 
 Update:
 
-- `frontend/package.json` build/dev scripts
-- `frontend/scripts/generate-import-map.mjs`
-- `frontend/scripts/stage-microfrontends.mjs` (and npm-module staging when used)
+- `frontend/package.json` scripts: `build:apps`, `dev:mf:<app>` and `preview:mf:<app>` (pick the next free port; `4115` is the highest in use)
+- `frontend/scripts/generate-import-map.mjs` (`apps` list)
+- `frontend/scripts/stage-microfrontends.mjs` (`apps` list; `stage-from-npm-packages.mjs` reuses it)
 - `frontend/scripts/dev-microfrontends.mjs`
+- `frontend/scripts/verify-production-runtime.mjs` and `frontend/scripts/architecture-check.mjs` (app lists)
+- `frontend/public/import-map.local.json`
+- both `versions` maps in `frontend/module-sources.json`: an npm-mode selection must pin exactly every publishable module, so the `production` entry (source `npm`) needs a published version of the new app
 - shell microfrontend registry files
 - shell lifecycle loader/orchestrator lookup and guarded user/admin routes
 - shell `package.json` dependency when importing the new app

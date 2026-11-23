@@ -18,7 +18,8 @@ a module registry at startup, appears in a runtime inventory and can be disabled
 by configuration. A module's portable implementation lives in its own nested Go
 module under `backend/modules/<module-id>`, is released with an immutable,
 directory-prefixed tag and is consumed by the dashboard through a reviewed pin in
-`backend/go.mod`. Frontend applications and shared libraries are published npm
+`backend/go.mod` (Report Scheduler is currently the exception: its pin is a Go
+pseudo-version, described under [Current status](#current-status)). Frontend applications and shared libraries are published npm
 packages consumed through reviewed production pins and a committed npm lock.
 
 The registry runs trusted, compiled code. It is not a sandbox and does not
@@ -108,7 +109,8 @@ features, `adapter` when a published package is still wrapped by host adapters
 in `backend/internal/adapters/modules/<feature>`, and `self-contained` when the
 package owns its HTTP, persistence and API contract and no host feature or
 adapter tree is retained. Published modules must not retain directories in
-`backend/internal/features`.
+`backend/internal/features`. No module currently uses `adapter`:
+`backend/internal/adapters/modules` contains only a README.
 
 ### Current status
 
@@ -134,8 +136,16 @@ Selected backend module versions in `backend/go.mod`:
 | `backend/modules/metrics` | `v0.2.0` |
 | `backend/modules/report-scheduler` | `v0.1.1-0.20261120164120-d9bb6f8c819f` |
 
-`backend/core` is consumed from the repository through a local `replace`
-directive rather than a published tag. Check `backend/go.mod` and
+Five modules select their `v0.2.0` release tag. Report Scheduler selects a
+pseudo-version of commit `d9bb6f8c` ("Give Report Scheduler a module-owned HTTP
+contract"), which is in the main-line history, rather than a release tag; the
+repository's `backend/modules/report-scheduler/v0.2.0` tag points at a commit
+that is not an ancestor of that commit, and its module source differs from the
+source the host builds.
+
+`backend/core` is required as `v0.0.0` and resolved through the local
+`replace github.com/mohuganda/moh-sso-dashboard/backend/core => ./core` directive
+in `backend/go.mod`; this checkout has no `backend/core/v*` release tag. Check `backend/go.mod` and
 [Module coverage](module-coverage.md) for the authoritative current values.
 
 ## Packaging, publishing and pinning
@@ -186,7 +196,8 @@ configuration.
    (for example `backend/modules/metrics/v0.2.0`) and push that tag to the
    upstream repository. Tags are immutable.
 4. Verify the public download from a separate consumer with `GOWORK=off`. The
-   release verifiers (`infra/scripts/test-<module>-release.py`) download the
+   release verifiers (`infra/scripts/test-<module>-release.py`, present for every
+   published module except Report Scheduler) download the
    version into a fresh module cache, check reviewed checksums, reject
    replacements, build and run an independent consumer and compare the complete
    published artifact with the local module. They need network access.
@@ -293,7 +304,8 @@ Other checks used for module work:
   [Module coverage](module-coverage.md); CI validates the catalogue and a Go
   architecture test checks it against the compiled inventory.
 - `infra/scripts/test-<module>-package.py` and `test-<module>-release.py` verify
-  standalone packages and published releases (see
+  standalone packages and published releases; Report Scheduler has a package
+  verifier but no release verifier (see
   [Release a module version](#release-a-module-version)).
 - `python3 infra/scripts/test-platform-core.py` verifies the portable core in
   isolation.
@@ -608,6 +620,10 @@ remain core-owned. Build a new backend image to consume a release; publishing a
 tag does not change a running deployment. The runtime fixture verifies the actual
 compiled version, real Keycloak permissions, public/protected route disablement,
 stopped heartbeat and worker restart/re-enablement.
+
+Later note: Report Scheduler has since become a self-contained module that owns
+its HTTP contract, and the host no longer selects `v0.1.0`; see
+[Current status](#current-status) for the selected version.
 
 ### Audit extraction: released dependency integration
 

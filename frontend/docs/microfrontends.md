@@ -29,7 +29,7 @@ VITE_MICROFRONTEND_MODE=remote
 VITE_MICROFRONTEND_MOUNT_MODE=orchestrated
 ```
 
-or equivalent runtime config:
+or equivalent runtime config (which takes precedence over the `VITE_*` variables when present; every checked-in `public/config*.js` sets all three keys):
 
 ```js
 window.__APP_CONFIG__.singleSpaOrchestration = true;
@@ -43,7 +43,7 @@ Local mode uses workspace imports and local lifecycle modules.
 
 Remote mode uses import maps. The shell loads `@moh-sso/<app>` bundle URLs from the import map.
 
-For true `registerApplication` mode, the shell creates one DOM container per app under `#microfrontend-orchestrated-root`.
+For true `registerApplication` mode, the shell creates one DOM container per app with the id `single-spa-application-<app>` (`containers.ts`) and attaches it inside the content area of the route that hosts the app.
 
 ## App contract
 
@@ -73,7 +73,8 @@ Apps accept runtime props from `@moh-sso/microfrontend`:
 - `auth`
 - `apiBaseUrl`
 - `eventBus`
-- `domElement` during mount
+- `healthContext`
+- `domElement` during mount (`MicrofrontendMountProps`)
 
 `basename` is important for nested routes inside each app.
 
@@ -86,12 +87,22 @@ Examples:
 - announcements: `/admin/announcements`
 - audit: `/admin/audit-logs`
 - email: `/admin/emails`
+- rbac: `/admin/rbac`
+- data-visualizer: `/apps/dwh/data-visualizer`
+- data-validation: `/apps/dwh/data-validation`
+- report-browser: `/apps/dwh/dashboards`
+- report-scheduler: `/apps/dwh/report-scheduler` (`/apps/report-scheduler` redirects there)
+- issue-tracker: `/apps/dwh/issue-tracker`
+- e-services: `/apps/eservices`
 
 Documents owns:
 
-- `/apps/dwh/filesvr`
+- `/apps/dwh/documents`
+- `/apps/dwh/documents/:id`
 - `/apps/utilities/self-service/eservice/document-upload`
 - `/apps/utilities/self-service/eservice/document-upload/:id`
+
+The documents root still accepts the legacy `/apps/dwh/filesvr` basename, but the shell no longer routes that path.
 
 Surveillance owns:
 
@@ -105,6 +116,10 @@ Utilities owns:
 - `/apps/utilities/self-service/leave-plan`
 - `/apps/utilities/self-service/absence-requests`
 - `/apps/utilities/self-service/absence-dashboard`
+- `/apps/utilities/self-service/eservice/service-access`
+- `/apps/utilities/self-service/eservice/equipment-request`
+
+The shell routes are in `apps/shell/src/app/routes/admin.routes.tsx` and `user.routes.tsx`; base paths are listed in `apps/shell/src/app/microfrontends/routes.ts`.
 
 ## Shell integration
 
@@ -124,7 +139,8 @@ frontend/apps/shell/src/app/microfrontends/orchestrator.ts
 
 Related files:
 
-- `registerApps.ts`: app route registry
+- `registry.ts`: app route registry (`MicrofrontendRoute` objects with required permissions and systems)
+- `registerApps.ts`: re-exports the registry for orchestration
 - `routes.ts`: route constants
 - `lifecycles.ts`: local lifecycle imports
 - `containers.ts`: shell-owned DOM containers for orchestrated mode

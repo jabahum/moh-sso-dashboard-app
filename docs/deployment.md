@@ -27,7 +27,9 @@ infra/
 
 Run commands below from the repository root. `make -C infra` also exposes the
 same deployment targets. Requires Docker Compose 2.24.4+, Python 3 and jq for
-contract checks; runtime tests use Docker. Frontend build tools require Node 22.
+contract checks; runtime tests use Docker. The frontend Docker images and CI build
+with Node 22; local frontend development uses the version in `frontend/.nvmrc`
+(20.20.1).
 
 ## Production and development environments
 
@@ -38,6 +40,7 @@ contract checks; runtime tests use Docker. Frontend build tools require Node 22.
 | `gateway` | `docker-compose-nginx.yml` | `infra/env/prod.env` |
 | `remote` | `docker-compose.prod.yml` | production file plus `infra/env/remote-proxy.env` |
 | `external` | `docker-compose-without-keycloak.yml` | `infra/env/external-dev.env` |
+| `distribution` | `docker-compose.distribution.yml` | `infra/env/prod.env`; see [modular distribution](../infra/distribution.md) |
 
 Use `make compose-config COMPOSE_ENV=dev`, for example, to validate one mode.
 `compose-up`, `compose-down`, `compose-logs`, `compose-ps`, `compose-pull` and
@@ -89,6 +92,15 @@ Image builds now run from the repository root, for example:
 docker build -f infra/docker/backend/Dockerfile --build-arg VERSION=1.2.3 -t backend:1.2.3 .
 docker build -f infra/docker/frontend/Dockerfile --build-arg VERSION=1.2.3 -t frontend:1.2.3 .
 ```
+
+The default frontend `Dockerfile` follows `production.source` in
+`frontend/module-sources.json` (currently `npm`), so it stages the pinned npm
+modules; add `--build-arg FRONTEND_MODULE_SOURCE=workspace` to build the apps from
+this checkout instead. **Build & Push Images** (`.github/workflows/build.yml`)
+builds the frontend from `infra/docker/frontend/Dockerfile.npm-modules` using those
+npm pins. It tags every image `sha-<short commit>`, adds `latest` on `main`, and adds
+the numeric version (from `infra/scripts/image_version.py`) only for a matching
+component release tag.
 
 ### Runtime settings and API base URL
 
@@ -202,6 +214,7 @@ frontend dependency volume if needed without deleting database/upload volumes.
 | MailHog UI / SMTP | `http://localhost:8025` / `localhost:1025` |
 | Primary Postgres | `localhost:5436` |
 | Upload/warehouse fixture | `localhost:5433` |
+| Observatory Postgres | `localhost:55434` (`OBSERVATORY_DB_LOCAL_PORT`) |
 | Module servers | ports 4101 through 4115 |
 
 Published development ports bind only to localhost. Keycloak imports
@@ -411,7 +424,7 @@ build, the stack starts, and backend runtime metadata is reachable.
 For GitHub-driven delivery, follow the [CD and server setup runbook](cd-pipeline.md).
 The build publishes a matched image pair and infrastructure bundle. A separate
 workflow deploys staging or promotes that same build to production. Server-local
-`/etc/moh-sso/deploy.json` selects `prod`, `remote` or `gateway`; private settings
+`/etc/moh-sso/deploy.json` selects `prod`, `remote`, `gateway` or `distribution`; private settings
 remain on the server. Rollout verifies exact image digests, runtime versions,
 modules and the public HTTPS edge, and restores the previous recorded release on
 failure. No repository checkout is needed on the server.

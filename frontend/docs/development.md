@@ -4,24 +4,18 @@ This page explains how to set up and run the frontend locally, switch runtime mo
 
 ## Prerequisites
 
-- Node `20.19+` or `22.12+`
+- Node 22 (CI workflows use `node-version: 22`; the frontend Docker images use `node:22-alpine`)
 - npm
 - Docker, optional
 
-Vite 7 warns on Node 18. Use Node 20.19+ or 22.12+ for the clean path.
+Vite 7 needs Node `20.19+` or `22.12+`. `frontend/.nvmrc` still pins `20.20.1`, which satisfies Vite but is not the version CI builds with; `frontend/package.json` declares no `engines` field.
 
 With `nvm`:
 
 ```bash
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 node --version
-```
-
-If your local `nvm` does not resolve the `20` alias, use an exact installed version that satisfies Vite, for example:
-
-```bash
-nvm use v20.20.1
 ```
 
 ## Install
@@ -37,7 +31,7 @@ npm install
 npm run dev:shell
 ```
 
-This starts the shell on port `3000` and resolves apps through the local workspace.
+This runs `scripts/frontend-modules.mjs dev`: it selects the `development` entry of `module-sources.json` (source `workspace`, so apps and packages resolve from this checkout), copies `public/config.development.js` to `public/config.js` (skipped when `FRONTEND_RUNTIME_CONFIG_PREPARED=true`, as in the Docker dev image), and starts the shell on port `3000` at `http://localhost:3000/portal/`. `npm run dev` is the same command.
 
 ## Remote microfrontend development
 
@@ -55,7 +49,7 @@ Run shell plus all app dev servers:
 npm run dev:remote:all
 ```
 
-These commands set remote microfrontend mode for local testing.
+These commands run `config:local-remote` and then `scripts/dev-microfrontends.mjs`, which starts `dev:shell` plus the selected `dev:mf:<app>` servers with `VITE_SINGLE_SPA_ORCHESTRATION=true` and `VITE_MICROFRONTEND_MODE=remote` (unless already set). Because `dev:shell` copies `config.development.js` over `public/config.js` when `FRONTEND_RUNTIME_CONFIG_PREPARED` is not `true`, and values in `config.js` take precedence over `VITE_*` variables, set `FRONTEND_RUNTIME_CONFIG_PREPARED=true` when running these outside Docker if you need the `local-remote` runtime config to stay active.
 
 For true import-map testing of `/single-spa.js`, use build + preview instead of relying on Vite dev to serve library output:
 
@@ -69,11 +63,13 @@ npm run remote:preview:all
 
 ## Docker development
 
-Shell-only:
+Shell-only (the default `FRONTEND_DEV_COMMAND` is `node scripts/frontend-modules.mjs dev`):
 
 ```bash
 docker compose -f infra/compose/docker-compose.dev.yml up frontend
 ```
+
+The container writes `public/config.js` from `FRONTEND_MICROFRONTEND_MODE`, `FRONTEND_SINGLE_SPA_ORCHESTRATION`, `FRONTEND_MICROFRONTEND_MOUNT_MODE`, `FRONTEND_SIDE_PANEL_DOCKING` and `API_BASE_URL` (`infra/docker/frontend/40-runtime-config.sh`) and publishes ports `3000` and `4101-4115` on `127.0.0.1`.
 
 All remote app dev servers:
 
@@ -93,12 +89,15 @@ npm run config:local-remote
 npm run config:prod
 ```
 
-Normal development uses local/hybrid mode:
+Each script copies `public/config.<mode>.js` to `public/config.js` (`scripts/use-runtime-config.mjs`):
 
-```bash
-npm run config:dev
-npm run dev:shell
-```
+| Script | Source file | `API_BASE_URL` | `microfrontendMode` | `singleSpaOrchestration` | `microfrontendMountMode` |
+| --- | --- | --- | --- | --- | --- |
+| `config:dev` | `config.development.js` | `http://localhost:9000` | `local` | `false` | `hybrid` |
+| `config:local-remote` | `config.local-remote.js` | `http://localhost:9000` | `remote` | `false` | `hybrid` |
+| `config:prod` | `config.production.js` | `https://dashboards.health.go.ug/ssobackend` | `remote` | `true` | `orchestrated` |
+
+Normal development uses local/hybrid mode, which `npm run dev:shell` activates automatically.
 
 If the frontend behaves like production locally, reset it:
 
@@ -159,8 +158,11 @@ Run app/package builds when changing shared package exports, app entrypoints, ro
 - utilities: `4112`
 - rbac: `4113`
 - data-validation: `4114`
+- report-scheduler: `4115`
 
 ## Environment variables
+
+The first three are fallbacks: the shell reads `singleSpaOrchestration`, `microfrontendMode` and `microfrontendMountMode` from `window.__APP_CONFIG__` (`public/config.js`) first and uses these variables only when a key is missing (`apps/shell/src/app/microfrontends/orchestrator.ts`).
 
 - `VITE_SINGLE_SPA_ORCHESTRATION`: set to `true` to enable single-spa registration.
 - `VITE_MICROFRONTEND_MODE`: `local` uses workspace imports; `remote` uses import maps/runtime imports.
@@ -169,5 +171,7 @@ Run app/package builds when changing shared package exports, app entrypoints, ro
 - `VITE_VISUALIZER_PROXY_TARGET`: optional Vite dev proxy target. When unset, `/visualizer-proxy` is not created unless `VITE_VISUALIZER_API_BASE` is set.
 - `VITE_VISUALIZER_PROXY_COOKIE`: optional cookie header forwarded by the local Vite proxy. Keep this in `.env.local`, not source control.
 - `FRONTEND_DEV_COMMAND`: Docker dev command override.
+- `FRONTEND_RUNTIME_CONFIG_PREPARED`: when `true`, `npm run dev` / `dev:shell` leaves `public/config.js` untouched.
+- `FRONTEND_MODULE_SOURCE`: `workspace` or `npm`; overrides the `source` in `module-sources.json`.
 
 For local-only visualizer proxying, copy `infra/env/frontend.env.example` to `frontend/.env.local` and set the cookie there if needed.

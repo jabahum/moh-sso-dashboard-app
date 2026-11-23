@@ -48,8 +48,8 @@ API retries do not duplicate queue inserts. The underlying worker/SMTP pipeline 
 
 ## Operations and migration
 
-Apply migration 50 after identity migration 49. Enable the existing notification-delivery and email workers and configure SMTP before expecting delivery progress. Suspension prevents new submissions; previously accepted queue entries continue unless an operator cancels them through existing delivery controls. Never place patient details, tokens or secrets in operational audit fields.
+The two notification routes are registered only in the full backend profile; with `PLATFORM_PROFILE=core` they are not served (`backend/internal/bootstrap/core_profile.go`). Apply migration 50 after identity migration 49. Enable the existing notification-delivery and email workers and configure SMTP before expecting delivery progress. Suspension prevents new submissions; previously accepted queue entries continue unless an operator cancels them through existing delivery controls. Never place patient details, tokens or secrets in operational audit fields.
 
-The database integration tests cover concurrent replay, changed payload conflict, cross-application lookup, real outbox state, lifecycle/binding revocation, quota, retention and audit rollback. Run `make migrations-check` with Docker; this also runs in the existing migration CI job.
+The database integration tests cover concurrent replay, changed payload conflict, cross-application lookup, real outbox state, lifecycle/binding revocation, quota, retention and audit rollback. Run `make migrations-check` with Docker; this also runs in the `pr-check.yml` workflow.
 
 Before rollback, stop producers and cancel/drain outstanding application deliveries, then roll back API consumers and migration 50. Queue records survive rollback, but the application ownership/idempotency table does not; preserve a database backup if rollback must retain those guarantees.

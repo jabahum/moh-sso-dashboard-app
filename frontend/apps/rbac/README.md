@@ -2,7 +2,8 @@
 
 The RBAC app manages dynamic, system-aware authorization governance.
 
-It is a standalone React microfrontend exposed as `@moh-sso/rbac` and mounted by the shell at `/admin/rbac`.
+It is a standalone React microfrontend exposed as `@moh-sso/rbac` and mounted by the shell at `/admin/rbac`. The shell route requires `rbac:read`
+(`apps/shell/src/app/microfrontends/registry.ts`).
 
 ## Responsibilities
 
@@ -53,7 +54,13 @@ See [RBAC Groups](../../../docs/rbac-groups.md) for the operator workflow.
 
 ## Development
 
+Run from `frontend/`. `npm run dev:mf:rbac` starts the Vite dev server on port 4113;
+`npm run preview:mf:rbac` serves the built bundle on the same port.
+`public/import-map.local.json` has no `@moh-sso/rbac` entry, so the local-remote shell
+configuration does not load the app from port 4113.
+
 ```bash
-npm run dev -w @moh-sso/rbac
+npm run dev:mf:rbac
 npm run build -w @moh-sso/rbac
+npm run preview:mf:rbac
 ```

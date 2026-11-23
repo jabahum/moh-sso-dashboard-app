@@ -14,8 +14,10 @@ Every scoped operation must evaluate:
 6. Resource ownership or authorized query predicate.
 
 Authenticated actors outside the resource scope receive `403`. Malformed
-context identifiers receive `400`. Detailed database and hierarchy errors stay
-in server logs.
+context identifiers receive `400`, as does a missing header on a contextual route
+(`HEALTH_CONTEXT_REQUIRED`). If access cannot be verified, the response is `503`
+(`HEALTH_CONTEXT_UNAVAILABLE`). Detailed database and hierarchy errors stay in
+server logs.
 
 Every authenticated user has the enabled Uganda National context and its
 descendants by default. This policy grants geographic scope, not application
@@ -37,9 +39,12 @@ this baseline; unrelated hierarchy roots are not included.
 ## Resource checks
 
 Use middleware only to validate a selected context when that is sufficient.
-For contextual route groups, the middleware fails closed when an assigned user
-omits the context header. It allows a missing header only when the user has no
-effective health-context assignments.
+For contextual route groups, the middleware (`RequireAccessibleSelection` in
+`backend/internal/features/health_context/handler.go`) fails closed when a user
+with any effective context omits the context header. It allows a missing header
+only when the user has no effective contexts. Because of the National baseline,
+that happens only when the `UG` node is disabled or missing and the user has no
+other assignments.
 When ownership is known only after loading a resource, enforce access in the
 feature service. Repositories should accept already-authorized context IDs and
 include them in SQL predicates.
@@ -60,6 +65,7 @@ context queries, not by a background cleanup job alone.
 
 ## Denial logging
 
-Context middleware emits structured denial events with request ID, feature,
-reason, and context type when known. Logs do not include patient data, resource
+Context middleware emits a structured warning log, `health context authorization
+denied`, with the request ID, feature (the first path segment after `/api/v1/`)
+and reason code. Logs do not include patient data, resource
 payloads, user contact details, or context-specific metric labels.

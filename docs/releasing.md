@@ -6,12 +6,12 @@ Run release commands from the repository root. Frontend apps/packages and the ba
 
 ## Requirements
 
-- Node.js 22, npm, installed frontend dependencies (`cd frontend && npm ci`), and the Go version specified by `backend/go.mod`.
+- Node.js 22 or newer (`scripts/auto-release.mjs` refuses older versions), npm, installed frontend dependencies (`cd frontend && npm ci`), and the Go version specified by `backend/go.mod`.
 - A clean, committed checkout containing the application changes to release.
 - A configured Git author identity and fetch/push access to the release remote (default `upstream`, configurable with `RELEASE_REMOTE`). The remote must support atomic pushes.
 - Registry credentials for optional frontend npm publication.
 
-If using nvm, select Node 22 (`nvm use 22`). Alternatively supply `NODE=/path/to/node` and `NPM=/path/to/npm` to Make.
+`frontend/.nvmrc` pins Node 20.20.1 for everyday frontend development, so a plain `nvm use` is not enough for releases: select Node 22 (`nvm use 22`). Alternatively supply `NODE=/path/to/node` and `NPM=/path/to/npm` to Make.
 
 ## One-command release
 
@@ -64,7 +64,7 @@ make release-frontend
 
 These perform the same automatic process for the selected component. Frontend-only releases bump every frontend module; backend-only releases leave frontend versions unchanged. Both use `BUMP=patch|minor|major` and `RELEASE_REMOTE`.
 
-Backend tags trigger **Backend Release** for binary artifacts/checksums and **Build & Push Images** for its image. Frontend tags trigger **Build & Push Images** for the source-built frontend image and module manifest, plus **Frontend Release** to build, verify and publish all public modules to npm before publishing GitHub release notes. Watch GitHub Actions for completion: a successful tag push queues CI and does not mean images have finished building. The atomic tag push does not make the two CI runs atomic.
+Backend tags trigger **Backend Release** for binary artifacts/checksums and **Build & Push Images** for its image. Frontend tags trigger **Build & Push Images** for the frontend image, which is built from the published npm module pins (`infra/docker/frontend/Dockerfile.npm-modules`), plus **Frontend Release** to build, verify and publish all public modules to npm before publishing GitHub release notes. Watch GitHub Actions for completion: a successful tag push queues CI and does not mean images have finished building. The atomic tag push does not make the two CI runs atomic.
 
 Use image versions independently as `BACKEND_TAG` and `FRONTEND_TAG` in Compose or Helm.
 
@@ -105,7 +105,7 @@ Configure one authentication method before the first release:
 - Add the upstream repository's `NPM_TOKEN` Actions secret using an npm granular token with permission to publish the `@moh-sso` scope and bypass publishing 2FA. This can bootstrap packages that do not yet exist.
 - For existing packages, configure an npm trusted publisher for each package: organization `mohuganda`, repository `moh-sso-dashboard`, workflow filename `frontend-release.yml`, with `npm publish` allowed. The workflow grants `id-token: write` and installs npm 11 on Node 22. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) and [npm token publishing permissions](https://docs.npmjs.com/about-access-tokens/).
 
-Package repository metadata identifies the upstream repository and each workspace directory for provenance. Forks run PR validation but do not publish release packages. The source-built image workflow runs separately: check both **Build & Push Images** and **Frontend Release** before treating a release as complete.
+Package repository metadata identifies the upstream repository and each workspace directory for provenance. Forks run PR validation but do not publish release packages. The image workflow runs separately: check both **Build & Push Images** and **Frontend Release** before treating a release as complete.
 
 ### Partial and manual publication
 

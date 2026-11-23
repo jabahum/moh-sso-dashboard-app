@@ -4,7 +4,7 @@ The dashboard uses dynamic, system-aware RBAC. This page sets out the rules deve
 
 ## Source of truth
 
-The frontend reads access from `/auth/me`:
+The frontend reads access from the `user` object returned by `GET /api/v1/auth/me`:
 
 - `permissions`
 - `systems`
@@ -53,11 +53,11 @@ Every standalone app route should declare access metadata in `frontend/apps/<app
 Example:
 
 ```ts
-export const surveillanceRoute = {
+export const surveillanceRoute: MicrofrontendRoute = {
   appName: "@moh-sso/surveillance",
   path: "/apps/dwh/surveillance",
-  requiredAnyPermissions: ["surveillance:read", "outbreak:access"],
-  requiredSystems: ["outbreak-management"],
+  requiredAnyPermissions: ["surveillance:read"],
+  requiredSystems: ["data-statistics"],
 };
 ```
 
@@ -79,21 +79,22 @@ Selected modules within an accessible system may appear as separate launcher car
 Portal RBAC can be managed from:
 
 ```text
-/admin/rbac
+/portal/admin/rbac
 ```
 
-The page is exposed by the `@moh-sso/rbac` frontend app and calls the backend admin API under:
+The shell router uses the `/portal` basename, so the route itself is registered as `/admin/rbac` (`frontend/apps/rbac/src/routes.tsx`). The page is exposed by the `@moh-sso/rbac` frontend app and calls the backend admin API under:
 
 ```text
 /api/v1/admin/rbac
 ```
 
-Required permissions:
+Required permissions (route guards in `backend/internal/features/rbac/routes.go`):
 
-- `rbac:read` opens the page and read APIs.
-- `rbac:write` updates system metadata.
-- `rbac:roles:write` creates/removes system roles and access roles.
-- `rbac:permissions:write` maps permissions to system roles and realm roles.
+- `rbac:read` opens the page and the read APIs, including drift, sync preview, import preview, effective access, export and policy simulation. `audit:read` also opens the RBAC audit list.
+- `rbac:write` registers systems, updates system metadata, applies sync and imports, and creates or decides RBAC change requests.
+- `rbac:roles:write` creates, updates and removes system roles and access roles, updates user access, manages groups, group members and group realm/system roles, and lists or decides access requests.
+- `rbac:permissions:write` maps permissions to system roles, realm roles and groups, edits permission metadata, and runs bulk permission changes.
+- Application manifest validate, preview and import require the admin role plus `rbac:read`, `rbac:write` and `rbac:roles:write`. Lifecycle transitions are checked in the service: configuring needs `rbac:write` and approving needs `rbac:roles:write`.
 
 Use this UI for routine role and permission mapping after a Keycloak client has been onboarded. Use the CLI seed/sync flow for bulk initialization, repeatable environments, and drift checks.
 
@@ -111,7 +112,7 @@ Group-derived access is read-only from the user access panel. Change inherited a
 
 ## Debugging
 
-Use the backend CLI to explain expected access:
+Use the backend CLI to explain expected access. `system-rbac explain` resolves roles against the compiled static mapping in `backend/internal/authz`, not the database, so it does not reflect mappings changed in the admin UI:
 
 ```sh
 cd backend

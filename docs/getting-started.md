@@ -20,8 +20,8 @@ the guide for the next task. For a map of all documentation, see the
 
 - Docker with Docker Compose
 - Go at the version in `backend/go.mod`
-- Node.js at the version in `frontend/.nvmrc` (nvm recommended), and npm
-- Python 3 and Chrome or Chromium, only for `make dev` with Health BI
+- Node.js at the version in `frontend/.nvmrc` (currently 20.20.1; nvm recommended), and npm. CI, release workflows and the frontend Docker images use Node 22.
+- Python 3 and Chrome or Chromium, only for `make sso-up` with Health BI
 
 ## Choose how to run it
 
@@ -38,8 +38,11 @@ cp infra/env/dev.env.example infra/env/dev.env
 make compose-dev-up
 ```
 
-This builds the API and portal from source and starts Keycloak, Redis, PostgreSQL, an
-upload/warehouse fixture database and MailHog. Backend changes reload through Air and
+This builds the API and portal from source and starts Keycloak (with its own
+PostgreSQL), Redis, the backend PostgreSQL, an upload/warehouse fixture database, a
+local Observatory database and MailHog (`infra/compose/docker-compose.dev.yml`).
+If `infra/env/dev.env` is missing, `make compose-dev-up` falls back to
+`dev.env.example`. Backend changes reload through Air and
 frontend changes through Vite.
 
 | Service | Address |
@@ -55,11 +58,12 @@ port list, external Keycloak, and module servers.
 ### Run the portal with Health BI
 
 ```bash
-make dev
+HEALTHBI_PROJECT_DIR=/path/to/dwh_visualization make sso-up
 ```
 
-`make dev` (alias `make sso-up`) starts the SSO infrastructure, the sibling Health BI
-checkout and its test database, then the portal. Prerequisites, `make sso-status` and
+`make sso-up` (`infra/scripts/local-sso.py up`) starts the SSO infrastructure, the
+sibling Health BI checkout and its test database, then the portal. Plain `make dev` is
+an alias for `make compose-dev-up` and does not start Health BI. Prerequisites, `make sso-status` and
 `make sso-down` are in [start the portal and Health BI together](local-healthbi-startup.md).
 
 ### Run the backend or frontend natively

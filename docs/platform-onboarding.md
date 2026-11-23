@@ -56,7 +56,7 @@ flowchart LR
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | An independently deployed web application | 2, 3, 4, 5, 6 and 7; 10 if its backend uses shared services; then 11                                   |
 | A hosted single-spa module                | 2; 3 where the parent system needs Keycloak client roles; 4, 5, 6 and 8; 10 if needed; then 11         |
-| A module of an existing system            | 9 (and 8 if the route is new frontend code); 6 to repeat approval after saving; then 11                |
+| A module of an existing system            | 9 (and 8 if the route is new frontend code); 6 to repeat approval if the parent is onboarding-managed (section 4.3); then 11 |
 
 Section 12 lists common failures and section 13 lists the APIs and commands used.
 
@@ -73,10 +73,14 @@ migration 59 when they were held in an onboarding state. Existing suspended or
 retired integrations, and active integrations explicitly disabled by an
 administrator, remain unchanged. Startup and Keycloak discovery of established
 clients defaults to `active`; explicitly disabled source clients stay disabled.
-Editing a grandfathered integration does not restart onboarding.
+Systems inserted by `system-rbac seed` start `active`, or `registered` when the
+seed entry sets `enabled: false`. Editing a grandfathered integration does not
+restart onboarding.
 
-New registrations created through the administration workflow, and newly discovered
-clients marked with a `portal.onboarding.profile`, still start
+New registrations created through the administration workflow (including a new
+client ID saved through `PUT /admin/rbac/systems/:clientId`), application-manifest
+imports, and newly discovered clients marked with a `portal.onboarding.profile`
+attribute start
 `registered` and disabled and must complete configuration, validation, approval,
 and activation. Their lifecycle review remains mandatory after material
 configuration changes. The internal `lifecycle_managed` flag records this
@@ -103,16 +107,21 @@ automatically grant portal administration permissions, or the reverse.
 
 ### Environment preflight
 
-- Use the platform branch/release that includes migrations **48–52**, rather than
-  assuming the earlier `1.1.0` release contains the new platform endpoints.
+- Use backend release `backend/v1.3.0` or later. `backend/v1.2.0` added migrations
+  48–52, but the registry code also reads the `lifecycle_managed` column that
+  migration 59 adds (first released in `backend/v1.3.0`); `backend/v1.1.0` has none of them.
 - Confirm the database upgrade and restore plan. Migrations 48–51 implement the
-  registry, identity bindings, shared notifications, and worker health; migration
-  52 aligns Issue Tracker navigation. Run the migration checks on disposable data.
+  registry lifecycle, identity bindings, shared notifications, and worker health;
+  migration 52 aligns Issue Tracker navigation; migration 59 grandfathers existing
+  integrations (section 1.3). Migrations apply in sequence, so the unrelated
+  migrations 53–58 are applied too. Run `make migrations-check` (root Makefile, defined in `infra/Makefile`) or
+  equivalent checks on disposable data.
 - Confirm public portal/API URLs, Keycloak issuer/realm, application URL, callback
   URL, logout URL, and support contacts. The public issuer must match tokens.
 - Confirm the pilot application is already deployed and reachable if it is external.
 - For shared platform APIs, configure `PLATFORM_AUTH_CLIENT_ID`,
-  `PLATFORM_AUTH_CLIENT_SECRET` (or its supported secret-file mechanism), and
+  `PLATFORM_AUTH_CLIENT_SECRET` (or `PLATFORM_AUTH_CLIENT_SECRET_FILE`, read by the
+  backend container entrypoint), and
   `PLATFORM_AUTH_AUDIENCE` in the backend environment. See [identity setup](platform-identity.md).
 - For notifications, configure SMTP and the existing notification/email workers.
 
@@ -182,8 +191,8 @@ roles, not portal administrator roles.
 For `GET /api/v1/platform/applications/pilot/access`, configure:
 
 1. The `identity:read` capability scope, included in the token's scope string.
-2. An audience mapper for the configured platform audience, normally
-   `moh-platform-api`. Include the introspecting client's audience as required by
+2. An audience mapper for the configured platform audience (`PLATFORM_AUTH_AUDIENCE`,
+   default `moh-platform-api`). Include the introspecting client's audience as required by
    the installed Keycloak version.
 3. A nonempty user subject (`sub`) in introspection. Retain the default `basic`
    scope where provided, or configure a subject mapper for older/custom realms.
@@ -214,8 +223,10 @@ Manual portal registration is supported. If using Keycloak discovery/sync, set
 `ui.displayInSideNav`, and optional navigation attributes. Preview sync before
 applying it. Do not opt a service-only client into the launcher.
 
-New discoveries start `registered` and disabled. Discovery is not approval and
-does not install an application. See [sync and drift](rbac-keycloak-sync.md).
+Discovered clients start `active`, with their enabled flag taken from Keycloak,
+unless the client carries a `portal.onboarding.profile` attribute, in which case
+they start `registered` and disabled (section 1.3). Discovery does not install an
+application. See [sync and drift](rbac-keycloak-sync.md).
 
 ## 4. Register the application in the portal
 
@@ -277,10 +288,14 @@ select the existing record instead of repeatedly registering it.
 ### 4.3 Existing systems
 
 Select the existing system in the left panel, edit it, and click **Save system**.
-Save before changing lifecycle status. Changes to ownership, launch settings,
-environment, navigation, or integration invalidate validation/approval, return an
-active application to `configured`, and disable access. Plan those edits as an
-access-affecting change, then repeat validation/approval/activation.
+Save before changing lifecycle status. For onboarding-managed applications (those
+that started `registered`, section 1.3), changes to ownership, support or
+documentation URLs, launch settings, environment, system type, integration type,
+contract version, or navigation/metadata invalidate validation/approval, return a
+`validated`, `approved` or `active` application to `configured`, and disable
+access. Plan those edits as an access-affecting change, then repeat
+validation/approval/activation. Grandfathered and discovered integrations keep
+their lifecycle state when edited.
 
 ## 5. Configure roles and user access
 
@@ -571,8 +586,9 @@ implemented route and its actual backend permission:
 ```
 
 Preserve existing entries when editing the array. The UI shows **Launcher
-preview** and **Side navigation preview** for valid JSON. Save changes, then
-repeat the required lifecycle approval before restoring access.
+preview** and **Side navigation preview** for valid JSON. Save changes. If the
+parent is onboarding-managed, saving returns it to `configured`; repeat the
+lifecycle approval before restoring access (section 4.3).
 
 ![Parent-system module navigation JSON and launcher/sidebar previews](images/platform-onboarding/05-module-navigation-preview.jpg)
 
@@ -703,7 +719,7 @@ separate actions; this guide does not automatically deploy changes.
 | Approve/Activate disabled                    | Missing reason or role-management permission                                        | Enter reason; verify both required permissions                                     |
 | Duplicate ID/conflict on creation            | System already exists                                                               | Select it; use Save system instead                                                 |
 | Validate rejected                            | Missing required metadata, mismatched types, invalid URL, no enabled access role    | Check section 4's fields and section 5's role names/state                          |
-| Saved active app becomes configured/disabled | Approval-invalidating metadata changed                                              | Review change; repeat Validate → Approve → Activate                                |
+| Saved active app becomes configured/disabled | Approval-invalidating metadata changed on an onboarding-managed application         | Review change; repeat Validate → Approve → Activate                                |
 | Active app absent from launcher              | Disabled flag, missing access role/user claim, or visibility flag                   | Check enabled state, Effective Access, fresh token, parent/module flags            |
 | Card visible but external app denies access  | App-side OIDC/roles/callback problem                                                | Verify its issuer/client/claims and backend logs                                   |
 | External client not discovered               | No opt-in or wrong sync source                                                      | Check `portal.system=true`, explicit access-role attributes, and sync preview      |

@@ -125,17 +125,17 @@ These controls govern access resolved by the portal. Existing independently issu
 Run from `backend/`:
 
 ```sh
-GOCACHE=/private/tmp/moh-sso-go-build go test ./...
-GOCACHE=/private/tmp/moh-sso-go-build go vet ./...
-GOCACHE=/private/tmp/moh-sso-go-build go run ./cmd/cli openapi validate
+go test ./...
+go vet ./...
+go run ./cmd/cli openapi validate
 ```
 
-Run `make migrations-check` from the repository root to provision disposable PostgreSQL through Docker and run both the existing migration-path tests and the registry integration test. The existing PR migration check runs this command, so database verification is included in CI.
+Run `make migrations-check` from the repository root (defined in `infra/Makefile`, which the root `Makefile` includes; it runs `infra/scripts/test-migrations.py`) to provision disposable PostgreSQL through Docker and run both the existing migration-path tests and the registry integration test. The existing PR migration check runs this command, so database verification is included in CI.
 
 For a database you provision yourself, the PostgreSQL integration test is opt-in. Point it at a disposable test database using `MOH_REGISTRY_TEST_DATABASE_URL` (a `postgres://` or `postgresql://` URL) and run:
 
 ```sh
-GOCACHE=/private/tmp/moh-sso-go-build go test ./internal/features/rbac -run TestApplicationRegistryPostgres -v
+go test ./internal/features/rbac -run TestApplicationRegistryPostgres -v
 ```
 
 It creates and removes its own random schema. It checks migration compatibility, duplicate registration, onboarding, real authorization resolution, suspension, seed/upsert behavior, configuration invalidation, audit rollback, retirement, and down/up migrations. Without the environment variable, the test explicitly skips.
@@ -144,7 +144,7 @@ From `frontend/`, run type checking, lint on the changed RBAC files, and the RBA
 
 ## Rollout and rollback
 
-Apply migration 48 before starting the new backend. On a fresh installation, a realm administrator with registry and role-management permissions must activate the initial applications after seed/sync. For an existing installation, automatic startup sync preserves approved application configuration. Review ownership/launch configuration before explicitly applying administrative metadata imports or sync changes, which still require renewed onboarding.
+Apply migrations 48–51 and 59 (backend `v1.3.0` or later) before starting the new backend. Ordinary Keycloak sync, startup discovery and enabled seed entries create `active` applications, so a fresh installation's initial applications do not need manual activation. Only explicit registrations (`POST /admin/rbac/systems`, or a new client ID saved through `PUT`), manifest imports and Keycloak clients carrying the `portal.onboarding.profile` attribute start `registered` and go through onboarding. Of those onboarding-managed records, an edit to launch, ownership or integration fields returns an approved or active application to `configured`; grandfathered and discovered records keep their state (migration 59).
 
 For a phase-1-only rollback, stop the new backend, roll back migration 48, and deploy the previous backend/frontend. For the complete platform rollout, follow the ordered rollback procedure in the [platform runbook](operations/platform-runbook.md). The down migration preserves enabled flags so suspended/retired applications stay disabled immediately after rollback. The previous release's ordinary seed/sync behavior can re-enable them later; retain operational controls during rollback. Lifecycle history remains in the existing audit table, but lifecycle and integration columns are removed.
 

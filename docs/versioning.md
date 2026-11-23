@@ -29,7 +29,7 @@ Every backend binary exposes:
 - dirty worktree status
 - Go runtime version
 
-Inspect it with:
+Inspect it from `backend/` after `make build` and `make build-cli`, or on a running server:
 
 ```bash
 ./bin/moh-sso-dashboard --version
@@ -43,9 +43,9 @@ The Go backend is one module: its API server, management CLI, and internal featu
 
 ## Frontend
 
-All 15 apps (including the private shell) and eight shared packages have semantic versions in their `package.json`. Shared packages use a fixed Changesets release group; apps release independently. Internal shared dependencies use compatible caret ranges, and app dependencies use tilde ranges. See [frontend versioning](../frontend/docs/versioning.md).
+All 16 apps (15 public apps plus the private shell) and eight shared packages have semantic versions in their `package.json`; the 23 public modules are published to npm. Shared packages use a fixed Changesets release group; apps release independently. Internal shared dependencies use compatible caret ranges, and app dependencies use tilde ranges. See [frontend versioning](../frontend/docs/versioning.md).
 
-The shell version identifies the frontend service. Its runtime metadata and module manifest use that version by default. The production image workflow uses the numeric shell version on `main`, with no development or commit suffix. A `frontend/v<version>` tag must match `frontend/apps/shell/package.json` and builds a semantic frontend image tag. Backend and frontend release tags build only their own image.
+The shell version identifies the frontend service. Its runtime metadata and module manifest use that version by default. The production image workflow uses the numeric shell version on `main`, with no development or commit suffix. A `frontend/v<version>` tag must match `frontend/apps/shell/package.json` and builds a semantic frontend image tag. Backend and frontend release tags build only their own image. The frontend image is built from the published npm module pins (`infra/docker/frontend/Dockerfile.npm-modules`), not from workspace sources.
 
 Run the consistency checks before release:
 
@@ -77,7 +77,7 @@ built image pair must be deployed for this change to appear on the server.
 
 ## Image tags
 
-Backend images use tags without the component prefix:
+Images use tags without the component prefix. Every build pushes `sha-<short commit>`; builds on `main` also push `latest`; a component release tag also pushes the numeric version:
 
 ```text
 ghcr.io/mohuganda/moh-sso-dashboard-backend:1.2.3

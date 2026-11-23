@@ -19,15 +19,20 @@ Each app/package should have:
 
 Published packages should ship built `dist` artifacts, not source files.
 
-Current internal version convention:
+Current versions (each `package.json`):
 
 ```text
-@moh-sso/* -> 0.1.0
+@moh-sso/<package> (8 shared packages, fixed release train) -> 1.6.0
+@moh-sso/<app> (14 apps)                                    -> 1.5.1
+@moh-sso/report-scheduler                                   -> 0.6.1
+@moh-sso/shell                                              -> private, not published
 ```
+
+The shared packages are a `fixed` group in `.changeset/config.json`, so they always share one version; apps version independently.
 
 ## Dependency rules
 
-- Shared platform dependencies are peer dependencies:
+- Shared platform dependencies are peer dependencies (each package declares only the ones it uses):
   - `react`
   - `react-dom`
   - `react-redux`
@@ -79,15 +84,7 @@ npm login
 npm config set registry <registry-url>
 ```
 
-For private scoped packages, keep:
-
-```json
-{
-  "publishConfig": {
-    "access": "restricted"
-  }
-}
-```
+Every published app and package sets `"publishConfig": { "access": "public" }`, and `.changeset/config.json` sets `"access": "public"`. The modules are published publicly to the npm registry; only `@moh-sso/shell` is `"private": true`.
 
 ## Publish dry run
 
@@ -123,10 +120,6 @@ npm run release:dry-run
 npm run release:packages
 ```
 
-Install Changesets first if needed:
-
-```bash
-npm install -D @changesets/cli
-```
+`@changesets/cli` is already a dev dependency in `frontend/package.json`.
 
 More detail: [Versioning and releases](versioning.md).
