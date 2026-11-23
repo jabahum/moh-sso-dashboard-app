@@ -14,7 +14,8 @@ const rootPages = [
   ["/apps/dwh/data-visualizer", "Data Visualizer"],
   ["/apps/dwh/data-validation", "Data Validation"],
   ["/apps/dwh/documents", "Document Management"],
-  ["/apps/dwh/issue-tracker", "Issue Tracker"],
+  // The app root redirects to /issues, whose page header is "Registered Issues" (#338).
+  ["/apps/dwh/issue-tracker", "Registered Issues"],
   ["/apps/dwh/dashboards", "Report Browser"],
   ["/apps/dwh/report-scheduler", "Report Scheduler"],
   ["/apps/dwh/surveillance", "Surveillance Dashboard"],
