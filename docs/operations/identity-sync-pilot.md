@@ -124,7 +124,16 @@ docker compose run --rm --no-deps \
   /app/moh-sso identity-sync describe --app clims
 ```
 
-The rest of this runbook writes that prefix as `moh-sso`. On Kubernetes, run
+The rest of this runbook writes that prefix as `moh-sso`.
+
+**In the portal.** Steps 1 to 7 can also be done in the portal by an
+administrator with `rbac:write` and `rbac:roles:write`: Admin → RBAC → select
+the application → Operations → **Identity sync**. The page registers the
+integration and checks its live descriptor, starts runs (as background jobs),
+lets the reviewer select and approve rows (recorded under their own portal
+identity), applies and resumes runs, and lists access removals with a retry and
+a clear action. The CLI remains the reference for this runbook; both write the
+same records and audit events. On Kubernetes, run
 the same command in a Job or `kubectl exec` into a backend pod with
 `/usr/local/bin/sso-entrypoint /app/moh-sso …`. Every command that changes
 something takes a reason, a reviewer or an actor, and writes the audit log.
