@@ -288,7 +288,10 @@ test("public shell has a visible sign-in action on a narrow screen", async ({ pa
   await page.setViewportSize({ width: 320, height: 740 });
   await fixture(page, null);
   await page.goto("/portal/");
-  const signIn = page.getByRole("button", { name: "Sign in", exact: true });
+  // The news landing intro repeats this action; the header one must stay reachable.
+  const signIn = page
+    .getByRole("banner", { name: "MOH Integrated Health Portal" })
+    .getByRole("button", { name: "Sign in", exact: true });
   await expect(signIn).toBeVisible();
   await expect(signIn).toContainText("Sign in");
   const box = await signIn.boundingBox();

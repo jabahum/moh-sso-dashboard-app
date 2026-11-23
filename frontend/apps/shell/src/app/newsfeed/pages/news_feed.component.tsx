@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   Document,
   Attachment,
@@ -11,12 +11,14 @@ import {
   CheckmarkOutline,
   ErrorOutline,
   Warning,
+  Login,
 } from "@carbon/react/icons";
-import { Link, SkeletonText, Tag, Tile } from "@carbon/react";
+import { Button, Link, SkeletonText, Tag, Tile } from "@carbon/react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { selectAuthenticated } from "@moh-sso/auth";
+import { buildLoginURL, selectAuthenticated } from "@moh-sso/auth";
+import { API } from "@moh-sso/config";
 import { EmptyState, ErrorState } from "@moh-sso/ui";
 import {
   buildUserAnnouncementAttachmentDownloadUrl,
@@ -49,7 +51,7 @@ const CASE_REPORTING = [
   },
   {
     label: "View Other Alerts",
-    href: "#",
+    href: "/apps/outbreak-management/signals-alerts",
   },
 ];
 
@@ -459,6 +461,35 @@ function LoadingFeed() {
   );
 }
 
+function SignInIntro() {
+  const loginStartedRef = useRef(false);
+
+  const handleLogin = () => {
+    if (loginStartedRef.current) {
+      return;
+    }
+
+    loginStartedRef.current = true;
+    window.location.assign(buildLoginURL(API.auth.login()));
+  };
+
+  return (
+    <Tile className="news-intro">
+      <div className="news-intro__text">
+        <h4 className="news-intro__title">One sign-in for Ministry of Health systems</h4>
+        <p className="news-intro__description">
+          Sign in with your Ministry of Health account to open the health information systems you
+          have access to, report cases, and get help from support.
+        </p>
+      </div>
+
+      <Button kind="primary" size="md" renderIcon={Login} onClick={handleLogin}>
+        Sign in
+      </Button>
+    </Tile>
+  );
+}
+
 interface FeedSectionProps {
   title: string;
   subtitle?: string;
@@ -579,8 +610,18 @@ export default function NewsFeedPage() {
         )}
       </header>
 
-      <section className="page-content news-page__content">
+      <section
+        className={[
+          "page-content",
+          "news-page__content",
+          isEmpty ? "news-page__content--empty" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <main className="news-feed">
+          {!isAuthenticated && <SignInIntro />}
+
           {shouldShowInitialLoading && <LoadingFeed />}
 
           {hasError && (
@@ -632,9 +673,7 @@ export default function NewsFeedPage() {
               <WarningAlt size={18} />
               <div>
                 <h4>Case Reporting</h4>
-                <p className="news-sidebar__description">
-                  Submit active regional outbreak epidemiological updates.
-                </p>
+                <p className="news-sidebar__description">Report cases for active outbreaks.</p>
               </div>
             </div>
 
@@ -678,13 +717,18 @@ export default function NewsFeedPage() {
             </div>
 
             <p className="sidebar-help-text">
-              Reach out directly to technical support channels for account authorization updates,
-              credentials provisioning, or critical structural incident reports.
+              Contact support for help with account access, passwords, or reporting a problem with
+              the portal.
             </p>
 
-            <AppLink href="/support" className="feed-link news-sidebar__support-button">
-              Contact Support Operations
-            </AppLink>
+            <Button
+              kind="tertiary"
+              size="md"
+              className="news-sidebar__support-button"
+              onClick={() => navigate("/support")}
+            >
+              Contact support
+            </Button>
           </Tile>
         </aside>
       </section>
