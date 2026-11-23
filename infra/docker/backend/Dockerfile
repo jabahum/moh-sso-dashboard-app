@@ -29,7 +29,8 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
     -X 'github.com/moh-sso-dashboard/internal/version.Commit=${COMMIT}' \
     -X 'github.com/moh-sso-dashboard/internal/version.BuildTime=${BUILD_TIME}' \
     -X 'github.com/moh-sso-dashboard/internal/version.Dirty=${DIRTY}'" \
-  -o sso-server ./cmd/server
+  -o sso-server ./cmd/server && \
+  GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -trimpath -ldflags="-s -w" -o moh-sso ./cmd/cli
 
 # ======================
 # Stage 2: Runtime
@@ -56,6 +57,9 @@ COPY --from=builder /app/internal/db/surveillance_migrations ./internal/db/surve
 COPY --from=builder /app/config ./config
 # Map snapshots are embedded in the pinned GeoJSON module.
 COPY --from=builder /app/sso-server ./sso-server
+# Operator CLI (identity-sync and others). Run it through the entrypoint so
+# mounted secrets load: --entrypoint /usr/local/bin/sso-entrypoint <image> /app/moh-sso ...
+COPY --from=builder /app/moh-sso ./moh-sso
 
 COPY --chmod=755 infra/docker/backend/entrypoint.sh /usr/local/bin/sso-entrypoint
 RUN adduser -D appuser && mkdir -p /data/uploads && chown appuser:appuser /data/uploads
