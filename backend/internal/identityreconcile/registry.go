@@ -186,7 +186,11 @@ func (s *RegistryService) Save(ctx context.Context, integration Integration, act
 		if err := s.Repository.CheckIntegrationBinding(ctx, integration); err != nil {
 			return Integration{}, err
 		}
-		descriptor, err := s.Probe(ctx, integration)
+		// An explicit (re-)register reads the descriptor afresh: it is the only
+		// place a 1.1 registration may be downgraded to 1.0 on a 404.
+		fresh := integration
+		fresh.ContractVersion = ""
+		descriptor, err := s.Probe(ctx, fresh)
 		if err != nil {
 			return Integration{}, fmt.Errorf("%w: enable %s: %v", ErrDescriptorUnavailable, integration.ApplicationClientID, err)
 		}
@@ -208,7 +212,7 @@ func (s *RegistryService) Delete(ctx context.Context, application, actor, reason
 }
 
 // Probe builds a connector for an integration (enabled or not) and reads its
-// descriptor.
+// descriptor. With a stored contract version of 1.1 or newer a 404 is an error.
 func (s *RegistryService) Probe(ctx context.Context, integration Integration) (identitysync.Descriptor, error) {
 	connector, err := s.ConnectorFor(integration)
 	if err != nil {
@@ -255,6 +259,7 @@ func (s *RegistryService) ConnectorFor(integration Integration) (*HTTPAccounts, 
 		Application:           integration.ApplicationClientID,
 		Origin:                integration.Origin,
 		LegacyAccountIDFormat: integration.AccountIDFormat,
+		StoredContractVersion: integration.ContractVersion,
 		Token:                 token,
 	})
 	if err != nil {

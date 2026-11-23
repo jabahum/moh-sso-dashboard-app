@@ -58,7 +58,22 @@ type HTTPAccountsConfig struct {
 	// LegacyAccountIDFormat is the registry's account ID format, used when the
 	// application implements contract 1.0 and has no descriptor.
 	LegacyAccountIDFormat identitysync.AccountIDFormat
+	// StoredContractVersion is the contract version the registry last recorded
+	// for the application. When it is 1.1 or newer, a 404 from GET / is an
+	// error, never a fallback to 1.0: only an explicit re-register (which
+	// probes with this empty) may record a downgrade.
+	StoredContractVersion string
 	Token                 AccessToken
+}
+
+// ErrDescriptorMissing reports a 404 from GET / for an application the registry
+// recorded as contract 1.1 or newer.
+var ErrDescriptorMissing = errors.New("identity sync descriptor (GET /) returned 404 but the registry recorded contract 1.1 or newer; re-register the application if it really moved back to 1.0")
+
+// versionAtLeast11 reports whether a "1.N" contract version string is 1.1 or newer.
+func versionAtLeast11(version string) bool {
+	minor, err := strconv.Atoi(strings.TrimPrefix(version, "1."))
+	return strings.HasPrefix(version, "1.") && err == nil && minor >= 1
 }
 
 // HTTPAccounts is the dashboard's client for the identity-sync application
@@ -66,9 +81,11 @@ type HTTPAccountsConfig struct {
 type HTTPAccounts struct {
 	application  string
 	legacyFormat identitysync.AccountIDFormat
-	origin       string
-	token        AccessToken
-	client       *http.Client
+	// noLegacyFallback is set when the registry recorded contract 1.1 or newer.
+	noLegacyFallback bool
+	origin           string
+	token            AccessToken
+	client           *http.Client
 	// sleep and jitter are injectable so retry tests run without real delays.
 	sleep  Sleeper
 	jitter func() float64
@@ -100,10 +117,11 @@ func NewHTTPAccounts(cfg HTTPAccountsConfig) (*HTTPAccounts, error) {
 		return nil, fmt.Errorf("unknown account ID format %q", cfg.LegacyAccountIDFormat)
 	}
 	return &HTTPAccounts{
-		application:  cfg.Application,
-		legacyFormat: cfg.LegacyAccountIDFormat,
-		origin:       origin,
-		token:        cfg.Token,
+		application:      cfg.Application,
+		legacyFormat:     cfg.LegacyAccountIDFormat,
+		noLegacyFallback: versionAtLeast11(cfg.StoredContractVersion),
+		origin:           origin,
+		token:            cfg.Token,
 		client: &http.Client{
 			Timeout: requestTimeout,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -142,7 +160,9 @@ func normalizeOrigin(origin string) (string, bool) {
 
 // Describe reads the application's contract descriptor (GET /) and caches it.
 // A 404 means the application implements 1.0; the result is then the legacy
-// descriptor with the registry's account ID format.
+// descriptor with the registry's account ID format. When the registry recorded
+// 1.1 or newer, a 404 is ErrDescriptorMissing instead (nothing is cached, so
+// the next call asks again).
 func (p *HTTPAccounts) Describe(ctx context.Context) (identitysync.Descriptor, error) {
 	resp, err := p.do(ctx, http.MethodGet, "", nil)
 	if err != nil {
@@ -152,6 +172,9 @@ func (p *HTTPAccounts) Describe(ctx context.Context) (identitysync.Descriptor, e
 	var descriptor identitysync.Descriptor
 	switch resp.StatusCode {
 	case http.StatusNotFound:
+		if p.noLegacyFallback {
+			return identitysync.Descriptor{}, ErrDescriptorMissing
+		}
 		descriptor = identitysync.LegacyDescriptor(p.application, p.legacyFormat)
 	case http.StatusOK:
 		if err := decodeBody(resp, &descriptor); err != nil {
@@ -181,8 +204,7 @@ func (p *HTTPAccounts) cachedDescriptor(ctx context.Context) (identitysync.Descr
 
 // atLeast11 reports whether a validated descriptor version is 1.1 or newer.
 func atLeast11(d identitysync.Descriptor) bool {
-	minor, err := strconv.Atoi(strings.TrimPrefix(d.Version, "1."))
-	return err == nil && minor >= 1
+	return versionAtLeast11(d.Version)
 }
 
 type wireLink struct {

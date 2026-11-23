@@ -438,7 +438,7 @@ func TestRevokeKeycloakFailureStillEndsApplicationSessions(t *testing.T) {
 
 func TestRevoke10ApplicationReportsUnsupportedSessions(t *testing.T) {
 	f := newRevokeFixture(t)
-	f.app.set(func(a *fakeApp) { a.legacy = true })
+	f.registeredAs10()
 	revocation, err := f.service.Revoke(context.Background(), "alerts", revokeSubject, "ops@example.test", "left")
 	if err != nil {
 		t.Fatal(err)
@@ -690,7 +690,7 @@ func TestPortalHookReportsIncompleteRevocation(t *testing.T) {
 
 	g := newRevokeFixture(t)
 	g.portalRemovedAccessRole()
-	g.app.set(func(a *fakeApp) { a.legacy = true })
+	g.registeredAs10()
 	err = NewPortalRevocationHook(g.service).ClientRolesRemoved(context.Background(), revokeSubject, "alerts", []string{"alerts_access"}, "")
 	if err == nil || !strings.Contains(err.Error(), "cannot end existing sessions") {
 		t.Fatalf("1.0 err = %v", err)
@@ -716,6 +716,15 @@ func TestPortalHookSurvivesCancelledRequest(t *testing.T) {
 	if len(f.repo.rows) != 1 || !f.repo.rows[0].Complete() {
 		t.Fatalf("revocation = %+v", f.repo.rows)
 	}
+}
+
+// registeredAs10 makes the fixture a 1.0 application as registration records
+// it: GET / answers 404 and the registry row's contract version is "1.0".
+func (f *revokeFixture) registeredAs10() {
+	f.app.set(func(a *fakeApp) { a.legacy = true })
+	row := f.registry.rows["alerts"]
+	row.ContractVersion = "1.0"
+	f.registry.rows["alerts"] = row
 }
 
 // portalRemovedAccessRole simulates the portal's own role removal, which runs

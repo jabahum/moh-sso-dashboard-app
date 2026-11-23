@@ -23,6 +23,8 @@ import (
 // A failing step never stops the others: each step's status is recorded and
 // Resume retries pending and failed steps. A 1.0 application cannot end its
 // sessions; that step is recorded as unsupported and reported, never hidden.
+// "unsupported" is recorded only when the registry's stored contract version
+// is 1.0; for 1.1 or newer the step is failed and resume retries it.
 
 // StepStatus is the status of one removal step.
 type StepStatus string
@@ -46,6 +48,10 @@ const (
 	CodeConnectorUnavailable    = "connector_unavailable"
 	CodeSessionsAppUnavailable  = "sessions_app_unavailable"
 	CodeSessionsAppRejected     = "sessions_app_rejected"
+	// CodeSessionsUnsupported: the connector reported sessions.revoke as
+	// unsupported, but the registry does not record the application as 1.0, so
+	// the step stays failed (retried by resume) instead of final "unsupported".
+	CodeSessionsUnsupported = "sessions_unsupported_unexpected"
 )
 
 // Revocation errors.
@@ -491,7 +497,12 @@ func (s *RevokeService) revokeSessions(ctx context.Context, integration Integrat
 	case err == nil:
 		return StepDone
 	case errors.Is(err, identitysync.ErrUnsupported):
-		return StepUnsupported
+		// Final only for an application the registry recorded as 1.0. For any
+		// other stored version this is a transient or misconfigured answer.
+		if integration.ContractVersion == "1.0" {
+			return StepUnsupported
+		}
+		return fail(CodeSessionsUnsupported)
 	case isClientRejection(err):
 		return fail(CodeSessionsAppRejected)
 	default:

@@ -98,7 +98,12 @@ func (s *cliSessions) RevokeSessions(_ context.Context, identity identitysync.Id
 
 func installRevokeService(t *testing.T, sessions *cliSessions) (*cliRevocations, *cliDirectory) {
 	t.Helper()
-	fakeIdentitySyncRuntime(t, map[string]identityreconcile.Integration{"alerts": alertsIntegration(true)})
+	return installRevokeServiceFor(t, sessions, alertsIntegration(true))
+}
+
+func installRevokeServiceFor(t *testing.T, sessions *cliSessions, alerts identityreconcile.Integration) (*cliRevocations, *cliDirectory) {
+	t.Helper()
+	fakeIdentitySyncRuntime(t, map[string]identityreconcile.Integration{"alerts": alerts})
 	repo, directory := &cliRevocations{}, &cliDirectory{}
 	previous := openIdentitySyncRevokeService
 	openIdentitySyncRevokeService = func(_ context.Context, rt *identitySyncRuntime) (*identityreconcile.RevokeService, error) {
@@ -193,7 +198,9 @@ func TestIdentitySyncRevokeCommandFailsOnOutageAndResumeCompletes(t *testing.T) 
 
 func TestIdentitySyncRevokeCommandReports10ResidualWindow(t *testing.T) {
 	sessions := &cliSessions{err: identitysync.ErrUnsupported}
-	installRevokeService(t, sessions)
+	alerts10 := alertsIntegration(true)
+	alerts10.ContractVersion = "1.0" // a registered 1.0 application
+	installRevokeServiceFor(t, sessions, alerts10)
 	stdout, _, err := runCommand(t, newIdentitySyncCommand(), "revoke", "--app", "alerts", "--subject", cliRevokeSubject,
 		"--reason", "left", "--revoker", "ops")
 	if err == nil || !strings.Contains(err.Error(), "were NOT ended") {
