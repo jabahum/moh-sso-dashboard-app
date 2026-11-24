@@ -82,12 +82,20 @@ func (h *Handler) GetIdentitySync(c *gin.Context) {
 		fail(c, ErrUnavailable)
 		return
 	}
+	// An application without an integration is a normal state (the admin UI
+	// shows "Not registered"), so it answers 200 with data: null, like the
+	// identities, runs and revocations lists answer an empty list.
+	var integration *IdentitySyncIntegration
 	result, err := h.IdentitySync.Get(c.Request.Context(), c.Param("clientId"))
-	if err != nil {
+	switch {
+	case err == nil:
+		dto := identitySyncDTO(result)
+		integration = &dto
+	case !errors.Is(err, identityreconcile.ErrIntegrationNotFound):
 		failIdentitySync(c, err)
 		return
 	}
-	response.OK(c, http.StatusOK, identitySyncDTO(result))
+	response.OK(c, http.StatusOK, integration)
 }
 
 // SaveIdentitySync registers or updates an integration. Enabling it first reads
