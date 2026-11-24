@@ -1,5 +1,25 @@
 # @moh-sso/state
 
+## 1.9.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/api@1.9.0
+  - @moh-sso/auth@1.9.0
+  - @moh-sso/types@1.9.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.7.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.8.0
 
 ### Minor Changes
@@ -14,6 +34,7 @@
   - @moh-sso/types@1.8.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.6.0`.
