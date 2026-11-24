@@ -16889,7 +16889,9 @@ paths:
               schema:
                 properties:
                   data:
-                    $ref: '#/components/schemas/platform.IdentitySyncIntegration'
+                    allOf:
+                      - $ref: '#/components/schemas/platform.IdentitySyncIntegration'
+                    nullable: true
                   meta:
                     properties:
                       requestId:

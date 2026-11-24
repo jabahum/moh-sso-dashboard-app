@@ -139,7 +139,7 @@ type IntegrationDraft = {
 
 function toIntegrationDraft(
   clientId: string,
-  integration?: IdentitySyncIntegration,
+  integration?: IdentitySyncIntegration | null,
 ): IntegrationDraft {
   return {
     origin: integration?.origin ?? "",
@@ -162,7 +162,10 @@ function IntegrationCard({ clientId, canWrite }: Props) {
     isLoading,
     isFetching,
   } = useGetIdentitySyncIntegrationQuery(clientId);
-  const notRegistered = errorStatus(error) === 404;
+  // The API answers data: null when no integration is registered; a 404 is
+  // still accepted from servers that predate that.
+  const notRegistered =
+    (!isLoading && !error && integration === null) || errorStatus(error) === 404;
   const [draft, setDraft] = useState<IntegrationDraft>(() => toIntegrationDraft(clientId));
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
   const [downgradeRefused, setDowngradeRefused] = useState(false);

@@ -25,9 +25,10 @@ const base = (clientId: string) =>
 
 export const identitySyncApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getIdentitySyncIntegration: builder.query<IdentitySyncIntegration, string>({
+    // data is null when the application has no integration registered yet.
+    getIdentitySyncIntegration: builder.query<IdentitySyncIntegration | null, string>({
       query: (clientId) => base(clientId),
-      transformResponse: (res: ApiEnvelope<IdentitySyncIntegration>) => res.data,
+      transformResponse: (res: ApiEnvelope<IdentitySyncIntegration | null>) => res.data,
       providesTags: (_r, _e, clientId) => [{ type: "IdentitySync", id: `integration:${clientId}` }],
     }),
     saveIdentitySyncIntegration: builder.mutation<

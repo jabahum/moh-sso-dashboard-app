@@ -3,6 +3,7 @@ package platform
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http/httptest"
 	"strings"
@@ -184,7 +185,12 @@ func TestIdentitySyncAdminMapsRegistryErrors(t *testing.T) {
 		if code != tc.want || strings.Contains(body, "secret-looking") {
 			t.Errorf("PUT %v: %d %s", tc.err, code, body)
 		}
-		if code, _ := identitySyncRequest(router, "GET", ""); code != tc.want {
+		// GET answers an unregistered application with 200 and data: null.
+		if errors.Is(tc.err, identityreconcile.ErrIntegrationNotFound) {
+			if code, body := identitySyncRequest(router, "GET", ""); code != 200 || !strings.Contains(body, `"data":null`) {
+				t.Errorf("GET %v: %d %s", tc.err, code, body)
+			}
+		} else if code, _ := identitySyncRequest(router, "GET", ""); code != tc.want {
 			t.Errorf("GET %v: %d", tc.err, code)
 		}
 		if code, _ := identitySyncRequest(router, "DELETE", `{"reason":"x"}`); code != tc.want {
