@@ -1,5 +1,30 @@
 # @moh-sso/rbac
 
+## 1.8.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/users@1.8.0
+  - @moh-sso/api@1.9.0
+  - @moh-sso/auth@1.9.0
+  - @moh-sso/microfrontend@1.9.0
+  - @moh-sso/types@1.9.0
+  - @moh-sso/ui@1.9.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.7.0`.
+
+- Merge pull request #363 from jabahum/fix/identity-sync-null-integration (`9ea08e6b`)
+- Answer an unregistered identity-sync integration with 200 and data: null (`54e650f0`)
+- Read identity-sync client secrets from Keycloak with a keycloak: credential reference (`234b07d2`)
+
 ## 1.7.0
 
 ### Minor Changes
@@ -17,6 +42,7 @@
   - @moh-sso/ui@1.8.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.6.0`.
