@@ -208,7 +208,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 				WorkerStaleAfter: 3 * deps.Config.NotificationDelivery.WorkerInterval,
 				CoreReady:        healthHandler.CheckCore, RequiredWorkers: enabledDeliveryWorkers(deps.Config),
 				Repository:      &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
-				IdentitySync:    platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm),
+				IdentitySync:    platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm, deps.AdminKeycloak),
 				IdentitySyncOps: identitySyncOperationsHandler(deps.Config, deps.Databases.Primary, deps.AdminKeycloak),
 				ServiceAccounts: serviceAccountResolver(deps.AdminKeycloak),
 				Verifier: &platformfeature.Introspector{

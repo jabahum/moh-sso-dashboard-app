@@ -686,7 +686,8 @@ systems:
 # systems. The startup push (RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK=true) creates each
 # one confidential and service-account-only, with an audience mapper, and grants its
 # service account the listed service-only roles plus the matching scope mappings.
-# Keycloak generates the secret; copy it into the dashboard's secret file.
+# Keycloak generates the secret; register the integration with
+# keycloak:<clientId> and the dashboard reads it from Keycloak when needed.
 serviceClients:
   - clientId: clims-identity-sync
     displayName: clims identity sync

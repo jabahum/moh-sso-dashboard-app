@@ -51,7 +51,7 @@ func buildCoreHandlers(deps handlerDependencies) handlers {
 			HealthContexts: healthcontextfeature.NewHandler(deps.Services.HealthContexts, deps.Services.Audit),
 			Platform: &platformfeature.Handler{
 				Repository:      &platformfeature.PostgresRepository{DB: deps.Databases.Primary},
-				IdentitySync:    platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm),
+				IdentitySync:    platformfeature.NewIdentitySyncRegistry(deps.Databases.Primary, deps.Config.KeycloakTokenBaseURL(), deps.Config.KeycloakRealm, deps.AdminKeycloak),
 				IdentitySyncOps: identitySyncOperationsHandler(deps.Config, deps.Databases.Primary, deps.AdminKeycloak),
 				ServiceAccounts: serviceAccountResolver(deps.AdminKeycloak),
 				CoreReady:       health.CheckCore, RequiredWorkers: []string{}, DeliveryEnabled: &delivery,

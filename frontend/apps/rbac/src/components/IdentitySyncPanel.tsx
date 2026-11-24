@@ -145,9 +145,7 @@ function toIntegrationDraft(
     origin: integration?.origin ?? "",
     syncClientId: integration?.syncClientId ?? `${clientId}-identity-sync`,
     accessRole: integration?.accessRole ?? `${clientId}_access`,
-    credentialRef:
-      integration?.credentialRef ??
-      `env:${clientId.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_SYNC_CLIENT_SECRET`,
+    credentialRef: integration?.credentialRef ?? `keycloak:${clientId}-identity-sync`,
     accountIdFormat: integration?.accountIdFormat ?? "opaque",
     enabled: integration?.enabled ?? false,
     reason: "",
@@ -278,8 +276,8 @@ function IntegrationCard({ clientId, canWrite }: Props) {
       </div>
       <p>
         Registers how the portal reaches this application&apos;s identity-sync endpoint. The
-        credential is a reference (<code>env:NAME</code> or <code>file:/path</code>); the secret
-        itself is never entered here.
+        credential is a reference (<code>keycloak:&lt;sync client&gt;</code>, <code>env:NAME</code> or{" "}
+        <code>file:/path</code>); the secret itself is never entered here.
       </p>
       {isLoading && <InlineLoading description="Loading integration..." />}
       {loadError && (
@@ -331,6 +329,7 @@ function IntegrationCard({ clientId, canWrite }: Props) {
           <TextInput
             id="identity-sync-credential"
             labelText="Credential reference"
+            helperText="keycloak:<sync client ID> reads the secret from Keycloak when needed; env:NAME or file:/path read it from the backend host"
             value={draft.credentialRef}
             disabled={!canWrite}
             onChange={(event) => update({ credentialRef: event.target.value })}

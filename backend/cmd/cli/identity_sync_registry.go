@@ -162,8 +162,14 @@ var openIdentitySyncRuntime = func(ctx context.Context) (*identitySyncRuntime, e
 	if err != nil {
 		return nil, fmt.Errorf("open the dashboard database: %w", err)
 	}
+	registry := identityreconcile.NewRegistryService(&identityreconcile.PostgresRegistry{DB: db}, endpoint)
+	// keycloak: credential references read the sync client's secret with the
+	// operator credentials; without them only env: and file: references work.
+	if kc, err := keycloakSyncConfigFromEnv(os.Getenv); err == nil {
+		registry.WithClientSecrets(keycloak.NewAdminClient(kc.adminBase, kc.realm, kc.adminID, kc.adminSecret))
+	}
 	return &identitySyncRuntime{
-		Registry: identityreconcile.NewRegistryService(&identityreconcile.PostgresRegistry{DB: db}, endpoint),
+		Registry: registry,
 		getenv:   os.Getenv,
 		close:    func() { db.Close() },
 	}, nil
@@ -242,7 +248,9 @@ func newIdentitySyncRegisterCommand() *cobra.Command {
 		Use:   "register",
 		Short: "Register or update an application in the identity-sync registry",
 		Long: "Stores the application's origin, dedicated sync client, access role and a credential\n" +
-			"reference (env:NAME or file:/absolute/path; never the secret). With --enable the\n" +
+			"reference (env:NAME, file:/absolute/path or keycloak:<sync client>; never the secret).\n" +
+			"keycloak:<sync client> reads the secret through the Keycloak admin API when needed,\n" +
+			"so it never has to be copied. With --enable the\n" +
 			"application's GET / descriptor is read first (a 1.0 application answers 404).",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -272,7 +280,7 @@ func newIdentitySyncRegisterCommand() *cobra.Command {
 	f.StringVar(&input.Origin, "origin", "", "Application HTTPS origin, https://host[:port] only (required)")
 	f.StringVar(&input.SyncClientID, "sync-client", "", "Dedicated identity-sync Keycloak client ID (required)")
 	f.StringVar(&input.AccessRole, "access-role", "", "Application access role granted after linking (required)")
-	f.StringVar(&input.CredentialRef, "credential", "", "Sync client secret reference: env:NAME or file:/absolute/path (required)")
+	f.StringVar(&input.CredentialRef, "credential", "", "Sync client secret reference: env:NAME, file:/absolute/path, or keycloak:<sync client> to read it from Keycloak (required)")
 	f.StringVar(&format, "account-id-format", string(identitysync.AccountIDOpaque), "Account ID format for a 1.0 application: uuid, positive-integer or opaque")
 	f.BoolVar(&input.Enabled, "enable", false, "Enable the integration after reading its descriptor")
 	f.BoolVar(&input.AllowContractDowngrade, "allow-contract-downgrade", false, "Accept that an application registered at contract 1.1 or newer now answers like 1.0")

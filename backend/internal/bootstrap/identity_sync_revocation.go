@@ -19,16 +19,17 @@ func newIdentitySyncRevokeService(cfg *config.Config, db *sql.DB, admin *keycloa
 	if cfg == nil || db == nil || admin == nil || cfg.KeycloakRealm == "" {
 		return nil
 	}
-	return identityreconcile.NewRevokeService(identitySyncRegistry(cfg, db), &identityreconcile.PostgresRevocations{DB: db},
+	return identityreconcile.NewRevokeService(identitySyncRegistry(cfg, db, admin), &identityreconcile.PostgresRevocations{DB: db},
 		identityreconcile.KeycloakAccessDirectory{Admin: admin}, identitySyncIssuer(cfg))
 }
 
 // identitySyncRegistry is the Postgres registry; sync clients mint tokens at
-// the realm's token endpoint.
-func identitySyncRegistry(cfg *config.Config, db *sql.DB) *identityreconcile.RegistryService {
+// the realm's token endpoint, and keycloak: credential references are read
+// through the admin client.
+func identitySyncRegistry(cfg *config.Config, db *sql.DB, admin *keycloak.KeyAdminClient) *identityreconcile.RegistryService {
 	realm := url.PathEscape(cfg.KeycloakRealm)
 	endpoint := strings.TrimRight(cfg.KeycloakTokenBaseURL(), "/") + "/realms/" + realm + "/protocol/openid-connect/token"
-	return identityreconcile.NewRegistryService(&identityreconcile.PostgresRegistry{DB: db}, endpoint)
+	return identityreconcile.NewRegistryService(&identityreconcile.PostgresRegistry{DB: db}, endpoint).WithClientSecrets(admin)
 }
 
 // identitySyncIssuer is the public issuer written into application links.
@@ -65,7 +66,7 @@ func newIdentitySyncOperations(cfg *config.Config, db *sql.DB, admin *keycloak.K
 	}
 	return &identityreconcile.Operations{
 		Batch:    identityreconcile.BatchService{Repo: &identityreconcile.PostgresBatchRepository{DB: db}, Revocations: revoke},
-		Registry: identitySyncRegistry(cfg, db),
+		Registry: identitySyncRegistry(cfg, db, admin),
 		Revoke:   revoke,
 		Admin:    admin,
 		Issuer:   identitySyncIssuer(cfg),

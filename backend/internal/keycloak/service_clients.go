@@ -79,7 +79,8 @@ type protocolMapperRep struct {
 //   - A missing client is created confidential, with only service accounts
 //     enabled, fullScopeAllowed off, the roles default scope, an audience mapper
 //     and portal attributes that keep it out of the launcher. Keycloak generates
-//     its secret; this method never reads or sets one.
+//     its secret; this method never reads or sets one (ServiceClientSecret
+//     reads it when a keycloak: credential reference needs it).
 //   - An existing client is never reshaped. If it is public, bearer-only, lacks
 //     a service account or has a browser or password flow enabled,
 //     ErrNotServiceClient is returned and nothing is changed.
@@ -108,8 +109,7 @@ func (c *KeyAdminClient) EnsureServiceClient(ctx context.Context, spec ServiceCl
 		}
 		result.Created = true
 	} else {
-		if existing.PublicClient || existing.BearerOnly || !existing.ServiceAccountsEnabled ||
-			existing.StandardFlowEnabled || existing.ImplicitFlowEnabled || existing.DirectAccessGrantsEnabled {
+		if !existing.isServiceAccountOnly() {
 			return result, fmt.Errorf("%w: %s", ErrNotServiceClient, spec.ClientID)
 		}
 		clientUUID = existing.ID
@@ -169,6 +169,51 @@ func (c *KeyAdminClient) EnsureServiceClient(ctx context.Context, spec ServiceCl
 	}
 
 	return result, nil
+}
+
+// ErrServiceClientNotFound means no client with the requested clientId exists.
+var ErrServiceClientNotFound = errors.New("keycloak service client not found")
+
+// ServiceClientSecret returns the current secret of a service-account-only
+// client, such as clims-identity-sync, so the dashboard can mint its tokens
+// without the secret being copied anywhere. It refuses any other client shape
+// (browser, public or bearer-only clients) with ErrNotServiceClient, so it
+// can't be used to read an application's own client secret. The admin client
+// needs view-clients. Errors never include the secret.
+func (c *KeyAdminClient) ServiceClientSecret(ctx context.Context, clientID string) (string, error) {
+	clientID = strings.TrimSpace(clientID)
+	if clientID == "" {
+		return "", fmt.Errorf("service client secret: clientId is required")
+	}
+	state, err := c.findServiceClientState(ctx, clientID)
+	if err != nil {
+		return "", err
+	}
+	if state == nil {
+		return "", fmt.Errorf("%w: %s", ErrServiceClientNotFound, clientID)
+	}
+	if !state.isServiceAccountOnly() {
+		return "", fmt.Errorf("%w: %s", ErrNotServiceClient, clientID)
+	}
+	var credential struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	}
+	path := "clients/" + url.PathEscape(state.ID) + "/client-secret"
+	if err := c.getJSON(ctx, path, &credential, "read client secret of "+clientID); err != nil {
+		return "", err
+	}
+	if credential.Value == "" {
+		return "", fmt.Errorf("service client %q has no secret", clientID)
+	}
+	return credential.Value, nil
+}
+
+// isServiceAccountOnly reports a confidential client whose only grant is
+// client credentials.
+func (s serviceClientState) isServiceAccountOnly() bool {
+	return !s.PublicClient && !s.BearerOnly && s.ServiceAccountsEnabled &&
+		!s.StandardFlowEnabled && !s.ImplicitFlowEnabled && !s.DirectAccessGrantsEnabled
 }
 
 func (c *KeyAdminClient) findServiceClientState(ctx context.Context, clientID string) (*serviceClientState, error) {

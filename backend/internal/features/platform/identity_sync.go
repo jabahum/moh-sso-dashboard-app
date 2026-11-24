@@ -24,8 +24,9 @@ type IdentitySyncRegistry interface {
 }
 
 // IdentitySyncInput registers or updates an application's identity-sync integration.
-// CredentialRef names where the sync client's secret lives (env:NAME or
-// file:/absolute/path); the secret itself is never sent or stored.
+// CredentialRef names where the sync client's secret lives (env:NAME,
+// file:/absolute/path, or keycloak:<sync client ID> to read it from Keycloak
+// when needed); the secret itself is never sent or stored.
 type IdentitySyncInput struct {
 	Origin          string `json:"origin" binding:"required"`
 	SyncClientID    string `json:"syncClientId" binding:"required"`
@@ -61,9 +62,11 @@ type IdentitySyncIntegration struct {
 
 // NewIdentitySyncRegistry builds the Postgres-backed registry service. Sync
 // clients mint tokens at the realm's token endpoint under keycloakTokenBaseURL.
-func NewIdentitySyncRegistry(db *sql.DB, keycloakTokenBaseURL, realm string) *identityreconcile.RegistryService {
+// secrets (the Keycloak admin client) resolves keycloak: credential
+// references; nil refuses them.
+func NewIdentitySyncRegistry(db *sql.DB, keycloakTokenBaseURL, realm string, secrets identityreconcile.ClientSecretSource) *identityreconcile.RegistryService {
 	endpoint := strings.TrimRight(keycloakTokenBaseURL, "/") + "/realms/" + url.PathEscape(realm) + "/protocol/openid-connect/token"
-	return identityreconcile.NewRegistryService(&identityreconcile.PostgresRegistry{DB: db}, endpoint)
+	return identityreconcile.NewRegistryService(&identityreconcile.PostgresRegistry{DB: db}, endpoint).WithClientSecrets(secrets)
 }
 
 func identitySyncDTO(i identityreconcile.Integration) IdentitySyncIntegration {

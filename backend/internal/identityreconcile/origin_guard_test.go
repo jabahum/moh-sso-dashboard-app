@@ -153,7 +153,7 @@ func TestRegistryConnectorRefusesNonPublicPeerAtDialTime(t *testing.T) {
 	registry.AllowedPrivateHosts = nil
 	integration := validIntegration()
 	integration.Origin = server.URL
-	connector, err := registry.ConnectorFor(integration)
+	connector, err := registry.ConnectorFor(context.Background(), integration)
 	if err != nil {
 		t.Fatal(err)
 	}

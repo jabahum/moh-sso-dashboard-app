@@ -91,9 +91,17 @@ during a deploy cannot silently downgrade a registration.
 **Secrets.** The registry stores a reference, never a secret. `env:NAME` reads
 an environment variable, and `file:/path` reads a mounted secret file (one
 trailing newline is trimmed; an empty secret is refused; the secret is never
-logged or returned). The reference resolves in the process that uses it: the
-dashboard backend for the admin API's enable check, the CLI host for
-`identity-sync` commands. Existing deployments register CLIMS as
+logged or returned). `keycloak:<sync client ID>` reads the sync client's
+current secret through the Keycloak admin API each time a connector is built,
+so the secret is never copied out of Keycloak and a regenerated secret is used
+on the next call without a restart. It must name the integration's own sync
+client, and Keycloak only hands out the secret of a service-account-only client
+(confidential, no browser or password flows), so it can't read an
+application's interactive client secret. It needs the admin client's
+`view-clients` role, which `dashboard-admin` already has. The reference
+resolves in the process that uses it: the dashboard backend for the admin API's
+enable check, the CLI host for `identity-sync` commands (`keycloak:` there uses
+`KEYCLOAK_ADMIN_CLIENT_ID` / `_SECRET`). Existing deployments register CLIMS as
 `env:CLIMS_SYNC_CLIENT_SECRET`, so nothing has to move.
 
 **Admin API.** `PUT/GET/DELETE /api/v1/admin/platform/applications/:clientId/identity-sync`

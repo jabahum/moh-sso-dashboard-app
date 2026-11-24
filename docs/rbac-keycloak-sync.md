@@ -108,7 +108,7 @@ When push-to-Keycloak runs (step 6 above), `EnsureServiceClient` (`backend/inter
 
 Each role is assigned to the service account and also added to the client's dedicated scope (`<client>-dedicated` → Scope). Because `fullScopeAllowed` is off, the role reaches the token only through that scope mapping.
 
-The push never reads or writes a client secret: Keycloak generates one when it creates the client. Copy it into its destination without displaying it (for the identity-sync clients, the dashboard's `CLIMS_SYNC_CLIENT_SECRET_FILE` or `POESGO_SYNC_CLIENT_SECRET_FILE`), as described in [Connected applications](integrations/connected-applications.md#3-credentials-who-holds-what).
+The push never reads or writes a client secret: Keycloak generates one when it creates the client. Register the identity-sync integration with `keycloak:clims-identity-sync` or `keycloak:poesgo-identity-sync` and the dashboard reads that secret from Keycloak when it needs it, so it never has to be copied. To use `env:` instead, copy it without displaying it into the dashboard's `CLIMS_SYNC_CLIENT_SECRET_FILE` or `POESGO_SYNC_CLIENT_SECRET_FILE`, as described in [Connected applications](integrations/connected-applications.md#3-credentials-who-holds-what).
 
 Service clients exist only in the seed file. `system-rbac export-db` keeps the `serviceClients:` already in the target file, because the database does not store them.
 
