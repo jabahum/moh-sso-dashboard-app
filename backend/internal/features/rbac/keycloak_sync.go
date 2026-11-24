@@ -50,6 +50,8 @@ type ServiceClientPushResult struct {
 	Changed   []keycloak.ServiceClientResult `json:"changed,omitempty"`
 	Unchanged int                            `json:"unchanged"`
 	Warnings  []string                       `json:"warnings,omitempty"`
+	// Failed names each client the push could not complete, with the reason.
+	Failed []string `json:"failed,omitempty"`
 }
 
 type keycloakPortalAttributeUpdater interface {
@@ -596,8 +598,10 @@ func discoverLiveKeycloakRBAC(ctx context.Context, source KeycloakSyncSource, kn
 // and completes any that are missing their audience mapper, service-account
 // roles or scope mappings. It runs after PushMissingRBACRolesToKeycloak so the
 // roles exist. A client that exists in another shape (for example with a
-// browser flow) is left alone and reported as a warning; other Keycloak errors
-// stop the push. Secrets are never read or written: Keycloak generates them.
+// browser flow) is left alone and reported as a warning. Any other error on
+// one client (for example a missing role) is reported in Failed and the
+// remaining clients are still pushed; the returned error then names every
+// failed client. Secrets are never read or written: Keycloak generates them.
 func (s *Service) PushServiceClientsToKeycloak(
 	ctx context.Context,
 	source KeycloakServiceClientSource,
@@ -611,6 +615,7 @@ func (s *Service) PushServiceClientsToKeycloak(
 		return result, fmt.Errorf("%w: keycloak source is required", ErrInvalidInput)
 	}
 
+	var failures []error
 	for _, client := range clients {
 		spec := keycloak.ServiceClientSpec{
 			ClientID:    strings.TrimSpace(client.ClientID),
@@ -633,7 +638,14 @@ func (s *Service) PushServiceClientsToKeycloak(
 			continue
 		}
 		if err != nil {
-			return result, fmt.Errorf("ensure keycloak service client %q: %w", spec.ClientID, err)
+			failure := fmt.Errorf("ensure keycloak service client %q: %w", spec.ClientID, err)
+			failures = append(failures, failure)
+			result.Failed = append(result.Failed, failure.Error())
+			// Report anything already done to this client before the failure.
+			if ensured.Changed() {
+				result.Changed = append(result.Changed, ensured)
+			}
+			continue
 		}
 		if ensured.Changed() {
 			result.Changed = append(result.Changed, ensured)
@@ -642,15 +654,16 @@ func (s *Service) PushServiceClientsToKeycloak(
 		}
 	}
 
-	if len(result.Changed) == 0 && len(result.Warnings) == 0 {
+	if len(result.Changed) == 0 && len(result.Warnings) == 0 && len(failures) == 0 {
 		return result, nil
 	}
 	if err := s.recordAudit(ctx, "rbac.keycloak_service_clients_pushed", "sync", "live-keycloak", "", "", "", map[string]any{
 		"changed":   result.Changed,
 		"unchanged": result.Unchanged,
 		"warnings":  result.Warnings,
+		"failed":    result.Failed,
 	}); err != nil {
-		return result, err
+		return result, errors.Join(append(failures, err)...)
 	}
-	return result, nil
+	return result, errors.Join(failures...)
 }

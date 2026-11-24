@@ -45,6 +45,13 @@ func ApplySeed(ctx context.Context, db *sql.DB, seed SeedFile) error {
 				return err
 			}
 			if manifestManaged {
+				// The application's manifest owns the system, its roles and
+				// access, so startup leaves them alone. Service-only roles are
+				// the exception: a manifest cannot declare them, and the seed's
+				// service clients (for example clims-identity-sync) need them.
+				if err := addMissingServiceOnlyRoles(ctx, tx, system); err != nil {
+					return err
+				}
 				continue
 			}
 		}
@@ -364,6 +371,26 @@ func upsertSystem(ctx context.Context, tx *sql.Tx, system SeedSystem) (string, e
 		err = tx.QueryRowContext(ctx, `SELECT id::text FROM ihp_systems WHERE client_id=$1`, system.ClientID).Scan(&id)
 	}
 	return id, err
+}
+
+// addMissingServiceOnlyRoles adds the seed's service-only roles that a
+// manifest-managed system does not have yet. Existing roles, including one of
+// the same name that is not service-only, are left unchanged.
+func addMissingServiceOnlyRoles(ctx context.Context, tx *sql.Tx, system SeedSystem) error {
+	for _, role := range system.Roles {
+		if !role.ServiceOnly {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO ihp_system_roles (system_id, role_name, display_name, description, enabled, metadata, service_only)
+			SELECT id, $2, NULLIF($3, ''), NULLIF($4, ''), TRUE, '{}'::jsonb, TRUE
+			FROM ihp_systems WHERE client_id = $1
+			ON CONFLICT (system_id, role_name) DO NOTHING
+		`, system.ClientID, strings.ToLower(strings.TrimSpace(role.Name)), role.DisplayName, role.Description); err != nil {
+			return fmt.Errorf("add service-only role %q to %q: %w", role.Name, system.ClientID, err)
+		}
+	}
+	return nil
 }
 
 func upsertSystemRole(ctx context.Context, tx *sql.Tx, systemID string, role SeedRole) (string, error) {
