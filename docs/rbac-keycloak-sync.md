@@ -106,11 +106,11 @@ When push-to-Keycloak runs (step 6 above), `EnsureServiceClient` (`backend/inter
 - **Existing service-account-only client:** a missing audience mapper, service-account role or dedicated-scope mapping is added. Nothing is removed or renamed, and a client that is already complete is left untouched.
 - **Existing client of another kind** (public, bearer-only, without a service account, or with a browser or password flow): left unchanged, reported as a startup warning and in the `rbac.keycloak_service_clients_pushed` audit event. An administrator has to resolve the conflict.
 
-Each role is assigned to the service account and also added to the client's dedicated scope (`<client>-dedicated` → Scope). Because `fullScopeAllowed` is off, the role reaches the token only through that scope mapping.
-
 The roles come from the dashboard database through the role push. For a system imported from an application manifest, the startup seed adds only the seed's missing `serviceOnly` roles and leaves the rest to the manifest, so a manifest-imported CLIMS still gets `clims/identity_sync`.
 
 If one entry fails for any other reason (for example Keycloak can't find a role), the remaining entries are still pushed. The failures are listed in the startup log's `failed` field and in the audit event, and startup then reports the error (stopping only when `RBAC_STARTUP_SYNC_FAIL_ON_ERROR=true`).
+
+Each role is assigned to the service account and also added to the client's dedicated scope (`<client>-dedicated` → Scope). Because `fullScopeAllowed` is off, the role reaches the token only through that scope mapping.
 
 The push never reads or writes a client secret: Keycloak generates one when it creates the client. Copy it into its destination without displaying it (for the identity-sync clients, the dashboard's `CLIMS_SYNC_CLIENT_SECRET_FILE` or `POESGO_SYNC_CLIENT_SECRET_FILE`), as described in [Connected applications](integrations/connected-applications.md#3-credentials-who-holds-what).
 
