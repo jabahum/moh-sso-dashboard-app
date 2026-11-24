@@ -64,14 +64,16 @@ the access role, so new sign-ins are refused, then calls
 | Account ID format | `uuid` | `positive-integer` |
 | Contract | 1.1 | 1.1 |
 | Production origin (realm export) | `https://clims.health.go.ug` | `https://poes.health.go.ug` |
-| Registry credential | `env:CLIMS_SYNC_CLIENT_SECRET` | `env:POESGO_SYNC_CLIENT_SECRET` |
-| Mounted secret file variable | `CLIMS_SYNC_CLIENT_SECRET_FILE` | `POESGO_SYNC_CLIENT_SECRET_FILE` |
+| Registry credential | `keycloak:clims-identity-sync` (or `env:CLIMS_SYNC_CLIENT_SECRET`) | `keycloak:poesgo-identity-sync` (or `env:POESGO_SYNC_CLIENT_SECRET`) |
+| Mounted secret file variable (`env:` only) | `CLIMS_SYNC_CLIENT_SECRET_FILE` | `POESGO_SYNC_CLIENT_SECRET_FILE` |
 | App setting that enables sync | `IDENTITY_SYNC_CLIENT_ID=clims-identity-sync` | `IDENTITY_SYNC_CLIENT_ID=poesgo-identity-sync` |
 | Password sign-in alongside portal sign-in | Yes. Web and mobile keep it | No. In `AUTH_PROVIDER=oidc` POES accepts only its SSO session, so its web admin and mobile apps can't sign in to that deployment yet |
 
-The backend entrypoint loads any mounted `<NAME>_SYNC_CLIENT_SECRET_FILE` as
-`<NAME>_SYNC_CLIENT_SECRET`, which is what the registry's `env:` reference
-reads. The deprecated `clims-identity-sync` and `poes-identity-sync` CLI
+With `keycloak:<sync client>` the dashboard reads the sync client's secret
+from Keycloak whenever it needs it, through its admin client, so nothing is
+copied or mounted. With `env:`, the backend entrypoint loads any mounted
+`<NAME>_SYNC_CLIENT_SECRET_FILE` as `<NAME>_SYNC_CLIENT_SECRET`, which is what
+the reference reads. The deprecated `clims-identity-sync` and `poes-identity-sync` CLI
 commands use the older `CLIMS_SYNC_*` and `POES_SYNC_*` settings described in
 [platform identity](../platform-identity.md#identity-reconciliation-clims-poes).
 Prefer the registry commands below.
@@ -82,14 +84,15 @@ Prefer the registry commands below.
 | --- | --- | --- |
 | `clims` / `poesgo` client secret | The application only | The dashboard never needs it |
 | Application `JWT_SECRET` | The application only | Signs the application's own sessions |
-| `clims-identity-sync` / `poesgo-identity-sync` secret | The dashboard only | Mounted as a file, referenced by the registry; never pasted on a command line |
+| `clims-identity-sync` / `poesgo-identity-sync` secret | Keycloak, read by the dashboard only | With `keycloak:` it stays in Keycloak; with `env:` it is mounted as a file. Never pasted on a command line |
 | Keycloak admin client (`KEYCLOAK_ADMIN_CLIENT_ID` / `_SECRET`) | The dashboard only | Looks up users and grants or removes `<app>_access` |
 
 The application verifies sync tokens against Keycloak's public keys, so the
 dashboard and the application never share a secret. Rotate a sync secret in
-Keycloak (Clients → the sync client → Credentials → Regenerate), then replace
-the dashboard's mounted file and restart the backend. Sync calls fail in
-between; users are not affected.
+Keycloak (Clients → the sync client → Credentials → Regenerate). With a
+`keycloak:` reference that is all: the next sync call reads the new secret.
+With `env:`, also replace the dashboard's mounted file and restart the
+backend; sync calls fail in between. Users are not affected either way.
 
 ## 4. Keycloak
 
@@ -128,9 +131,10 @@ clients:
   import files that are copies of the export's definitions, and the
   application guides list the manual steps that partial import can't carry.
 
-After any secret is created or regenerated, store it straight into its
-destination (the application's env file or the dashboard's secret mount)
-without displaying it.
+Sync clients registered with `keycloak:<sync client>` need no further secret
+step. Any other secret that is created or regenerated (an application's own
+client secret, or a sync secret registered with `env:`) goes straight into its
+destination without being displayed.
 
 ## 5. Connect an application
 
@@ -141,7 +145,8 @@ substitute the values from section 2.
    `IDENTITY_SYNC_CLIENT_ID`, applies its migrations, and confirms
    `/api/v1/internal/identity-sync` is reachable from the dashboard's network.
    Their repository guide has the details.
-2. **Secret.** Mount the sync client's secret and set
+2. **Secret.** Nothing to do when you register `keycloak:poesgo-identity-sync`
+   in step 4. To use `env:` instead, mount the sync client's secret and set
    `POESGO_SYNC_CLIENT_SECRET_FILE` to its path. If the application's origin
    resolves to a private address from the dashboard (split-horizon DNS), add
    that host name only to `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS`.
@@ -164,7 +169,7 @@ substitute the values from section 2.
      --origin https://poes.health.go.ug \
      --sync-client poesgo-identity-sync \
      --access-role poesgo_access \
-     --credential env:POESGO_SYNC_CLIENT_SECRET \
+     --credential keycloak:poesgo-identity-sync \
      --reason "CHG-<ticket>: POES identity sync" \
      --enable
 

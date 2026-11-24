@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,8 +20,8 @@ import (
 //
 //	KEYCLOAK_IT_URL=http://localhost:18080 go test -tags=integration -run AgainstKeycloak ./internal/keycloak/
 //
-// It deletes clims-identity-sync, recreates it, and checks that a
-// client-credentials token carries aud=clims and clims/identity_sync. Never
+// It deletes clims-identity-sync, recreates it, reads its generated secret
+// with ServiceClientSecret, and checks that a client-credentials token carries aud=clims and clims/identity_sync. Never
 // point it at a shared realm.
 func TestEnsureServiceClientAgainstKeycloak(t *testing.T) {
 	baseURL := os.Getenv("KEYCLOAK_IT_URL")
@@ -69,21 +70,20 @@ func TestEnsureServiceClientAgainstKeycloak(t *testing.T) {
 		t.Fatalf("second run = %+v, %v; want no changes", again, err)
 	}
 
-	created, err := admin.findServiceClientState(ctx, spec.ClientID)
-	if err != nil || created == nil {
-		t.Fatalf("find created client: %v", err)
+	// The secret Keycloak generated is what a keycloak: credential reference
+	// reads; the application's own browser client is refused.
+	secret, err := admin.ServiceClientSecret(ctx, spec.ClientID)
+	if err != nil || secret == "" {
+		t.Fatalf("read the generated secret: %v", err)
 	}
-	var secret struct {
-		Value string `json:"value"`
-	}
-	if err := admin.getJSON(ctx, "clients/"+url.PathEscape(created.ID)+"/client-secret", &secret, "read secret"); err != nil || secret.Value == "" {
-		t.Fatalf("Keycloak did not generate a secret: %v", err)
+	if _, err := admin.ServiceClientSecret(ctx, "clims"); !errors.Is(err, ErrNotServiceClient) {
+		t.Fatalf("clims secret: err = %v, want ErrNotServiceClient", err)
 	}
 
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
 		"client_id":     {spec.ClientID},
-		"client_secret": {secret.Value},
+		"client_secret": {secret},
 	}
 	res, err := http.PostForm(baseURL+"/realms/"+realm+"/protocol/openid-connect/token", form)
 	if err != nil {

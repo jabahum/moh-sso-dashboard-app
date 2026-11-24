@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -31,7 +32,8 @@ var (
 )
 
 // Integration is one row of ihp_identity_sync_integrations. CredentialRef is a
-// reference (env:NAME or file:/path) to the sync client's secret, never the secret.
+// reference (env:NAME, file:/path or keycloak:<sync client ID>) to the sync
+// client's secret, never the secret.
 type Integration struct {
 	ApplicationClientID string                       `json:"applicationId"`
 	Origin              string                       `json:"origin"`
@@ -64,7 +66,7 @@ type RegistryRepository interface {
 
 var (
 	applicationIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
-	credentialRefPattern = regexp.MustCompile(`^(env:[A-Z][A-Z0-9_]*|file:/[^\s]+)$`)
+	credentialRefPattern = regexp.MustCompile(`^(env:[A-Z][A-Z0-9_]*|file:/[^\s]+|keycloak:[A-Za-z0-9][A-Za-z0-9._-]{0,127})$`)
 	originPattern        = regexp.MustCompile(`^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$`)
 )
 
@@ -90,7 +92,12 @@ func (i Integration) Validate() error {
 	case strings.TrimSpace(i.AccessRole) == "" || strings.TrimSpace(i.AccessRole) != i.AccessRole || len(i.AccessRole) > 255:
 		return fmt.Errorf("%w: access role", ErrInvalidIntegration)
 	case !credentialRefPattern.MatchString(i.CredentialRef) || len(i.CredentialRef) > 1024:
-		return fmt.Errorf("%w: credential reference must be env:NAME or file:/absolute/path", ErrInvalidIntegration)
+		return fmt.Errorf("%w: %s", ErrInvalidIntegration, credentialRefFormats)
+	case strings.HasPrefix(i.CredentialRef, keycloakCredentialPrefix) &&
+		strings.TrimPrefix(i.CredentialRef, keycloakCredentialPrefix) != i.SyncClientID:
+		// The dashboard only reads the secret of the integration's own sync
+		// client, never another client's.
+		return fmt.Errorf("%w: a keycloak: credential reference must name the sync client (keycloak:%s)", ErrInvalidIntegration, i.SyncClientID)
 	}
 	switch i.AccountIDFormat {
 	case identitysync.AccountIDUUID, identitysync.AccountIDPositiveInteger, identitysync.AccountIDOpaque:
@@ -100,10 +107,26 @@ func (i Integration) Validate() error {
 	return nil
 }
 
-// ResolveCredential reads the secret a credential reference points to:
-// "env:NAME" reads an environment variable and "file:/abs/path" reads a file.
-// A single trailing newline (LF or CRLF) is trimmed and an empty secret is
-// refused. Errors never include the secret.
+const (
+	keycloakCredentialPrefix = "keycloak:"
+	credentialRefFormats     = "credential reference must be env:NAME, file:/absolute/path or keycloak:<sync client ID>"
+)
+
+// ClientSecretSource reads a confidential client's current secret from
+// Keycloak. *keycloak.KeyAdminClient implements it.
+type ClientSecretSource interface {
+	ServiceClientSecret(ctx context.Context, clientID string) (string, error)
+}
+
+// ErrKeycloakCredentialUnavailable reports a keycloak: credential reference
+// on a registry built without a Keycloak admin client.
+var ErrKeycloakCredentialUnavailable = errors.New("keycloak: credential references need the Keycloak admin client")
+
+// ResolveCredential reads the secret an env: or file: credential reference
+// points to: "env:NAME" reads an environment variable and "file:/abs/path"
+// reads a file. A single trailing newline (LF or CRLF) is trimmed and an empty
+// secret is refused. Errors never include the secret. keycloak: references
+// need Keycloak and are resolved by RegistryService.
 func ResolveCredential(ref string, getenv func(string) string, readFile func(string) ([]byte, error)) (string, error) {
 	if getenv == nil {
 		getenv = os.Getenv
@@ -112,10 +135,12 @@ func ResolveCredential(ref string, getenv func(string) string, readFile func(str
 		readFile = os.ReadFile
 	}
 	if !credentialRefPattern.MatchString(ref) {
-		return "", fmt.Errorf("%w: credential reference must be env:NAME or file:/absolute/path", ErrInvalidIntegration)
+		return "", fmt.Errorf("%w: %s", ErrInvalidIntegration, credentialRefFormats)
 	}
 	var secret string
 	switch {
+	case strings.HasPrefix(ref, keycloakCredentialPrefix):
+		return "", ErrKeycloakCredentialUnavailable
 	case strings.HasPrefix(ref, "env:"):
 		secret = getenv(strings.TrimPrefix(ref, "env:"))
 	case strings.HasPrefix(ref, "file:"):
@@ -146,9 +171,14 @@ type RegistryService struct {
 	// TokenEndpoint is the Keycloak client-credentials token endpoint, reached
 	// through the (possibly internal) Keycloak base URL.
 	TokenEndpoint string
-	// Getenv and ReadFile resolve credential references; nil uses the OS.
+	// Getenv and ReadFile resolve env: and file: credential references; nil
+	// uses the OS.
 	Getenv   func(string) string
 	ReadFile func(string) ([]byte, error)
+	// ClientSecrets resolves keycloak: credential references, reading the sync
+	// client's current secret through the Keycloak admin API each time a
+	// connector is built. Nil refuses keycloak: references.
+	ClientSecrets ClientSecretSource
 	// HTTPClient, when set, supplies the transport for connectors and token
 	// requests (tests use it to trust httptest TLS servers).
 	HTTPClient *http.Client
@@ -167,6 +197,35 @@ type RegistryService struct {
 // IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS (empty by default).
 func NewRegistryService(repository RegistryRepository, tokenEndpoint string) *RegistryService {
 	return &RegistryService{Repository: repository, TokenEndpoint: tokenEndpoint, AllowedPrivateHosts: AllowedPrivateHostsFromEnv(nil)}
+}
+
+// WithClientSecrets sets the source for keycloak: credential references. A nil
+// source (including a typed nil pointer) leaves them refused.
+func (s *RegistryService) WithClientSecrets(source ClientSecretSource) *RegistryService {
+	if source == nil || reflect.ValueOf(source).Kind() == reflect.Pointer && reflect.ValueOf(source).IsNil() {
+		s.ClientSecrets = nil
+		return s
+	}
+	s.ClientSecrets = source
+	return s
+}
+
+// resolveCredential reads the integration's sync client secret.
+func (s *RegistryService) resolveCredential(ctx context.Context, integration Integration) (string, error) {
+	if !strings.HasPrefix(integration.CredentialRef, keycloakCredentialPrefix) {
+		return ResolveCredential(integration.CredentialRef, s.Getenv, s.ReadFile)
+	}
+	if s.ClientSecrets == nil {
+		return "", ErrKeycloakCredentialUnavailable
+	}
+	secret, err := s.ClientSecrets.ServiceClientSecret(ctx, integration.SyncClientID)
+	if err != nil {
+		return "", fmt.Errorf("read identity sync credential %s: %w", integration.CredentialRef, err)
+	}
+	if secret == "" {
+		return "", fmt.Errorf("identity sync credential %s is empty", integration.CredentialRef)
+	}
+	return secret, nil
 }
 
 // checkOrigin refuses an origin whose host resolves to a non-public address.
@@ -255,7 +314,7 @@ func (s *RegistryService) Delete(ctx context.Context, application, actor, reason
 // Probe builds a connector for an integration (enabled or not) and reads its
 // descriptor. With a stored contract version of 1.1 or newer a 404 is an error.
 func (s *RegistryService) Probe(ctx context.Context, integration Integration) (identitysync.Descriptor, error) {
-	connector, err := s.ConnectorFor(integration)
+	connector, err := s.ConnectorFor(ctx, integration)
 	if err != nil {
 		return identitysync.Descriptor{}, err
 	}
@@ -275,7 +334,7 @@ func (s *RegistryService) Connector(ctx context.Context, application string) (*H
 	if err := s.Repository.CheckIntegrationBinding(ctx, integration); err != nil {
 		return nil, Integration{}, err
 	}
-	connector, err := s.ConnectorFor(integration)
+	connector, err := s.ConnectorFor(ctx, integration)
 	if err != nil {
 		return nil, Integration{}, err
 	}
@@ -284,11 +343,11 @@ func (s *RegistryService) Connector(ctx context.Context, application string) (*H
 
 // ConnectorFor builds a connector from a registry row and its resolved
 // credential. It does not check that the integration is enabled.
-func (s *RegistryService) ConnectorFor(integration Integration) (*HTTPAccounts, error) {
+func (s *RegistryService) ConnectorFor(ctx context.Context, integration Integration) (*HTTPAccounts, error) {
 	if err := integration.Validate(); err != nil {
 		return nil, err
 	}
-	secret, err := ResolveCredential(integration.CredentialRef, s.Getenv, s.ReadFile)
+	secret, err := s.resolveCredential(ctx, integration)
 	if err != nil {
 		return nil, err
 	}

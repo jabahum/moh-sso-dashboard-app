@@ -35,6 +35,8 @@ func (f *fakeServiceClientRealm) handler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		_ = json.NewEncoder(w).Encode([]map[string]any{f.syncClient})
+	case key == "GET clients/uuid-sync/client-secret":
+		_, _ = io.WriteString(w, `{"type":"secret","value":"generated-by-keycloak"}`)
 	case key == "GET clients" && r.URL.Query().Get("clientId") == "clims":
 		_, _ = io.WriteString(w, `[{"id":"uuid-clims","clientId":"clims"}]`)
 	case key == "POST clients":
@@ -196,6 +198,38 @@ func TestEnsureServiceClientRequiresClientIDAndAudience(t *testing.T) {
 	for _, spec := range []ServiceClientSpec{{Audience: "clims"}, {ClientID: "clims-identity-sync"}} {
 		if _, err := admin.EnsureServiceClient(context.Background(), spec); err == nil {
 			t.Errorf("spec %+v: want an error", spec)
+		}
+	}
+}
+
+func TestServiceClientSecretReadsOnlyServiceAccountOnlyClients(t *testing.T) {
+	ctx := context.Background()
+
+	realm := &fakeServiceClientRealm{t: t}
+	admin := revocationAdminFixture(t, realm.handler)
+	if _, err := admin.ServiceClientSecret(ctx, "clims-identity-sync"); !errors.Is(err, ErrServiceClientNotFound) {
+		t.Fatalf("missing client: err = %v", err)
+	}
+
+	realm.syncClient = map[string]any{"id": "uuid-sync", "clientId": "clims-identity-sync", "serviceAccountsEnabled": true}
+	secret, err := admin.ServiceClientSecret(ctx, "clims-identity-sync")
+	if err != nil || secret != "generated-by-keycloak" {
+		t.Fatalf("secret = %q, %v", secret, err)
+	}
+	if len(realm.writes) != 0 {
+		t.Fatalf("reading a secret wrote %v", realm.writes)
+	}
+
+	for name, shape := range map[string]map[string]any{
+		"browser client":     {"serviceAccountsEnabled": true, "standardFlowEnabled": true},
+		"password grant":     {"serviceAccountsEnabled": true, "directAccessGrantsEnabled": true},
+		"public client":      {"serviceAccountsEnabled": true, "publicClient": true},
+		"no service account": {},
+	} {
+		shape["id"], shape["clientId"] = "uuid-sync", "clims-identity-sync"
+		realm.syncClient = shape
+		if _, err := admin.ServiceClientSecret(ctx, "clims-identity-sync"); !errors.Is(err, ErrNotServiceClient) {
+			t.Errorf("%s: err = %v, want ErrNotServiceClient", name, err)
 		}
 	}
 }
