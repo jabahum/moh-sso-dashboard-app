@@ -128,10 +128,9 @@ func runStartupRBACSync(
 		// Service clients (for example the identity-sync clients) come from the
 		// seed and need the roles the push above created.
 		if seedLoaded && len(seed.ServiceClients) > 0 {
+			// A failed client doesn't stop the others; log what was done
+			// before reporting the failures.
 			clients, err := services.RBAC.PushServiceClientsToKeycloak(ctx, adminKC, seed.ServiceClients)
-			if err != nil {
-				return err
-			}
 			if appLogger != nil {
 				changed := make([]string, 0, len(clients.Changed))
 				for _, client := range clients.Changed {
@@ -142,7 +141,11 @@ func runStartupRBACSync(
 					"changed", changed,
 					"unchanged", clients.Unchanged,
 					"warnings", clients.Warnings,
+					"failed", clients.Failed,
 				)
+			}
+			if err != nil {
+				return err
 			}
 		}
 	}

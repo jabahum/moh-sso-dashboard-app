@@ -31,8 +31,11 @@ assign roles to users, and does not touch Keycloak. Use the other tools for
 those parts (see [What import does not do](#what-import-does-not-do)).
 
 Once an application has been imported from a manifest, automatic startup seed
-and startup Keycloak discovery skip it entirely, so they do not overwrite its
-configuration, roles or access gate. Explicit administrator actions are not
+and startup Keycloak discovery skip it, so they do not overwrite its
+configuration, roles or access gate. The one addition the startup seed still
+makes is a missing `serviceOnly` role from the seed (for example
+`clims/identity_sync`): a manifest can't declare service-only roles, and the
+seed's service clients need them. Existing roles are never changed. Explicit administrator actions are not
 skipped: edits on Admin → RBAC, an administrator-run Keycloak sync
 (`POST /admin/rbac/sync/apply`) and seed import through
 `POST /admin/rbac/import/apply` can still change the entry.

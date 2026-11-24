@@ -19,12 +19,9 @@ type fakeServiceClientSource struct {
 
 func (f *fakeServiceClientSource) EnsureServiceClient(_ context.Context, spec keycloak.ServiceClientSpec) (keycloak.ServiceClientResult, error) {
 	f.specs = append(f.specs, spec)
-	if err := f.errs[spec.ClientID]; err != nil {
-		return keycloak.ServiceClientResult{ClientID: spec.ClientID}, err
-	}
 	result := f.results[spec.ClientID]
 	result.ClientID = spec.ClientID
-	return result, nil
+	return result, f.errs[spec.ClientID]
 }
 
 func seedServiceClients() []systemrbac.SeedServiceClient {
@@ -86,11 +83,48 @@ func TestPushServiceClientsToKeycloakSkipsConflictingClientsWithAWarning(t *test
 	}
 }
 
-func TestPushServiceClientsToKeycloakStopsOnOtherErrors(t *testing.T) {
+func TestPushServiceClientsToKeycloakContinuesPastAFailedClient(t *testing.T) {
+	repo := newTestRBACRepository()
+	service := NewService(repo, nil)
+	missingRole := errors.New(`get client role failed [404]: {"error":"Could not find role"}`)
+	source := &fakeServiceClientSource{
+		errs: map[string]error{"clims-identity-sync": missingRole},
+		results: map[string]keycloak.ServiceClientResult{
+			// clims-identity-sync was created before its role lookup failed.
+			"clims-identity-sync":  {Created: true},
+			"poesgo-identity-sync": {Created: true},
+		},
+	}
+	result, err := service.PushServiceClientsToKeycloak(context.Background(), source, seedServiceClients())
+	if !errors.Is(err, missingRole) || !strings.Contains(err.Error(), "clims-identity-sync") {
+		t.Fatalf("err = %v, want the clims failure", err)
+	}
+	if len(source.specs) != 2 {
+		t.Fatalf("pushed %d clients, want both", len(source.specs))
+	}
+	if len(result.Failed) != 1 || !strings.Contains(result.Failed[0], "clims-identity-sync") {
+		t.Fatalf("failed = %v", result.Failed)
+	}
+	if len(result.Changed) != 2 || result.Changed[0].ClientID != "clims-identity-sync" || result.Changed[1].ClientID != "poesgo-identity-sync" {
+		t.Fatalf("changed = %+v", result.Changed)
+	}
+	if len(repo.auditEvents) != 1 || !strings.Contains(string(repo.auditEvents[0].Details), "Could not find role") {
+		t.Fatalf("the failure must be audited; audit = %+v", repo.auditEvents)
+	}
+}
+
+func TestPushServiceClientsToKeycloakReportsEveryFailedClient(t *testing.T) {
 	service := NewService(newTestRBACRepository(), nil)
-	source := &fakeServiceClientSource{errs: map[string]error{"clims-identity-sync": errors.New("HTTP 500")}}
-	if _, err := service.PushServiceClientsToKeycloak(context.Background(), source, seedServiceClients()); err == nil {
-		t.Fatal("want the Keycloak error")
+	source := &fakeServiceClientSource{errs: map[string]error{
+		"clims-identity-sync":  errors.New("HTTP 500"),
+		"poesgo-identity-sync": errors.New("HTTP 502"),
+	}}
+	result, err := service.PushServiceClientsToKeycloak(context.Background(), source, seedServiceClients())
+	if err == nil || !strings.Contains(err.Error(), "clims-identity-sync") || !strings.Contains(err.Error(), "poesgo-identity-sync") {
+		t.Fatalf("err = %v, want both clients", err)
+	}
+	if len(result.Failed) != 2 || len(result.Changed) != 0 {
+		t.Fatalf("result = %+v", result)
 	}
 }
 
