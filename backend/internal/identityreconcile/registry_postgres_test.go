@@ -208,3 +208,88 @@ func TestIdentitySyncRegistryPostgres(t *testing.T) {
 		t.Fatalf("audit events: %d updates, %d deletes; want 2 and 1 (failed saves must not be audited)", updates, deletes)
 	}
 }
+
+// Exercises migration 66: keycloak:<sync client> references are stored only
+// for the integration's own sync client, and rolling back refuses while one
+// is still in use.
+func TestIdentitySyncKeycloakCredentialMigrationPostgres(t *testing.T) {
+	db := registryTestDatabase(t)
+	ctx := context.Background()
+	run := func(name string) error {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join("..", "db", "migrations", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = db.ExecContext(ctx, string(data))
+		return err
+	}
+	for _, name := range []string{
+		"000026_create_system_rbac_schema.up.sql", "000027_extend_rbac_governance.up.sql",
+		"000030_add_realm_role_system_roles.up.sql", "000033_extend_system_launch_behavior.up.sql",
+		"000038_add_rbac_groups.up.sql", "000048_application_registry_lifecycle.up.sql",
+		"000049_application_identities.up.sql", "000061_service_only_system_roles.up.sql",
+		"000062_identity_sync_integrations.up.sql", "000065_identity_sync_integration_disable.up.sql",
+		"000066_identity_sync_keycloak_credential.up.sql",
+	} {
+		if err := run(name); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	for _, query := range []string{
+		`INSERT INTO ihp_systems (client_id, display_name) VALUES ('clims', 'CLIMS')`,
+		`INSERT INTO ihp_system_roles (system_id, role_name) SELECT id, 'clims_access' FROM ihp_systems WHERE client_id = 'clims'`,
+		`INSERT INTO ihp_system_access_roles (system_id, role_name) SELECT id, 'clims_access' FROM ihp_systems WHERE client_id = 'clims'`,
+	} {
+		if _, err := db.ExecContext(ctx, query); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO ihp_application_identities (oauth_client_id, application_client_id, subject, enabled)
+		VALUES ('clims-identity-sync', 'clims', $1, TRUE)`, uuid.NewString()); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := &PostgresRegistry{DB: db}
+	integration := Integration{
+		ApplicationClientID: "clims", Origin: "https://clims.example.test", SyncClientID: "clims-identity-sync",
+		AccessRole: "clims_access", CredentialRef: "keycloak:clims-identity-sync", AccountIDFormat: identitysync.AccountIDUUID,
+	}
+	if _, err := repo.SaveIntegration(ctx, integration, "operator", "keycloak credential"); err != nil {
+		t.Fatalf("keycloak:<own sync client> rejected: %v", err)
+	}
+	got, err := repo.GetIntegration(ctx, "clims")
+	if err != nil || got.CredentialRef != "keycloak:clims-identity-sync" {
+		t.Fatalf("got = %+v, %v", got, err)
+	}
+	for _, ref := range []string{"keycloak:clims", "keycloak:dashboard-admin", "keycloak:", "keycloak"} {
+		if _, err := db.ExecContext(ctx, `UPDATE ihp_identity_sync_integrations SET credential_ref = $1`, ref); err == nil {
+			t.Errorf("%q accepted", ref)
+		}
+	}
+	// env: and file: still work.
+	for _, ref := range []string{"env:CLIMS_SYNC_CLIENT_SECRET", "file:/run/secrets/clims-sync"} {
+		if _, err := db.ExecContext(ctx, `UPDATE ihp_identity_sync_integrations SET credential_ref = $1`, ref); err != nil {
+			t.Errorf("%q rejected: %v", ref, err)
+		}
+	}
+
+	if _, err := db.ExecContext(ctx, `UPDATE ihp_identity_sync_integrations SET credential_ref = 'keycloak:clims-identity-sync'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := run("000066_identity_sync_keycloak_credential.down.sql"); err == nil {
+		t.Fatal("rollback succeeded while a keycloak: reference is in use")
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE ihp_identity_sync_integrations SET credential_ref = 'env:CLIMS_SYNC_CLIENT_SECRET'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := run("000066_identity_sync_keycloak_credential.down.sql"); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE ihp_identity_sync_integrations SET credential_ref = 'keycloak:clims-identity-sync'`); err == nil {
+		t.Fatal("keycloak: accepted after rollback")
+	}
+	if err := run("000066_identity_sync_keycloak_credential.up.sql"); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+}
