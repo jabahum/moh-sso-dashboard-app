@@ -6,12 +6,14 @@ import {
   Information,
   Pin,
   Time,
-  WarningAlt,
   ChevronRight,
   CheckmarkOutline,
   ErrorOutline,
   Warning,
   Login,
+  Book,
+  Bullhorn,
+  Headset,
 } from "@carbon/react/icons";
 import { Button, Link, SkeletonText, Tag, Tile } from "@carbon/react";
 import { useSelector } from "react-redux";
@@ -19,7 +21,7 @@ import { useNavigate } from "react-router-dom";
 
 import { buildLoginURL, selectAuthenticated } from "@moh-sso/auth";
 import { API } from "@moh-sso/config";
-import { EmptyState, ErrorState } from "@moh-sso/ui";
+import { ErrorState } from "@moh-sso/ui";
 import {
   buildUserAnnouncementAttachmentDownloadUrl,
   useListMyAnnouncementsQuery,
@@ -32,42 +34,22 @@ import type {
 } from "@moh-sso/announcements/types";
 import "./news-feed.scss";
 
-const CASE_REPORTING = [
-  {
-    label: "VHF Case Investigation",
-    href: "http://localhost:3001/vhf-cif",
-  },
-  {
-    label: "M-Pox Case Investigation",
-    href: "http://localhost:3001/mpox-cif",
-  },
-  {
-    label: "Measles Case Investigation",
-    href: "http://localhost:3001/measles_cif",
-  },
-  {
-    label: "Polio Case Investigation",
-    href: "http://localhost:3001/polio-cif",
-  },
-  {
-    label: "View Other Alerts",
-    href: "/apps/outbreak-management/signals-alerts",
-  },
-];
-
 const QUICK_LINKS = [
   {
     label: "Support System Portal",
+    description: "Raise and track support tickets",
     href: "/support",
-    icon: Help,
+    icon: Headset,
   },
   {
     label: "Knowledgebase & FAQs",
+    description: "Answers to common questions",
     href: "/faq",
-    icon: Help,
+    icon: Book,
   },
   {
     label: "Guidelines & Clinical Docs",
+    description: "Policies, guidelines and SOPs",
     href: "/documents",
     icon: Document,
   },
@@ -461,6 +443,22 @@ function LoadingFeed() {
   );
 }
 
+function EmptyFeed() {
+  return (
+    <div className="feed-empty" role="status">
+      <span className="feed-empty__icon" aria-hidden="true">
+        <Bullhorn size={24} />
+      </span>
+      <div>
+        <h4 className="feed-empty__title">No announcements yet</h4>
+        <p className="feed-empty__description">
+          System updates and important notices will appear here when they are published.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function SignInIntro() {
   const loginStartedRef = useRef(false);
 
@@ -479,7 +477,7 @@ function SignInIntro() {
         <h4 className="news-intro__title">One sign-in for Ministry of Health systems</h4>
         <p className="news-intro__description">
           Sign in with your Ministry of Health account to open the health information systems you
-          have access to, report cases, and get help from support.
+          have access to and get help from support.
         </p>
       </div>
 
@@ -610,15 +608,7 @@ export default function NewsFeedPage() {
         )}
       </header>
 
-      <section
-        className={[
-          "page-content",
-          "news-page__content",
-          isEmpty ? "news-page__content--empty" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
+      <section className="page-content news-page__content">
         <main className="news-feed">
           {!isAuthenticated && <SignInIntro />}
 
@@ -639,12 +629,7 @@ export default function NewsFeedPage() {
             />
           )}
 
-          {isEmpty && (
-            <EmptyState
-              title="No announcements yet"
-              description="System updates and important notices will appear here when available."
-            />
-          )}
+          {isEmpty && <EmptyFeed />}
 
           {!hasError && !shouldShowInitialLoading && pinnedAnnouncements.length > 0 && (
             <FeedSection title="Pinned Announcements" icon={Pin} count={pinnedAnnouncements.length}>
@@ -668,27 +653,6 @@ export default function NewsFeedPage() {
         </main>
 
         <aside className="news-sidebar">
-          <Tile className="news-sidebar__tile news-sidebar__case-reporting">
-            <div className="news-sidebar__heading">
-              <WarningAlt size={18} />
-              <div>
-                <h4>Case Reporting</h4>
-                <p className="news-sidebar__description">Report cases for active outbreaks.</p>
-              </div>
-            </div>
-
-            <ul className="sidebar-link-list">
-              {CASE_REPORTING.map((item) => (
-                <li key={item.label}>
-                  <AppLink href={item.href} className="sidebar-link">
-                    <span>{item.label}</span>
-                    <ChevronRight size={16} />
-                  </AppLink>
-                </li>
-              ))}
-            </ul>
-          </Tile>
-
           <Tile className="news-sidebar__tile">
             <div className="news-sidebar__heading">
               <Document size={18} />
@@ -696,12 +660,17 @@ export default function NewsFeedPage() {
             </div>
 
             <ul className="sidebar-link-list">
-              {QUICK_LINKS.map(({ label, href, icon: Icon }) => (
+              {QUICK_LINKS.map(({ label, description, href, icon: Icon }) => (
                 <li key={label}>
                   <AppLink href={href} className="sidebar-link">
                     <span className="sidebar-link__label">
-                      <Icon size={16} />
-                      {label}
+                      <span className="sidebar-link__icon" aria-hidden="true">
+                        <Icon size={16} />
+                      </span>
+                      <span className="sidebar-link__text">
+                        <span className="sidebar-link__title">{label}</span>
+                        <span className="sidebar-link__description">{description}</span>
+                      </span>
                     </span>
                     <ChevronRight size={16} />
                   </AppLink>
