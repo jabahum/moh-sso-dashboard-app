@@ -18,6 +18,7 @@ its own side:
 
 Related dashboard documents:
 
+- [Onboarding a client application](client-onboarding.md): the end-to-end guide for a new application, with troubleshooting by stage.
 - [Identity-sync contract (v1.1)](identity-sync-contract.md): what each application implements.
 - [Adapter and conformance suite](identity-sync-adapter.md): for teams adding a new application.
 - [Dashboard design](../architecture/identity-sync.md): registry, batches, removal.

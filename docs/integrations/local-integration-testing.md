@@ -184,7 +184,8 @@ Sign in to the portal at `http://localhost:3000/portal/` as a linked user.
 | CLIMS gives 502 after its backend was recreated | nginx still points at the old container: `docker restart clims-nginx-1` |
 | Keycloak stays unhealthy after enabling HTTPS | Its management port (9000) also switched to HTTPS; the dashboard override serves health on 8080 instead. Use the override for every `docker compose` command on Keycloak |
 | Run rows fail with `invite_attribute_not_stored` | The realm's user profile lacks `unmanagedAttributePolicy: ADMIN_EDIT`. Set it, then restart the backend (auto-link) or `run resume` |
-| Run rows fail with `invite_failed` | The realm has no SMTP server, or the account's email is not a valid address |
+| Run rows fail with `invite_email_failed` | The realm has no working SMTP server: the user was created but not emailed. Fix SMTP, then `run resume` |
+| Run rows fail with `invite_failed` | The account has no usable email, for example one that isn't a valid address |
 | The POES admin fails to start: port 3000 in use | The portal uses 3000. Start POES with `POESGO_DEV_FRONTEND_PORT=3001` |
 | The POES admin refuses its password login | POES is in OIDC mode, which refuses password sign-in. Use the portal link, or start POES without its override |
 | The browser warns about `https://localhost:8443` | Trust the local CA (local-https README, step 1) |

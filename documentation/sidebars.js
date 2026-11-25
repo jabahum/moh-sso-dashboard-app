@@ -61,6 +61,11 @@ export default {
           items: [
             {
               type: 'doc',
+              id: 'docs/integrations/client-onboarding',
+              label: 'Onboarding a client application',
+            },
+            {
+              type: 'doc',
               id: 'docs/integrations/connected-applications',
               label: 'Connected applications',
             },
