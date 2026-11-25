@@ -165,7 +165,7 @@ For SSH-tunnel access to gateway mode:
    ```env
    ALLOW_INSECURE_HTTP=true
    NGINX_BIND_ADDRESS=127.0.0.1
-   NGINX_HTTP_PORT=8080
+   NGINX_HTTP_PORT=80
    FRONTEND_BASE_URL=http://localhost:8080/portal
    FRONTEND_REDIRECT_URI=http://localhost:8080/portal
    AUTH_RETURN_URL_ALLOWED_ORIGINS=http://localhost:8080
@@ -179,7 +179,7 @@ For SSH-tunnel access to gateway mode:
 2. Set `mode=gateway`, `verify_public_edge=false`, and `public_base_url=""` in
    `/etc/moh-sso/deploy.json`.
 3. Register the exact HTTP callback and frontend origin in Keycloak.
-4. Connect from your workstation with `ssh -L 8080:127.0.0.1:8080 USER@APP_SERVER`,
+4. Connect from your workstation with `ssh -L 8080:127.0.0.1:80 USER@APP_SERVER`,
    then open `http://localhost:8080/portal/`.
 
 HTTP carries cookies and tokens unencrypted; keep access behind the SSH tunnel or
@@ -359,9 +359,9 @@ Tests emulate the separate addresses; verify actual routing/firewalls on deploym
 
 `make compose-gateway-up` uses the same production service definitions while
 removing application host port mappings. Only Nginx is published, defaulting to
-`127.0.0.1:8080`; `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` override that listener.
+`127.0.0.1:80`; `NGINX_BIND_ADDRESS` and `NGINX_HTTP_PORT` override that listener.
 It uses Docker DNS internally and recovers when upstream container IPs change.
-The outer HTTPS proxy forwards portal/backend paths unchanged to port 8080.
+The outer HTTPS proxy forwards portal/backend paths unchanged to port 80.
 
 Configure `infra/nginx/trusted-proxies.conf` with the exact connecting proxy IP in
 both `set_real_ip_from` and the `geo` block. Trust nothing by default; never trust
