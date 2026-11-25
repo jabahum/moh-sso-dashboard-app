@@ -60,6 +60,11 @@ flowchart LR
 
 Section 12 lists common failures and section 13 lists the APIs and commands used.
 
+If the independently deployed application keeps its own user accounts and should
+be linked to Keycloak users by the dashboard (as CLIMS and POES are), follow
+[Onboarding a client application](integrations/client-onboarding.md), which
+covers the application-side build, identity sync and troubleshooting end to end.
+
 ### 1.2 Registration is not deployment
 
 **Registration, sign-in, authorization, and deployment are separate steps.** A
