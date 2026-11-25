@@ -23,7 +23,7 @@ services:
     container_name: sso-nginx
     restart: unless-stopped
     ports:
-      - "${NGINX_BIND_ADDRESS:-127.0.0.1}:${NGINX_HTTP_PORT:-8080}:80"
+      - "${NGINX_BIND_ADDRESS:-127.0.0.1}:${NGINX_HTTP_PORT:-80}:80"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
