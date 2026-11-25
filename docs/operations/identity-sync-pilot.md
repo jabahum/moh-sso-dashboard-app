@@ -95,6 +95,7 @@ dashboard's network and, if the proxy allows it, not from the internet.
 |---|---|
 | `CLIMS_SYNC_CLIENT_SECRET_FILE` | path of the mounted `clims-identity-sync` secret. The entrypoint loads it as `CLIMS_SYNC_CLIENT_SECRET`, which the registry references as `env:CLIMS_SYNC_CLIENT_SECRET`. |
 | `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` | empty, unless CLIMS's origin resolves to an internal address from the dashboard (split-horizon DNS). Then list that host name only. |
+| `IDENTITY_SYNC_AUTO_LINK_APPS` | empty during the pilot. Setting it links accounts at every backend start without review (see [Connected applications](../integrations/connected-applications.md#automatic-linking-at-startup)). |
 | `KEYCLOAK_EXTERNAL_URL` | the public Keycloak URL (the issuer is built from it) |
 
 ### Service identity binding
