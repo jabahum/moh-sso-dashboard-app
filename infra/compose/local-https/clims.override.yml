@@ -1,0 +1,42 @@
+# Local development only. Applied to the CLIMS repository's Docker stack
+# (project "clims") so CLIMS signs in with, and accepts identity-sync tokens
+# from, the dashboard dev Keycloak at https://localhost:8443. See README.md.
+#
+# OIDC_CLIENT_SECRET is the clims client's secret in the dev Keycloak
+# (setup.sh --secret saves it to LOCAL_HTTPS_DIR/clims-oidc-secret.txt).
+services:
+  kc-loopback:
+    image: caddy:2.10-alpine
+    command: [ caddy, run, --config, /etc/caddy/Caddyfile, --adapter, caddyfile ]
+    extra_hosts: [ "host.docker.internal:host-gateway" ]
+    volumes:
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/clims-kc-loopback.Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.crt:/certs/leaf.crt:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.key:/certs/leaf.key:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/ca.crt:/certs/ca.crt:ro
+    networks:
+      default:
+        # nginx proxies to "backend", which now shares this container's network.
+        aliases: [ backend ]
+    restart: unless-stopped
+
+  backend:
+    # Shares kc-loopback's network namespace, so localhost:8443 is the proxy.
+    network_mode: "service:kc-loopback"
+    networks: !reset null
+    expose: !reset []
+    depends_on:
+      kc-loopback:
+        condition: service_started
+    environment:
+      APP_ENV: development
+      OIDC_ISSUER: https://localhost:8443/realms/moh-realm
+      OIDC_CLIENT_ID: clims
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET to the clims client secret}
+      # HTTP is accepted for a loopback public origin.
+      OIDC_PUBLIC_ORIGIN: http://localhost:8080
+      IDENTITY_SYNC_CLIENT_ID: clims-identity-sync
+      IDENTITY_SYNC_TEST_PROBE: "1"
+      SSL_CERT_FILE: /dev-tls/bundle.pem
+    volumes:
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/bundle.pem:/dev-tls/bundle.pem:ro

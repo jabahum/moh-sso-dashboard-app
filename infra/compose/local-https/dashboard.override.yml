@@ -1,0 +1,46 @@
+# Local development only. Moves the dev stack's Keycloak issuer to
+# https://localhost:8443 and adds an HTTPS front for a local CLIMS, so CLIMS
+# portal sign-in and identity sync can be tested end to end. See README.md.
+#
+# Certificates and Caddyfiles come from LOCAL_HTTPS_DIR (default
+# ~/.moh-dev-https), prepared by setup.sh.
+services:
+  keycloak:
+    environment:
+      KC_HOSTNAME: https://localhost:8443
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/dev-tls/leaf.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/dev-tls/leaf.key
+      # With TLS on, the :9000 management port turns HTTPS; serve /health on the
+      # plain HTTP port instead so the healthcheck below can read it.
+      KC_LEGACY_OBSERVABILITY_INTERFACE: "true"
+    healthcheck:
+      test: [ CMD, bash, -ec, "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/8080" ]
+    volumes:
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.crt:/opt/keycloak/conf/dev-tls/leaf.crt:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.key:/opt/keycloak/conf/dev-tls/leaf.key:ro
+    ports:
+      - "127.0.0.1:8443:8443"
+
+  backend:
+    environment:
+      KEYCLOAK_EXTERNAL_URL: https://localhost:8443
+      # Identity sync mints its tokens here and requires HTTPS.
+      KEYCLOAK_INTERNAL_URL: https://keycloak:8443
+      KEYCLOAK_BASE_URL: https://keycloak:8443
+      SSL_CERT_FILE: /dev-tls/bundle.pem
+      IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS: clims.local.test
+    volumes:
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/bundle.pem:/dev-tls/bundle.pem:ro
+
+  clims-tls:
+    image: caddy:2.10-alpine
+    command: [ caddy, run, --config, /etc/caddy/Caddyfile, --adapter, caddyfile ]
+    extra_hosts: [ "host.docker.internal:host-gateway" ]
+    volumes:
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/clims-tls.Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.crt:/certs/leaf.crt:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.key:/certs/leaf.key:ro
+    networks:
+      sso_network:
+        aliases: [ clims.local.test ]
+    restart: unless-stopped

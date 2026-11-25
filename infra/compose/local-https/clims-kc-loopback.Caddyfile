@@ -1,0 +1,16 @@
+{
+	auto_https off
+	admin off
+}
+
+# Inside the CLIMS backend's network namespace, https://localhost:8443 (the
+# Keycloak issuer) is this proxy, which re-encrypts to the host's Keycloak.
+https://localhost:8443 {
+	tls /certs/leaf.crt /certs/leaf.key
+	reverse_proxy https://host.docker.internal:8443 {
+		transport http {
+			tls_server_name localhost
+			tls_trusted_ca_certs /certs/ca.crt
+		}
+	}
+}
