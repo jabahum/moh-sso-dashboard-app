@@ -87,8 +87,8 @@ try {
     FRONTEND_MODULE_DIRECTORY: fixture,
     FRONTEND_MODULE_CONFIG: configPath,
     FRONTEND_MODULE_ENV: "development",
-    FRONTEND_ASSET_BASE_URL: "/portal",
-    FRONTEND_BASE_PATH: "/portal",
+    FRONTEND_ASSET_BASE_URL: "/",
+    FRONTEND_BASE_PATH: "/",
   });
   server = await createServer({
     configFile: join(frontendRoot, "vite.config.ts"),
@@ -122,7 +122,7 @@ try {
       existsSync(
         join(
           frontendRoot,
-          "dist/portal",
+          "dist",
           directory,
           name,
           group === "apps" ? "single-spa.js" : "index.js",

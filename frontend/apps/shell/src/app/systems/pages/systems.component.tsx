@@ -546,7 +546,7 @@ function CreateSystemPanel({ onClose }: { onClose: () => void }) {
     displayName: "",
     description: "",
     icon: "application",
-    launchUrl: "/portal",
+    launchUrl: "/",
     authenticatedLaunchUrl: "",
     category: "platform",
     ownerTeam: "",
@@ -573,7 +573,7 @@ function CreateSystemPanel({ onClose }: { onClose: () => void }) {
       launchMode: external ? "new_tab" : "internal",
       displayInSideNav: false,
       navigation: "",
-      launchUrl: external ? "https://" : "/portal",
+      launchUrl: external ? "https://" : "/",
     }));
   };
 
@@ -694,8 +694,9 @@ function validateSystemDraft(draft: SystemDraft): string {
 
   if (draft.systemType === "platform") {
     if (draft.launchMode !== "internal") return "Platform systems must use internal launch mode.";
-    if (draft.launchUrl && !/^\/(portal|apps)(\/|$)/.test(draft.launchUrl)) {
-      return "Platform launch URLs must begin with /portal or /apps.";
+    // "/" is the portal itself; legacy /portal paths are still accepted.
+    if (draft.launchUrl && !/^\/(?:$|(?:apps|portal)(?:\/|$))/.test(draft.launchUrl)) {
+      return "Platform launch URLs must be / or begin with /apps.";
     }
     if (draft.displayInSideNav) {
       try {

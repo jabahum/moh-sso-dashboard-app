@@ -299,7 +299,7 @@ def up(repo):
     compose_env.setdefault('BUILDX_CONFIG', str(STATE / 'buildx'))
     run(command, env=compose_env)
     wait_for(lambda: http_json('http://localhost:9000/health/ready'), 'portal backend', seconds=240)
-    wait_for(lambda: http_ready('http://localhost:3000/portal/'), 'portal frontend', seconds=240)
+    wait_for(lambda: http_ready('http://localhost:3000/'), 'portal frontend', seconds=240)
     # Verify the actual service-account token against Health BI's protected API.
     service_token = http_json('http://localhost:8081/realms/moh-realm/protocol/openid-connect/token', 'POST', form={
         'grant_type': 'client_credentials', 'client_id': WORKER_CLIENT, 'client_secret': credential,

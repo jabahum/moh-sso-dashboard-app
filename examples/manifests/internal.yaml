@@ -17,11 +17,11 @@ spec:
   launch:
     mode: internal
     module: metrics
-    route: /portal/admin/home
+    route: /admin/home
   access:
     roles: [metrics_viewer]
   navigation:
     - id: metrics
       label: Portal metrics
-      path: /portal/admin/home
+      path: /admin/home
       requiredPermissions: [metrics:read]

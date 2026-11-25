@@ -111,7 +111,7 @@ always uses production/release mode, HTTP port 9000 and disabled auth bypass.
 Public TLS terminates at Nginx.
 
 Frontend receives public runtime settings only; its entrypoint writes JSON-escaped
-`config.js` at root and `/portal/config.js`:
+`config.js` at the site root:
 
 - `API_BASE_URL` defaults to `/api` for the whole-host gateway. The frontend
   resolves that to `/api/v1/...` and fetches version metadata from `/version`.
@@ -119,8 +119,8 @@ Frontend receives public runtime settings only; its entrypoint writes JSON-escap
   `http://localhost:9000` remain supported; a trailing `/api` is accepted without
   duplicating the API path.
 - Shared-host routing still requires `API_BASE_URL=/ssobackend`, as in the
-  production environment example, because that gateway owns only `/portal/` and
-  `/ssobackend/`.
+  production environment example, because the shared host routes only
+  `/ssobackend/` to the backend.
 
 ### Secrets
 
@@ -166,8 +166,8 @@ For SSH-tunnel access to gateway mode:
    ALLOW_INSECURE_HTTP=true
    NGINX_BIND_ADDRESS=127.0.0.1
    NGINX_HTTP_PORT=8080
-   FRONTEND_BASE_URL=http://localhost:8080/portal
-   FRONTEND_REDIRECT_URI=http://localhost:8080/portal
+   FRONTEND_BASE_URL=http://localhost:8080/
+   FRONTEND_REDIRECT_URI=http://localhost:8080/
    AUTH_RETURN_URL_ALLOWED_ORIGINS=http://localhost:8080
    LOGIN_URL=http://localhost:8080/ssobackend/api/v1/auth/login
    KEYCLOAK_REDIRECT_URI=http://localhost:8080/ssobackend/api/v1/auth/callback
@@ -180,7 +180,7 @@ For SSH-tunnel access to gateway mode:
    `/etc/moh-sso/deploy.json`.
 3. Register the exact HTTP callback and frontend origin in Keycloak.
 4. Connect from your workstation with `ssh -L 8080:127.0.0.1:8080 USER@APP_SERVER`,
-   then open `http://localhost:8080/portal/`.
+   then open `http://localhost:8080/`.
 
 HTTP carries cookies and tokens unencrypted; keep access behind the SSH tunnel or
 a trusted private network.
@@ -208,7 +208,7 @@ frontend dependency volume if needed without deleting database/upload volumes.
 
 | Service | Local address |
 | --- | --- |
-| Portal | `http://localhost:3000/portal/` |
+| Portal | `http://localhost:3000/` |
 | API / Swagger | `http://localhost:9000/swagger/` |
 | Keycloak | `http://localhost:8081` |
 | MailHog UI / SMTP | `http://localhost:8025` / `localhost:1025` |
@@ -261,19 +261,21 @@ sudo install -m 0644 infra/nginx/host/*.conf /etc/nginx/moh-sso/
 
 Include `/etc/nginx/moh-sso/http.conf` **once inside `http {}`**, before site
 includes. Include `/etc/nginx/moh-sso/portal.locations.conf` **inside the existing
-HTTPS `server {}`**. Replace existing portal/backend locations to avoid duplicates.
+HTTPS `server {}`**. Replace existing portal/backend locations, including the
+server's own `location /`, to avoid duplicates; the portal now owns `/`.
 Keep certificates, HTTPS redirects, HSTS and other security headers on that server.
 The snippets require Nginx 1.29.3+ for [header inheritance](https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header_inherit), tested with 1.30.6.
 
 #### Shared public host routing
 
-Shared public host routing stays:
+Shared public host routing:
 
 ```text
-/ and /report-browser/* -> existing Report Browser owner
-/portal/*              -> portal frontend, preserving the prefix
-/docs/*                -> Docusaurus site in the frontend image
-/ssobackend/*           -> Go backend, stripping that prefix internally
+/                  -> portal frontend
+/portal/*          -> 308 redirect to the same path without /portal (legacy links)
+/report-browser/*  -> existing Report Browser owner
+/docs/*            -> Docusaurus site in the frontend image
+/ssobackend/*      -> Go backend, stripping that prefix internally
 ```
 
 #### Documentation site
@@ -312,7 +314,7 @@ Access logs omit query strings and credentials; rotate
 
 ```text
 Browser --HTTPS--> Nginx machine 10.0.0.10
-                     /portal/*     --> App machine 10.0.0.20:3000
+                     /*            --> App machine 10.0.0.20:3000
                      /ssobackend/* --> App machine 10.0.0.20:9000
 ```
 
@@ -479,12 +481,34 @@ rollback does not reverse incompatible database migrations. Keep public SSO valu
 aligned, for example:
 
 ```env
-FRONTEND_BASE_URL=https://dashboards.health.go.ug/portal
+FRONTEND_BASE_URL=https://dashboards.health.go.ug/
 AUTH_RETURN_URL_ALLOWED_ORIGINS=https://dashboards.health.go.ug
 LOGIN_URL=https://dashboards.health.go.ug/ssobackend/api/v1/auth/login
 KEYCLOAK_REDIRECT_URI=https://dashboards.health.go.ug/ssobackend/api/v1/auth/callback
 API_BASE_URL=/ssobackend
 ```
+
+### Moving from /portal to /
+
+The portal is now served at the site root instead of `/portal/`. When upgrading an
+existing installation:
+
+1. In the private production env file, set `FRONTEND_BASE_URL` and
+   `FRONTEND_REDIRECT_URI` to the origin root (for example
+   `https://dashboards.health.go.ug/`) and drop `/portal` from
+   `ADMIN_DASHBOARD_URL`. `AUTH_RETURN_URL_ALLOWED_ORIGINS`, `LOGIN_URL`,
+   `KEYCLOAK_REDIRECT_URI` and `API_BASE_URL` are unchanged.
+2. In Keycloak, update the `dashboard-web` client: root/home URL and post-logout
+   redirect URI to the origin root, and add `https://<host>/*` to valid redirect
+   URIs. Keep the existing `/portal/*` entries until old sessions and bookmarks
+   have aged out.
+3. On a shared host, reinstall `infra/nginx/host/portal.locations.conf` and remove
+   the server's own `location /`: the portal now owns `/`, and Report Browser keeps
+   only `/report-browser/`. The Compose gateway and the frontend image need no
+   extra configuration.
+4. Old `/portal` and `/portal/...` links, including bookmarks and launch URLs
+   stored in client attributes, receive a 308 redirect to the same path without
+   `/portal`, query string included. Update stored launch URLs over time.
 
 ## Contracts and checks
 

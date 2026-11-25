@@ -14,7 +14,7 @@ type PublicHeaderProps = {
 const PublicHeader: React.FC<PublicHeaderProps> = ({
   onNavigateHome,
   onLogin,
-  homeHref = "/portal/",
+  homeHref = "/",
 }) => {
   return (
     <Header aria-label="MOH Integrated Health Portal" className="moh-shell-header">

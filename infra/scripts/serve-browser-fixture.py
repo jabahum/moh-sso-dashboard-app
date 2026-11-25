@@ -21,7 +21,7 @@ class FixtureServer(ThreadingHTTPServer):
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == '/portal/config.js':
+        if path == '/config.js':
             content = b'window.__APP_CONFIG__={API_BASE_URL:"/ssobackend",microfrontendMode:"remote",singleSpaOrchestration:true,microfrontendMountMode:"orchestrated"};'
             self.send_response(200)
             self.send_header('Content-Type', 'application/javascript')
@@ -40,8 +40,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             self.send_content(target.read_bytes(), 'application/javascript')
             return
-        if path == '/portal/index.html' or (path.startswith('/portal/') and not Path(path).suffix):
-            html = (ROOT / 'portal/index.html').read_text()
+        if path == '/index.html' or not Path(path).suffix:
+            html = (ROOT / 'index.html').read_text()
             local_imports = json.loads((DEPENDENCIES / 'import-map.json').read_text())['imports']
             def replace_import_map(match):
                 import_map = json.loads(match.group(1))
@@ -70,6 +70,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=5417)
     args = parser.parse_args()
-    if not (ROOT / 'portal/index.html').is_file():
+    if not (ROOT / 'index.html').is_file():
         raise SystemExit('Run the production frontend build before browser tests')
     FixtureServer(('127.0.0.1', args.port), partial(Handler, directory=str(ROOT))).serve_forever()

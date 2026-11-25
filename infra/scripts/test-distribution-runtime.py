@@ -83,12 +83,12 @@ def main():
                     connection.close()
 
             assert get('/nginx/health')[0] == 200
-            assert get('/portal/apps/extensions/example-reports')[0] == 200
-            status, headers, text = get('/portal/config.js')
+            assert get('/apps/extensions/example-reports')[0] == 200
+            status, headers, text = get('/config.js')
             assert status == 200 and headers['Cache-Control'] == 'no-store'
             assert 'https://fixture.example.org/ssobackend' in text
             assert 'isolated-distribution-fixture-only' not in text
-            status, _, text = get('/portal/version-manifest.json')
+            status, _, text = get('/version-manifest.json')
             assert status == 200
             manifest = json.loads(text)
             image = json.loads(run('docker', 'image', 'inspect', args.frontend_image))[0]
@@ -99,8 +99,8 @@ def main():
                     if group == 'apps' and name == 'shell':
                         continue  # The shell is built from this checkout, not npm.
                     assert item['version'] == pins['@moh-sso/' + name], (group, name)
-            assert get('/portal/mf/announcements/single-spa.js')[0] == 200
-            assert get('/portal/mf/announcements/missing.js')[0] == 404
+            assert get('/mf/announcements/single-spa.js')[0] == 200
+            assert get('/mf/announcements/missing.js')[0] == 404
             run(*compose, 'exec', '-T', 'backend-db', 'sh', '-ec',
                 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 '
                 '-c "CREATE TABLE distribution_fixture (value text); INSERT INTO distribution_fixture VALUES (\'preserved\');"')

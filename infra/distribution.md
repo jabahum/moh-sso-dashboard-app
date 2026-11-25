@@ -27,8 +27,8 @@ Keycloak client IDs and database connections, a unique `DISTRIBUTION_TAG`, and
 optionally `DISTRIBUTION_IMAGE_PREFIX`, `DISTRIBUTION_COMMIT` and
 `DISTRIBUTION_BUILD_TIME`. Metadata should describe the checkout being built.
 Use HTTPS for public URLs; TLS terminates at the public reverse proxy. The
-included gateway binds to loopback port 8080 by default and uses the existing
-`/portal` and `/ssobackend` routes. Review `infra/nginx/app.conf` and trusted-proxy
+included gateway binds to loopback port 8080 by default and serves the portal at `/`
+(legacy `/portal/` links redirect) and the API at `/ssobackend`. Review `infra/nginx/app.conf` and trusted-proxy
 settings when connecting your public edge.
 
 Create these private, nonempty files before starting containers:

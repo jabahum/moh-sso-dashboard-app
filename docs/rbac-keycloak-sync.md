@@ -161,7 +161,7 @@ Add client attributes for portal display where possible:
 ```text
 ui.icon=lab
 ui.category=laboratory
-ui.launchUrl=/portal/apps/lab
+ui.launchUrl=/apps/lab
 ```
 
 Add client roles:
@@ -214,10 +214,10 @@ Map permissions in one of two ways:
 1. Admin UI:
 
 ```text
-/portal/admin/rbac
+/admin/rbac
 ```
 
-This is the browser URL. The shell router uses the `/portal` basename, so the route is registered as `/admin/rbac` (`frontend/apps/rbac/src/routes.tsx`) and requires `rbac:read`.
+This is the browser URL; the route is registered as `/admin/rbac` (`frontend/apps/rbac/src/routes.tsx`) and requires `rbac:read`.
 
 2. Seed file:
 
@@ -226,7 +226,7 @@ systems:
   - clientId: laboratory-information-system
     displayName: Laboratory Information System
     icon: lab
-    launchUrl: /portal/apps/lab
+    launchUrl: /apps/lab
     category: laboratory
     enabled: true
     accessRoles:
@@ -276,7 +276,7 @@ roles:
 Use the admin UI:
 
 ```text
-/portal/admin/rbac
+/admin/rbac
 ```
 
 Open Effective Access and search by user ID, username, or email.
@@ -309,7 +309,7 @@ clientRoles
 
 ## Managing client RBAC after onboarding
 
-Use `/portal/admin/rbac` for routine updates.
+Use `/admin/rbac` for routine updates.
 
 Common changes:
 
@@ -444,7 +444,7 @@ Check:
 - the user has one of the system access roles
 - the access role is listed under `accessRoles`
 - the role maps to `systems:launch` or the UI uses `accessibleSystems`
-- `launchUrl` starts with `/portal` or `/apps`, or is a valid absolute URL
+- `launchUrl` is a root-relative portal path such as `/apps/...` (legacy `/portal` prefixes are stripped), or a valid absolute URL
 
 ### User has role in Keycloak but portal does not show app
 

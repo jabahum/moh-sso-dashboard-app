@@ -8,12 +8,12 @@ const names = ["announcements", "audit", "clients", "data-validation", "data-vis
   "state", "types", "ui", "utils"];
 
 function fixture(failure) {
-  const imports = Object.fromEntries(names.map((name) => ["@moh-sso/" + name, "/portal/mf/" + name + ".js"]));
+  const imports = Object.fromEntries(names.map((name) => ["@moh-sso/" + name, "/mf/" + name + ".js"]));
   if (failure === "missing import") delete imports["@moh-sso/users"];
   if (failure === "missing scheduler") delete imports["@moh-sso/report-scheduler"];
   return async (url) => {
-    if (url.pathname === "/portal/") {
-      return new Response('<div id="root"></div><script src="/portal/assets/index-123.js"></script><link rel="stylesheet" href="/portal/assets/index-123.css">', { headers: { "content-type": "text/html" } });
+    if (url.pathname === "/") {
+      return new Response('<div id="root"></div><script src="/assets/index-123.js"></script><link rel="stylesheet" href="/assets/index-123.css">', { headers: { "content-type": "text/html" } });
     }
     if (url.pathname.endsWith("import-map.json")) {
       return new Response(JSON.stringify({ imports }), { headers: { "content-type": "application/json" } });
@@ -38,14 +38,14 @@ function fixture(failure) {
 }
 
 test("accepts a complete staged frontend", async () => {
-  assert.equal(await verifyFrontend("http://localhost:3000/portal/", fixture()), 28);
+  assert.equal(await verifyFrontend("http://localhost:3000/", fixture()), 28);
 });
 test("accepts an empty types-only JavaScript module", async () => {
-  assert.equal(await verifyFrontend("http://localhost:3000/portal/", fixture("empty types")), 28);
+  assert.equal(await verifyFrontend("http://localhost:3000/", fixture("empty types")), 28);
 });
 for (const failure of ["empty runtime module", "missing types", "invalid types MIME", "404", "SPA fallback", "disguised HTML", "missing import", "missing scheduler"]) {
   test("rejects " + failure, async () => {
-    await assert.rejects(verifyFrontend("http://localhost:3000/portal/", fixture(failure)));
+    await assert.rejects(verifyFrontend("http://localhost:3000/", fixture(failure)));
   });
 }
 

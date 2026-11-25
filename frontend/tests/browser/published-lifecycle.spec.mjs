@@ -12,12 +12,12 @@ test("staged published lifecycle mounts with the host React runtime", async ({ p
       "../../node_modules/.cache/browser-dependencies/import-map.json", import.meta.url,
     ))).imports,
   };
-  await page.route("**/portal/__published-lifecycle.html", (route) => route.fulfill({
+  await page.route("**/__published-lifecycle.html", (route) => route.fulfill({
     contentType: "text/html",
     // Match the production host's environment shim, without its bundled React.
     body: `<!doctype html><script>globalThis.process={env:{NODE_ENV:"production"}};</script><script type="importmap">${JSON.stringify({ imports })}</script><div id="fixture"></div>`,
   }));
-  await page.goto("/portal/__published-lifecycle.html");
+  await page.goto("/__published-lifecycle.html");
   await page.evaluate(async () => {
     const React = await import("react");
     const { createReactMicrofrontendLifecycle } = await import("@moh-sso/microfrontend");

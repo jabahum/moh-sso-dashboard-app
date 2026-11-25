@@ -41,7 +41,8 @@ paths:
     get:
       summary: Start Keycloak login for a portal destination
       description: 'Starts the authorization-code flow and, after the fixed Keycloak callback, returns
-        the browser to a validated /portal path or an allowlisted absolute origin. The return target
+        the browser to a validated root-relative portal path (legacy /portal paths are mapped to
+        the root; API paths are rejected) or an allowlisted absolute origin. The return target
         is bound to OAuth state in an HttpOnly cookie.
 
         '

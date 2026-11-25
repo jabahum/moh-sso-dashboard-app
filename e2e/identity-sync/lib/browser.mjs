@@ -41,11 +41,12 @@ export async function keycloakLogin(page, username) {
 
 /** Signs in at the dashboard portal and waits until the portal home has loaded. */
 export async function portalSignIn(page, username) {
-  await page.goto(`${DASHBOARD}/portal/`);
+  await page.goto(`${DASHBOARD}/`);
   // The public portal landing page; its "Sign in" button starts the Keycloak flow.
   await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
   await keycloakLogin(page, username);
-  await page.waitForURL((u) => u.origin === DASHBOARD && u.pathname.startsWith("/portal"), { timeout: 60_000 });
+  // Back on the portal (served from /) once the backend callback has redirected.
+  await page.waitForURL((u) => u.origin === DASHBOARD && !u.pathname.startsWith("/ssobackend"), { timeout: 60_000 });
   // page.request runs in Node without the browser's host mapping, so ask from the page.
   await expect
     .poll(async () => (await portalFetch(page, "GET", "/api/v1/auth/me")).status, { timeout: 30_000 })

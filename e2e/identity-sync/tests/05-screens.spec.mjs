@@ -20,7 +20,7 @@ test.afterAll(closeBrowser);
  * "This application" scope, the application selector, then the section tab.
  */
 async function openIdentitySync(page, clientId = "clims") {
-  await page.goto(`${DASHBOARD}/portal/admin/rbac`);
+  await page.goto(`${DASHBOARD}/admin/rbac`);
   const scope = page.getByRole("button", { name: "This application", exact: true });
   await expect(scope).toBeVisible({ timeout: 60_000 });
   if ((await scope.getAttribute("aria-pressed")) !== "true") await scope.click();

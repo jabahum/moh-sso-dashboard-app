@@ -105,9 +105,14 @@ func TestNormalizeDecisionSupportsPromptAliases(t *testing.T) {
 }
 
 func TestValidateSystemLaunchURLAcceptsPortalAndAppPaths(t *testing.T) {
-	for _, value := range []string{"/portal/apps/dwh/surveillance", "/apps/dwh/surveillance", "https://portal.example.org/apps/dwh"} {
+	for _, value := range []string{"/", "/apps/dwh/surveillance", "/admin/home", "/portal/apps/dwh/surveillance", "https://portal.example.org/apps/dwh"} {
 		if err := validateSystemLaunchURL(value); err != nil {
 			t.Fatalf("validateSystemLaunchURL(%q) returned error: %v", value, err)
+		}
+	}
+	for _, value := range []string{"apps/dwh", "//evil.example/app", "/api/v1/auth/logout", "/ssobackend/api/v1/auth/logout", "/portal/api/v1/users"} {
+		if err := validateSystemLaunchURL(value); err == nil {
+			t.Fatalf("validateSystemLaunchURL(%q) unexpectedly succeeded", value)
 		}
 	}
 }
@@ -122,21 +127,32 @@ func TestValidateOptionalURLAcceptsRootRelativeSupportLinks(t *testing.T) {
 
 func TestKeycloakClientURLResolvesPortalRelativeLaunchURL(t *testing.T) {
 	service := NewService(nil)
-	service.SetFrontendBaseURL("http://localhost:3000/portal")
+	service.SetFrontendBaseURL("http://localhost:3000")
 
-	got := service.keycloakClientURL("/portal/apps/outbreak-management")
-	want := "http://localhost:3000/portal/apps/outbreak-management"
+	got := service.keycloakClientURL("/apps/outbreak-management")
+	want := "http://localhost:3000/apps/outbreak-management"
 	if got != want {
 		t.Fatalf("keycloakClientURL returned %q, want %q", got, want)
 	}
 }
 
-func TestKeycloakClientURLResolvesAppPathUnderPortalBase(t *testing.T) {
+func TestKeycloakClientURLMapsLegacyPortalLaunchURL(t *testing.T) {
 	service := NewService(nil)
-	service.SetFrontendBaseURL("http://localhost:3000/portal")
+	service.SetFrontendBaseURL("http://localhost:3000")
+
+	got := service.keycloakClientURL("/portal/apps/outbreak-management")
+	want := "http://localhost:3000/apps/outbreak-management"
+	if got != want {
+		t.Fatalf("keycloakClientURL returned %q, want %q", got, want)
+	}
+}
+
+func TestKeycloakClientURLResolvesAppPathUnderBasePath(t *testing.T) {
+	service := NewService(nil)
+	service.SetFrontendBaseURL("http://localhost:3000/sub")
 
 	got := service.keycloakClientURL("/apps/dwh/surveillance")
-	want := "http://localhost:3000/portal/apps/dwh/surveillance"
+	want := "http://localhost:3000/sub/apps/dwh/surveillance"
 	if got != want {
 		t.Fatalf("keycloakClientURL returned %q, want %q", got, want)
 	}
@@ -144,7 +160,7 @@ func TestKeycloakClientURLResolvesAppPathUnderPortalBase(t *testing.T) {
 
 func TestKeycloakClientURLKeepsAbsoluteLaunchURL(t *testing.T) {
 	service := NewService(nil)
-	service.SetFrontendBaseURL("http://localhost:3000/portal")
+	service.SetFrontendBaseURL("http://localhost:3000")
 
 	got := service.keycloakClientURL("https://systems.health.go.ug/outbreak")
 	want := "https://systems.health.go.ug/outbreak"
@@ -155,9 +171,9 @@ func TestKeycloakClientURLKeepsAbsoluteLaunchURL(t *testing.T) {
 
 func TestKeycloakClientURLReturnsEmptyWithoutAbsoluteFrontendBase(t *testing.T) {
 	service := NewService(nil)
-	service.SetFrontendBaseURL("/portal")
+	service.SetFrontendBaseURL("/")
 
-	if got := service.keycloakClientURL("/portal/apps/outbreak-management"); got != "" {
+	if got := service.keycloakClientURL("/apps/outbreak-management"); got != "" {
 		t.Fatalf("keycloakClientURL returned %q, want empty string", got)
 	}
 }
@@ -185,7 +201,7 @@ func TestParseRealmExportRequiresExplicitPortalEnrollment(t *testing.T) {
 func TestParseRealmExportKeepsKnownLegacySystem(t *testing.T) {
 	payload := []byte(`{
 		"roles":{"realm":[],"client":{"legacy-app":[{"name":"legacy-app_access"}]}},
-		"clients":[{"clientId":"legacy-app","name":"Legacy App","enabled":true,"attributes":{"ui.home":"/portal/apps/legacy"}}]
+		"clients":[{"clientId":"legacy-app","name":"Legacy App","enabled":true,"attributes":{"ui.home":"/apps/legacy"}}]
 	}`)
 	discovered, err := parseRealmExport(payload, map[string]bool{"legacy-app": true})
 	if err != nil {
@@ -213,7 +229,7 @@ func TestParseRealmExportPreservesModuleLauncherNavigation(t *testing.T) {
 				"portal.system":       "true",
 				"ui.systemType":       "platform",
 				"ui.launchMode":       "internal",
-				"ui.launchUrl":        "/portal/apps/dwh",
+				"ui.launchUrl":        "/apps/dwh",
 				"ui.navigation":       navigation,
 				"ui.displayInSideNav": "true",
 			},
@@ -241,7 +257,7 @@ func TestSystemConfigurationDifferencesDetectsModuleLauncherMetadataChanges(t *t
 		DisplayInLauncher: false,
 		DisplayInSideNav:  true,
 		LaunchMode:        "internal",
-		LaunchURL:         "/portal/apps/dwh",
+		LaunchURL:         "/apps/dwh",
 		Navigation:        `[{"id":"documents","label":"Documents","path":"/apps/dwh/documents","displayInLauncher":true}]`,
 	}
 	current := System{
@@ -249,7 +265,7 @@ func TestSystemConfigurationDifferencesDetectsModuleLauncherMetadataChanges(t *t
 		DisplayInLauncher: false,
 		DisplayInSideNav:  true,
 		LaunchMode:        "internal",
-		LaunchURL:         "/portal/apps/dwh",
+		LaunchURL:         "/apps/dwh",
 		Navigation:        `[{"id":"documents","label":"Documents","path":"/apps/dwh/documents"}]`,
 	}
 

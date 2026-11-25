@@ -8,7 +8,7 @@ the guide for the next task. For a map of all documentation, see the
 
 | Component | What it is |
 | --- | --- |
-| Frontend shell | The portal host under `/portal`: layouts, routing, sign-in, app launcher and single-spa orchestration. |
+| Frontend shell | The portal host at `/`: layouts, routing, sign-in, app launcher and single-spa orchestration. |
 | Frontend apps | Product modules such as users, clients, RBAC, surveillance, documents, audit and email, each an npm package. |
 | Frontend packages | Shared UI, API hooks, auth, runtime config, state, types and microfrontend contracts. |
 | Go backend | The API server: feature modules, Keycloak integration, RBAC sync, notifications, email, audit, documents and surveillance. |
@@ -47,7 +47,7 @@ frontend changes through Vite.
 
 | Service | Address |
 | --- | --- |
-| Portal | `http://localhost:3000/portal/` |
+| Portal | `http://localhost:3000/` |
 | API / Swagger | `http://localhost:9000/swagger/` |
 | Keycloak | `http://localhost:8081` |
 | MailHog | `http://localhost:8025` |
@@ -84,7 +84,7 @@ npm run config:dev
 npm run dev
 ```
 
-The shell is served under `/portal`. Frontend modes, ports and remote module servers
+The shell is served at `/`. Frontend modes, ports and remote module servers
 are described in [frontend development](../frontend/docs/development.md).
 `make dev-native` runs both when infrastructure is managed separately.
 
@@ -104,7 +104,7 @@ and [CI checks](ci-checks.md) list what CI runs, including browser tests.
 | Symptom | Fix |
 | --- | --- |
 | Sign-in succeeds but you are not signed in | Leave `COOKIE_DOMAIN` empty; never use `localhost`. See [cookie domain](configuration.md#cookie-domain-in-local-development). |
-| Blank page under `/portal` | The wrong runtime config is active. Run `npm run config:dev` in `frontend/`. See [frontend troubleshooting](../frontend/docs/troubleshooting.md). |
+| Blank portal page | The wrong runtime config is active. Run `npm run config:dev` in `frontend/`. See [frontend troubleshooting](../frontend/docs/troubleshooting.md). |
 | Vite cannot resolve a microfrontend package | Run `npm run mf:doctor` and `npm run audit:import-map` in `frontend/`. |
 | A user has Keycloak roles but sees no apps | Follow [user has role in Keycloak but portal does not show app](rbac-keycloak-sync.md#user-has-role-in-keycloak-but-portal-does-not-show-app). |
 | Startup RBAC sync finds no realm export | Set `RBAC_STARTUP_SYNC_REALM_EXPORT_PATH`; live Keycloak sync still runs when enabled. See [startup sync](rbac-keycloak-sync.md#startup-sync). |

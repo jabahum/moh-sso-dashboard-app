@@ -31,7 +31,7 @@ export type UserHeaderProps = {
 
 const UserHeader: React.FC<UserHeaderProps> = ({
   appName = "Integrated Health Portal",
-  homeHref = "/portal/apps",
+  homeHref = "/apps",
   username,
   appMenu,
   contextSelector,

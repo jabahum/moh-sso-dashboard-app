@@ -179,7 +179,7 @@ func TestValidateSystemBehaviorSupportsAllLaunchModes(t *testing.T) {
 	falseValue := false
 	cases := []SeedSystem{
 		{
-			SystemType: "platform", LaunchMode: "internal", LaunchURL: "/portal/apps/dwh",
+			SystemType: "platform", LaunchMode: "internal", LaunchURL: "/apps/dwh",
 			DisplayInLauncher: &trueValue, DisplayInSideNav: &trueValue,
 			Navigation: `[{"id":"dashboards","label":"Dashboards","path":"/apps/dwh/dashboards"}]`,
 		},
@@ -204,9 +204,9 @@ func TestValidateSystemBehaviorRejectsUnsafeOrInconsistentConfiguration(t *testi
 	cases := []SeedSystem{
 		{SystemType: "external", LaunchMode: "new_tab", LaunchURL: "javascript://example.org"},
 		{SystemType: "external", LaunchMode: "same_tab", LaunchURL: "https://user:pass@example.org"},
-		{SystemType: "platform", LaunchMode: "new_tab", LaunchURL: "/portal/apps/dwh"},
+		{SystemType: "platform", LaunchMode: "new_tab", LaunchURL: "/apps/dwh"},
 		{SystemType: "external", LaunchMode: "new_tab", LaunchURL: "https://example.org", DisplayInSideNav: &trueValue},
-		{SystemType: "platform", LaunchMode: "internal", LaunchURL: "/portal/apps/dwh", DisplayInSideNav: &trueValue, Navigation: "[]"},
+		{SystemType: "platform", LaunchMode: "internal", LaunchURL: "/apps/dwh", DisplayInSideNav: &trueValue, Navigation: "[]"},
 	}
 	for _, system := range cases {
 		if err := ValidateSystemBehavior(system); err == nil {
@@ -226,7 +226,7 @@ func TestValidateSystemBehaviorAcceptsLegacyAndLauncherNavigation(t *testing.T) 
 		system := SeedSystem{
 			SystemType:       "platform",
 			LaunchMode:       "internal",
-			LaunchURL:        "/portal/apps/dwh",
+			LaunchURL:        "/apps/dwh",
 			DisplayInSideNav: &trueValue,
 			Navigation:       navigation,
 		}
@@ -251,7 +251,7 @@ func TestValidateSystemBehaviorRejectsInvalidNavigationMetadata(t *testing.T) {
 		system := SeedSystem{
 			SystemType: "platform",
 			LaunchMode: "internal",
-			LaunchURL:  "/portal/apps/dwh",
+			LaunchURL:  "/apps/dwh",
 			Navigation: navigation,
 		}
 		if err := ValidateSystemBehavior(system); err == nil {
@@ -267,4 +267,33 @@ func contains(values []string, expected string) bool {
 		}
 	}
 	return false
+}
+
+func TestNormalizeSystemBehaviorMapsLegacyPortalPaths(t *testing.T) {
+	system := NormalizeSystemBehavior(SeedSystem{
+		LaunchURL:              "/portal/apps/dwh",
+		AuthenticatedLaunchURL: "/api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews",
+	})
+	if system.LaunchURL != "/apps/dwh" {
+		t.Fatalf("LaunchURL = %q", system.LaunchURL)
+	}
+	if system.AuthenticatedLaunchURL != "/api/v1/auth/launch?returnTo=%2Fapps%2Fnews" {
+		t.Fatalf("AuthenticatedLaunchURL = %q", system.AuthenticatedLaunchURL)
+	}
+	if got := NormalizePortalPath("/portal"); got != "/" {
+		t.Fatalf("NormalizePortalPath(/portal) = %q", got)
+	}
+	if got := NormalizePortalPath("/portalish"); got != "/portalish" {
+		t.Fatalf("NormalizePortalPath(/portalish) = %q", got)
+	}
+	for _, value := range []string{"/", "/apps/dwh", "/admin/home", "/portal/apps/dwh"} {
+		if !IsPortalPath(value) {
+			t.Errorf("IsPortalPath(%q) = false", value)
+		}
+	}
+	for _, value := range []string{"", "apps", "//evil.example", "/api/v1/users", "/ssobackend/x", "/portal/api/v1/users", "/apps\\x"} {
+		if IsPortalPath(value) {
+			t.Errorf("IsPortalPath(%q) = true", value)
+		}
+	}
 }

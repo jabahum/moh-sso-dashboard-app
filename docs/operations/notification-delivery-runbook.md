@@ -8,7 +8,7 @@ email, SMS, and future webhook channels. It is for operators and administrators 
 Open:
 
 ```text
-/portal/admin/notifications/deliveries
+/admin/notifications/deliveries
 ```
 
 Required permissions:

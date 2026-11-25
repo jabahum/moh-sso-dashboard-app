@@ -23,11 +23,11 @@ test("runtime validation reads configuration values independently of JS formatti
 test("runtime selection also supports a hostname-based inline loader", () => {
   const loader = `<script>
     const file = window.location.hostname === "localhost" ? "config.development.js" : "config.production.js";
-    document.write('<script src="/portal/' + file + '"><' + '/script>');
+    document.write('<script src="/' + file + '"><' + '/script>');
   </script>`;
-  assert.equal(selectedRuntimeConfig(loader, "localhost"), "/portal/config.development.js");
+  assert.equal(selectedRuntimeConfig(loader, "localhost"), "/config.development.js");
   assert.equal(
     selectedRuntimeConfig(loader, "portal.example.invalid"),
-    "/portal/config.production.js",
+    "/config.production.js",
   );
 });

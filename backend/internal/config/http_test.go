@@ -9,8 +9,8 @@ import (
 func privateHTTPConfig() *Config {
 	return &Config{
 		Environment:                 "production",
-		FrontendBaseURL:             "http://localhost:8080/portal",
-		FrontendRedirectURI:         "http://localhost:8080/portal",
+		FrontendBaseURL:             "http://localhost:8080",
+		FrontendRedirectURI:         "http://localhost:8080",
 		LoginURL:                    "http://localhost:8080/ssobackend/api/v1/auth/login",
 		AuthReturnURLAllowedOrigins: "http://localhost:8080",
 		KeycloakExternalURL:         "https://auth.example.org",
@@ -75,7 +75,7 @@ func TestCookieSecurityForPrivateHTTP(t *testing.T) {
 		if c.CookieSecure() {
 			t.Fatal("explicit HTTP access must allow cookies over HTTP")
 		}
-		c.FrontendBaseURL = "https://dashboard.example.org/portal"
+		c.FrontendBaseURL = "https://dashboard.example.org"
 		if !c.CookieSecure() {
 			t.Fatal("HTTPS must retain Secure cookies with opt-in enabled")
 		}

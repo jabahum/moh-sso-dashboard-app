@@ -426,7 +426,7 @@
       "attributes": {
         "access.token.lifespan": "1800",
         "ui.icon": "warning-alt",
-        "ui.home": "/portal/apps/outbreak-management",
+        "ui.home": "/apps/outbreak-management",
         "ui.category": "surveillance",
         "portal.system": "true",
         "portal.accessRoles": "outbreak-management_access,viewer,data_entry,surveillance_officer,manager,admin,super_admin",
@@ -434,7 +434,7 @@
         "ui.displayInLauncher": "true",
         "ui.displayInSideNav": "false",
         "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/outbreak-management"
+        "ui.launchUrl": "/apps/outbreak-management"
       },
       "defaultClientScopes": ["openid", "profile", "email", "roles"]
     },
@@ -442,8 +442,8 @@
       "clientId": "data-statistics",
       "name": "Data & Statistics",
       "description": "Data quality, document upload, reports, and surveillance tools",
-      "rootUrl": "http://localhost:3000/portal/apps/dwh",
-      "baseUrl": "http://localhost:3000/portal/apps/dwh",
+      "rootUrl": "http://localhost:3000/apps/dwh",
+      "baseUrl": "http://localhost:3000/apps/dwh",
       "enabled": true,
       "publicClient": true,
       "protocol": "openid-connect",
@@ -452,7 +452,7 @@
       "serviceAccountsEnabled": false,
       "attributes": {
         "ui.icon": "home",
-        "ui.home": "/portal/apps/dwh",
+        "ui.home": "/apps/dwh",
         "ui.category": "platform",
         "portal.system": "true",
         "portal.accessRoles": "data-statistics_access,report_viewer,report_analyst,report_manager,report_admin,report-scheduler_access",
@@ -460,7 +460,7 @@
         "ui.displayInLauncher": "true",
         "ui.displayInSideNav": "false",
         "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/dwh",
+        "ui.launchUrl": "/apps/dwh",
         "ui.navigation": "[{\"id\":\"report-scheduler\",\"label\":\"Report Scheduler\",\"path\":\"/apps/dwh/report-scheduler\",\"permission\":\"report_scheduler:read\",\"icon\":\"reporting\",\"description\":\"Schedule report generation and delivery.\",\"order\":70,\"displayInLauncher\":true,\"displayInSideNav\":true}]"
       }
     },
@@ -468,8 +468,8 @@
       "clientId": "demo-platform-system",
       "name": "Demo Platform System",
       "description": "Development example of an internal platform system with side navigation",
-      "rootUrl": "http://localhost:3000/portal/apps/dwh",
-      "baseUrl": "http://localhost:3000/portal/apps/dwh",
+      "rootUrl": "http://localhost:3000/apps/dwh",
+      "baseUrl": "http://localhost:3000/apps/dwh",
       "enabled": true,
       "publicClient": true,
       "protocol": "openid-connect",
@@ -482,8 +482,8 @@
         "ui.displayInLauncher": "true",
         "ui.displayInSideNav": "true",
         "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/dwh",
-        "ui.home": "/portal/apps/dwh",
+        "ui.launchUrl": "/apps/dwh",
+        "ui.home": "/apps/dwh",
         "ui.icon": "dashboard",
         "ui.category": "platform",
         "ui.navigation": "[{\"id\":\"overview\",\"label\":\"Overview\",\"path\":\"/apps/dwh\"},{\"id\":\"reports\",\"label\":\"Reports\",\"path\":\"/apps/dwh/reports\",\"permission\":\"report_browser:read\"}]",

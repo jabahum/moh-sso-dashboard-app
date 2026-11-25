@@ -76,7 +76,7 @@ realm created earlier misses later changes to the export. In particular:
 | --- | --- | --- |
 | `unmanagedAttributePolicy: ADMIN_EDIT` | Realm settings → User profile | Inviting users from identity sync (`create` rows) |
 | SMTP server (`mailhog:1025` in dev) | Realm settings → Email | Invitation emails; read them at `http://localhost:8025` |
-| `dashboard-web` post-logout redirect `http://localhost:3000/portal` | Clients → dashboard-web → Logout settings | Portal logout returning to the portal |
+| `dashboard-web` post-logout redirect `http://localhost:3000/` | Clients → dashboard-web → Logout settings | Portal logout returning to the portal |
 | `clims` and `poesgo` redirect URIs on the local origins | Clients → clims / poesgo | Application sign-in |
 
 ## 3. Accounts and links
@@ -139,7 +139,7 @@ Follow progress in the backend log (`identity sync auto-link: …`) or with
 
 ## 5. Test checklist
 
-Sign in to the portal at `http://localhost:3000/portal/` as a linked user.
+Sign in to the portal at `http://localhost:3000/` as a linked user.
 
 **CLIMS**
 
@@ -177,7 +177,7 @@ Sign in to the portal at `http://localhost:3000/portal/` as a linked user.
 | CLIMS: "not linked to an active CLIMS account" (`sso_error=unavailable`) | No link for this user under the current issuer, or the account is inactive. Link it with `apply` |
 | CLIMS: `sso_error=denied` | The user lacks `clims_access`, or their access was revoked |
 | POES returns `sso_account_unavailable` | No link, or the POES account is inactive, locked or has no role |
-| Portal logout ends on Keycloak's "Invalid redirect uri" | The live realm's `dashboard-web` client lacks the post-logout redirect `http://localhost:3000/portal` |
+| Portal logout ends on Keycloak's "Invalid redirect uri" | The live realm's `dashboard-web` client lacks the post-logout redirect `http://localhost:3000/` |
 | `register --enable` fails with a private-origin error | The origin's host is missing from `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` |
 | Dashboard backend: `bad address 'clims.local.test'` | `clims-tls` is not running on the dev network; recreate it with the dashboard override |
 | CLIMS or POES exits at start with an OIDC discovery error | The backend cannot reach `https://localhost:8443`: start it with its override (it adds `kc-loopback`) |

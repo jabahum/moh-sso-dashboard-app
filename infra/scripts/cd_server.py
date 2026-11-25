@@ -246,7 +246,7 @@ class Server:
         if actual.get('version') != backend['version'] or actual.get('commit') != backend['commit']:
             raise ValueError('Backend runtime version/commit mismatch')
         frontend = manifest['images']['frontend']
-        frontend_manifest = json.loads(self.compose(record, 'exec', '-T', 'frontend', 'wget', '-T', '10', '-qO-', 'http://127.0.0.1:3000/portal/version-manifest.json'))
+        frontend_manifest = self.frontend_manifest(record)
         actual = frontend_manifest['service']
         if actual.get('version') != frontend['version'] or actual.get('commit') != frontend['commit']:
             raise ValueError('Frontend runtime version/commit mismatch')
@@ -270,7 +270,7 @@ class Server:
                      self.config.get('verifier_image', 'node:22-alpine'), 'node', '--input-type=module', '-'], input=verifier)
         if self.config.get('verify_public_edge', True):
             origin = self.config['public_base_url'].rstrip('/')
-            for path in ('/portal/', '/ssobackend/health/ready', '/ssobackend/swagger/openapi.json'):
+            for path in ('/', '/ssobackend/health/ready', '/ssobackend/swagger/openapi.json'):
                 with urllib.request.urlopen(origin + path, timeout=15) as response:
                     if response.status != 200 or response.url != origin + path:
                         raise ValueError('Public HTTPS routing/redirect check failed')
@@ -278,6 +278,18 @@ class Server:
                 actual = backend_version(json.load(response))
                 if actual.get('version') != backend['version'] or actual.get('commit') != backend['commit']:
                     raise ValueError('Public API runtime metadata mismatch')
+
+    def frontend_manifest(self, record):
+        # Releases before the move to / served the shell under /portal/; rollbacks
+        # to those images still need verifying.
+        error = None
+        for path in ('/version-manifest.json', '/portal/version-manifest.json'):
+            try:
+                return json.loads(self.compose(record, 'exec', '-T', 'frontend', 'wget', '-T', '10', '-qO-',
+                                               'http://127.0.0.1:3000' + path))
+            except (RuntimeError, ValueError) as exc:
+                error = exc
+        raise ValueError('Frontend version manifest is unavailable') from error
 
     def audit(self, action, record, actor):
         event = {'time': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'action': action,

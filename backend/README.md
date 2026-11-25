@@ -241,7 +241,7 @@ Notifications support:
 - manual retry for failed/retry/cancelled deliveries
 - background email delivery worker
 - background SMS delivery worker
-- admin delivery dashboard at `/portal/admin/notifications/deliveries`
+- admin delivery dashboard at `/admin/notifications/deliveries`
 - delivery metrics grouped by channel/provider
 - safe audit logging for retry, cancel, test SMS, and SMS worker outcomes
 

@@ -29,7 +29,7 @@ cp infra/env/dev.env.example infra/env/dev.env
 make compose-dev-up
 ```
 
-Open `http://localhost:3000/portal/`. This starts the API, the portal, Keycloak,
+Open `http://localhost:3000/`. This starts the API, the portal, Keycloak,
 PostgreSQL, Redis and MailHog with live reload. For other ways to run the portal,
 prerequisites and first-run problems, see [Getting started](docs/getting-started.md).
 

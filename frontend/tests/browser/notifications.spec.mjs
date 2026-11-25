@@ -126,7 +126,7 @@ async function fixture(page, options = {}) {
 }
 
 async function openFeed(page) {
-  await page.goto("/portal/admin/home");
+  await page.goto("/admin/home");
   await page.getByRole("button", { name: /^Notifications(,|$)/ }).click();
   return page.getByRole("dialog", { name: "Notifications", exact: true });
 }
@@ -247,7 +247,7 @@ test("notification loading errors can be retried and empty views stay navigable"
 
 test("overview table opens details and delivery retries respect permissions", async ({ page }) => {
   await fixture(page, { readOnly: true });
-  await page.goto("/portal/admin/home");
+  await page.goto("/admin/home");
   await page.getByRole("button", { name: "View Token refresh failed", exact: true }).click();
   const panel = page.getByRole("dialog", { name: "Notifications", exact: true });
   await expect(
@@ -268,7 +268,7 @@ test("overview notifications table combines search, status and severity filters"
   page,
 }) => {
   await fixture(page);
-  await page.goto("/portal/admin/home");
+  await page.goto("/admin/home");
   const table = page.getByRole("table", { name: "Notifications", exact: true });
   await expect(table.getByRole("row")).toHaveCount(3);
   await chooseFilter(page, "Status", "All notifications");
@@ -292,7 +292,7 @@ test("overview notifications table combines search, status and severity filters"
 
 test("overview table row actions open details and refresh unread rows", async ({ page }) => {
   await fixture(page);
-  await page.goto("/portal/admin/home");
+  await page.goto("/admin/home");
   const table = page.getByRole("table", { name: "Notifications", exact: true });
   await table
     .getByRole("button", { name: "Actions for Token refresh failed", exact: true })
@@ -322,7 +322,7 @@ for (const width of [390, 1536]) {
         severity: index % 2 ? "warning" : "info",
       })),
     });
-    await page.goto("/portal/admin/home");
+    await page.goto("/admin/home");
     const table = page.getByRole("table", { name: "Notifications", exact: true });
     await expect(table.getByRole("row")).toHaveCount(6);
     await page.getByRole("button", { name: "Next page", exact: true }).click();

@@ -20,5 +20,4 @@ if [ "$#" -gt 0 ]; then
   write_config "$1"
 else
   write_config /usr/share/nginx/html/config.js
-  write_config /usr/share/nginx/html/portal/config.js
 fi

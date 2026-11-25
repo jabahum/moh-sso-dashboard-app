@@ -119,7 +119,7 @@ func TestHandleAuthLoginReusesExistingFlowCookies(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
 	req.AddCookie(&http.Cookie{Name: cookieOAuthState, Value: "existing-state"})
 	req.AddCookie(&http.Cookie{Name: cookiePKCEVerifier, Value: "existing-verifier"})
-	req.AddCookie(&http.Cookie{Name: cookieOAuthReturnTo, Value: encodeReturnCookie("old-state", "https://portal.example.test/portal/admin/home")})
+	req.AddCookie(&http.Cookie{Name: cookieOAuthReturnTo, Value: encodeReturnCookie("old-state", "https://portal.example.test/admin/home")})
 
 	router.ServeHTTP(res, req)
 
@@ -148,7 +148,7 @@ func TestHandleAuthLoginStoresStateBoundReturnTarget(t *testing.T) {
 	router.GET("/auth/launch", handler.HandleAuthLaunch)
 
 	res := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/auth/launch?returnTo=%2Fportal%2Fapps%2Fdwh%2Fdashboards%3Ftab%3Dmine", nil)
+	req := httptest.NewRequest(http.MethodGet, "/auth/launch?returnTo=%2Fapps%2Fdwh%2Fdashboards%3Ftab%3Dmine", nil)
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusTemporaryRedirect {
@@ -167,7 +167,7 @@ func TestHandleAuthLoginStoresStateBoundReturnTarget(t *testing.T) {
 	if state == "" || encodedReturn == "" {
 		t.Fatal("expected state and return target cookies")
 	}
-	if got := decodeReturnCookie(encodedReturn, state); got != "https://portal.example.test/portal/apps/dwh/dashboards?tab=mine" {
+	if got := decodeReturnCookie(encodedReturn, state); got != "https://portal.example.test/apps/dwh/dashboards?tab=mine" {
 		t.Fatalf("unexpected normalized return target %q", got)
 	}
 	if got := decodeReturnCookie(encodedReturn, "different-state"); got != "" {
@@ -179,14 +179,22 @@ func TestHandleAuthLoginRejectsUnsafeReturnTargets(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	unsafeTargets := []string{
-		"https://evil.example/portal/apps/news",
-		"//evil.example/portal/apps/news",
-		"/admin/home",
+		"https://evil.example/apps/news",
+		"//evil.example/apps/news",
+		"apps/news",
+		"/api/v1/auth/logout",
+		"/ssobackend/api/v1/auth/logout",
+		"/backend/api/v1/auth/logout",
+		"/swagger/index.html",
+		"/health/ready",
+		"/version",
+		"/apps/../admin/home",
+		"/apps/%2e%2e/admin/home",
+		"/apps%2f..%2fadmin/home",
+		"/apps/%252e%252e/admin",
+		"/apps/%5Cevil",
 		"/portal/../admin/home",
-		"/portal/%2e%2e/admin/home",
-		"/portal%2f..%2fadmin/home",
-		"/portal/%252e%252e/admin",
-		"/portal/%5Cevil",
+		"/portal/../api/v1/auth/logout",
 	}
 
 	for _, target := range unsafeTargets {
@@ -208,12 +216,34 @@ func TestNormalizeReturnURLAllowsConfiguredAbsoluteOrigin(t *testing.T) {
 	handler := newTestHandler(&fakeAuthService{})
 	handler.config.AuthReturnURLAllowedOrigins = "https://portal.example.test, https://staging.example.test"
 
-	got, err := handler.normalizeReturnURL("https://staging.example.test/portal/apps/news#latest")
+	got, err := handler.normalizeReturnURL("https://staging.example.test/apps/news#latest")
 	if err != nil {
 		t.Fatalf("normalize allowed absolute return target: %v", err)
 	}
-	if got != "https://staging.example.test/portal/apps/news#latest" {
+	if got != "https://staging.example.test/apps/news#latest" {
 		t.Fatalf("unexpected normalized target %q", got)
+	}
+}
+
+func TestNormalizeReturnURLMapsLegacyPortalPrefix(t *testing.T) {
+	handler := newTestHandler(&fakeAuthService{})
+
+	for raw, want := range map[string]string{
+		"/":                     "https://portal.example.test/",
+		"/admin/home":           "https://portal.example.test/admin/home",
+		"/portal":               "https://portal.example.test/",
+		"/portal/":              "https://portal.example.test/",
+		"/portal/apps/news?x=1": "https://portal.example.test/apps/news?x=1",
+		"/portalish/apps":       "https://portal.example.test/portalish/apps",
+		"/apis-catalog":         "https://portal.example.test/apis-catalog",
+	} {
+		got, err := handler.normalizeReturnURL(raw)
+		if err != nil {
+			t.Fatalf("normalize %q: %v", raw, err)
+		}
+		if got != want {
+			t.Fatalf("normalize %q = %q, want %q", raw, got, want)
+		}
 	}
 }
 
@@ -315,7 +345,7 @@ func TestHandleAuthCallbackRejectsMissingCode(t *testing.T) {
 	if res.Code != http.StatusTemporaryRedirect {
 		t.Fatalf("expected redirect status, got %d", res.Code)
 	}
-	if got := res.Header().Get("Location"); got != "https://portal.example.test/portal/" {
+	if got := res.Header().Get("Location"); got != "https://portal.example.test/" {
 		t.Fatalf("expected frontend redirect, got %q", got)
 	}
 	if authSvc.processAuthCodeCalled {
@@ -381,7 +411,7 @@ func TestSessionTTLUsesRefreshExpiryThenAccessExpiryThenDefault(t *testing.T) {
 func newTestHandler(authSvc service.AuthService) *Handler {
 	cfg := &config.Config{
 		Environment:           "test",
-		FrontendBaseURL:       "https://portal.example.test/portal",
+		FrontendBaseURL:       "https://portal.example.test",
 		KeycloakExternalURL:   "https://auth.example.test",
 		KeycloakInternalURL:   "https://keycloak.internal.test",
 		KeycloakRealm:         "moh-realm",

@@ -103,6 +103,6 @@ The keys that decide how microfrontends load:
 | Remote / orchestrated (`config.production.js`) | `"remote"` | `true` | `"orchestrated"` | Production-style single-spa orchestration with import maps and separately staged bundles. |
 
 `API_BASE_URL` in the same object sets where the shell sends API requests. A blank page
-under `/portal` usually means the wrong config is active; see
+at `/` usually means the wrong config is active; see
 [frontend troubleshooting](../frontend/docs/troubleshooting.md) and
 [import maps](../frontend/docs/import-maps.md).

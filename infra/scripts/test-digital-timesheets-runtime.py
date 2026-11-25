@@ -100,7 +100,7 @@ def run():
         operator = shared.ServerAdmin({'KEYCLOAK_BASE_URL': base,
                                        'KEYCLOAK_BOOTSTRAP_USERNAME': 'fixture-admin',
                                        'KEYCLOAK_BOOTSTRAP_PASSWORD': password})
-        environments = {name: {'portalUrl': 'https://portal.example.invalid/portal',
+        environments = {name: {'portalUrl': 'https://portal.example.invalid',
                                'apiUrl': 'https://portal.example.invalid/api/v1'}
                         for name in ('development', 'test', 'staging')}
         plan = shared.build_plan(operator, environments)

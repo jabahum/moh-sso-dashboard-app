@@ -31,7 +31,7 @@ npm install
 npm run dev:shell
 ```
 
-This runs `scripts/frontend-modules.mjs dev`: it selects the `development` entry of `module-sources.json` (source `workspace`, so apps and packages resolve from this checkout), copies `public/config.development.js` to `public/config.js` (skipped when `FRONTEND_RUNTIME_CONFIG_PREPARED=true`, as in the Docker dev image), and starts the shell on port `3000` at `http://localhost:3000/portal/`. `npm run dev` is the same command.
+This runs `scripts/frontend-modules.mjs dev`: it selects the `development` entry of `module-sources.json` (source `workspace`, so apps and packages resolve from this checkout), copies `public/config.development.js` to `public/config.js` (skipped when `FRONTEND_RUNTIME_CONFIG_PREPARED=true`, as in the Docker dev image), and starts the shell on port `3000` at `http://localhost:3000/`. `npm run dev` is the same command.
 
 ## Remote microfrontend development
 

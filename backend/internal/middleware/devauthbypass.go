@@ -37,7 +37,7 @@ func DevAuthBypassRoutes() gin.HandlerFunc {
 			// Skip the Keycloak redirect; land straight back in the portal.
 			returnTo := c.Query("returnTo")
 			if returnTo == "" {
-				returnTo = "/portal/"
+				returnTo = "/"
 			}
 			c.Redirect(http.StatusFound, returnTo)
 			c.Abort()

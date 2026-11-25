@@ -103,7 +103,7 @@ for (const width of [1440, 390]) {
 
       // Root pages must mount without a live CDN, using lockfile dependencies.
       await page.route("https://esm.sh/**", (route) => route.abort("blockedbyclient"));
-      await page.goto(`/portal${path}`);
+      await page.goto(path);
       const main = page.locator("#main-content");
       if (path.startsWith("/admin/")) await expect(main.locator(".moh-page-shell")).toHaveCount(1);
       const header = main.locator(".moh-page-shell__header");
@@ -180,7 +180,7 @@ for (const width of [1440, 390]) {
         }
         await route.fulfill({ json: { success: true, data: fixtureData(apiPath) } });
       });
-      await page.goto(`/portal${path}`);
+      await page.goto(path);
       const main = page.locator("#main-content");
       const shell = main.locator(".moh-page-shell");
       const header = shell.locator(":scope > .moh-page-shell__header");
@@ -231,7 +231,7 @@ for (const width of [1440, 390]) {
         const data = path.endsWith(`/${resource}`) ? records : fixtureData(path);
         return route.fulfill({ json: { success: true, data } });
       });
-      await page.goto(`/portal/admin/${resource}`);
+      await page.goto(`/admin/${resource}`);
       const main = page.locator("#main-content");
       await expect(main.getByRole("status")).toContainText(`15 of 15 ${resource}`);
       await main.getByRole("searchbox", { name: `Search ${resource}`, exact: true }).fill("TARGET");
@@ -278,7 +278,7 @@ test("Systems panel docks beside the table and becomes an overlay on narrow scre
         : fixtureData(path);
     await route.fulfill({ json: { success: true, data } });
   });
-  await page.goto("/portal/admin/systems");
+  await page.goto("/admin/systems");
 
   const main = page.locator("#main-content");
   const manage = main.getByRole("button", { name: "Manage" });

@@ -16,8 +16,8 @@ func TestCORSUsesFrontendOriginRatherThanPath(t *testing.T) {
 		t.Run(environment, func(t *testing.T) {
 			cfg := &config.Config{
 				Environment:         environment,
-				FrontendBaseURL:     "https://portal.example.test/portal",
-				FrontendRedirectURI: "https://portal.example.test/portal/home?tab=mine",
+				FrontendBaseURL:     "https://portal.example.test",
+				FrontendRedirectURI: "https://portal.example.test/home?tab=mine",
 			}
 			router := gin.New()
 			router.Use(cors.New(corsConfig(cfg)))
@@ -50,7 +50,7 @@ func TestAllowedOriginsRejectUnsafeURLsAndDeduplicate(t *testing.T) {
 	}
 	origins := buildAllowedOrigins(&config.Config{
 		Environment:         "production",
-		FrontendBaseURL:     "https://portal.example.test/portal",
+		FrontendBaseURL:     "https://portal.example.test",
 		FrontendRedirectURI: "https://portal.example.test/callback",
 	})
 	if len(origins) != 2 {

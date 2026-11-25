@@ -56,7 +56,7 @@ func TestApplicationManifestExamplesAndValidation(t *testing.T) {
 	if _, _, err := parseApplicationManifest(internal, "development", modules); err == nil {
 		t.Fatal("accepted disabled module")
 	}
-	for _, path := range []string{"/portal/../admin/home", "//example.org/app", "/apps/%2e%2e/admin"} {
+	for _, path := range []string{"/", "/apps/../admin/home", "/portal/admin/home", "//example.org/app", "/apps/%2e%2e/admin", "/api/v1/users"} {
 		if manifestPortalPath(path) {
 			t.Errorf("accepted unsafe route %s", path)
 		}

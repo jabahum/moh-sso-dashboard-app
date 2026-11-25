@@ -693,7 +693,7 @@ func normalizeConfig(c *Config) {
 	}
 	if c.Notification.AdminDashboardURL == "" {
 		if c.FrontendBaseURL != "" {
-			c.Notification.AdminDashboardURL = strings.TrimRight(c.FrontendBaseURL, "/") + "portal/admin/home"
+			c.Notification.AdminDashboardURL = strings.TrimRight(c.FrontendBaseURL, "/") + "/admin/home"
 		} else {
 			c.Notification.AdminDashboardURL = "http://localhost:3000/admin/home"
 		}

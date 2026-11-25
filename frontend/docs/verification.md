@@ -64,7 +64,7 @@ dist/mf/*/single-spa.js
 dist/packages/*/index.js
 ```
 
-When built with `FRONTEND_BASE_PATH=/portal` (as the Docker images do), the same files also exist under `dist/portal/`; `npm run runtime:verify` checks that layout.
+The Docker images build with `FRONTEND_BASE_PATH=/`, so these root paths are what is served. `npm run runtime:verify` checks that layout and that `dist/portal/` holds only the retired service worker kill switch `sw.js`.
 
 ## Acceptance checklist
 

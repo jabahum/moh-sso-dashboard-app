@@ -206,12 +206,9 @@ func (s *service) sendApprovalEmailToGroupMembers(ctx context.Context, input res
 	resolutionAction := dqInterfaceString(input.ResolutionAction)
 
 	// Determine portal link
-	portalURL := "https://dashboards.health.go.ug/portal"
+	portalURL := "https://dashboards.health.go.ug"
 	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
 		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
-	}
-	if !strings.HasSuffix(portalURL, "/portal") {
-		portalURL = portalURL + "/portal"
 	}
 
 	subject := fmt.Sprintf("[MOH Issue Tracker] Issue %s Resolved by %s", issueCode, approverIdentifier)
@@ -311,12 +308,9 @@ func (s *service) sendAssignmentEmail(ctx context.Context, input assignIssuesInp
 	}
 
 	// Determine portal link
-	portalURL := "https://dashboards.health.go.ug/portal"
+	portalURL := "https://dashboards.health.go.ug"
 	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
 		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
-	}
-	if !strings.HasSuffix(portalURL, "/portal") {
-		portalURL = portalURL + "/portal"
 	}
 
 	subject := fmt.Sprintf("[MOH Issue Tracker] %d Issue(s) Assigned to You", len(issueCodes))

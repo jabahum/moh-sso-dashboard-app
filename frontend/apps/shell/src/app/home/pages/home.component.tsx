@@ -44,7 +44,9 @@ const MAX_QUICK_ACTIONS = 6;
 
 function normalizePortalPath(href?: string): string | undefined {
   if (!href || /^https?:\/\//i.test(href)) return href;
-  if (href === "/portal") return "/apps";
+  // The portal's own launch URL ("/", or legacy "/portal") opens the app catalogue.
+  if (href === "/" || href === "/portal") return "/apps";
+  // Stored legacy /portal/... paths map onto the root-served shell.
   return href.startsWith("/portal/") ? href.replace(/^\/portal/, "") : href;
 }
 

@@ -40,21 +40,19 @@ if (existsSync(htmlPath)) {
   const html = readFileSync(htmlPath, "utf8");
   selectedProductionConfig = selectedRuntimeConfig(html, "portal.example.invalid");
   check(
-    ["/portal/config.development.js", "/portal/config.js"].includes(
-      selectedRuntimeConfig(html, "localhost"),
-    ),
-    "dist/index.html should load local development config from /portal",
+    ["/config.development.js", "/config.js"].includes(selectedRuntimeConfig(html, "localhost")),
+    "dist/index.html should load local development config from the root",
     failures,
   );
   check(
-    ["/portal/config.production.js", "/portal/config.js"].includes(selectedProductionConfig),
-    "dist/index.html should load production runtime config from /portal",
+    ["/config.production.js", "/config.js"].includes(selectedProductionConfig),
+    "dist/index.html should load production runtime config from the root",
     failures,
   );
   check(html.includes('type="importmap"'), "dist/index.html should inline an import map", failures);
   check(
-    html.includes("/portal/assets/"),
-    "dist/index.html should reference /portal assets",
+    html.includes('"/assets/') && !html.includes("/portal/"),
+    "dist/index.html should reference root /assets and nothing under /portal",
     failures,
   );
 }
@@ -66,44 +64,54 @@ if (existsSync(importMapPath)) {
   const imports = readJson(importMapPath).imports ?? {};
   for (const app of requiredApps) {
     check(
-      imports[`@moh-sso/${app}`]?.startsWith("/portal/mf/"),
-      `import map should point @moh-sso/${app} at /portal/mf`,
+      imports[`@moh-sso/${app}`]?.startsWith("/mf/"),
+      `import map should point @moh-sso/${app} at /mf`,
       failures,
     );
     check(
-      existsSync(join(root, "dist", "portal", "mf", app, "single-spa.js")),
-      `staged /portal/mf/${app}/single-spa.js is missing`,
+      existsSync(join(root, "dist", "mf", app, "single-spa.js")),
+      `staged /mf/${app}/single-spa.js is missing`,
       failures,
     );
   }
   for (const pkg of requiredPackages) {
     check(
-      imports[`@moh-sso/${pkg}`]?.startsWith("/portal/packages/"),
-      `import map should point @moh-sso/${pkg} at /portal/packages`,
+      imports[`@moh-sso/${pkg}`]?.startsWith("/packages/"),
+      `import map should point @moh-sso/${pkg} at /packages`,
       failures,
     );
     check(
-      existsSync(join(root, "dist", "portal", "packages", pkg, "index.js")),
-      `staged /portal/packages/${pkg}/index.js is missing`,
+      existsSync(join(root, "dist", "packages", pkg, "index.js")),
+      `staged /packages/${pkg}/index.js is missing`,
       failures,
     );
   }
 }
 
 check(
-  existsSync(join(root, "dist", "portal", "version-manifest.json")),
-  "dist/portal/version-manifest.json is missing",
+  existsSync(join(root, "dist", "version-manifest.json")),
+  "dist/version-manifest.json is missing",
+  failures,
+);
+// Only the retired /portal/ service worker kill switch may live under dist/portal.
+check(
+  !existsSync(join(root, "dist", "portal", "index.html")),
+  "dist/portal/index.html should not exist; the shell is served from the root",
+  failures,
+);
+check(
+  existsSync(join(root, "dist", "portal", "sw.js")),
+  "dist/portal/sw.js (retired /portal/ service worker kill switch) is missing",
   failures,
 );
 const portalConfigPath = join(
   root,
   "dist",
-  "portal",
   selectedProductionConfig?.split("/").pop() ?? "config.js",
 );
 check(
   existsSync(portalConfigPath),
-  "Selected production runtime config is missing from dist/portal",
+  "Selected production runtime config is missing from dist",
   failures,
 );
 

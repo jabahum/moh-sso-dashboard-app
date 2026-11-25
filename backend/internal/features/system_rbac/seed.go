@@ -554,8 +554,8 @@ func validatePermissions(knownPermissions map[string]bool, permissions []string)
 func NormalizeSystemBehavior(system SeedSystem) SeedSystem {
 	system.SystemType = strings.ToLower(strings.TrimSpace(system.SystemType))
 	system.LaunchMode = strings.ToLower(strings.TrimSpace(system.LaunchMode))
-	system.LaunchURL = strings.TrimSpace(system.LaunchURL)
-	system.AuthenticatedLaunchURL = strings.TrimSpace(system.AuthenticatedLaunchURL)
+	system.LaunchURL = NormalizePortalPath(strings.TrimSpace(system.LaunchURL))
+	system.AuthenticatedLaunchURL = NormalizeAuthenticatedLaunchURL(strings.TrimSpace(system.AuthenticatedLaunchURL))
 	system.Navigation = strings.TrimSpace(system.Navigation)
 
 	if system.SystemType == "" {
@@ -596,7 +596,7 @@ func ValidateSystemBehavior(system SeedSystem) error {
 			return fmt.Errorf("platform systems must use internal launchMode")
 		}
 		if system.LaunchURL != "" && !isPortalPath(system.LaunchURL) {
-			return fmt.Errorf("platform launchUrl must begin with /portal or /apps")
+			return fmt.Errorf("platform launchUrl must be a root-relative portal path such as / or /apps/...")
 		}
 		if system.AuthenticatedLaunchURL != "" && !isAuthLaunchURL(system.AuthenticatedLaunchURL) {
 			return fmt.Errorf("authenticatedLaunchUrl must be an /api/v1/auth/launch URL or an absolute HTTP or HTTPS URL")
@@ -686,7 +686,7 @@ func validateNavigationItems(items []NavigationItem, seen map[string]struct{}) e
 		if item.Path != "" {
 			external := isHTTPURL(item.Path)
 			if !external && !isPortalPath(item.Path) {
-				return fmt.Errorf("navigation item %q path must begin with /portal or /apps, or be an absolute HTTP or HTTPS URL", item.ID)
+				return fmt.Errorf("navigation item %q path must be a root-relative portal path such as /apps/..., or an absolute HTTP or HTTPS URL", item.ID)
 			}
 			if external && item.LaunchMode != "new_tab" && item.LaunchMode != "same_tab" {
 				return fmt.Errorf("external navigation item %q must use new_tab or same_tab launchMode", item.ID)
@@ -712,7 +712,60 @@ func validateNavigationPermissions(itemID, field string, permissions []string) e
 }
 
 func isPortalPath(value string) bool {
-	return value == "/portal" || strings.HasPrefix(value, "/portal/") || value == "/apps" || strings.HasPrefix(value, "/apps/")
+	return IsPortalPath(value)
+}
+
+// backendPathPrefixes are served by the API on the portal's host, so they are
+// never portal routes.
+var backendPathPrefixes = []string{"/api", "/ssobackend", "/backend", "/swagger", "/health", "/version"}
+
+// IsPortalPath reports whether value is a root-relative portal route. The portal
+// is served at the host root, so any absolute path is a portal route unless the
+// API owns it. Legacy /portal-prefixed paths remain valid input; callers store
+// the NormalizePortalPath form.
+func IsPortalPath(value string) bool {
+	value = NormalizePortalPath(value)
+	if !strings.HasPrefix(value, "/") || strings.HasPrefix(value, "//") || strings.ContainsAny(value, "\\\r\n\t ") {
+		return false
+	}
+	for _, prefix := range backendPathPrefixes {
+		if value == prefix || strings.HasPrefix(value, prefix+"/") || strings.HasPrefix(value, prefix+"?") || strings.HasPrefix(value, prefix+"#") {
+			return false
+		}
+	}
+	return true
+}
+
+// NormalizePortalPath maps a path from before the portal moved to the host root
+// (/portal, /portal/x) onto its current form (/, /x). Other values are unchanged.
+func NormalizePortalPath(value string) string {
+	if value == "/portal" || value == "/portal/" {
+		return "/"
+	}
+	if strings.HasPrefix(value, "/portal/") {
+		return strings.TrimPrefix(value, "/portal")
+	}
+	return value
+}
+
+// NormalizeAuthenticatedLaunchURL rewrites a legacy /portal returnTo target in an
+// /api/v1/auth/launch URL. Other values are unchanged.
+func NormalizeAuthenticatedLaunchURL(value string) string {
+	if !strings.HasPrefix(value, "/api/v1/auth/launch") {
+		return value
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return value
+	}
+	query := parsed.Query()
+	returnTo := query.Get("returnTo")
+	if normalized := NormalizePortalPath(returnTo); normalized != returnTo {
+		query.Set("returnTo", normalized)
+		parsed.RawQuery = query.Encode()
+		return parsed.String()
+	}
+	return value
 }
 
 func isHTTPURL(value string) bool {
@@ -752,8 +805,8 @@ func DefaultSeed() SeedFile {
 				DisplayName:            "Integrated Health Portal",
 				Description:            "Central portal shell",
 				Icon:                   "dashboard",
-				LaunchURL:              "/portal",
-				AuthenticatedLaunchURL: "/api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews",
+				LaunchURL:              "/",
+				AuthenticatedLaunchURL: "/api/v1/auth/launch?returnTo=%2Fapps%2Fnews",
 				Category:               "platform",
 				Enabled:                &enabled,
 				AccessRoles:            []string{authz.DashboardWebAccess, authz.DashboardWebUser},
@@ -807,7 +860,7 @@ func DefaultSeed() SeedFile {
 				DisplayName: "Outbreak Management",
 				Description: "Signals, alerts, surveillance, points of entry, and case management.",
 				Icon:        "warning-alt",
-				LaunchURL:   "/portal/apps/outbreak-management",
+				LaunchURL:   "/apps/outbreak-management",
 				Category:    "surveillance",
 				Navigation:  outbreakManagementNavigation,
 				Enabled:     &enabled,
@@ -913,15 +966,15 @@ func DefaultSeed() SeedFile {
 				},
 			},
 			defaultDataStatisticsSystem(enabled),
-			defaultPortalSystem("eservices", "eServices", "Digital service requests and operational tools.", "application", "/portal/apps/eservices", "services", eServicesNavigation, nil, enabled),
-			defaultPortalSystem("research-studies", "Research & Studies", "Research studies, datasets, ethics approvals, and publications.", "microscope", "/portal/apps/research-studies", "research", researchStudiesNavigation, nil, enabled),
-			defaultPortalSystem("case-registers", "Case Registers", "Case registers and referral tracking.", "document", "/portal/apps/case-registers", "clinical", caseRegistersNavigation, []string{
+			defaultPortalSystem("eservices", "eServices", "Digital service requests and operational tools.", "application", "/apps/eservices", "services", eServicesNavigation, nil, enabled),
+			defaultPortalSystem("research-studies", "Research & Studies", "Research studies, datasets, ethics approvals, and publications.", "microscope", "/apps/research-studies", "research", researchStudiesNavigation, nil, enabled),
+			defaultPortalSystem("case-registers", "Case Registers", "Case registers and referral tracking.", "document", "/apps/case-registers", "clinical", caseRegistersNavigation, []string{
 				string(authz.PermissionDocumentsRead),
 			}, enabled),
-			defaultPortalSystem("reference-registers", "Reference Registers", "Facility, terminology, and reference data registers.", "catalog", "/portal/apps/reference-registers", "registry", referenceRegistersNavigation, []string{
+			defaultPortalSystem("reference-registers", "Reference Registers", "Facility, terminology, and reference data registers.", "catalog", "/apps/reference-registers", "registry", referenceRegistersNavigation, []string{
 				string(authz.PermissionSystemsRead),
 			}, enabled),
-			defaultPortalSystem(authz.SystemUtilities, "Utilities", "Self-service utilities and staff tools.", "tools", "/portal/apps/utilities/self-service", "utilities", utilitiesNavigation, nil, enabled),
+			defaultPortalSystem(authz.SystemUtilities, "Utilities", "Self-service utilities and staff tools.", "tools", "/apps/utilities/self-service", "utilities", utilitiesNavigation, nil, enabled),
 			defaultSettingsSystem(enabled),
 		},
 		RealmRoles: []SeedRealmRole{
@@ -1057,7 +1110,7 @@ func defaultSettingsSystem(enabled bool) SeedSystem {
 		"Settings",
 		"User profile, session, and security settings.",
 		"settings",
-		"/portal/apps/settings",
+		"/apps/settings",
 		"platform",
 		"[]",
 		nil,
@@ -1076,7 +1129,7 @@ func defaultDataStatisticsSystem(enabled bool) SeedSystem {
 		"Data & Statistics",
 		"Data quality, document upload, reports, and surveillance tools.",
 		"home",
-		"/portal/apps/dwh",
+		"/apps/dwh",
 		"platform",
 		dataStatisticsNavigation,
 		[]string{

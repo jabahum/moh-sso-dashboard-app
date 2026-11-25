@@ -235,9 +235,8 @@ application. See [sync and drift](rbac-keycloak-sync.md).
 
 ## 4. Register the application in the portal
 
-Open **Administration → RBAC** at `/portal/admin/rbac` on a standard `/portal`
-deployment. `/admin/rbac` is the shell route; include your installation's configured
-base path when entering it in the browser. Do not confuse **Clients** (Keycloak
+Open **Administration → RBAC** at `/admin/rbac`. `/admin/rbac` is the shell route
+and, with the portal served at the site root, also the browser path. Do not confuse **Clients** (Keycloak
 client management) with the **Application registry** inside RBAC.
 
 ### 4.1 Start a new registration

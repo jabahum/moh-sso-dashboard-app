@@ -786,8 +786,8 @@
       "clientId": "dashboard-web",
       "name": "MOH SSO Dashboard Web",
       "description": "MOH SSO Dashboard Web",
-      "rootUrl": "http://localhost:3000/portal",
-      "baseUrl": "http://localhost:3000/portal",
+      "rootUrl": "http://localhost:3000/",
+      "baseUrl": "http://localhost:3000/",
       "enabled": true,
       "secret": "dashboard-web-secret",
       "publicClient": false,
@@ -813,15 +813,15 @@
       "attributes": {
         "access.token.lifespan": "1800",
         "ui.icon": "reporting",
-        "ui.home": "/portal",
+        "ui.home": "/",
         "portal.system": "true",
         "portal.accessRoles": "dashboard-web_access",
         "ui.systemType": "platform",
         "ui.displayInLauncher": "true",
         "ui.displayInSideNav": "false",
         "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal",
-        "ui.authenticatedLaunchUrl": "/api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews"
+        "ui.launchUrl": "/",
+        "ui.authenticatedLaunchUrl": "/api/v1/auth/launch?returnTo=%2Fapps%2Fnews"
       },
       "protocolMappers": [
         {
@@ -841,8 +841,8 @@
       "clientId": "data-statistics",
       "name": "Data & Statistics",
       "description": "Data quality, document management, reporting, surveillance, and issue tracking tools",
-      "rootUrl": "http://localhost:3000/portal/apps/dwh",
-      "baseUrl": "http://localhost:3000/portal/apps/dwh",
+      "rootUrl": "http://localhost:3000/apps/dwh",
+      "baseUrl": "http://localhost:3000/apps/dwh",
       "enabled": true,
       "publicClient": true,
       "protocol": "openid-connect",
@@ -851,7 +851,7 @@
       "serviceAccountsEnabled": false,
       "attributes": {
         "ui.icon": "home",
-        "ui.home": "/portal/apps/dwh",
+        "ui.home": "/apps/dwh",
         "ui.category": "platform",
         "portal.system": "true",
         "portal.accessRoles": "data-statistics_access,report_admin,report_manager,report_analyst,report_viewer,issue_tracker_viewer,issue_tracker_contributor,issue_tracker_editor,issue_tracker_manager,document_viewer,document_editor,document_processor,document_manager,document_template_viewer,document_template_editor,document_template_publisher,surveillance_viewer,surveillance_officer,surveillance_data_entry,surveillance_manager",
@@ -860,7 +860,7 @@
         "ui.displayInSideNav": "true",
         "ui.launchMode": "internal",
         "ui.order": "20",
-        "ui.launchUrl": "/portal/apps/dwh",
+        "ui.launchUrl": "/apps/dwh",
         "ui.navigation": "[{\"id\":\"dashboards\",\"label\":\"Dashboards\",\"path\":\"/apps/dwh/dashboards\",\"permission\":\"report_browser:read\",\"icon\":\"dashboard\",\"description\":\"Browse approved data and reporting dashboards.\",\"order\":10,\"displayInLauncher\":true},{\"id\":\"data-validation\",\"label\":\"Data Validation\",\"path\":\"/apps/dwh/data-validation\",\"permission\":\"data_quality:read\",\"icon\":\"action\",\"description\":\"Define and run data quality validation rules.\",\"order\":20,\"displayInLauncher\":true},{\"id\":\"data-visualizer\",\"label\":\"Data Visualizer\",\"path\":\"/apps/dwh/data-visualizer\",\"permission\":\"data_quality:read\",\"icon\":\"chart\",\"description\":\"Data visualization/Export from the NDWH for all programs.\",\"order\":30,\"displayInLauncher\":true},{\"id\":\"documents\",\"label\":\"Document Management\",\"path\":\"/apps/dwh/documents\",\"permission\":\"documents:read\",\"icon\":\"documents\",\"description\":\"Upload and manage health data documents.\",\"order\":40,\"displayInLauncher\":true},{\"id\":\"surveillance\",\"label\":\"Surveillance\",\"path\":\"/apps/dwh/surveillance\",\"permission\":\"surveillance:read\",\"icon\":\"warning-alt\",\"description\":\"Review surveillance indicators, alerts, and reports.\",\"order\":50,\"displayInLauncher\":true},{\"id\":\"issue-tracker\",\"label\":\"Issue Tracking\",\"path\":\"/apps/dwh/issue-tracker\",\"permission\":\"issue_tracker:read\",\"icon\":\"tracker\",\"description\":\"Track and resolve data quality issues.\",\"order\":60,\"displayInLauncher\":true}]"
       }
     },
@@ -868,8 +868,8 @@
       "clientId": "utilities",
       "name": "Utilities",
       "description": "Self-service utilities and staff tools",
-      "rootUrl": "http://localhost:3000/portal/apps/utilities/self-service",
-      "baseUrl": "http://localhost:3000/portal/apps/utilities/self-service",
+      "rootUrl": "http://localhost:3000/apps/utilities/self-service",
+      "baseUrl": "http://localhost:3000/apps/utilities/self-service",
       "enabled": true,
       "publicClient": true,
       "protocol": "openid-connect",
@@ -878,7 +878,7 @@
       "serviceAccountsEnabled": false,
       "attributes": {
         "ui.icon": "tools",
-        "ui.home": "/portal/apps/utilities/self-service",
+        "ui.home": "/apps/utilities/self-service",
         "ui.category": "utilities",
         "portal.system": "true",
         "portal.accessRoles": "utilities_access",
@@ -887,7 +887,7 @@
         "ui.displayInSideNav": "true",
         "ui.launchMode": "internal",
         "ui.order": "90",
-        "ui.launchUrl": "/portal/apps/utilities/self-service",
+        "ui.launchUrl": "/apps/utilities/self-service",
         "ui.navigation": "[{\"id\":\"timesheet\",\"label\":\"My Timesheet\",\"path\":\"/apps/utilities/self-service/timesheet\"},{\"id\":\"elearning\",\"label\":\"eLearning\",\"path\":\"/apps/utilities/self-service/elearning\"},{\"id\":\"leave-plan\",\"label\":\"Leave Plan\",\"path\":\"/apps/utilities/self-service/leave-plan\"},{\"id\":\"absence-requests\",\"label\":\"Absence Requests\",\"path\":\"/apps/utilities/self-service/absence-requests\"},{\"id\":\"absence-dashboard\",\"label\":\"My Absence Dashboard\",\"path\":\"/apps/utilities/self-service/absence-dashboard\"},{\"id\":\"service-access\",\"label\":\"Service Access\",\"path\":\"/apps/utilities/self-service/eservice/service-access\"},{\"id\":\"equipment-request\",\"label\":\"Equipment Request\",\"path\":\"/apps/utilities/self-service/eservice/equipment-request\"}]"
       }
     },
@@ -895,8 +895,8 @@
       "clientId": "settings",
       "name": "Settings",
       "description": "User profile, session, and security settings",
-      "rootUrl": "http://localhost:3000/portal/apps/settings",
-      "baseUrl": "http://localhost:3000/portal/apps/settings",
+      "rootUrl": "http://localhost:3000/apps/settings",
+      "baseUrl": "http://localhost:3000/apps/settings",
       "enabled": true,
       "publicClient": true,
       "protocol": "openid-connect",
@@ -905,7 +905,7 @@
       "serviceAccountsEnabled": false,
       "attributes": {
         "ui.icon": "settings",
-        "ui.home": "/portal/apps/settings",
+        "ui.home": "/apps/settings",
         "ui.category": "platform",
         "portal.system": "true",
         "portal.accessRoles": "settings_access",
@@ -914,7 +914,7 @@
         "ui.displayInSideNav": "false",
         "ui.launchMode": "internal",
         "ui.order": "100",
-        "ui.launchUrl": "/portal/apps/settings",
+        "ui.launchUrl": "/apps/settings",
         "ui.navigation": "[]"
       }
     },
@@ -941,7 +941,7 @@
       "attributes": {
         "access.token.lifespan": "1800",
         "ui.icon": "warning-alt",
-        "ui.home": "/portal/apps/outbreak-management",
+        "ui.home": "/apps/outbreak-management",
         "ui.category": "surveillance",
         "portal.system": "true",
         "portal.accessRoles": "outbreak-management_access,viewer,data_entry,lab_technician,surveillance_officer,manager,admin,super_admin",
@@ -950,7 +950,7 @@
         "ui.displayInSideNav": "true",
         "ui.launchMode": "internal",
         "ui.order": "10",
-        "ui.launchUrl": "/portal/apps/outbreak-management",
+        "ui.launchUrl": "/apps/outbreak-management",
         "ui.navigation": "[{\"id\":\"signals-alerts\",\"label\":\"Signals & Alerts\",\"path\":\"/apps/outbreak-management/signals-alerts\"},{\"id\":\"poe-management\",\"label\":\"PoE Management\",\"path\":\"/apps/outbreak-management/poe-management\"},{\"id\":\"case-management\",\"label\":\"Case Management\",\"path\":\"/apps/outbreak-management/case-management\"}]"
       },
       "defaultClientScopes": [
@@ -965,8 +965,8 @@
       "clientId": "demo-platform-system",
       "name": "Demo Platform System",
       "description": "Development example of an internal platform system with side navigation",
-      "rootUrl": "http://localhost:3000/portal/apps/dwh",
-      "baseUrl": "http://localhost:3000/portal/apps/dwh",
+      "rootUrl": "http://localhost:3000/apps/dwh",
+      "baseUrl": "http://localhost:3000/apps/dwh",
       "enabled": true,
       "publicClient": true,
       "protocol": "openid-connect",
@@ -979,8 +979,8 @@
         "ui.displayInLauncher": "true",
         "ui.displayInSideNav": "false",
         "ui.launchMode": "internal",
-        "ui.launchUrl": "/portal/apps/dwh",
-        "ui.home": "/portal/apps/dwh",
+        "ui.launchUrl": "/apps/dwh",
+        "ui.home": "/apps/dwh",
         "ui.icon": "dashboard",
         "ui.category": "platform",
         "portal.accessRoles": "demo-platform-system_access",

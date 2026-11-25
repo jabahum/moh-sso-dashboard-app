@@ -21,8 +21,8 @@ It is the private workspace package `@moh-sso/shell` and owns global routing, la
 
 ## Development
 
-Run from `frontend/`. The shell uses the root `vite.config.ts` and serves on port 3000 under
-the `/portal/` base. `npm run dev` (also `npm run dev:shell`) applies the development runtime
+Run from `frontend/`. The shell uses the root `vite.config.ts` and serves on port 3000 at
+the root (`/`); legacy `/portal/...` URLs redirect to the matching root path. `npm run dev` (also `npm run dev:shell`) applies the development runtime
 config and then starts the shell; `npm run build` builds it.
 
 ```bash

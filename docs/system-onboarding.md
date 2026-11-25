@@ -26,7 +26,7 @@ Migration 48 (`000048_application_registry_lifecycle`) added the lifecycle and l
 
 ### System types and launch modes
 
-Portal systems explicitly declare `systemType` (`platform` or `external`), `displayInLauncher`, `displayInSideNav`, and `launchMode` (`internal`, `new_tab`, or `same_tab`). Platform systems use an internal `/portal` or `/apps` path and may provide navigation. External systems require an absolute HTTP or HTTPS URL and never provide portal side navigation.
+Portal systems explicitly declare `systemType` (`platform` or `external`), `displayInLauncher`, `displayInSideNav`, and `launchMode` (`internal`, `new_tab`, or `same_tab`). Platform systems use an internal root-relative path such as `/` or `/apps/...` and may provide navigation. External systems require an absolute HTTP or HTTPS URL and never provide portal side navigation.
 
 ### Module launcher cards
 

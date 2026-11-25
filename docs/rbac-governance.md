@@ -28,7 +28,7 @@ Portal RBAC owns:
 
 1. Create or confirm the Keycloak client.
 2. Create client roles in Keycloak.
-3. Run drift detection from `/portal/admin/rbac` or the CLI.
+3. Run drift detection from `/admin/rbac` or the CLI.
 4. Preview sync before applying it.
 5. Apply sync to create inert system and role records in portal RBAC.
 6. Fill system ownership metadata:
@@ -86,7 +86,7 @@ Export the current database state:
 system-rbac export-db --file config/system-rbac.seed.yaml
 ```
 
-Preview or apply imports from `/portal/admin/rbac`.
+Preview or apply imports from `/admin/rbac`.
 
 Imports support YAML or JSON. Destructive pruning is intentionally disabled unless explicitly implemented and enabled later.
 
@@ -121,7 +121,7 @@ Recommended flow:
 
 ## Permission catalog
 
-The permission catalog in `/portal/admin/rbac` is searchable by key, label, description, category, and status.
+The permission catalog in `/admin/rbac` is searchable by key, label, description, category, and status.
 
 Each permission shows usage counts for:
 - mapped system roles
@@ -155,7 +155,7 @@ RBAC write operations emit audit events for:
 - access request decisions
 - RBAC change request decisions
 
-The audit trail is available from `/portal/admin/rbac`.
+The audit trail is available from `/admin/rbac`.
 
 The audit view supports filtering by:
 - actor user ID
@@ -189,7 +189,7 @@ Use this before approving broad role changes or permission remaps.
 
 ## Troubleshooting access
 
-Use Effective Access in `/portal/admin/rbac` to explain access for a user.
+Use Effective Access in `/admin/rbac` to explain access for a user.
 
 Check:
 - Keycloak realm roles

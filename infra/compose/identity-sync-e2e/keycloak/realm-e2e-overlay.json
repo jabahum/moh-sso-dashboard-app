@@ -17,8 +17,8 @@
   {
    "clientId": "dashboard-web",
    "secret": "e2e-fake-dashboard-web-secret",
-   "rootUrl": "https://dashboard.e2e.test:18443/portal",
-   "baseUrl": "https://dashboard.e2e.test:18443/portal",
+   "rootUrl": "https://dashboard.e2e.test:18443/",
+   "baseUrl": "https://dashboard.e2e.test:18443/",
    "redirectUris": [
     "https://dashboard.e2e.test:18443/api/v1/auth/callback"
    ],
