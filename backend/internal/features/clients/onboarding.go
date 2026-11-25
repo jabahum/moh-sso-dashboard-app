@@ -34,7 +34,7 @@ func (s *Service) previewOnboarding(spec keycloak.OnboardingSpec) (*onboardingPr
 	if s.cfg == nil || s.cfg.KeycloakRealm == "" {
 		return nil, nil, fmt.Errorf("deployment Keycloak configuration is missing")
 	}
-	if err := keycloak.ValidateIdentityEnvironment(s.cfg.Environment, s.cfg.KeycloakRealm); err != nil {
+	if err := keycloak.ValidateIdentityEnvironment(s.cfg.Environment, s.cfg.KeycloakRealm, s.cfg.IdentityEnvironmentRealm); err != nil {
 		return nil, nil, err
 	}
 	client, err := keycloak.BuildOnboardingClient(spec, s.cfg.Environment)
@@ -88,7 +88,7 @@ func (h *Handler) OnboardingContext(c *gin.Context) {
 		return
 	}
 	cfg := h.service.cfg
-	if err := keycloak.ValidateIdentityEnvironment(cfg.Environment, cfg.KeycloakRealm); err != nil {
+	if err := keycloak.ValidateIdentityEnvironment(cfg.Environment, cfg.KeycloakRealm, cfg.IdentityEnvironmentRealm); err != nil {
 		response.Fail(c, 503, "ENVIRONMENT_MISMATCH", err.Error())
 		return
 	}

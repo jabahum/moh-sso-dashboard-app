@@ -143,13 +143,27 @@ func BuildOnboardingClient(spec OnboardingSpec, environment string) (*model.Clie
 }
 
 // ValidateIdentityEnvironment prevents a deployment administering another environment's realm.
-func ValidateIdentityEnvironment(environment, realm string) error {
+// override, when set, names this environment's realm instead of the default in
+// identity-environments.json; it may not be another environment's default realm.
+func ValidateIdentityEnvironment(environment, realm, override string) error {
 	data, _ := profileFiles.ReadFile("identity-environments.json")
 	var realms map[string]string
 	if err := json.Unmarshal(data, &realms); err != nil {
 		return err
 	}
-	if realms[environment] == "" || realms[environment] != realm {
+	expected := realms[environment]
+	if expected == "" {
+		return fmt.Errorf("identity environment/realm mismatch: configure this deployment's isolated realm")
+	}
+	if override = strings.TrimSpace(override); override != "" {
+		for other, otherRealm := range realms {
+			if other != environment && otherRealm == override {
+				return fmt.Errorf("IDENTITY_ENVIRONMENT_REALM %q belongs to the %s environment", override, other)
+			}
+		}
+		expected = override
+	}
+	if expected != realm {
 		return fmt.Errorf("identity environment/realm mismatch: configure this deployment's isolated realm")
 	}
 	return nil

@@ -18,6 +18,13 @@ and realm do not match `backend/internal/keycloak/identity-environments.json`:
 | staging | moh-staging | Existing shared Keycloak instance |
 | production | moh-realm | Existing production realm, unchanged |
 
+If an environment's existing realm has a different name, for example a production
+realm called `MoH`, set `IDENTITY_ENVIRONMENT_REALM` to that name alongside
+`KEYCLOAK_REALM` in the deployment's private environment file. The two must match,
+and the override may not name another environment's realm (a development deployment
+cannot declare `moh-realm`). Without it, client onboarding stops with
+"connected to a realm for a different environment".
+
 One Keycloak instance is sufficient for this setup. All realms use your existing
 identity hostname and certificate; their issuer paths differ. Users, clients,
 credentials, signing keys and sessions are separate per realm. Single sign-on works
