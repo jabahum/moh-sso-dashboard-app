@@ -1,7 +1,10 @@
-# Local HTTPS: test CLIMS against the dev stack
+# Local HTTPS: test CLIMS and POES against the dev stack
 
-Use this to test a local CLIMS against the dashboard dev stack end to end:
-launch from the portal, identity sync (preview, link, revoke, restore) and logout.
+Use this to test a local CLIMS and a local POES (Poesgo) against the dashboard
+dev stack end to end: launch from the portal, identity sync (preview, link,
+revoke, restore) and logout. For the walkthrough, the test checklists and
+troubleshooting, see
+[Testing connected applications locally](../../../docs/integrations/local-integration-testing.md).
 
 Browser sign-in alone works over plain HTTP. Identity sync does not:
 
@@ -11,8 +14,8 @@ Browser sign-in alone works over plain HTTP. Identity sync does not:
   Keycloak token endpoint it mints sync tokens at (`KEYCLOAK_INTERNAL_URL`).
 
 So these overrides move the dev Keycloak issuer to `https://localhost:8443`,
-using a local certificate authority, and put an HTTPS front on CLIMS for the
-dashboard backend. For a disposable stack with synthetic data and the
+using a local certificate authority, and put an HTTPS front on CLIMS and POES
+for the dashboard backend. For a disposable stack with synthetic data and the
 automated suites, use [identity-sync-e2e](../identity-sync-e2e/README.md) instead.
 
 | | Address |
@@ -20,15 +23,24 @@ automated suites, use [identity-sync-e2e](../identity-sync-e2e/README.md) instea
 | Keycloak issuer | `https://localhost:8443/realms/moh-realm` (`http://localhost:8081` still answers) |
 | Portal | `http://localhost:3000/portal/` |
 | CLIMS in the browser | `http://localhost:8080` (CLIMS Docker stack's nginx) |
-| CLIMS for the dashboard (sync origin) | `https://clims.local.test`, only inside the dev network |
+| POES backend / admin in the browser | `http://localhost:8082` / `http://localhost:3001` (poesGo dev stack) |
+| Sync origins for the dashboard | `https://clims.local.test`, `https://poes.local.test`, only inside the dev network |
 
-Certificates, the trust bundle, the Caddyfiles and the clims client secret live in
-`LOCAL_HTTPS_DIR` (default `~/.moh-dev-https`), outside the repository.
+| File | Applied to |
+| --- | --- |
+| `dashboard.override.yml` | The dashboard dev stack: HTTPS Keycloak, backend trust and sync settings, `clims-tls` (HTTPS front for both applications) |
+| `clims.override.yml` | The CLIMS repository's Docker stack (project `clims`) |
+| `poes.override.yml` | The poesGo repository's dev stack (project `poesgo-dev`) |
+| `setup.sh` | Writes certificates, the trust bundle, Caddyfiles and client secrets to `LOCAL_HTTPS_DIR` |
+
+Everything `setup.sh` writes lives in `LOCAL_HTTPS_DIR` (default
+`~/.moh-dev-https`), outside the repository. The commands below assume the
+three repositories sit side by side (`moh-sso-dashboard`, `clims`, `poesGo`).
 
 ## 1. Prepare
 
 ```sh
-infra/compose/local-https/setup.sh            # local CA, certificate, trust bundle, Caddyfiles
+infra/compose/local-https/setup.sh   # local CA, certificates, trust bundle, Caddyfiles
 ```
 
 Trust the CA once so your browser accepts `https://localhost:8443`. Chrome and Safari
@@ -51,17 +63,20 @@ Pass the same `-f` files to every later `docker compose` command on these servic
 `make dev-up` and plain compose bring back the HTTP issuer.
 
 In the dev realm, the `clims` client needs the redirect URI
-`http://localhost:8080/api/v1/auth/sso/callback`.
+`http://localhost:8080/api/v1/auth/sso/callback`, and `poesgo` needs
+`http://localhost:8082/api/v1/auth/sso/callback`.
+
+Then save both client secrets from the running Keycloak (they are not displayed):
+
+```sh
+infra/compose/local-https/setup.sh --secret
+```
 
 ## 3. Start CLIMS against it
 
-Save the clims client secret from the running Keycloak (not displayed), then, from
-the CLIMS repository:
+From the CLIMS repository:
 
 ```sh
-infra/compose/local-https/setup.sh --secret   # run in the dashboard repository
-
-cd ../clims
 OIDC_CLIENT_SECRET=$(cat ~/.moh-dev-https/clims-oidc-secret.txt) docker compose -p clims \
   --env-file infra/env/dev.env -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.dev.yml \
   -f ../moh-sso-dashboard/infra/compose/local-https/clims.override.yml \
@@ -73,56 +88,77 @@ The override sets `APP_ENV=development` and `IDENTITY_SYNC_TEST_PROBE=1`, so the
 conformance suite's session probe is available. Never use either outside a test
 environment.
 
-## 4. Register CLIMS for identity sync and the launcher
+## 4. Start POES against it
+
+From the poesGo repository (`POESGO_DEV_PORT=8082` in its `infra/compose/.env`;
+the admin runs on 3001 because the portal uses 3000):
+
+```sh
+cd infra/compose
+POESGO_DEV_FRONTEND_PORT=3001 OIDC_CLIENT_SECRET=$(cat ~/.moh-dev-https/poes-oidc-secret.txt) docker compose \
+  -f docker-compose.dev.yml -f ../../../moh-sso-dashboard/infra/compose/local-https/poes.override.yml \
+  up -d --no-build kc-loopback backend frontend
+```
+
+The override puts POES in OIDC mode, which refuses password sign-in, and sets
+`OIDC_WEB_HANDOFF_URL` so a portal sign-in lands in the Next.js admin (see
+"Web handoff" in poesGo's `docs/23-sso-and-identity-sync-onboarding.md`). The admin's login
+page offers "Sign in with the MOH Integrated Health Portal". To go back to local
+mode, run the same `up` without the override and `docker rm -f poesgo-dev-kc-loopback-1`.
+
+## 5. Register both applications
 
 ```sh
 docker exec -w /app moh-sso-dashboard-dev-backend-1 sh -c 'go build -o /tmp/moh-sso ./cmd/cli'
-docker exec -w /app moh-sso-dashboard-dev-backend-1 /tmp/moh-sso identity-sync register --app clims \
-  --origin https://clims.local.test --sync-client clims-identity-sync --access-role clims_access \
-  --credential keycloak:clims-identity-sync --account-id-format uuid \
+cli="docker exec -w /app moh-sso-dashboard-dev-backend-1 /tmp/moh-sso identity-sync"
+
+$cli register --app clims --origin https://clims.local.test --sync-client clims-identity-sync \
+  --access-role clims_access --credential keycloak:clims-identity-sync --account-id-format uuid \
   --reason "Local dev: CLIMS Docker stack" --enable
-docker exec -w /app moh-sso-dashboard-dev-backend-1 /tmp/moh-sso identity-sync describe --app clims
+$cli register --app poesgo --origin https://poes.local.test --sync-client poesgo-identity-sync \
+  --access-role poesgo_access --credential keycloak:poesgo-identity-sync --account-id-format positive-integer \
+  --reason "Local dev: POES dev stack" --enable
+$cli describe --app clims
+$cli describe --app poesgo
 ```
 
-**Expect:** the descriptor shows contract `1.1`, application `clims`, `uuid` and the
+**Expect:** each descriptor shows contract `1.1`, its application (`clims` or
+`poesgo`), its account ID format (`uuid` or `positive-integer`) and the
 capabilities `accounts.list`, `identity.link` and `sessions.revoke`.
 
-The `clims-identity-sync` service identity must be bound to `clims`, which a portal
-admin does once (see [Connected applications](../../../docs/integrations/connected-applications.md#5-connect-an-application)).
+Each sync client must first be bound to its application as a service identity,
+which a portal admin does once (see
+[Connected applications](../../../docs/integrations/connected-applications.md#5-connect-an-application)).
 
-The seeded CLIMS launcher entry points at production. Change its launch URL to
-`http://localhost:8080/api/v1/auth/sso/start` in Admin → Systems. Changing the
-launch URL sends an active system back to `configured`, so take it through
-validate, approve and activate again.
+The seeded launcher entries point at production. Change the launch URLs to
+`http://localhost:8080/api/v1/auth/sso/start` (CLIMS) and
+`http://localhost:8082/api/v1/auth/sso/start` (POES) in Admin → Systems.
+Changing a launch URL sends an active system back to `configured`, so take it
+through validate, approve and activate again.
 
-## 5. Link a user and test
+## 6. Link a user and test
 
-CLIMS opens an account only through a link the dashboard recorded, keyed by issuer
-and Keycloak subject. Moving the issuer to HTTPS needs new links, even for users
-linked under `http://localhost:8081` before. The portal user needs a CLIMS account
-with the same verified email:
+CLIMS and POES open an account only through a link the dashboard recorded, keyed
+by issuer and Keycloak subject. Moving the issuer to HTTPS needs new links, even
+for users linked under `http://localhost:8081` before. The portal user needs an
+account in the application with the same verified email:
 
 ```sh
-cli="docker exec -w /app moh-sso-dashboard-dev-backend-1 /tmp/moh-sso identity-sync"
 $cli preview --app clims --limit 25
-$cli apply   --app clims --account <clims-user-id> --approved-subject <keycloak-user-id>
-$cli revoke  --app clims --subject <keycloak-user-id> --reason "..." --revoker <you>   # ends live CLIMS sessions
-$cli restore --app clims --subject <keycloak-user-id> --reason "..." --restorer <you>  # then grant clims_access again
+$cli apply   --app clims --account <account-id> --approved-subject <keycloak-user-id>
+$cli revoke  --app clims --subject <keycloak-user-id> --reason "..." --revoker <you>   # ends live sessions
+$cli restore --app clims --subject <keycloak-user-id> --reason "..." --restorer <you>  # then grant the access role again
 ```
 
-Check, as the linked user:
+Use `--app poesgo` for POES. To link at every backend start without review, set
+`IDENTITY_SYNC_AUTO_LINK_APPS` (see the guide). The test checklists are in the
+[guide](../../../docs/integrations/local-integration-testing.md#5-test-checklist).
 
-1. The portal's application menu shows CLIMS, and it opens without a second login.
-2. After `revoke`, an open CLIMS session gets 401 and a new sign-in shows
-   "Could not sign in from the portal" (`sso_error=denied`).
-3. Portal logout returns to the portal, and CLIMS's next launch asks for a login.
-   CLIMS's own session keeps working until it expires or you sign out of CLIMS:
-   portal logout cannot end independently managed sessions.
-
-If CLIMS data came from a production dump, link only test accounts, and don't run
-`identity-sync conformance` against it: that suite creates links on fixture accounts.
+If an application's data came from a production dump, link only test accounts,
+and don't run `identity-sync conformance` against it: that suite creates links on
+fixture accounts.
 
 ## Undo
 
 Re-run each stack's normal `up` for the same services without the override, then
-`docker rm -f moh-sso-dashboard-dev-clims-tls-1 clims-kc-loopback-1`.
+`docker rm -f moh-sso-dashboard-dev-clims-tls-1 clims-kc-loopback-1 poesgo-dev-kc-loopback-1`.

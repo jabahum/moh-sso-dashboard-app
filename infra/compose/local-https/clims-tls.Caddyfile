@@ -9,3 +9,10 @@ https://clims.local.test:443 {
 	tls /certs/leaf.crt /certs/leaf.key
 	reverse_proxy host.docker.internal:8080
 }
+
+# HTTPS front for the POES dev backend (its host port, 127.0.0.1:8082 here),
+# for the dashboard's POES identity-sync calls.
+https://poes.local.test:443 {
+	tls /certs/poes.crt /certs/poes.key
+	reverse_proxy host.docker.internal:8082
+}
