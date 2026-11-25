@@ -2,6 +2,15 @@
   "realm": "moh-realm",
   "enabled": true,
   "sslRequired": "none",
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "noreply@moh.go.ug",
+    "fromDisplayName": "MOH Integrated Health Portal",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
   "loginTheme": "moh-theme",
   "accountTheme": "moh-theme",
   "adminTheme": "moh-theme",

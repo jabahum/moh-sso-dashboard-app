@@ -204,6 +204,32 @@ To test a local CLIMS against the dev stack instead, with the portal launcher,
 identity sync and logout, use the overrides in `infra/compose/local-https/`. They
 move the dev Keycloak issuer to HTTPS, which CLIMS needs to enable sync (see its README).
 
+### Automatic linking at startup
+
+Set `IDENTITY_SYNC_AUTO_LINK_APPS` (comma-separated registry application IDs,
+for example `clims`) to link accounts in the background every time the backend
+starts, without a reviewer. Each pass:
+
+1. resumes earlier auto-link runs that did not finish (for example a failed
+   invitation email);
+2. starts a run, approves its `reuse` and `create` rows as `system:auto-link`
+   with a note saying so, and applies it: `reuse` links the one verified
+   Keycloak user with the account's email; `create` makes a Keycloak user,
+   emails an invitation (verify email and set a password) and links it. Both
+   grant the access role;
+3. leaves `review` (no email, ambiguous, unverified, linked under another
+   issuer), `linked_no_access` and `revoked` rows alone. They still need a person.
+
+The pass runs on one replica (Postgres advisory lock) and retries every 30 seconds,
+up to 20 times, while the application is unreachable. Every link, invitation and
+grant goes through the same checks as a reviewed run, and the run is visible in
+`identity-sync run show` and the portal with `system:auto-link` as creator and reviewer.
+
+This skips the review that the [pilot runbook](../operations/identity-sync-pilot.md)
+relies on: an account's email in the application decides which Keycloak user
+it is linked to, and who receives an invitation. Enable it only when the
+application's emails are trusted, and keep it empty for the pilot.
+
 ## 6. Adding another application
 
 1. The application implements the [contract](identity-sync-contract.md). A Go

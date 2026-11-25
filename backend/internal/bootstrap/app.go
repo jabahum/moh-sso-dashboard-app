@@ -247,6 +247,8 @@ func Run() {
 		}
 	}()
 
+	startIdentitySyncAutoLink(ctx, cfg, dbs.Primary, adminKC, appLogger)
+
 	services.Notifications.NotifySystemStartup(ctx, cfg.Environment)
 
 	// ==================================================

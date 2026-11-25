@@ -92,6 +92,9 @@ type Config struct {
 	RBACStartupSyncPushToKeycloak  bool   `mapstructure:"RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK"`
 	RBACStartupSyncUsers           bool   `mapstructure:"RBAC_STARTUP_SYNC_USERS"`
 	RBACStartupSyncFailOnError     bool   `mapstructure:"RBAC_STARTUP_SYNC_FAIL_ON_ERROR"`
+	// IdentitySyncAutoLinkApps lists registered applications (comma-separated client IDs)
+	// whose accounts are linked at startup without review. Empty disables it.
+	IdentitySyncAutoLinkApps string `mapstructure:"IDENTITY_SYNC_AUTO_LINK_APPS"`
 
 	// ==================================================
 	// TLS
@@ -349,6 +352,7 @@ func setDefaults() {
 	viper.SetDefault("RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK", true)
 	viper.SetDefault("RBAC_STARTUP_SYNC_USERS", true)
 	viper.SetDefault("RBAC_STARTUP_SYNC_FAIL_ON_ERROR", false)
+	viper.SetDefault("IDENTITY_SYNC_AUTO_LINK_APPS", "")
 
 	// ==================================================
 	// SMTP defaults for local MailHog
@@ -448,6 +452,7 @@ func envBindings() map[string]string {
 		"RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK":    "RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK",
 		"RBAC_STARTUP_SYNC_USERS":               "RBAC_STARTUP_SYNC_USERS",
 		"RBAC_STARTUP_SYNC_FAIL_ON_ERROR":       "RBAC_STARTUP_SYNC_FAIL_ON_ERROR",
+		"IDENTITY_SYNC_AUTO_LINK_APPS":          "IDENTITY_SYNC_AUTO_LINK_APPS",
 		"ENABLE_TLS":                            "ENABLE_TLS",
 		"TLS_CERT":                              "TLS_CERT",
 		"TLS_KEY":                               "TLS_KEY",
@@ -765,6 +770,20 @@ func (c *Config) CookieSameSiteMode() string {
 	//
 	// SameSite=Lax is correct for OAuth top-level navigation callbacks.
 	return "Lax"
+}
+
+// IdentitySyncAutoLinkApplications returns the distinct application client IDs
+// in IDENTITY_SYNC_AUTO_LINK_APPS, in order.
+func (c *Config) IdentitySyncAutoLinkApplications() []string {
+	var apps []string
+	seen := map[string]bool{}
+	for _, app := range strings.Split(c.IdentitySyncAutoLinkApps, ",") {
+		if app = strings.TrimSpace(app); app != "" && !seen[app] {
+			seen[app] = true
+			apps = append(apps, app)
+		}
+	}
+	return apps
 }
 
 func (c *Config) KeycloakTokenBaseURL() string {
