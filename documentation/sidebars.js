@@ -71,6 +71,11 @@ export default {
             },
             {
               type: 'doc',
+              id: 'docs/integrations/alerts-integration',
+              label: 'Connecting Alerts Manager',
+            },
+            {
+              type: 'doc',
               id: 'docs/integrations/local-integration-testing',
               label: 'Testing connected applications locally',
             },
