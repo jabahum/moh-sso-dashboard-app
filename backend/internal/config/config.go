@@ -18,10 +18,14 @@ type Config struct {
 	// ==================================================
 	// Global
 	// ==================================================
-	Environment     string `mapstructure:"ENVIRONMENT"`
-	GinMode         string `mapstructure:"GIN_MODE"`
-	PlatformProfile string `mapstructure:"PLATFORM_PROFILE"`
-	DisabledModules string `mapstructure:"DISABLED_MODULES"`
+	Environment string `mapstructure:"ENVIRONMENT"`
+	// Optional realm this deployment's ENVIRONMENT administers, when it differs
+	// from the default in keycloak/identity-environments.json (for example an
+	// existing production realm named "MoH").
+	IdentityEnvironmentRealm string `mapstructure:"IDENTITY_ENVIRONMENT_REALM"`
+	GinMode                  string `mapstructure:"GIN_MODE"`
+	PlatformProfile          string `mapstructure:"PLATFORM_PROFILE"`
+	DisabledModules          string `mapstructure:"DISABLED_MODULES"`
 
 	DevAuthBypass bool `mapstructure:"DEV_AUTH_BYPASS"`
 
@@ -410,6 +414,7 @@ func envBindings() map[string]string {
 		"OBSERVATORY_DB_PASSWORD":               "OBSERVATORY_DB_PASSWORD",
 		"OBSERVATORY_DB_ENABLE_SSL":             "OBSERVATORY_DB_ENABLE_SSL",
 		"ENVIRONMENT":                           "ENVIRONMENT",
+		"IDENTITY_ENVIRONMENT_REALM":            "IDENTITY_ENVIRONMENT_REALM",
 		"GIN_MODE":                              "GIN_MODE",
 		"DEV_AUTH_BYPASS":                       "DEV_AUTH_BYPASS",
 		"ALLOW_INSECURE_HTTP":                   "ALLOW_INSECURE_HTTP",

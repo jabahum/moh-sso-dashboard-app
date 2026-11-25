@@ -46,3 +46,26 @@ func TestOnboardingProfilesAndEnvironmentIsolation(t *testing.T) {
 		t.Fatal("service launcher accepted")
 	}
 }
+
+func TestValidateIdentityEnvironmentRealmOverride(t *testing.T) {
+	for _, tc := range []struct {
+		name, environment, realm, override string
+		ok                                 bool
+	}{
+		{"default production realm", "production", "moh-realm", "", true},
+		{"default realm mismatch", "production", "MoH", "", false},
+		{"production realm override", "production", "MoH", "MoH", true},
+		{"override is trimmed", "production", "MoH", " MoH ", true},
+		{"override must match configured realm", "production", "moh-realm", "MoH", false},
+		{"override cannot claim another environment's realm", "production", "moh-dev", "moh-dev", false},
+		{"dev cannot claim the production realm", "development", "moh-realm", "moh-realm", false},
+		{"unknown environment", "qa", "MoH", "MoH", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateIdentityEnvironment(tc.environment, tc.realm, tc.override)
+			if (err == nil) != tc.ok {
+				t.Fatalf("ValidateIdentityEnvironment(%q, %q, %q) = %v, want ok=%v", tc.environment, tc.realm, tc.override, err, tc.ok)
+			}
+		})
+	}
+}
