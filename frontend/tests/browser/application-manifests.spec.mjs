@@ -63,7 +63,7 @@ for (const width of [1280, 390]) {
       } else if (path.includes("unread")) data = { count: 0 };
       await route.fulfill({ json: { success: true, data } });
     });
-    await page.goto("/portal/admin/systems");
+    await page.goto("/admin/systems");
     await page.getByRole("button", { name: "Import manifest", exact: true }).click();
     await page
       .getByLabel("YAML or JSON manifest")
@@ -138,21 +138,21 @@ for (const authorized of [true, false]) {
       } else if (path.includes("unread")) data = { count: 0 };
       await route.fulfill({ json: { success: true, data } });
     });
-    await page.goto("/portal/apps/extensions/example-reports/chapter-one");
+    await page.goto("/apps/extensions/example-reports/chapter-one");
     if (authorized) {
       await expect(
-        page.getByText("Approved reports at /portal/apps/extensions/example-reports", {
+        page.getByText("Approved reports at /apps/extensions/example-reports", {
           exact: true,
         }),
       ).toBeVisible();
       await page.reload();
       await expect(
-        page.getByText("Approved reports at /portal/apps/extensions/example-reports", {
+        page.getByText("Approved reports at /apps/extensions/example-reports", {
           exact: true,
         }),
       ).toBeVisible();
       await page.evaluate(() => {
-        window.history.pushState({}, "", "/portal/apps/news");
+        window.history.pushState({}, "", "/apps/news");
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
       await expect

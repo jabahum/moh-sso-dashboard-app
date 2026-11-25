@@ -24,7 +24,7 @@ test(`admin reviews and provisions a disabled client at ${viewport.width}px`, as
     } else if (path.includes('unread')) data = { count: 0 };
     await route.fulfill({ json: { success: true, data } });
   });
-  await page.goto('/portal/admin/clients');
+  await page.goto('/admin/clients');
   const main = page.locator('#main-content');
   // The empty state repeats this action when no clients exist; use the page-header one.
   const openOnboarding = page.getByRole('button', { name: 'Onboard application', exact: true }).first();
@@ -115,7 +115,7 @@ for (const scenario of ["missing-api", "wrong-realm"]) {
         },
       });
     });
-    await page.goto("/portal/admin/clients");
+    await page.goto("/admin/clients");
     await page.getByRole("button", { name: "Onboard application", exact: true }).first().click();
     await expect(
       page.getByText(

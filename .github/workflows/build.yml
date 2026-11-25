@@ -139,7 +139,7 @@ jobs:
             COMMIT=${{ github.sha }}
             BUILD_TIME=${{ steps.frontend-meta.outputs.build_time }}
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
-            DOCS_URL=${{ vars.DOCS_URL || 'https://dashboards.health.go.ug' }}
+            DOCS_URL=${{ vars.DOCS_URL || 'https://portals.health.go.ug' }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_REPO }}-${{ matrix.suffix }}:buildcache,mode=max
 

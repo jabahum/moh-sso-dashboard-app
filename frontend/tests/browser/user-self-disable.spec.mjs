@@ -40,7 +40,7 @@ test("users cannot disable themselves individually, in bulk, or through profile 
           : [];
     return route.fulfill({ json: { success: true, data } });
   });
-  await page.goto("/portal/admin/users");
+  await page.goto("/admin/users");
   const ownRow = page
     .getByRole("row")
     .filter({ has: page.getByText("current-admin", { exact: true }) });

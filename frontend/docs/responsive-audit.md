@@ -34,19 +34,19 @@ Use these viewports when checking the portal:
 
 ## Areas to check manually
 
-- Public news page: `/portal/`
-- Admin users: `/portal/admin/users`
-- Admin clients: `/portal/admin/clients`
-- Admin systems: `/portal/admin/systems`
-- RBAC: `/portal/admin/rbac`
-- Email outbox: `/portal/admin/emails`
-- Audit logs: `/portal/admin/audit-logs`
-- Documents: `/portal/apps/dwh/documents`
-- Data validation: `/portal/apps/dwh/data-validation`
-- Data visualizer: `/portal/apps/dwh/data-visualizer`
-- Issue tracker: `/portal/apps/dwh/issue-tracker`
-- Surveillance: `/portal/apps/dwh/surveillance`
-- Utilities/settings: `/portal/apps/utilities/self-service`
+- Public news page: `/`
+- Admin users: `/admin/users`
+- Admin clients: `/admin/clients`
+- Admin systems: `/admin/systems`
+- RBAC: `/admin/rbac`
+- Email outbox: `/admin/emails`
+- Audit logs: `/admin/audit-logs`
+- Documents: `/apps/dwh/documents`
+- Data validation: `/apps/dwh/data-validation`
+- Data visualizer: `/apps/dwh/data-visualizer`
+- Issue tracker: `/apps/dwh/issue-tracker`
+- Surveillance: `/apps/dwh/surveillance`
+- Utilities/settings: `/apps/utilities/self-service`
 
 ## Remaining manual QA
 

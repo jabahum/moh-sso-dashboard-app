@@ -20,12 +20,12 @@ class Environments(unittest.TestCase):
     def test_realms_exclude_humans_credentials_and_external_app_urls(self):
         names = set()
         for environment, name in bootstrap.REALMS.items():
-            realm = bootstrap.render(environment, 'https://portal.example.org/portal', 'https://portal.example.org/api/v1')
+            realm = bootstrap.render(environment, 'https://portal.example.org', 'https://portal.example.org/api/v1')
             names.add(realm['realm'])
             self.assertEqual(realm['realm'], name)
             self.assertTrue(all(u.get('serviceAccountClientId') for u in realm['users']))
             encoded = json.dumps(realm)
-            for forbidden in ('"credentials"', '"secret"', '"privateKey"', 'timesheet.health.go.ug', 'dashboards.health.go.ug', 'localhost:3000'):
+            for forbidden in ('"credentials"', '"secret"', '"privateKey"', 'timesheet.health.go.ug', 'dashboards.health.go.ug', 'portals.health.go.ug', 'localhost:3000'):
                 self.assertNotIn(forbidden, encoded)
             web = next(c for c in realm['clients'] if c['clientId'] == 'dashboard-web')
             self.assertEqual(web['redirectUris'], ['https://portal.example.org/api/v1/auth/callback'])
@@ -87,7 +87,7 @@ class IdentitySyncUserProfile(unittest.TestCase):
 
     def test_generated_environment_realms_keep_the_user_profile(self):
         for environment in bootstrap.REALMS:
-            realm = bootstrap.render(environment, 'https://portal.example.org/portal', 'https://portal.example.org/api/v1')
+            realm = bootstrap.render(environment, 'https://portal.example.org', 'https://portal.example.org/api/v1')
             self.assert_admin_only(realm, environment)
             self.assertEqual(set(realm.get('components', {})), {'org.keycloak.userprofile.UserProfileProvider'})
 

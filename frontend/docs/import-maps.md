@@ -18,7 +18,7 @@ frontend/public/import-map.local.json
 /packages/<package>/index.js
 ```
 
-The production Docker images (`infra/docker/frontend/Dockerfile`, `Dockerfile.nginx`, `Dockerfile.npm-modules`) set `FRONTEND_ASSET_BASE_URL=/portal` and `FRONTEND_BASE_PATH=/portal`, so the generated map points to `/portal/mf/<app>/single-spa.js` and `/portal/packages/<package>/index.js`. The staging step copies the static artifact into `dist/portal/` as well, so these URLs resolve under the shell's `/portal/` base path.
+The production Docker images (`infra/docker/frontend/Dockerfile`, `Dockerfile.nginx`, `Dockerfile.npm-modules`) set `FRONTEND_ASSET_BASE_URL=/` and `FRONTEND_BASE_PATH=/`, so the generated map points to `/mf/<app>/single-spa.js` and `/packages/<package>/index.js`, served alongside the root-based shell.
 
 ## Vendor dependencies
 
@@ -47,7 +47,7 @@ App bundles in the default non-versioned map:
 /mf/<app>/single-spa.js
 ```
 
-In production Docker builds, these become `/portal/mf/<app>/single-spa.js`.
+Production Docker builds use these root paths unchanged.
 
 The staged app folder also contains related chunks, CSS, route files, and declarations. Remote hosts must serve the whole `/mf/<app>/` folder, not only `single-spa.js`.
 
@@ -57,7 +57,7 @@ Shared packages:
 /packages/<package>/index.js
 ```
 
-In production Docker builds, these become `/portal/packages/<package>/index.js`.
+Production Docker builds use these root paths unchanged.
 
 The staged package folder may contain CSS or related files. Remote hosts should serve the whole `/packages/<package>/` folder.
 

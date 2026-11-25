@@ -46,7 +46,7 @@ Development Compose uses the same selection. For example, `FRONTEND_MODULE_SOURC
 ```bash
 cd frontend
 npm run config:prod
-FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+FRONTEND_ASSET_BASE_URL=/ FRONTEND_BASE_PATH=/ npm run build:docker
 ```
 
 This reads `production.source`. Workspace mode builds all modules from source. Npm mode installs the production pins, typechecks and builds the shell against their public exports, and stages the installed app and package bundles into the static deployment. The import map and version manifest use the selected versions.

@@ -11,8 +11,10 @@ import {
 } from "../preferences";
 
 function getLaunchPath(system: { launchUrl?: string; clientId: string }) {
-  if (system.launchUrl && isSafeInternalPath(system.launchUrl.replace(/^\/portal/, ""))) {
-    return system.launchUrl.replace(/^\/portal/, "");
+  // Legacy launch URLs may still carry the retired /portal prefix.
+  const launchPath = system.launchUrl?.replace(/^\/portal(?=\/|$)/, "") || "/";
+  if (system.launchUrl && isSafeInternalPath(launchPath)) {
+    return launchPath;
   }
 
   return `/apps/${system.clientId}`;

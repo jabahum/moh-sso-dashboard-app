@@ -85,10 +85,10 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-CI runs these with `FRONTEND_ASSET_BASE_URL=/portal` and `FRONTEND_BASE_PATH=/portal`
+CI runs these with `FRONTEND_ASSET_BASE_URL=/` and `FRONTEND_BASE_PATH=/`
 after the production build. Playwright (`frontend/playwright.config.mjs`) starts
 `infra/scripts/serve-browser-fixture.py` on `127.0.0.1:5417`, which serves
-`frontend/dist` with SPA fallback and replaces `/portal/config.js` with a fixture
+`frontend/dist` with SPA fallback and replaces `/config.js` with a fixture
 that sets the API URL to `/ssobackend` and selects remote, orchestrated
 microfrontend mode. API/session responses are local fixtures; no real credentials
 or application API are used. `scripts/prepare-browser-dependencies.mjs` mirrors the

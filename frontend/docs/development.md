@@ -31,7 +31,7 @@ npm install
 npm run dev:shell
 ```
 
-This runs `scripts/frontend-modules.mjs dev`: it selects the `development` entry of `module-sources.json` (source `workspace`, so apps and packages resolve from this checkout), copies `public/config.development.js` to `public/config.js` (skipped when `FRONTEND_RUNTIME_CONFIG_PREPARED=true`, as in the Docker dev image), and starts the shell on port `3000` at `http://localhost:3000/portal/`. `npm run dev` is the same command.
+This runs `scripts/frontend-modules.mjs dev`: it selects the `development` entry of `module-sources.json` (source `workspace`, so apps and packages resolve from this checkout), copies `public/config.development.js` to `public/config.js` (skipped when `FRONTEND_RUNTIME_CONFIG_PREPARED=true`, as in the Docker dev image), and starts the shell on port `3000` at `http://localhost:3000/`. `npm run dev` is the same command.
 
 ## Remote microfrontend development
 
@@ -95,7 +95,7 @@ Each script copies `public/config.<mode>.js` to `public/config.js` (`scripts/use
 | --- | --- | --- | --- | --- | --- |
 | `config:dev` | `config.development.js` | `http://localhost:9000` | `local` | `false` | `hybrid` |
 | `config:local-remote` | `config.local-remote.js` | `http://localhost:9000` | `remote` | `false` | `hybrid` |
-| `config:prod` | `config.production.js` | `https://dashboards.health.go.ug/ssobackend` | `remote` | `true` | `orchestrated` |
+| `config:prod` | `config.production.js` | `https://portals.health.go.ug/ssobackend` | `remote` | `true` | `orchestrated` |
 
 Normal development uses local/hybrid mode, which `npm run dev:shell` activates automatically.
 

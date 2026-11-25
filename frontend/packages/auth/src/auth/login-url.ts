@@ -1,6 +1,6 @@
 export function currentPortalReturnTo(): string {
   if (typeof window === "undefined") {
-    return "/portal";
+    return "/";
   }
 
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;

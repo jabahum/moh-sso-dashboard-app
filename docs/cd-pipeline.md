@@ -179,7 +179,7 @@ both example application IPs. Include the HTTP-context and portal-location files
 inside the existing HTTPS site. Preserve Report Browser's `/` and `/report-browser/`
 ownership. Provision the environment's certificate and HTTPS redirect there.
 
-For gateway mode, preserve `/portal/` and `/ssobackend/` when forwarding to the
+For gateway mode, preserve the request path (the portal at `/`, the API at `/ssobackend/`) when forwarding to the
 gateway and configure the server-local trusted-proxy file in both places. Public
 DNS points at the HTTPS proxy. Allow application ports 3000/9000 only from that
 proxy's actual private source IP; account for Docker's forwarded traffic. Keep

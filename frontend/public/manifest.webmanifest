@@ -2,31 +2,31 @@
   "name": "MOH Integrated Health Portal",
   "short_name": "MOH Portal",
   "description": "Ministry of Health Uganda integrated health systems portal.",
-  "start_url": "/portal/",
-  "scope": "/portal/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f62fe",
   "orientation": "any",
   "icons": [
     {
-      "src": "/portal/icons/icon-192.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/portal/icons/icon-512.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/portal/icons/maskable-192.png",
+      "src": "/icons/maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/portal/icons/maskable-512.png",
+      "src": "/icons/maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

@@ -56,7 +56,7 @@ registered origins are identical everywhere.
 | Host | Serves |
 |---|---|
 | `sso.e2e.test` | Keycloak 26.0.5, realm `moh-realm`. Issuer `https://sso.e2e.test:18443/realms/moh-realm` |
-| `dashboard.e2e.test` | The portal SPA at `/portal/` (see below), and the dashboard backend (core profile) for everything else |
+| `dashboard.e2e.test` | The portal SPA at `/` (see below), and the dashboard backend (core profile) for `/api`, `/health`, `/version` and `/swagger` |
 | `clims.e2e.test` | CLIMS: `/api`, `/docs` and `/health` go to the backend, everything else to the Next.js SPA |
 | `poes.e2e.test` | POES backend, including its `/api/v1/auth/sso/session` landing page |
 | `mail.e2e.test` | Mailpit UI and API (`/api/v1/messages`). It catches all SMTP from Keycloak and the dashboard |

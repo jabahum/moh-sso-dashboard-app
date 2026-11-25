@@ -65,7 +65,7 @@ def main():
         root = Path(tmp)
         try:
             imports = json.loads((ROOT / 'frontend/public/import-map.json').read_text())['imports']
-            imports = {name: '/portal/mf/' + name.split('/')[-1] + '.js' for name in imports if name.startswith('@moh-sso/')}
+            imports = {name: '/mf/' + name.split('/')[-1] + '.js' for name in imports if name.startswith('@moh-sso/')}
             (root / 'imports.json').write_text(json.dumps({'imports': imports}))
             dependencies = distribution_metadata()
             (root / 'module-pins.json').write_text(json.dumps({name: {'name': name, 'version': version}
@@ -78,10 +78,10 @@ const commit = process.env.FIXTURE_COMMIT;
 if (process.env.ROLE === 'backend' && !fs.existsSync('/data/marker')) fs.writeFileSync('/data/marker', 'preserved');
 http.createServer((req,res) => {
   if (req.url === '/version') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({success:true,data:{version:process.env.BROKEN_VERSION==='1'?'0.0.0':version,commit}})); }
-  if (req.url === '/portal/version-manifest.json') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({service:{version,commit},apps:{},packages:JSON.parse(fs.readFileSync('/fixture/module-pins.json'))})); }
+  if (req.url === '/version-manifest.json') { res.setHeader('Content-Type','application/json'); return res.end(JSON.stringify({service:{version,commit},apps:{},packages:JSON.parse(fs.readFileSync('/fixture/module-pins.json'))})); }
   if (req.url === '/setting') return res.end(process.env.FIXTURE_SETTING);
-  if (req.url === '/portal/import-map.json') {res.setHeader('Content-Type','application/json'); return res.end(fs.readFileSync('/fixture/imports.json'));}
-  if (req.url === '/portal/') {res.setHeader('Content-Type','text/html'); return res.end('<!doctype html><div id="root"></div><script src="/portal/assets/index-fixture.js"></script>');}
+  if (req.url === '/import-map.json') {res.setHeader('Content-Type','application/json'); return res.end(fs.readFileSync('/fixture/imports.json'));}
+  if (req.url === '/') {res.setHeader('Content-Type','text/html'); return res.end('<!doctype html><div id="root"></div><script src="/assets/index-fixture.js"></script>');}
   if (req.url.endsWith('.js')) {res.setHeader('Content-Type','application/javascript');return res.end('window.__APP_CONFIG__ = {};');}
   res.end('ready');
 }).listen(process.env.ROLE === 'backend' ? 9000 : 3000, '0.0.0.0');

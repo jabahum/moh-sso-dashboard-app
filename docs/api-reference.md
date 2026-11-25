@@ -158,7 +158,7 @@ system access.
 
 `auth/me` is the primary frontend bootstrap endpoint. It is the source for menu visibility, app launcher visibility, permissions, and accessible systems.
 
-`auth/launch` accepts only `/portal` paths or absolute URLs whose origin is listed in
+`auth/launch` accepts only root-relative portal paths (legacy `/portal/...` paths are normalized) or absolute URLs whose origin is listed in
 `AUTH_RETURN_URL_ALLOWED_ORIGINS`. The backend binds the target to the OAuth state and
 uses the normal fixed Keycloak callback URI; callers must not register arbitrary return
 paths as Keycloak redirect URIs.
@@ -238,7 +238,7 @@ Create announcement (`POST /api/v1/admin/announcements`). `title`, `message`, an
   "summary": "Weekly bulletin",
   "level": "information",
   "tag": "surveillance",
-  "link_url": "/portal/apps/dwh/surveillance",
+  "link_url": "/apps/dwh/surveillance",
   "link_label": "Open surveillance dashboard",
   "priority": 5,
   "is_pinned": true,
@@ -293,7 +293,7 @@ attachments. `publish_at` is required for schedule and is not part of the publis
 
 Links and attachments:
 
-- `link_url` can be a `/portal...` path or absolute URL. When it is set, the email template and News & Updates UI use `link_label` as the call-to-action text, falling back to a generic label.
+- `link_url` can be a root-relative portal path (for example `/apps/news`) or absolute URL. When it is set, the email template and News & Updates UI use `link_label` as the call-to-action text, falling back to a generic label.
 - Persistent attachments are stored as announcement assets and returned with `download_url`.
 - Transient email attachments must provide exactly one of `path` or `data_base64`.
 - When an announcement is published with email delivery, persistent attachments marked `include_in_email` are attached to the email and also rendered as secure download links in the template.
@@ -388,10 +388,10 @@ see the OpenAPI schema `clients.CreateClientRequest` for the full list.
   "icon": "home",
   "publicClient": true,
   "enabled": true,
-  "rootUrl": "https://portal.example.org/portal/apps/dwh",
-  "baseUrl": "/portal/apps/dwh",
+  "rootUrl": "https://portal.example.org/apps/dwh",
+  "baseUrl": "/apps/dwh",
   "adminUrl": "",
-  "redirectUris": ["https://portal.example.org/portal/*"],
+  "redirectUris": ["https://portal.example.org/*"],
   "webOrigins": ["https://portal.example.org"],
   "attributes": {
     "category": "platform"
@@ -510,7 +510,7 @@ also accepts launcher and integration fields such as `displayInLauncher`,
   "displayName": "Data & Statistics",
   "description": "Data quality, reports, surveillance, and dashboards",
   "icon": "home",
-  "launchUrl": "/portal/apps/dwh",
+  "launchUrl": "/apps/dwh",
   "category": "platform",
   "ownerTeam": "Analytics",
   "ownerName": "System Owner",

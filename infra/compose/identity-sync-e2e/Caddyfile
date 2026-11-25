@@ -21,21 +21,21 @@ sso.e2e.test:18443 {
 
 dashboard.e2e.test:18443 {
 	import internal_tls
-	# The portal SPA (scripts/build-portal.sh output) is served like the
-	# production frontend; everything else goes to the dashboard backend.
-	redir /portal /portal/ 308
-	handle /__browser_dependencies__/* {
-		root * /srv/portal-root
-		file_server
+	# The portal SPA (scripts/build-portal.sh output) is served at / like the
+	# production frontend; the dashboard backend's own paths go to the backend.
+	@backend path /api /api/* /health /health/* /version /swagger /swagger/*
+	handle @backend {
+		reverse_proxy dashboard-backend:9000
 	}
-	handle /portal/* {
+	# The portal moved from /portal/ to /; old links redirect.
+	redir /portal / 308
+	@legacy path_regexp legacy ^/portal/(.*)$
+	redir @legacy /{re.legacy.1} 308
+	handle {
 		root * /srv/portal-root
 		header Cache-Control no-store
-		try_files {path} /portal/index.html
+		try_files {path} /index.html
 		file_server
-	}
-	handle {
-		reverse_proxy dashboard-backend:9000
 	}
 }
 

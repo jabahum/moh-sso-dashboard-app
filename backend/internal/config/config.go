@@ -693,7 +693,7 @@ func normalizeConfig(c *Config) {
 	}
 	if c.Notification.AdminDashboardURL == "" {
 		if c.FrontendBaseURL != "" {
-			c.Notification.AdminDashboardURL = strings.TrimRight(c.FrontendBaseURL, "/") + "portal/admin/home"
+			c.Notification.AdminDashboardURL = strings.TrimRight(c.FrontendBaseURL, "/") + "/admin/home"
 		} else {
 			c.Notification.AdminDashboardURL = "http://localhost:3000/admin/home"
 		}
@@ -765,8 +765,8 @@ func (c *Config) CookieDomainValue() string {
 
 func (c *Config) CookieSameSiteMode() string {
 	// Your current flow uses same-site public domain:
-	// frontend: https://dashboards.health.go.ug
-	// backend:  https://dashboards.health.go.ug/ssobackend
+	// frontend: https://portals.health.go.ug
+	// backend:  https://portals.health.go.ug/ssobackend
 	//
 	// SameSite=Lax is correct for OAuth top-level navigation callbacks.
 	return "Lax"

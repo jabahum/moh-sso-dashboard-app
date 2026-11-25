@@ -79,10 +79,10 @@ Selected modules within an accessible system may appear as separate launcher car
 Portal RBAC can be managed from:
 
 ```text
-/portal/admin/rbac
+/admin/rbac
 ```
 
-The shell router uses the `/portal` basename, so the route itself is registered as `/admin/rbac` (`frontend/apps/rbac/src/routes.tsx`). The page is exposed by the `@moh-sso/rbac` frontend app and calls the backend admin API under:
+The route is registered as `/admin/rbac` (`frontend/apps/rbac/src/routes.tsx`). The page is exposed by the `@moh-sso/rbac` frontend app and calls the backend admin API under:
 
 ```text
 /api/v1/admin/rbac

@@ -13,7 +13,7 @@ cd frontend
 npm run portal -- serve --backend http://127.0.0.1:9000
 ```
 
-Open http://localhost:3000/portal/. The backend uses the separate `sso_express_dev`
+Open http://localhost:3000/. The backend uses the separate `sso_express_dev`
 database because the previous database has migrations newer than this checkout.
 Initial setup seeds reference data and can take several minutes. Existing database
 volumes are preserved. The local Keycloak dashboard client allows the Express callback

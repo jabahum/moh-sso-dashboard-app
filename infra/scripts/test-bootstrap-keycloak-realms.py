@@ -10,7 +10,7 @@ import unittest
 spec = importlib.util.spec_from_file_location('shared_bootstrap', Path(__file__).with_name('bootstrap-keycloak-realms.py'))
 bootstrap = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bootstrap)
-URLS = {'portalUrl': 'https://portal.example.invalid/portal', 'apiUrl': 'https://portal.example.invalid/api/v1'}
+URLS = {'portalUrl': 'https://portal.example.invalid', 'apiUrl': 'https://portal.example.invalid/api/v1'}
 
 
 class FakeAdmin:

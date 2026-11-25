@@ -134,6 +134,11 @@ func parseApplicationManifest(document, environment string, modules []module.Inf
 		seenRoles[role] = true
 	}
 	sort.Strings(manifest.Spec.Access.Roles)
+	// Portal routes moved from /portal/ to the host root; accept legacy manifests.
+	manifest.Spec.Launch.Route = systemrbac.NormalizePortalPath(manifest.Spec.Launch.Route)
+	for index := range manifest.Spec.Navigation {
+		manifest.Spec.Navigation[index].Path = systemrbac.NormalizePortalPath(manifest.Spec.Navigation[index].Path)
+	}
 	launch := manifest.Spec.Launch
 	launcher, sideNav, enabled := true, len(manifest.Spec.Navigation) > 0, false
 	input := UpsertSystemInput{ClientID: manifest.Metadata.ID, DisplayName: strings.TrimSpace(manifest.Metadata.Name), Description: manifest.Metadata.Description,
@@ -205,7 +210,7 @@ func parseApplicationManifest(document, environment string, modules []module.Inf
 }
 
 func manifestPortalPath(value string) bool {
-	return value != "" && (strings.HasPrefix(value, "/apps/") || strings.HasPrefix(value, "/portal/")) && path.Clean(value) == value && !strings.ContainsAny(value, "%?#\\\r\n\t ")
+	return value != "" && value != "/" && value == systemrbac.NormalizePortalPath(value) && systemrbac.IsPortalPath(value) && path.Clean(value) == value && !strings.ContainsAny(value, "%?#\\\r\n\t ")
 }
 
 func manifestURL(value, environment string) error {

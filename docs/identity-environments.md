@@ -133,7 +133,7 @@ and API URLs; the API URL includes `/api/v1`:
 ```sh
 python3 infra/scripts/prepare-keycloak-realm.py \
   --environment staging \
-  --portal-url https://portal-staging.example.org/portal \
+  --portal-url https://portal-staging.example.org \
   --api-url https://portal-staging.example.org/api/v1 \
   --output /private/identity/moh-staging.json
 ```

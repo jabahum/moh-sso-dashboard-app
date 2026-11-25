@@ -387,7 +387,7 @@ func (s *Service) keycloakClientURL(launchURL string) string {
 	}
 
 	basePath := strings.TrimRight(baseURL.Path, "/")
-	path := relative.Path
+	path := systemrbac.NormalizePortalPath(relative.Path)
 	if path == "" {
 		path = "/"
 	}

@@ -262,8 +262,8 @@ jobs:
       run:
         working-directory: frontend
     env:
-      FRONTEND_ASSET_BASE_URL: /portal
-      FRONTEND_BASE_PATH: /portal
+      FRONTEND_ASSET_BASE_URL: /
+      FRONTEND_BASE_PATH: /
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4

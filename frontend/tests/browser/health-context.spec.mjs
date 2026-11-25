@@ -83,7 +83,7 @@ for (const width of [1440, 390, 320]) {
       else if (path.includes("unread")) data = { count: 0 };
       return route.fulfill({ json: { success: true, data } });
     });
-    await page.goto("/portal/admin/clients");
+    await page.goto("/admin/clients");
     const selector = page.getByLabel("Health context", { exact: true });
     await expect(selector).toHaveValue(national);
     await expect(page.getByRole("heading", { name: "No clients yet", exact: true })).toBeVisible();
@@ -104,7 +104,7 @@ for (const width of [1440, 390, 320]) {
     ).toBe(district);
     const bounds = await selector.boundingBox();
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
-    for (const route of ["/portal/admin/clients", "/portal/apps/dwh/surveillance"]) {
+    for (const route of ["/admin/clients", "/apps/dwh/surveillance"]) {
       await page.goto(route);
       await expect(selector).toHaveValue(district);
       // Checking visibility alone misses tooltip wrappers shrinking underneath

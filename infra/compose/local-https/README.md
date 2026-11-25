@@ -21,7 +21,7 @@ automated suites, use [identity-sync-e2e](../identity-sync-e2e/README.md) instea
 | | Address |
 | --- | --- |
 | Keycloak issuer | `https://localhost:8443/realms/moh-realm` (`http://localhost:8081` still answers) |
-| Portal | `http://localhost:3000/portal/` |
+| Portal | `http://localhost:3000/` |
 | CLIMS in the browser | `http://localhost:8080` (CLIMS Docker stack's nginx) |
 | POES backend / admin in the browser | `http://localhost:8082` / `http://localhost:3001` (poesGo dev stack) |
 | Sync origins for the dashboard | `https://clims.local.test`, `https://poes.local.test`, only inside the dev network |

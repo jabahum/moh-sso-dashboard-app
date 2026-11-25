@@ -13,8 +13,8 @@ systems:
     displayName: Integrated Health Portal
     description: Central portal shell
     icon: dashboard
-    launchUrl: /portal
-    authenticatedLaunchUrl: /api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews
+    launchUrl: /
+    authenticatedLaunchUrl: /api/v1/auth/launch?returnTo=%2Fapps%2Fnews
     category: platform
     systemType: platform
     displayInLauncher: true
@@ -67,7 +67,7 @@ systems:
     displayName: Outbreak Management
     description: Signals, alerts, surveillance, points of entry, and case management.
     icon: warning-alt
-    launchUrl: /portal/apps/outbreak-management
+    launchUrl: /apps/outbreak-management
     category: surveillance
     systemType: platform
     displayInLauncher: false
@@ -176,7 +176,7 @@ systems:
     displayName: Data & Statistics
     description: Data quality, document management, reports, surveillance, and issue tracking tools.
     icon: home
-    launchUrl: /portal/apps/dwh
+    launchUrl: /apps/dwh
     category: platform
     systemType: platform
     displayInLauncher: false
@@ -396,7 +396,7 @@ systems:
     displayName: eServices
     description: Digital service requests and operational tools.
     icon: application
-    launchUrl: /portal/apps/eservices
+    launchUrl: /apps/eservices
     category: services
     systemType: platform
     displayInLauncher: false
@@ -424,7 +424,7 @@ systems:
     displayName: Research & Studies
     description: Research studies, datasets, ethics approvals, and publications.
     icon: microscope
-    launchUrl: /portal/apps/research-studies
+    launchUrl: /apps/research-studies
     category: research
     systemType: platform
     displayInLauncher: false
@@ -449,7 +449,7 @@ systems:
     displayName: Case Registers
     description: Case registers and referral tracking.
     icon: document
-    launchUrl: /portal/apps/case-registers
+    launchUrl: /apps/case-registers
     category: clinical
     systemType: platform
     displayInLauncher: false
@@ -475,7 +475,7 @@ systems:
     displayName: Reference Registers
     description: Facility, terminology, and reference data registers.
     icon: catalog
-    launchUrl: /portal/apps/reference-registers
+    launchUrl: /apps/reference-registers
     category: registry
     systemType: platform
     displayInLauncher: false
@@ -500,7 +500,7 @@ systems:
     displayName: Utilities
     description: Self-service utilities and staff tools.
     icon: tools
-    launchUrl: /portal/apps/utilities/self-service
+    launchUrl: /apps/utilities/self-service
     category: utilities
     systemType: platform
     displayInLauncher: false
@@ -528,7 +528,7 @@ systems:
     displayName: Settings
     description: User profile, session, and security settings.
     icon: settings
-    launchUrl: /portal/apps/settings
+    launchUrl: /apps/settings
     category: platform
     systemType: platform
     displayInLauncher: false
@@ -618,7 +618,7 @@ systems:
     displayName: Demo Platform System
     description: Development example of an internal platform system with side navigation.
     icon: dashboard
-    launchUrl: /portal/apps/dwh
+    launchUrl: /apps/dwh
     category: platform
     systemType: platform
     displayInLauncher: true

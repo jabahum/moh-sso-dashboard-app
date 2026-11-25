@@ -140,6 +140,8 @@ func (s *Service) UpsertSystem(ctx context.Context, input UpsertSystemInput) (Sy
 		return System{}, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 	input.SystemType = behavior.SystemType
+	input.LaunchURL = behavior.LaunchURL
+	input.AuthenticatedLaunchURL = behavior.AuthenticatedLaunchURL
 	input.DisplayInLauncher = behavior.DisplayInLauncher
 	input.DisplayInSideNav = behavior.DisplayInSideNav
 	input.LaunchMode = behavior.LaunchMode
@@ -1739,14 +1741,14 @@ func validateSystemLaunchURL(value string) error {
 	if value == "" {
 		return nil
 	}
-	if strings.HasPrefix(value, "/portal") || strings.HasPrefix(value, "/apps") {
+	if systemrbac.IsPortalPath(value) {
 		return nil
 	}
 	parsed, err := url.Parse(value)
 	if err == nil && parsed.Scheme != "" && parsed.Host != "" {
 		return nil
 	}
-	return fmt.Errorf("%w: launchUrl must be a /portal path, /apps path, or absolute URL", ErrInvalidInput)
+	return fmt.Errorf("%w: launchUrl must be a root-relative portal path or an absolute URL", ErrInvalidInput)
 }
 
 func validateOptionalURL(field string, value string) error {

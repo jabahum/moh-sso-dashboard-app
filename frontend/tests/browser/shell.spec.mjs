@@ -174,7 +174,7 @@ for (const [route, navLabel] of [
   test(`mobile navigation closes on Escape and route changes: ${navLabel}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const failures = await fixture(page);
-    await page.goto(`/portal${route}`);
+    await page.goto(route);
     const toggle = page.getByRole("button", { name: "Open navigation", exact: true });
     await expect(toggle).toBeVisible();
     await expect(page.getByRole("navigation", { name: navLabel })).toHaveCount(0);
@@ -192,8 +192,8 @@ for (const [route, navLabel] of [
     await expect(link).toHaveAttribute(
       "href",
       navLabel === "Admin navigation"
-        ? "/portal/admin/clients"
-        : "/portal/apps/dwh/data-visualizer",
+        ? "/admin/clients"
+        : "/apps/dwh/data-visualizer",
     );
     await link.focus();
     await page.keyboard.press("Enter");
@@ -205,7 +205,7 @@ for (const [route, navLabel] of [
   test(`desktop navigation preference survives mobile use: ${navLabel}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await fixture(page);
-    await page.goto(`/portal${route}`);
+    await page.goto(route);
     await expect(page.getByRole("navigation", { name: navLabel })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     const toggle = page.getByRole("button", { name: "Open navigation", exact: true });
@@ -228,7 +228,7 @@ for (const [route, navLabel] of [
   test(`launcher search and account panel work: ${navLabel}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const failures = await fixture(page);
-    await page.goto(`/portal${route}`);
+    await page.goto(route);
     const launcher = page.getByRole("button", { name: "Open application menu", exact: true });
     await launcher.click();
     const menu = page.getByRole("dialog", { name: "Application menu", exact: true });
@@ -275,7 +275,7 @@ for (const [route, navLabel] of [
 test("mobile navigation hands focus to the launcher", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await fixture(page);
-  await page.goto("/portal/admin/users");
+  await page.goto("/admin/users");
   await page.getByRole("button", { name: "Open navigation", exact: true }).click();
   await page.getByRole("button", { name: "Open application menu", exact: true }).click();
   await expect(page.getByRole("navigation", { name: "Admin navigation" })).toHaveCount(0);
@@ -287,7 +287,7 @@ test("mobile navigation hands focus to the launcher", async ({ page }) => {
 test("public shell has a visible sign-in action on a narrow screen", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await fixture(page, null);
-  await page.goto("/portal/");
+  await page.goto("/");
   // The news landing intro repeats this action; the header one must stay reachable.
   const signIn = page
     .getByRole("banner", { name: "MOH Integrated Health Portal" })
@@ -303,7 +303,7 @@ for (const width of [390, 1440]) {
   test(`application groups preserve order, search and launch at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const failures = await fixture(page, groupedUser);
-    await page.goto("/portal/apps/dwh/data-validation");
+    await page.goto("/apps/dwh/data-validation");
     await page.getByRole("button", { name: "Open application menu", exact: true }).click();
     const menu = page.getByRole("dialog", { name: "Application menu", exact: true });
     const bounds = await menu.boundingBox();
@@ -351,7 +351,7 @@ for (const width of [390, 1440]) {
     const link = menu.getByRole("link", { name: "Open Data Visualizer", exact: true });
     await link.focus();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/portal\/apps\/dwh\/data-visualizer$/);
+    await expect(page).toHaveURL(/\/apps\/dwh\/data-visualizer$/);
     await expect(menu).toHaveCount(0);
     expect(failures).toEqual([]);
   });
@@ -372,7 +372,7 @@ test("permission filtering hides unavailable groups and their search results", a
         : system,
     ),
   });
-  await page.goto("/portal/apps/dwh/data-validation");
+  await page.goto("/apps/dwh/data-validation");
   await page.getByRole("button", { name: "Open application menu", exact: true }).click();
   const menu = page.getByRole("dialog", { name: "Application menu", exact: true });
   for (const label of ["Documents & Support", "Administration", "Surveillance"]) {
@@ -393,7 +393,7 @@ test("grouped external applications retain their new-tab launch behavior", async
     };
   });
   await fixture(page, groupedUser);
-  await page.goto("/portal/apps/dwh/data-validation");
+  await page.goto("/apps/dwh/data-validation");
   await page.getByRole("button", { name: "Open application menu", exact: true }).click();
   const menu = page.getByRole("dialog", { name: "Application menu", exact: true });
   await menu.getByRole("searchbox").fill("research");
@@ -403,7 +403,7 @@ test("grouped external applications retain their new-tab launch behavior", async
     "_blank",
     "noopener,noreferrer",
   ]);
-  await expect(page).toHaveURL(/\/portal\/apps\/dwh\/data-validation$/);
+  await expect(page).toHaveURL(/\/apps\/dwh\/data-validation$/);
   await expect(menu).toHaveCount(0);
 });
 
@@ -454,7 +454,7 @@ test("nested sidebar groups and pages share label columns at every level", async
       },
     ],
   });
-  await page.goto("/portal/apps/dwh/data-validation");
+  await page.goto("/apps/dwh/data-validation");
   const nav = page.getByRole("navigation", { name: "Application navigation" });
   const selfService = nav.getByRole("button", { name: "Self Service", exact: true });
   await selfService.click();
@@ -493,7 +493,7 @@ for (const sidePanelDocking of [true, false]) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await fixture(page);
-    await page.route("**/portal/config.js", async (route) => {
+    await page.route("**/config.js", async (route) => {
       const response = await route.fetch();
       const body = await response.text();
       await route.fulfill({
@@ -501,7 +501,7 @@ for (const sidePanelDocking of [true, false]) {
         body: `${body}\nwindow.__APP_CONFIG__.sidePanelDocking = ${sidePanelDocking};`,
       });
     });
-    await page.goto("/portal/apps/dwh/data-validation");
+    await page.goto("/apps/dwh/data-validation");
 
     const main = page.locator(".user-layout #main-content");
     const profile = page.getByRole("button", { name: "Signed in as shell-reviewer" });

@@ -85,7 +85,7 @@ for (const width of [1440, 390]) {
   test(`Overview is compact, searchable and usable at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     const errors = await fixture(page);
-    await page.goto("/portal/admin/home");
+    await page.goto("/admin/home");
     const main = page.locator("#main-content");
     await expect(main.getByRole("heading", { name: "Admin Overview", exact: true })).toBeVisible();
     await expect(main.locator(".moh-page-shell")).toHaveCount(1);
@@ -114,7 +114,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole("dialog", { name: "Create user", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Close panel", exact: true }).click();
     await main.getByRole("button", { name: "Open Data Validation", exact: true }).click();
-    await expect(page).toHaveURL(/\/portal\/apps\/dwh\/data-validation$/);
+    await expect(page).toHaveURL(/\/apps\/dwh\/data-validation$/);
     expect(errors).toEqual([]);
   });
 }
@@ -129,7 +129,7 @@ test("Overview respects permissions, empty access and unavailable identity metad
     systems: [],
     lastLoginAt: "invalid-date",
   });
-  await page.goto("/portal/admin/home");
+  await page.goto("/admin/home");
   const main = page.locator("#main-content");
   await expect(main.getByRole("heading", { name: "No applications assigned" })).toBeVisible();
   await expect(main.getByRole("heading", { name: "Quick actions" })).toHaveCount(0);
@@ -140,7 +140,7 @@ test("Overview respects permissions, empty access and unavailable identity metad
 
 test("External application launch announces and opens a new tab", async ({ page }) => {
   const errors = await fixture(page);
-  await page.goto("/portal/admin/home");
+  await page.goto("/admin/home");
   const popup = page.waitForEvent("popup");
   await page
     .getByRole("button", { name: "Open Training Portal in a new tab", exact: true })

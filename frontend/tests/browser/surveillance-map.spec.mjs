@@ -7,7 +7,7 @@ import {
   subcountyMetricKey,
 } from "../../apps/surveillance/src/pages/surveillance-map-metrics.ts";
 
-const base = "/portal/apps/dwh/surveillance";
+const base = "/apps/dwh/surveillance";
 const weekId = "00000000-0000-0000-0000-000000000053";
 const diseases = [
   { id: "measles", name: "Measles" },

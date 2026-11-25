@@ -4,7 +4,7 @@ export function selectedRuntimeConfig(html, hostname) {
   const configured = html.match(
     /<script\b[^>]*\bsrc=["']([^"']*config(?:\.[a-z-]+)?\.js)["']/,
   )?.[1];
-  if (configured) return configured.replace("%BASE_URL%", "/portal/");
+  if (configured) return configured.replace("%BASE_URL%", "/");
   const written = [];
   const browser = {
     window: { location: { hostname } },

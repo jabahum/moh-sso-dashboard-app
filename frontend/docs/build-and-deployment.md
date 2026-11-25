@@ -50,11 +50,11 @@ Build the same artifact from this checkout instead of the npm pins:
 FRONTEND_MODULE_SOURCE=workspace npm run build:docker
 ```
 
-Build the same `/portal`-based artifact that production Docker uses:
+Build the same root-based artifact that production Docker uses:
 
 ```bash
 npm run config:prod
-FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/ FRONTEND_BASE_PATH=/ npm run build:docker
 npm run runtime:verify
 npm run config:dev
 ```
@@ -97,7 +97,7 @@ dist/mf/<app>/*.css
 dist/packages/<package>/index.js
 ```
 
-When `FRONTEND_BASE_PATH` is set (for example `/portal`), staging also copies the artifact into `dist/<base path>/`, for example `dist/portal/mf/<app>/single-spa.js`.
+The shell is served from the root, so the Docker images build with `FRONTEND_BASE_PATH=/` and no copy is made. If `FRONTEND_BASE_PATH` is set to a sub-path (for example `/sub`), staging also copies the artifact into `dist/<base path>/`, for example `dist/sub/mf/<app>/single-spa.js`.
 
 This layout supports single static deployment and prepares remote import-map deployment.
 
@@ -111,7 +111,7 @@ From the repository root:
 docker build -f infra/docker/frontend/Dockerfile .
 ```
 
-This image is the one `infra/Makefile` builds locally. It runs `npm ci`, `npm run version:audit`, activates the production runtime config and runs `npm run build:docker` with `FRONTEND_ASSET_BASE_URL=/portal` and `FRONTEND_BASE_PATH=/portal`. Its `FRONTEND_MODULE_SOURCE` build argument defaults to empty, so the `production` entry of `module-sources.json` applies (source `npm`); pass `--build-arg FRONTEND_MODULE_SOURCE=workspace` to build the apps and packages from this checkout. It serves the final static files on port `3000` and also contains the documentation site under `/docs/`.
+This image is the one `infra/Makefile` builds locally. It runs `npm ci`, `npm run version:audit`, activates the production runtime config and runs `npm run build:docker` with `FRONTEND_ASSET_BASE_URL=/` and `FRONTEND_BASE_PATH=/`. Its `FRONTEND_MODULE_SOURCE` build argument defaults to empty, so the `production` entry of `module-sources.json` applies (source `npm`); pass `--build-arg FRONTEND_MODULE_SOURCE=workspace` to build the apps and packages from this checkout. It serves the final static files on port `3000` and also contains the documentation site under `/docs/`.
 
 During Docker builds, `node scripts/use-runtime-config.mjs production` activates `public/config.production.js` before `build:docker` runs. That production config enables:
 
@@ -119,7 +119,7 @@ During Docker builds, `node scripts/use-runtime-config.mjs production` activates
 - `singleSpaOrchestration: true`
 - `microfrontendMountMode: "orchestrated"`
 
-`config.production.js` sets `API_BASE_URL` to `https://dashboards.health.go.ug/ssobackend`. At container start, `infra/docker/frontend/40-runtime-config.sh` overwrites `config.js` (and `portal/config.js`) from `API_BASE_URL` (default `/api`), `FRONTEND_MICROFRONTEND_MODE` (default `remote`), `FRONTEND_SINGLE_SPA_ORCHESTRATION` (default `true`), `FRONTEND_MICROFRONTEND_MOUNT_MODE` (default `orchestrated`) and `FRONTEND_SIDE_PANEL_DOCKING` (default `true`), unless `config.js` is a read-only mount (as with the Helm ConfigMap).
+`config.production.js` sets `API_BASE_URL` to `https://portals.health.go.ug/ssobackend`. At container start, `infra/docker/frontend/40-runtime-config.sh` overwrites `config.js` (and `portal/config.js`) from `API_BASE_URL` (default `/api`), `FRONTEND_MICROFRONTEND_MODE` (default `remote`), `FRONTEND_SINGLE_SPA_ORCHESTRATION` (default `true`), `FRONTEND_MICROFRONTEND_MOUNT_MODE` (default `orchestrated`) and `FRONTEND_SIDE_PANEL_DOCKING` (default `true`), unless `config.js` is a read-only mount (as with the Helm ConfigMap).
 
 The shell build keeps `import-map.json` as a static artifact for inspection and tooling. During staging, the generated map is also inlined into `dist/index.html` so browsers can use it without an import-map shim.
 
@@ -214,10 +214,11 @@ Versioned deployment paths should look like:
 The static server must:
 
 - serve `dist`
-- serve the shell under its `/portal/` base path, with SPA fallback to `/portal/index.html`
-- serve `/portal/mf/*` and `/portal/packages/*` (or `/mf/*` and `/packages/*` for an artifact built without `FRONTEND_BASE_PATH`)
-- serve `/portal/config.js`
-- serve `/portal/import-map.json`
+- serve the shell from the root (`/`), with SPA fallback to `/index.html`
+- serve `/mf/*` and `/packages/*`
+- serve `/config.js`
+- serve `/import-map.json`
+- redirect legacy `/portal` and `/portal/*` URLs to the matching root path, except `/portal/sw.js`, which must be served as a file (it retires service workers installed under the old `/portal/` scope)
 
 `infra/docker/frontend/nginx.conf` implements these rules.
 
@@ -231,10 +232,11 @@ npm run bundle:budget
 
 `runtime:verify` confirms that the staged production artifact has:
 
-- `/portal/config.js`
+- `/config.js`
 - an inlined import map
-- `/portal/mf/*` app bundles
-- `/portal/packages/*` shared package bundles
+- `/mf/*` app bundles
+- `/packages/*` shared package bundles
+- the `/portal/sw.js` service worker kill switch, and no shell copy under `dist/portal/`
 - `version-manifest.json`
 
 `bundle:budget` keeps the current shell and microfrontend bundle sizes from growing silently. The defaults are 8500 KB for the shell entry JS, 1200 KB for shell CSS and 10000 KB for an app chunk. Override thresholds with `BUNDLE_BUDGET_SHELL_JS_KB`, `BUNDLE_BUDGET_SHELL_CSS_KB` and `BUNDLE_BUDGET_APP_CHUNK_JS_KB`, for example:

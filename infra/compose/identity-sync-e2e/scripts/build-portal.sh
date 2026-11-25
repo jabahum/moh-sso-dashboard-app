@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the dashboard portal (frontend/) for the e2e stack and assembles it in
-# generated/portal-root, which Caddy serves at https://dashboard.e2e.test:18443/portal/.
+# generated/portal-root, which Caddy serves at https://dashboard.e2e.test:18443/.
 #
 # - Uses the workspace micro-frontends (no published packages).
 # - The production import map loads React and friends from esm.sh. The e2e
@@ -19,7 +19,7 @@ repo="$(cd "$here/../../.." && pwd)"
 fe="$repo/frontend"
 out="$here/generated/portal-root"
 
-if [ -f "$out/portal/index.html" ] && [ "${IDSYNC_E2E_REBUILD_PORTAL:-}" != "1" ]; then
+if [ -f "$out/index.html" ] && [ "${IDSYNC_E2E_REBUILD_PORTAL:-}" != "1" ]; then
   echo "portal: reusing $out (IDSYNC_E2E_REBUILD_PORTAL=1 rebuilds it)"
   exit 0
 fi
@@ -36,30 +36,30 @@ trap restore EXIT
 
 cd "$fe"
 [ -d node_modules ] || npm ci --no-audit --no-fund
-FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/ FRONTEND_BASE_PATH=/ npm run build:docker
 node scripts/prepare-browser-dependencies.mjs
 
 rm -rf "$out.tmp"
 mkdir -p "$out.tmp"
-cp -R dist/portal "$out.tmp/portal"
+cp -R dist/. "$out.tmp/"
 cp -R node_modules/.cache/browser-dependencies "$out.tmp/__browser_dependencies__"
 python3 -I - "$out.tmp" <<'EOF'
 import json, re, sys
 from pathlib import Path
 root = Path(sys.argv[1])
 local = json.loads((root / "__browser_dependencies__/import-map.json").read_text())["imports"]
-index = root / "portal/index.html"
+index = root / "index.html"
 def swap(match):
     imports = json.loads(match.group(1))
     imports["imports"].update(local)
     return '<script type="importmap">' + json.dumps(imports) + "</script>"
 html, n = re.subn(r'<script type="importmap">(.*?)</script>', swap, index.read_text(), flags=re.S)
 if n != 1:
-    sys.exit("expected exactly one import map in portal/index.html")
+    sys.exit("expected exactly one import map in index.html")
 if "esm.sh" in html:
-    sys.exit("portal/index.html still references esm.sh")
+    sys.exit("index.html still references esm.sh")
 index.write_text(html)
-(root / "portal/config.js").write_text(
+(root / "config.js").write_text(
     "/* idsync-e2e: same-origin API */\nwindow.__APP_CONFIG__ = "
     + json.dumps({"API_BASE_URL": "/api", "microfrontendMode": "remote", "singleSpaOrchestration": True,
                   "microfrontendMountMode": "orchestrated", "sidePanelDocking": True})

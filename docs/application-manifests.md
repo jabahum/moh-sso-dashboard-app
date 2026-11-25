@@ -120,7 +120,7 @@ rejected.
 Additional rules:
 
 - `route` (internal and microfrontend) must be a canonical portal path: it starts
-  with `/apps/` or `/portal/`, is unchanged by path cleaning (no `..`, `//` or
+  with `/apps/` or another root-relative portal path (legacy `/portal/` prefixes are stripped), is unchanged by path cleaning (no `..`, `//` or
   trailing `/`), and contains no `%`, `?`, `#`, backslash or whitespace.
 - `module` (internal) must be the ID of a backend module that is compiled in and
   enabled in this deployment.
@@ -285,7 +285,7 @@ Validate and preview write no RBAC audit records. Read them on Admin → Audits 
 
 ## Importing in the portal
 
-1. Open **Admin → Systems** (`/portal/admin/systems`).
+1. Open **Admin → Systems** (`/admin/systems`).
 2. Click **Import manifest** in the table toolbar. The **Import application
    manifest** panel opens.
 3. Choose a `.yaml`, `.yml` or `.json` file with **YAML or JSON manifest**, or
@@ -351,7 +351,7 @@ owners and roles are placeholders, and all use `environment: development`.
 | File | Mode | Shows |
 | --- | --- | --- |
 | [`external.yaml`](../examples/manifests/external.yaml) | `external` | `health-bi` launched in a new tab, gated by `report_viewer`. |
-| [`internal.yaml`](../examples/manifests/internal.yaml) | `internal` | `portal-metrics` on `/portal/admin/home`, tied to the `metrics` module, with a navigation entry requiring `metrics:read`. |
+| [`internal.yaml`](../examples/manifests/internal.yaml) | `internal` | `portal-metrics` on `/admin/home`, tied to the `metrics` module, with a navigation entry requiring `metrics:read`. |
 | [`microfrontend.yaml`](../examples/manifests/microfrontend.yaml) | `microfrontend` | `example-reports` at `/apps/extensions/example-reports` with `appName` `@moh-extensions/example-reports`. |
 
 The backend tests parse all three, so they stay valid against the current
@@ -420,12 +420,12 @@ prefixed by `invalid input: `.
 | `access.roles requires 1–50 client role names` | List between 1 and 50 roles. |
 | `access.roles contains an invalid or duplicate role` | Use lowercase names starting with a letter or digit, using only `a-z 0-9 _ . : -`, each once. |
 | `external launch accepts a URL and no portal navigation or module fields` | Remove `route`, `module`, `appName`, `entryUrl` and `spec.navigation`. |
-| `internal launch requires a portal route and a compiled module` | Set a canonical `/apps/...` or `/portal/...` route and remove `url`, `appName` and `entryUrl`. |
+| `internal launch requires a portal route and a compiled module` | Set a canonical root-relative route such as `/apps/...` and remove `url`, `appName` and `entryUrl`. |
 | `launch.module must identify an enabled compiled backend module` | Use the ID of a module compiled into and enabled in this backend. |
 | `microfrontend requires a unique scoped appName and route /apps/extensions/<metadata.id>` | Set `route` to `/apps/extensions/<metadata.id>`, use a scoped `appName` outside `@moh-sso/`, and remove `url` and `module`. |
 | `launch.mode must be external, internal or microfrontend` | Fix `launch.mode`. |
 | `navigation is limited to 50 entries` | Reduce `spec.navigation`. |
-| `navigation paths must be canonical portal paths` | Use `/apps/...` or `/portal/...` paths without `..`, trailing `/`, `%`, `?` or `#`. |
+| `navigation paths must be canonical portal paths` | Use root-relative paths such as `/apps/...` without `..`, trailing `/`, `%`, `?` or `#`. |
 | `microfrontend navigation must remain within its application route` | Keep each path at or below `/apps/extensions/<metadata.id>`. |
 | `navigation item N has an empty id`, `navigation item id "x" is duplicated`, `navigation item "x" has an empty label`, `navigation item "x" has an empty requiredPermissions value` | Give every entry a unique `id`, a `label` and non-blank permissions. |
 | `access role "x" is disabled` (preview) | Re-enable the system role on Admin → RBAC or remove it from the manifest. |

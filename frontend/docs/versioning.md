@@ -108,7 +108,7 @@ Run release checks:
 npm run release:check
 ```
 
-`release:check` validates architecture, package boundaries, versions, TypeScript, lint, source-built Docker artifacts, staged `/portal` import-map coverage, production runtime artifacts, bundle budgets, and npm publishability metadata.
+`release:check` validates architecture, package boundaries, versions, TypeScript, lint, source-built Docker artifacts, staged root import-map coverage, production runtime artifacts, bundle budgets, and npm publishability metadata.
 
 Apply version bumps:
 

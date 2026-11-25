@@ -45,14 +45,14 @@ x-dashboard-env: &dashboard-env
   KEYCLOAK_WEB_CLIENT_ID: dashboard-web
   KEYCLOAK_WEB_CLIENT_SECRET: e2e-fake-dashboard-web-secret
   KEYCLOAK_REDIRECT_URI: https://dashboard.e2e.test:18443/api/v1/auth/callback
-  FRONTEND_BASE_URL: https://dashboard.e2e.test:18443/portal
-  FRONTEND_REDIRECT_URI: https://dashboard.e2e.test:18443/portal
+  FRONTEND_BASE_URL: https://dashboard.e2e.test:18443/
+  FRONTEND_REDIRECT_URI: https://dashboard.e2e.test:18443/
   APP_BASE_URL: https://dashboard.e2e.test:18443
   LOGIN_URL: https://dashboard.e2e.test:18443/api/v1/auth/login
   AUTH_RETURN_URL_ALLOWED_ORIGINS: https://dashboard.e2e.test:18443
   COOKIE_DOMAIN: ""
   TOKEN_SYMMETRIC_KEY: e2e-fake-token-key-0123456789abcd
-  ADMIN_DASHBOARD_URL: https://dashboard.e2e.test:18443/portal
+  ADMIN_DASHBOARD_URL: https://dashboard.e2e.test:18443/
   SMTP_HOST: mailpit
   SMTP_PORT: "1025"
   SMTP_FROM_EMAIL: dashboard@e2e.test

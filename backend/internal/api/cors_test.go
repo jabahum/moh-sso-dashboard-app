@@ -16,8 +16,8 @@ func TestCORSUsesFrontendOriginRatherThanPath(t *testing.T) {
 		t.Run(environment, func(t *testing.T) {
 			cfg := &config.Config{
 				Environment:         environment,
-				FrontendBaseURL:     "https://portal.example.test/portal",
-				FrontendRedirectURI: "https://portal.example.test/portal/home?tab=mine",
+				FrontendBaseURL:     "https://portal.example.test",
+				FrontendRedirectURI: "https://portal.example.test/home?tab=mine",
 			}
 			router := gin.New()
 			router.Use(cors.New(corsConfig(cfg)))
@@ -44,13 +44,13 @@ func TestCORSUsesFrontendOriginRatherThanPath(t *testing.T) {
 func TestAllowedOriginsRejectUnsafeURLsAndDeduplicate(t *testing.T) {
 	for _, raw := range []string{"*", "https://*.example.test", "/portal", "javascript:alert(1)", "https://user:pass@example.test"} {
 		origins := buildAllowedOrigins(&config.Config{Environment: "production", FrontendBaseURL: raw})
-		if len(origins) != 1 || origins[0] != "https://dashboards.health.go.ug" {
+		if len(origins) != 1 || origins[0] != "https://portals.health.go.ug" {
 			t.Errorf("unsafe configured origin %q accepted: %v", raw, origins)
 		}
 	}
 	origins := buildAllowedOrigins(&config.Config{
 		Environment:         "production",
-		FrontendBaseURL:     "https://portal.example.test/portal",
+		FrontendBaseURL:     "https://portal.example.test",
 		FrontendRedirectURI: "https://portal.example.test/callback",
 	})
 	if len(origins) != 2 {

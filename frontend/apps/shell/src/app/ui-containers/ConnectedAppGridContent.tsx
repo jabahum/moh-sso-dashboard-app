@@ -25,10 +25,12 @@ function normalizePortalPath(href: string): string {
     return href;
   }
 
-  if (href === "/portal") {
+  // The portal's own launch URL ("/", or legacy "/portal") opens the app catalogue.
+  if (href === "/" || href === "/portal") {
     return "/apps";
   }
 
+  // Stored legacy /portal/... paths map onto the root-served shell.
   if (href.startsWith("/portal/")) {
     return href.replace(/^\/portal/, "");
   }

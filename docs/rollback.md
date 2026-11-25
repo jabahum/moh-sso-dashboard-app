@@ -8,7 +8,7 @@ Rollback always restores a whole verified release recorded by `infra/scripts/cd_
 
 `cd_server.py deploy`, run by the **Deploy Verified Image Bundle** workflow (`.github/workflows/deploy-to-server.yaml`), writes `state/pending.json` before starting the candidate. If starting or verifying the candidate fails, it records a `deployment-failed` event, restarts the previous verified release from `state/deployment.json`, verifies it, points the `current` symlink back at it and records an `automatic-rollback` event in `state/history.jsonl`.
 
-Verification checks, inside the application network, the backend `/health/ready` and `/version` endpoints (version and commit must match the manifest), the frontend `/portal/version-manifest.json`, and the frontend verifier script. When `verify_public_edge` is true (the default) it also checks the public `/portal/`, `/ssobackend/health/ready`, `/ssobackend/swagger/openapi.json` and `/ssobackend/version` URLs.
+Verification checks, inside the application network, the backend `/health/ready` and `/version` endpoints (version and commit must match the manifest), the frontend `/version-manifest.json`, and the frontend verifier script. When `verify_public_edge` is true (the default) it also checks the public `/`, `/ssobackend/health/ready`, `/ssobackend/swagger/openapi.json` and `/ssobackend/version` URLs.
 
 The first managed deployment has no previous verified release, so its failure is reported without a rollback. If the automatic rollback itself fails, `state/pending.json` is kept and new deployments are refused until an operator rollback succeeds.
 

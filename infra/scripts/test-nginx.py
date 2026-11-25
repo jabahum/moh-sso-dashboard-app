@@ -61,7 +61,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="moh-nginx-") as tmp:
             tmp = Path(tmp)
             html = tmp / "html"
-            for prefix in ("", "portal/"):
+            for prefix in ("",):
                 fixtures = {
                     "index.html": "<!doctype html><title>Portal fixture</title>",
                     "config.js": "window.__APP_CONFIG__ = {};",
@@ -73,6 +73,7 @@ def main():
                     "assets/stable.js": "export const stable = true;",
                     "mf/users/single-spa.js": "export const mount = () => {};",
                     "packages/auth/index.js": "export const auth = {};",
+                    "portal/sw.js": "self.registration.unregister();",
                     ".env": "MUST_NOT_BE_SERVED",
                     "assets/private.js.map": "MUST_NOT_BE_SERVED",
                 }
@@ -172,6 +173,29 @@ def main():
                     time.sleep(0.25)
                 raise AssertionError(f"Timed out waiting for {path}")
 
+            def check_legacy_portal_redirects():
+                # The portal moved from /portal/ to /; old links keep working.
+                for path, location in (
+                    ('/portal', '/'), ('/portal/', '/'), ('/portal?keep=1', '/?keep=1'),
+                    ('/portal/apps/documents?tab=2', '/apps/documents?tab=2'),
+                    ('/portal/config.js', '/config.js'),
+                    ('/portal/assets/index-abcdefgh.js', '/assets/index-abcdefgh.js'),
+                    ('/portal//evil.example/x', '/evil.example/x'),
+                ):
+                    status, headers, _ = request(path)
+                    assert status == 308 and headers['Location'] == location, (path, status, headers)
+                # Never a protocol-relative redirect to another host.
+                for path in ('/portal/%5Cevil.example', '/portal/%2F%2Fevil.example'):
+                    status, headers, _ = request(path)
+                    location = headers.get('Location') or ''
+                    assert not location.startswith(('//', '/\\')), (path, status, location)
+                # The kill-switch worker is served, not redirected, and never cached.
+                status, headers, body = request('/portal/sw.js')
+                assert status == 200 and b'unregister' in body, ('/portal/sw.js', status)
+                assert headers['Cache-Control'] == 'no-store', headers
+                status, headers, _ = request('/portalx')
+                assert status == 200 and 'Location' not in headers, ('/portalx', status)
+
             def check_docs():
                 status, headers, _ = request('/docs?keep=1')
                 assert status == 308 and headers['Location'] == '/docs/?keep=1'
@@ -184,9 +208,15 @@ def main():
                     assert status == 200 and content in body, (path, status, body)
                 assert request('/docs/missing/')[0] == 404
 
-            wait_for("/portal/", lambda r: r[0] == 200)
+            wait_for("/", lambda r: r[0] == 200)
             wait_for("/health/ready", lambda r: r[0] == 200)
+            # The frontend image redirects legacy /portal paths on its own too.
+            redirect = docker("exec", name + "-frontend", "curl", "-s", "-o", "/dev/null",
+                              "-w", "%{http_code} %{redirect_url}",
+                              "http://127.0.0.1:3000/portal/apps/documents?tab=2")
+            assert redirect == "308 http://127.0.0.1:3000/apps/documents?tab=2", redirect
             check_docs()
+            check_legacy_portal_redirects()
             # Exercise the actual Compose probe against the IPv4-only gateway.
             model = subprocess.run(['docker', 'compose', '-f', str(ROOT / 'infra/compose/docker-compose-nginx.yml'),
                                     'config', '--format', 'json'], env=env, text=True,
@@ -194,7 +224,7 @@ def main():
             healthcheck = json.loads(model.stdout)['services']['nginx']['healthcheck']['test']
             assert healthcheck[0] == 'CMD-SHELL', healthcheck
             assert docker('exec', gateway, 'sh', '-ec', healthcheck[1]) == 'ok'
-            for prefix in ("", "/portal"):
+            for prefix in ("",):
                 for path, expected_cache in (
                     ("/config.js", "no-store"), ("/config.production.js", "no-store"),
                     ("/import-map.json", "no-store"), ("/version-manifest.json", "no-store"),
@@ -233,7 +263,6 @@ def main():
                 assert status == 101 and headers['Upgrade'] == 'websocket'
             for prefix in ('/backend', '/ssobackend'):
                 assert request(prefix + '/root-redirect')[1]['Location'] == prefix + '/api/v1/target'
-            assert request('/portal?keep=1')[:2][1]['Location'] == '/portal/?keep=1'
             assert request('/ssobackend/api/v1/probe', 'POST', headers={'Content-Length': str(50 * 1024 * 1024 + 1)})[0] == 413
 
             spoof = {'X-Forwarded-Proto': 'https', 'X-Forwarded-For': '203.0.113.99',
@@ -281,7 +310,6 @@ server {
  add_header Strict-Transport-Security "max-age=31536000" always;
  add_header X-Host-Security "retained" always;
  include /etc/nginx/moh-sso/portal.locations.conf;
- location = / { return 200 "report-browser-root"; }
  location /report-browser/ { return 200 "report-browser-route"; }
 }
 ''')
@@ -296,26 +324,26 @@ server {
             docker('exec', host, 'nginx', '-t')
             port = int(docker('port', host, '443/tcp').rsplit(':', 1)[1])
             use_tls = True
-            wait_for('/portal/', lambda r: r[0] == 200)
+            wait_for('/', lambda r: r[0] == 200)
             check_docs()
-            for path, expected in (('/', b'report-browser-root'),
-                                   ('/report-browser/reports', b'report-browser-route')):
-                assert request(path)[2] == expected
+            check_legacy_portal_redirects()
+            assert b'Portal fixture' in request('/')[2]
+            assert request('/report-browser/reports')[2] == b'report-browser-route'
             for path, code, cache in (
-                ('/portal/apps/documents', 200, 'no-store'),
-                ('/portal/import-map.json', 200, 'no-store'),
-                ('/portal/assets/index-abcdefgh.js', 200, 'public, max-age=31536000, immutable'),
-                ('/portal/mf/users/single-spa.js', 200, 'no-cache'),
-                ('/portal/assets/missing.js', 404, 'no-store'),
+                ('/apps/documents', 200, 'no-store'),
+                ('/import-map.json', 200, 'no-store'),
+                ('/assets/index-abcdefgh.js', 200, 'public, max-age=31536000, immutable'),
+                ('/mf/users/single-spa.js', 200, 'no-cache'),
+                ('/assets/missing.js', 404, 'no-store'),
                 ('/ssobackend/swagger/openapi.json', 200, 'no-store'),
             ):
                 status, headers, _ = request(path)
                 assert status == code and headers['Cache-Control'] == cache, (path, status, headers)
                 assert headers['X-Host-Security'] == 'retained'
                 assert headers.get_all('Strict-Transport-Security') == ['max-age=31536000']
-            for path in ('/portal', '/ssobackend'):
+            for path, location in (('/portal', '/?keep=1'), ('/ssobackend', '/ssobackend/?keep=1')):
                 status, headers, _ = request(path + '?keep=1')
-                assert status == 308 and headers['Location'] == path + '/?keep=1'
+                assert status == 308 and headers['Location'] == location
                 assert headers['X-Host-Security'] == 'retained'
             status, headers, body = request('/ssobackend/api/v1/probe?batch=2', 'POST', b'payload',
                                             {**spoof, 'X-Forwarded-Proto': 'http'})
@@ -349,14 +377,15 @@ server {
                 (tmp / 'key.pem', '/fixtures/key.pem')], tls=True)
             docker('exec', remote, 'nginx', '-t')
             port = int(docker('port', remote, '443/tcp').rsplit(':', 1)[1])
-            wait_for('/portal/import-map.json', lambda r: r[0] == 200)
+            wait_for('/import-map.json', lambda r: r[0] == 200)
             check_docs()
-            assert request('/')[2] == b'report-browser-root'
+            check_legacy_portal_redirects()
+            assert b'Portal fixture' in request('/')[2]
             assert request('/report-browser/reports')[2] == b'report-browser-route'
             for path, expected_cache in (
-                ('/portal/import-map.json', 'no-store'),
-                ('/portal/assets/index-abcdefgh.js', 'public, max-age=31536000, immutable'),
-                ('/portal/mf/users/single-spa.js', 'no-cache'),
+                ('/import-map.json', 'no-store'),
+                ('/assets/index-abcdefgh.js', 'public, max-age=31536000, immutable'),
+                ('/mf/users/single-spa.js', 'no-cache'),
                 ('/ssobackend/swagger/openapi.json', 'no-store'),
             ):
                 status, headers, _ = request(path)

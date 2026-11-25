@@ -148,6 +148,7 @@ class RuntimeVerification(unittest.TestCase):
                                                 'commit': self.expected['commit']},
                         'meta': {'requestId': 'fixture'}}
         self.server = Server(config, runner=self.run_command)
+        self.frontend_manifest_url = 'http://127.0.0.1:3000/version-manifest.json'
         self.record = {'manifest': manifest(), 'mode': 'prod',
                        'release_dir': str(Path(__file__).resolve().parents[2]),
                        'env_file': str(Path(self.tmp.name) / 'prod.env'),
@@ -156,14 +157,25 @@ class RuntimeVerification(unittest.TestCase):
     def run_command(self, args, **kwargs):
         if args[-1] == 'http://127.0.0.1:9000/version':
             return json.dumps(self.payload)
-        if args[-1] == 'http://127.0.0.1:3000/portal/version-manifest.json':
+        if args[-1] == self.frontend_manifest_url:
             return json.dumps({'service': self.expected})
+        if args[-1].startswith('http://127.0.0.1:3000/'):
+            raise RuntimeError('docker compose failed (exit 1)')
         if args[-3:] == ['ps', '-q', 'frontend']:
             return 'fixture-frontend'
         return ''
 
     def test_actual_backend_envelope_passes_runtime_verification(self):
         self.server.verify(self.record)
+
+    def test_rollback_to_a_portal_prefixed_frontend_still_verifies(self):
+        self.frontend_manifest_url = 'http://127.0.0.1:3000/portal/version-manifest.json'
+        self.server.verify(self.record)
+
+    def test_missing_frontend_manifest_fails_verification(self):
+        self.frontend_manifest_url = None
+        with self.assertRaisesRegex(ValueError, 'Frontend version manifest is unavailable'):
+            self.server.verify(self.record)
 
     def test_distribution_rejects_runtime_frontend_versions_without_matching_pins(self):
         self.record['manifest']['distribution'] = bundle.distribution_metadata()

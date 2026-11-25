@@ -403,32 +403,32 @@ type systemMetadata struct {
 var staticSystemMetadata = map[string]systemMetadata{
 	SystemDashboardWeb: {
 		DisplayName:            "Integrated Health Portal",
-		LaunchURL:              "/portal",
-		AuthenticatedLaunchURL: "/api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews",
+		LaunchURL:              "/",
+		AuthenticatedLaunchURL: "/api/v1/auth/launch?returnTo=%2Fapps%2Fnews",
 		Icon:                   "dashboard",
 		Category:               "platform",
 	},
 	SystemOutbreakManagement: {
 		DisplayName: "Outbreak Management",
-		LaunchURL:   "/portal/apps/dwh/surveillance",
+		LaunchURL:   "/apps/dwh/surveillance",
 		Icon:        "outbreak",
 		Category:    "surveillance",
 	},
 	SystemDataStatistics: {
 		DisplayName: "Data & Statistics",
-		LaunchURL:   "/portal/apps/dwh",
+		LaunchURL:   "/apps/dwh",
 		Icon:        "home",
 		Category:    "platform",
 	},
 	SystemUtilities: {
 		DisplayName: "Utilities",
-		LaunchURL:   "/portal/apps/utilities",
+		LaunchURL:   "/apps/utilities",
 		Icon:        "tools",
 		Category:    "utilities",
 	},
 	SystemSettings: {
 		DisplayName: "Settings",
-		LaunchURL:   "/portal/apps/settings",
+		LaunchURL:   "/apps/settings",
 		Icon:        "settings",
 		Category:    "platform",
 	},

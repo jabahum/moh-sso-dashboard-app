@@ -19,7 +19,7 @@ npm run version:audit
 npm run typecheck
 npm run lint
 npm run config:prod
-FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/portal FRONTEND_BASE_PATH=/portal npm run build:docker
+FRONTEND_MODULE_SOURCE=workspace FRONTEND_ASSET_BASE_URL=/ FRONTEND_BASE_PATH=/ npm run build:docker
 MF_CSS_AUDIT_TARGET=staged npm run audit:mf-css
 npm run audit:import-map
 npm run runtime:verify
@@ -61,7 +61,7 @@ Build a production image from source:
 docker build -f infra/docker/frontend/Dockerfile --build-arg FRONTEND_MODULE_SOURCE=workspace .
 ```
 
-Without the build argument this Dockerfile follows `production.source` in `module-sources.json` (currently `npm`). With `workspace` it builds all workspace packages/apps from source, stages microfrontend artifacts into `dist/mf` and `dist/packages` (and `dist/portal/`), inlines the production import map, and serves the shell as a static app.
+Without the build argument this Dockerfile follows `production.source` in `module-sources.json` (currently `npm`). With `workspace` it builds all workspace packages/apps from source, stages microfrontend artifacts into `dist/mf` and `dist/packages`, inlines the production import map, and serves the shell as a static app.
 
 ## Optional npm module Docker job
 

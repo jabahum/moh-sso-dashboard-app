@@ -44,7 +44,7 @@ async function fixture(page, user) {
 
 test("public portal starts without browser errors", async ({ page }) => {
   const failures = await fixture(page, null);
-  await page.goto("/portal/");
+  await page.goto("/");
   await expect(page.getByRole("heading", { name: "News & Updates" })).toBeVisible();
   await page.waitForLoadState("networkidle");
   expect(failures).toEqual([]);
@@ -62,13 +62,13 @@ async function expectModuleInShell(page, title) {
 
 test("admin can mount users, navigate to clients and reload a module route", async ({ page }) => {
   const failures = await fixture(page, admin);
-  await page.goto("/portal/admin/users");
+  await page.goto("/admin/users");
   await expectModuleInShell(page, "Users");
   await page
     .getByRole("navigation", { name: "Admin navigation" })
     .getByText("Clients", { exact: true })
     .click();
-  await expect(page).toHaveURL(/\/portal\/admin\/clients/);
+  await expect(page).toHaveURL(/\/admin\/clients/);
   await expectModuleInShell(page, "Clients");
   await page.reload();
   await expectModuleInShell(page, "Clients");

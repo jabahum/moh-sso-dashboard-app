@@ -26,8 +26,8 @@ ENV FRONTEND_MODULE_ENV=production
 ENV VITE_APP_VERSION=$VERSION
 ENV VITE_BUILD_TIME=$BUILD_TIME
 ENV FRONTEND_COMMIT=$COMMIT
-ENV FRONTEND_ASSET_BASE_URL=/portal
-ENV FRONTEND_BASE_PATH=/portal
+ENV FRONTEND_ASSET_BASE_URL=/
+ENV FRONTEND_BASE_PATH=/
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 COPY frontend/ .
@@ -41,7 +41,7 @@ WORKDIR /repository
 COPY documentation/package.json documentation/package-lock.json ./documentation/
 RUN npm ci --prefix documentation --no-audit --no-fund
 COPY . .
-ARG DOCS_URL=https://dashboards.health.go.ug
+ARG DOCS_URL=https://portals.health.go.ug
 ENV DOCS_BASE_URL=/docs/
 RUN npm --prefix documentation run build
 

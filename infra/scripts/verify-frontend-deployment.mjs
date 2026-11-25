@@ -62,7 +62,7 @@ export async function verifyFrontend(baseURL, fetchImpl = fetch) {
 
 if (process.argv[1] === "-" || (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)) {
   try {
-    const count = await verifyFrontend(process.env.FRONTEND_SMOKE_URL ?? "http://127.0.0.1:3000/portal/");
+    const count = await verifyFrontend(process.env.FRONTEND_SMOKE_URL ?? "http://127.0.0.1:3000/");
     console.log("Frontend deployment verified: " + count + " resources");
   } catch (error) {
     console.error("Frontend deployment verification failed:", error.message);

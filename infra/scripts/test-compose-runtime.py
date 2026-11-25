@@ -32,8 +32,7 @@ def main():
             # Supply only build outputs; execute the actual checked-in runtime stages.
             frontend = tmp / 'frontend'
             (frontend / 'infra/docker/frontend').mkdir(parents=True)
-            (frontend / 'fixture/portal').mkdir(parents=True)
-            (frontend / 'fixture/portal/index.html').write_text('<!doctype html><title>Runtime fixture</title>')
+            (frontend / 'fixture').mkdir(parents=True)
             (frontend / 'fixture/index.html').write_text('<!doctype html><title>Runtime fixture</title>')
             (frontend / 'infra/docker/frontend/40-runtime-config.sh').write_bytes((ROOT / 'infra/docker/frontend/40-runtime-config.sh').read_bytes())
             (frontend / 'infra/docker/frontend/nginx.conf').write_bytes((ROOT / 'infra/docker/frontend/nginx.conf').read_bytes())
@@ -77,7 +76,7 @@ def main():
                     time.sleep(.25)
             status, _, body = get('/docs/')
             assert status == 200 and '<title>Documentation fixture</title>' in body
-            for path in ('/config.js', '/portal/config.js'):
+            for path in ('/config.js',):
                 status, headers, text = get(path)
                 assert status == 200 and headers['Cache-Control'] == 'no-store'
                 data = json.loads(text.split('window.__APP_CONFIG__ = ', 1)[1].strip().removesuffix(';'))

@@ -18,7 +18,7 @@ export default defineConfig({
   webServer: {
     command:
       "node scripts/prepare-browser-dependencies.mjs && python3 ../infra/scripts/serve-browser-fixture.py",
-    url: "http://127.0.0.1:5417/portal/",
+    url: "http://127.0.0.1:5417/",
     reuseExistingServer: false,
     timeout: 120_000,
   },

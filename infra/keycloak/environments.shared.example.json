@@ -1,14 +1,14 @@
 {
   "development": {
-    "portalUrl": "http://localhost:3000/portal",
+    "portalUrl": "http://localhost:3000",
     "apiUrl": "http://localhost:9000/api/v1"
   },
   "test": {
-    "portalUrl": "http://127.0.0.1:3002/portal",
+    "portalUrl": "http://127.0.0.1:3002",
     "apiUrl": "http://127.0.0.1:9002/api/v1"
   },
   "staging": {
-    "portalUrl": "https://portal-staging.example.org/portal",
+    "portalUrl": "https://portal-staging.example.org",
     "apiUrl": "https://portal-staging.example.org/api/v1"
   }
 }

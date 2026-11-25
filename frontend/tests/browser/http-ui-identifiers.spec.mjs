@@ -47,7 +47,7 @@ for (const width of [390, 1440]) {
   test(`scheduler errors show a toast without randomUUID at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const errors = await fixture(page);
-    await page.goto("/portal/apps/dwh/report-scheduler");
+    await page.goto("/apps/dwh/report-scheduler");
     await expect(
       page.getByRole("heading", { name: "Report Scheduler", exact: true }),
     ).toBeVisible();
@@ -63,7 +63,7 @@ for (const width of [390, 1440]) {
 
 test("identical email attachments get independent UI IDs without randomUUID", async ({ page }) => {
   const errors = await fixture(page);
-  await page.goto("/portal/admin/emails");
+  await page.goto("/admin/emails");
   await page.getByRole("button", { name: "Send email", exact: true }).click();
   const panel = page.getByRole("dialog", { name: "Send email", exact: true });
   const file = {

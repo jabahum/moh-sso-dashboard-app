@@ -11,10 +11,10 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 function assertConfigPath(html) {
   const match = html.match(/<script\b[^>]*\bsrc=["']([^"']*config\.js)["']/);
   assert.ok(match, "runtime config script must be present");
-  assert.equal(new URL(match[1], "http://localhost:3000/portal/").pathname, "/portal/config.js");
+  assert.equal(new URL(match[1], "http://localhost:3000/apps/news").pathname, "/config.js");
 }
 
-test("Vite serves and builds the shell with exactly one /portal config prefix", async () => {
+test("Vite serves and builds the root-based shell with a root config path", async () => {
   const fixture = await realpath(await mkdtemp(join(tmpdir(), "moh-config-path-")));
   let server;
   try {
@@ -26,14 +26,14 @@ test("Vite serves and builds the shell with exactly one /portal config prefix", 
       configFile: false,
       root: fixture,
       publicDir: join(root, "public"),
-      base: "/portal/",
+      base: "/",
       logLevel: "silent",
     };
     server = await createServer({
       ...config,
       server: { middlewareMode: true, hmr: false, watch: null },
     });
-    assertConfigPath(await server.transformIndexHtml("/portal/", html));
+    assertConfigPath(await server.transformIndexHtml("/", html));
     await server.close();
     server = null;
     await build({ ...config, build: { outDir: join(fixture, "dist") } });

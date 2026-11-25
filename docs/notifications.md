@@ -40,7 +40,7 @@ a failed attempt the worker schedules the next one 30 seconds, 2 minutes, then 5
 Admins with `notifications:read` can open:
 
 ```text
-/portal/admin/notifications/deliveries
+/admin/notifications/deliveries
 ```
 
 The dashboard supports:

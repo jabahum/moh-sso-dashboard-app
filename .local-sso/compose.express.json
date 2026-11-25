@@ -6,7 +6,7 @@
         "ENVIRONMENT": "development",
         "APP_BASE_URL": "http://localhost:3000/backend",
         "FRONTEND_BASE_URL": "http://localhost:3000",
-        "FRONTEND_REDIRECT_URI": "http://localhost:3000/portal/",
+        "FRONTEND_REDIRECT_URI": "http://localhost:3000/",
         "AUTH_RETURN_URL_ALLOWED_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000",
         "KEYCLOAK_REDIRECT_URI": "http://localhost:3000/backend/api/v1/auth/callback",
         "DB_NAME": "sso_express_dev"

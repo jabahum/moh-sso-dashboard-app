@@ -239,14 +239,14 @@ export default defineConfig(({ mode }) => {
         secure: false,
         rewrite: (path: string) => rewriteVisualizerProxyPath(path, cleanVisualizerTarget),
         cookieDomainRewrite: {
-          "dashboards.health.go.ug": "localhost",
+          "portals.health.go.ug": "localhost",
         },
       }
     : undefined;
 
   return {
     cacheDir: pathFromRoot(`./node_modules/.vite/${modules.environment}-${modules.source}-${createHash("sha256").update(JSON.stringify(modules.versions)).digest("hex").slice(0, 12)}`),
-    base: "/portal/",
+    base: "/",
     root: pathFromRoot("./apps/shell"),
     envDir,
     publicDir: pathFromRoot("./public"),
@@ -257,9 +257,12 @@ export default defineConfig(({ mode }) => {
       name: "portal-base-redirect",
       configureServer(server) {
         server.middlewares.use(async (request, response, next) => {
-          const match = request.url?.match(/^\/portal(\?.*)?$/);
-          if (match) {
-            response.writeHead(302, { Location: `/portal/${match[1] ?? ""}` });
+          // Legacy /portal links: the shell is served from the root now.
+          // Leading slashes/backslashes are stripped so the target can never be //host.
+          const match = request.url?.match(/^\/portal(?:\/([^?]*))?(\?.*)?$/);
+          if (match && request.url !== "/portal/sw.js") {
+            const rest = (match[1] ?? "").replace(/^[\\/]+/, "");
+            response.writeHead(308, { Location: `/${rest}${match[2] ?? ""}` });
             response.end();
             return;
           }
@@ -302,8 +305,8 @@ export default defineConfig(({ mode }) => {
     },
     react(),
     VitePWA({
-      base: "/portal/",
-      scope: "/portal/",
+      base: "/",
+      scope: "/",
       registerType: "prompt",
       manifest: false,
       devOptions: {
@@ -326,10 +329,21 @@ export default defineConfig(({ mode }) => {
         "icons/maskable-512.png",
       ],
       workbox: {
-        navigateFallback: "/portal/index.html",
+        navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,json}"],
+        // Retired /portal/ service worker kill switch; never precache it.
+        globIgnores: ["portal/**"],
         navigateFallbackDenylist: [
           /^\/api\//,
+          /^\/ssobackend(?:\/|$)/,
+          /^\/backend(?:\/|$)/,
+          /^\/docs(?:\/|$)/,
+          /^\/swagger(?:\/|$)/,
+          /^\/health(?:\/|$)/,
+          /^\/version$/,
+          /^\/nginx\//,
+          /^\/report-browser(?:\/|$)/,
+          /^\/portal(?:\/|$)/,
           /^\/realms\//,
           /^\/auth\//,
           /^\/visualizer[-_]proxy\//,
@@ -338,7 +352,7 @@ export default defineConfig(({ mode }) => {
         runtimeCaching: [
           {
             urlPattern: ({ request, url }) =>
-              request.destination === "script" && url.pathname.startsWith("/portal/assets/"),
+              request.destination === "script" && url.pathname.startsWith("/assets/"),
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "portal-static-assets",
@@ -350,8 +364,8 @@ export default defineConfig(({ mode }) => {
           },
           {
             urlPattern: ({ url }) =>
-              url.pathname.startsWith("/portal/mf/") ||
-              url.pathname.startsWith("/portal/packages/"),
+              url.pathname.startsWith("/mf/") ||
+              url.pathname.startsWith("/packages/"),
             handler: "NetworkFirst",
             options: {
               cacheName: "portal-microfrontends",

@@ -275,7 +275,7 @@ func buildAllowedOrigins(cfg *config.Config) []string {
 
 		// Your production frontend.
 		if cfg.IsProduction() || cfg.IsStaging() {
-			add("https://dashboards.health.go.ug")
+			add("https://portals.health.go.ug")
 		}
 	}
 

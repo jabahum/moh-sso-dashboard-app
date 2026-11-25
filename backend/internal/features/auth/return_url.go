@@ -39,6 +39,8 @@ func (h *Handler) normalizeReturnURL(raw string) (string, error) {
 		}
 	}
 
+	parsed.Path = stripLegacyPortalPrefix(parsed.Path)
+	parsed.RawPath = ""
 	if !isPortalPath(parsed.Path) {
 		return "", errInvalidReturnURL
 	}
@@ -68,8 +70,34 @@ func (h *Handler) normalizeReturnURL(raw string) (string, error) {
 	}).String(), nil
 }
 
+// backendPathPrefixes are served by the API on the same host, so a login must
+// never land on them (for example a GET to a logout or launch endpoint).
+var backendPathPrefixes = []string{"/api", "/ssobackend", "/backend", "/swagger", "/health", "/version"}
+
+// isPortalPath accepts root-relative portal routes. The portal is served at the
+// host root, so any absolute path is a portal route unless the API owns it.
 func isPortalPath(path string) bool {
-	return path == "/portal" || strings.HasPrefix(path, "/portal/")
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+		return false
+	}
+	for _, prefix := range backendPathPrefixes {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return false
+		}
+	}
+	return true
+}
+
+// stripLegacyPortalPrefix maps links from before the portal moved to the host
+// root (/portal, /portal/x) onto their current paths (/, /x).
+func stripLegacyPortalPrefix(path string) string {
+	if path == "/portal" {
+		return "/"
+	}
+	if strings.HasPrefix(path, "/portal/") {
+		return strings.TrimPrefix(path, "/portal")
+	}
+	return path
 }
 
 func (h *Handler) isAllowedReturnOrigin(target *url.URL) bool {

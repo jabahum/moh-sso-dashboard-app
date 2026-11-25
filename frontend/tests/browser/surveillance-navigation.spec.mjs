@@ -2,7 +2,7 @@
 import { test, expect } from "@playwright/test";
 import { URL } from "node:url";
 
-const base = "/portal/apps/dwh/surveillance";
+const base = "/apps/dwh/surveillance";
 const weekId = "00000000-0000-0000-0000-000000000053";
 const diseases = [
   { id: "measles", name: "Measles" },
@@ -33,7 +33,7 @@ const user = {
 
 async function fixture(page, hybrid = false) {
   if (hybrid) {
-    await page.route("**/portal/config.js", (route) =>
+    await page.route("**/config.js", (route) =>
       route.fulfill({
         contentType: "application/javascript",
         body: 'window.__APP_CONFIG__ = { API_BASE_URL: "/ssobackend", microfrontendMode: "local", singleSpaOrchestration: false, microfrontendMountMode: "hybrid" };',
@@ -128,10 +128,10 @@ test("relevant document links leave the surveillance router at the portal root",
   const link = page.getByRole("link", { name: "Measles Surveillance Guidelines", exact: true });
   await expect(link).toHaveAttribute(
     "href",
-    "/portal/apps/utilities/self-service/eservice/document-upload",
+    "/apps/utilities/self-service/eservice/document-upload",
   );
   await link.click();
-  await expect(page).toHaveURL("/portal/apps/utilities/self-service/eservice/document-upload");
+  await expect(page).toHaveURL("/apps/utilities/self-service/eservice/document-upload");
 });
 
 test("direct disease detail loads use the single shell breadcrumb", async ({ page }) => {
