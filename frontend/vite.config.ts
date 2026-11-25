@@ -316,10 +316,6 @@ export default defineConfig(({ mode }) => {
         "logo.png",
         "manifest.webmanifest",
         "offline.html",
-        "config.js",
-        "config.production.js",
-        "config.development.js",
-        "config.local-remote.js",
         "import-map.json",
         "import-map.local.json",
         "version-manifest.json",
@@ -332,7 +328,11 @@ export default defineConfig(({ mode }) => {
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,json}"],
         // Retired /portal/ service worker kill switch; never precache it.
-        globIgnores: ["portal/**"],
+        // config*.js is written by the container at startup (runtime settings such
+        // as API_BASE_URL). A precached copy keeps its build-time revision and would
+        // be served forever after the server's settings change, so fetch it from
+        // the network and keep a copy only for offline use.
+        globIgnores: ["portal/**", "config*.js"],
         navigateFallbackDenylist: [
           /^\/api\//,
           /^\/ssobackend(?:\/|$)/,
@@ -350,6 +350,15 @@ export default defineConfig(({ mode }) => {
         ],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /^\/config(?:\.[\w-]+)?\.js$/.test(url.pathname),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "portal-runtime-config",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 4 },
+            },
+          },
           {
             urlPattern: ({ request, url }) =>
               request.destination === "script" && url.pathname.startsWith("/assets/"),
