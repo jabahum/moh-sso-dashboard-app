@@ -1,5 +1,24 @@
 # @moh-sso/ui
 
+## 1.11.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/types@1.11.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.9.0`.
+
+- Serve the portal from portals.health.go.ug (`ba02bee7`)
+- Serve the portal at the site root instead of /portal/ (`0dde9e56`)
+
 ## 1.10.0
 
 ### Minor Changes
@@ -12,6 +31,7 @@
   - @moh-sso/types@1.10.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.8.0`.

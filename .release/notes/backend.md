@@ -1,8 +1,9 @@
-# Backend 1.9.0
+# Backend 1.10.0
 
 <!-- scoped-source-changes -->
 ### Source changes
 
-Changes since `backend/v1.8.0`.
+Changes since `backend/v1.9.0`.
 
-- Add opt-in identity-sync auto-link at backend startup (`6e63753d`)
+- Serve the portal from portals.health.go.ug (`ba02bee7`)
+- Serve the portal at the site root instead of /portal/ (`0dde9e56`)
