@@ -1,5 +1,26 @@
 # @moh-sso/audit
 
+## 1.9.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/api@1.10.0
+  - @moh-sso/config@1.10.0
+  - @moh-sso/microfrontend@1.10.0
+  - @moh-sso/ui@1.10.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.8.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.8.0
 
 ### Minor Changes
@@ -15,6 +36,7 @@
   - @moh-sso/ui@1.9.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.7.0`.
