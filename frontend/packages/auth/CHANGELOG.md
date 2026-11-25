@@ -1,5 +1,25 @@
 # @moh-sso/auth
 
+## 1.11.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/api@1.11.0
+  - @moh-sso/config@1.11.0
+  - @moh-sso/state@1.11.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.9.0`.
+
+- Serve the portal at the site root instead of /portal/ (`0dde9e56`)
+
 ## 1.10.0
 
 ### Minor Changes
@@ -14,6 +34,7 @@
   - @moh-sso/state@1.10.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.8.0`.
