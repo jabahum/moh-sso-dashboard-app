@@ -871,6 +871,7 @@
       "defaultClientScopes": ["openid", "profile", "email", "roles", "groups"],
       "attributes": {
         "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "http://localhost:3000/portal##+",
         "ui.icon": "reporting",
         "ui.home": "/portal",
         "portal.system": "true",

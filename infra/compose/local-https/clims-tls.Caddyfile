@@ -1,0 +1,11 @@
+{
+	auto_https off
+	admin off
+}
+
+# HTTPS front for the CLIMS Docker stack (its nginx on the host's
+# 127.0.0.1:8080). The dashboard backend calls CLIMS's identity-sync API here.
+https://clims.local.test:443 {
+	tls /certs/leaf.crt /certs/leaf.key
+	reverse_proxy host.docker.internal:8080
+}

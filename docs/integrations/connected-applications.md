@@ -200,6 +200,10 @@ Rehearse the whole sequence first in the disposable stack, which runs CLIMS,
 POES, Keycloak and the dashboard together: `make -C infra identity-sync-e2e-test`
 (see `infra/compose/identity-sync-e2e/README.md` and `e2e/identity-sync/README.md`).
 
+To test a local CLIMS against the dev stack instead, with the portal launcher,
+identity sync and logout, use the overrides in `infra/compose/local-https/`. They
+move the dev Keycloak issuer to HTTPS, which CLIMS needs to enable sync (see its README).
+
 ## 6. Adding another application
 
 1. The application implements the [contract](identity-sync-contract.md). A Go
