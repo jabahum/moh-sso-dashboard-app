@@ -214,6 +214,16 @@ def main():
                     location = headers.get('Location') or ''
                     assert not location.startswith(('//', '/\\')), (path, status, location)
 
+                # Stale cached config.js (API_BASE_URL=.../api/v1) doubles the API root.
+                for path, location in (
+                    ('/api/v1/api/v1/auth/login?returnTo=%2F', '/api/v1/auth/login?returnTo=%2F'),
+                    ('/api/v1/api/v1/', '/api/v1/'),
+                ):
+                    status, headers, _ = request(path)
+                    assert status == 308 and headers['Location'] == location, (path, status, dict(headers))
+                status, headers, _ = request('/api/v1/api/v1/probe', 'POST', b'payload')
+                assert status == 308 and headers['Location'] == '/api/v1/probe', (status, headers)
+
             def check_docs():
                 status, headers, _ = request('/docs?keep=1')
                 assert status == 308 and headers['Location'] == '/docs/?keep=1'
