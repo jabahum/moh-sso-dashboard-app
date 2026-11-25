@@ -119,7 +119,7 @@ During Docker builds, `node scripts/use-runtime-config.mjs production` activates
 - `singleSpaOrchestration: true`
 - `microfrontendMountMode: "orchestrated"`
 
-`config.production.js` sets `API_BASE_URL` to `https://portals.health.go.ug/ssobackend`. At container start, `infra/docker/frontend/40-runtime-config.sh` overwrites `config.js` (and `portal/config.js`) from `API_BASE_URL` (default `/api`), `FRONTEND_MICROFRONTEND_MODE` (default `remote`), `FRONTEND_SINGLE_SPA_ORCHESTRATION` (default `true`), `FRONTEND_MICROFRONTEND_MOUNT_MODE` (default `orchestrated`) and `FRONTEND_SIDE_PANEL_DOCKING` (default `true`), unless `config.js` is a read-only mount (as with the Helm ConfigMap).
+`config.production.js` sets `API_BASE_URL` to `https://portals.health.go.ug/api`. At container start, `infra/docker/frontend/40-runtime-config.sh` overwrites `config.js` (and `portal/config.js`) from `API_BASE_URL` (default `/api`), `FRONTEND_MICROFRONTEND_MODE` (default `remote`), `FRONTEND_SINGLE_SPA_ORCHESTRATION` (default `true`), `FRONTEND_MICROFRONTEND_MOUNT_MODE` (default `orchestrated`) and `FRONTEND_SIDE_PANEL_DOCKING` (default `true`), unless `config.js` is a read-only mount (as with the Helm ConfigMap).
 
 The shell build keeps `import-map.json` as a static artifact for inspection and tooling. During staging, the generated map is also inlined into `dist/index.html` so browsers can use it without an import-map shim.
 

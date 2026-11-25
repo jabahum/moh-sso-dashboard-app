@@ -35,6 +35,10 @@ for (const [value, service] of [
   ["/backend", "/backend"],
   ["http://localhost:9000/", "http://localhost:9000"],
   ["https://example.org/api", "https://example.org"],
+  ["/api/v1", ""],
+  ["/api/v1/", ""],
+  ["https://portals.example.org/api/v1", "https://portals.example.org"],
+  ["/ssobackend/api/v1", "/ssobackend"],
   ["https://example.org/backend/api/", "https://example.org/backend"],
 ]) {
   test(`API endpoints resolve once for ${value ?? "the default"}`, () => {

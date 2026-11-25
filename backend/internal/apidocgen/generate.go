@@ -115,7 +115,7 @@ func Generate(dir string) ([]byte, error) {
 	spec := object{
 		"openapi": "3.0.3",
 		"info":    object{"title": "MOH Integrated Health Portal API", "version": strings.TrimSpace(string(version)), "description": "Complete route inventory generated from the backend router and typed Go handlers. JSON request bodies, query/form parameters and response DTOs follow the source code. Protected routes accept a bearer JWT or an existing sso_session cookie. Permission and system/group checks remain enforced by the API. Login redirects should be followed in a browser. File endpoints stream binary content. Dynamic JSON/maps intentionally retain open schemas."},
-		// Relative to /swagger/openapi.json: works at / and reverse-proxy /backend/ or /ssobackend/.
+		// Relative to /swagger/openapi.json: works at / and behind a reverse-proxy prefix such as /backend/.
 		"servers":  []any{object{"url": "..", "description": "Same backend origin and deployment prefix as this specification"}},
 		"security": []any{object{"bearerAuth": []string{}}, object{"sessionCookie": []string{}}, object{"legacyAccessCookie": []string{}}},
 		"tags":     tagList, "paths": paths, "components": components,

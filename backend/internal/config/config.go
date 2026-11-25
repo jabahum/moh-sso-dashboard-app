@@ -766,7 +766,7 @@ func (c *Config) CookieDomainValue() string {
 func (c *Config) CookieSameSiteMode() string {
 	// Your current flow uses same-site public domain:
 	// frontend: https://portals.health.go.ug
-	// backend:  https://portals.health.go.ug/ssobackend
+	// backend:  https://portals.health.go.ug/api
 	//
 	// SameSite=Lax is correct for OAuth top-level navigation callbacks.
 	return "Lax"
