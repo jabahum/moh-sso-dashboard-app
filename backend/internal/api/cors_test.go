@@ -44,7 +44,7 @@ func TestCORSUsesFrontendOriginRatherThanPath(t *testing.T) {
 func TestAllowedOriginsRejectUnsafeURLsAndDeduplicate(t *testing.T) {
 	for _, raw := range []string{"*", "https://*.example.test", "/portal", "javascript:alert(1)", "https://user:pass@example.test"} {
 		origins := buildAllowedOrigins(&config.Config{Environment: "production", FrontendBaseURL: raw})
-		if len(origins) != 1 || origins[0] != "https://dashboards.health.go.ug" {
+		if len(origins) != 1 || origins[0] != "https://portals.health.go.ug" {
 			t.Errorf("unsafe configured origin %q accepted: %v", raw, origins)
 		}
 	}

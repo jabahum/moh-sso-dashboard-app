@@ -4,20 +4,19 @@ This page explains how other applications launch the Integrated Health Portal wi
 
 ## Production route ownership
 
-`dashboards.health.go.ug` is a shared origin. Report Browser owns the origin root;
-the Integrated Health Portal does not:
+The Integrated Health Portal has its own origin, `portals.health.go.ug`. Report
+Browser stays on `dashboards.health.go.ug`:
 
-| URL path | Owner |
+| URL | Owner |
 | --- | --- |
-| `/` | Report Browser |
-| `/report-browser` and `/report-browser/*` | Report Browser |
-| `/` and other paths not listed here | Integrated Health Portal frontend (legacy `/portal/*` links 308-redirect to the same path without `/portal`) |
-| `/ssobackend` and `/ssobackend/*` | Integrated Health Portal backend |
+| `https://portals.health.go.ug/` and other paths not listed here | Integrated Health Portal frontend |
+| `https://portals.health.go.ug/ssobackend/*` | Integrated Health Portal backend |
+| `https://portals.health.go.ug/portal/*` | 308 redirect to the same path without `/portal` (legacy links) |
+| `https://dashboards.health.go.ug/` and `/report-browser/*` | Report Browser |
+| `https://dashboards.health.go.ug/portal/*` and `/ssobackend/*` | 308 redirect to `portals.health.go.ug` (legacy links) |
 
-Consequently, `https://dashboards.health.go.ug/` and
-`https://dashboards.health.go.ug/report-browser` both opening Report Browser is
-expected. Portal links are root-relative paths such as `/apps/news`. Portal authentication links must
-begin with `/ssobackend` after runtime resolution.
+Portal links are root-relative paths such as `/apps/news`. Portal authentication
+links must begin with `/ssobackend` after runtime resolution.
 
 ## Launch contract
 
@@ -27,17 +26,17 @@ Applications that launch the portal and need an authenticated destination must u
 /api/v1/auth/launch?returnTo=/apps/news
 ```
 
-The ordinary `launchUrl` remains `/`. The launcher resolves the authenticated backend path against its runtime API base. In production, an API base of `https://dashboards.health.go.ug/ssobackend` therefore produces:
+The ordinary `launchUrl` remains `/`. The launcher resolves the authenticated backend path against its runtime API base. In production, an API base of `https://portals.health.go.ug/ssobackend` therefore produces:
 
 ```text
-https://dashboards.health.go.ug/ssobackend/api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews
+https://portals.health.go.ug/ssobackend/api/v1/auth/launch?returnTo=%2Fapps%2Fnews
 ```
 
 The backend redirects to Keycloak. An existing Keycloak SSO session is reused, the fixed callback creates the portal `sso_session`, and the browser returns to the validated portal route. Tokens, authorization codes, and session identifiers are never added to launcher URLs.
 
 An external launcher must not navigate directly to the registry value
-`/api/v1/auth/launch?...` on the shared production origin. Doing that requests
-`https://dashboards.health.go.ug/api/v1/...`, which belongs to neither portal route.
+`/api/v1/auth/launch?...` against its own origin. From Report Browser that requests
+`https://dashboards.health.go.ug/api/v1/...`, which is not a portal route.
 It must resolve the value against the portal API base first, producing the
 `/ssobackend/api/v1/...` URL shown above.
 
@@ -47,7 +46,7 @@ The `dashboard-web` system should define:
 
 ```yaml
 launchUrl: /
-authenticatedLaunchUrl: /api/v1/auth/launch?returnTo=%2Fportal%2Fapps%2Fnews
+authenticatedLaunchUrl: /api/v1/auth/launch?returnTo=%2Fapps%2Fnews
 ```
 
 The equivalent Keycloak client attributes are `ui.launchUrl` and `ui.authenticatedLaunchUrl`. Portal administrators can edit both values through Systems or RBAC Management. Report Browser and other external launchers should consume this metadata instead of hardcoding portal paths.
@@ -71,9 +70,9 @@ KEYCLOAK_REDIRECT_URI=http://localhost:9000/api/v1/auth/callback
 Production:
 
 ```env
-FRONTEND_BASE_URL=https://dashboards.health.go.ug/
-AUTH_RETURN_URL_ALLOWED_ORIGINS=https://dashboards.health.go.ug
-KEYCLOAK_REDIRECT_URI=https://dashboards.health.go.ug/ssobackend/api/v1/auth/callback
+FRONTEND_BASE_URL=https://portals.health.go.ug/
+AUTH_RETURN_URL_ALLOWED_ORIGINS=https://portals.health.go.ug
+KEYCLOAK_REDIRECT_URI=https://portals.health.go.ug/ssobackend/api/v1/auth/callback
 API_BASE_URL=/ssobackend
 ```
 

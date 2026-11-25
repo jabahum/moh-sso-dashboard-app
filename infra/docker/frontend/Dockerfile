@@ -31,7 +31,7 @@ WORKDIR /repository
 COPY documentation/package.json documentation/package-lock.json ./documentation/
 RUN npm ci --prefix documentation --no-audit --no-fund
 COPY . .
-ARG DOCS_URL=https://dashboards.health.go.ug
+ARG DOCS_URL=https://portals.health.go.ug
 ENV DOCS_BASE_URL=/docs/
 RUN npm --prefix documentation run build
 

@@ -45,7 +45,7 @@ export function App({ session, permittedApplications, logout }) {
       <ExternalAppHeader
         appName="Logistics Management"
         username={session.username}
-        portalUrl="https://dashboards.health.go.ug/apps"
+        portalUrl="https://portals.health.go.ug/apps"
         applications={permittedApplications}
         onProfile={() => window.location.assign("/account")}
         onLogout={logout}

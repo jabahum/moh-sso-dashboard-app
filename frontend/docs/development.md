@@ -95,7 +95,7 @@ Each script copies `public/config.<mode>.js` to `public/config.js` (`scripts/use
 | --- | --- | --- | --- | --- | --- |
 | `config:dev` | `config.development.js` | `http://localhost:9000` | `local` | `false` | `hybrid` |
 | `config:local-remote` | `config.local-remote.js` | `http://localhost:9000` | `remote` | `false` | `hybrid` |
-| `config:prod` | `config.production.js` | `https://dashboards.health.go.ug/ssobackend` | `remote` | `true` | `orchestrated` |
+| `config:prod` | `config.production.js` | `https://portals.health.go.ug/ssobackend` | `remote` | `true` | `orchestrated` |
 
 Normal development uses local/hybrid mode, which `npm run dev:shell` activates automatically.
 

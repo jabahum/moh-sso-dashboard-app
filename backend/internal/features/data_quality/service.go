@@ -206,7 +206,7 @@ func (s *service) sendApprovalEmailToGroupMembers(ctx context.Context, input res
 	resolutionAction := dqInterfaceString(input.ResolutionAction)
 
 	// Determine portal link
-	portalURL := "https://dashboards.health.go.ug"
+	portalURL := "https://portals.health.go.ug"
 	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
 		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
 	}
@@ -308,7 +308,7 @@ func (s *service) sendAssignmentEmail(ctx context.Context, input assignIssuesInp
 	}
 
 	// Determine portal link
-	portalURL := "https://dashboards.health.go.ug"
+	portalURL := "https://portals.health.go.ug"
 	if s.cfg != nil && strings.TrimSpace(s.cfg.FrontendBaseURL) != "" {
 		portalURL = strings.TrimRight(strings.TrimSpace(s.cfg.FrontendBaseURL), "/")
 	}

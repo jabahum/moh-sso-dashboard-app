@@ -13,12 +13,12 @@ export const Logistics = () => {
       <ExternalAppHeader
         appName="Logistics Management"
         username="pilot.user"
-        portalUrl="https://dashboards.health.go.ug/apps"
+        portalUrl="https://portals.health.go.ug/apps"
         applications={[
           {
             id: "portal",
             name: "Integrated Health Portal",
-            href: "https://dashboards.health.go.ug/apps",
+            href: "https://portals.health.go.ug/apps",
           },
           { id: "reports", name: "Example Reports", href: "https://reports.example.org" },
         ]}

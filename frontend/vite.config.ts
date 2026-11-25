@@ -239,7 +239,7 @@ export default defineConfig(({ mode }) => {
         secure: false,
         rewrite: (path: string) => rewriteVisualizerProxyPath(path, cleanVisualizerTarget),
         cookieDomainRewrite: {
-          "dashboards.health.go.ug": "localhost",
+          "portals.health.go.ug": "localhost",
         },
       }
     : undefined;

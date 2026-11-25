@@ -25,7 +25,7 @@ class Environments(unittest.TestCase):
             self.assertEqual(realm['realm'], name)
             self.assertTrue(all(u.get('serviceAccountClientId') for u in realm['users']))
             encoded = json.dumps(realm)
-            for forbidden in ('"credentials"', '"secret"', '"privateKey"', 'timesheet.health.go.ug', 'dashboards.health.go.ug', 'localhost:3000'):
+            for forbidden in ('"credentials"', '"secret"', '"privateKey"', 'timesheet.health.go.ug', 'dashboards.health.go.ug', 'portals.health.go.ug', 'localhost:3000'):
                 self.assertNotIn(forbidden, encoded)
             web = next(c for c in realm['clients'] if c['clientId'] == 'dashboard-web')
             self.assertEqual(web['redirectUris'], ['https://portal.example.org/api/v1/auth/callback'])

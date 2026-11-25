@@ -9,7 +9,7 @@ const html = readFileSync(new URL("../apps/shell/index.html", import.meta.url), 
 test("the source shell uses a runtime config path that Vite prefixes with its base", () => {
   assert.equal(selectedRuntimeConfig(html, "localhost"), "/config.js");
   assert.equal(selectedRuntimeConfig(html, "127.0.0.1"), "/config.js");
-  assert.equal(selectedRuntimeConfig(html, "dashboards.health.go.ug"), "/config.js");
+  assert.equal(selectedRuntimeConfig(html, "portals.health.go.ug"), "/config.js");
 });
 
 test("runtime validation reads configuration values independently of JS formatting", () => {
