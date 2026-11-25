@@ -13,12 +13,11 @@ function getRuntimeApiBaseUrl() {
 
 const configuredApiBase = getRuntimeApiBaseUrl() || import.meta.env.VITE_API_BASE_URL || "/api";
 
-// Accept either a service base (origin or /ssobackend) or its /api root.
+// Accept a service base (an origin, or a legacy prefix such as /ssobackend), its
+// /api root, or its versioned /api/v1 root; all resolve to the same service base.
 // Non-API endpoints and authenticated launch paths still use the service base.
 const normalizedApiBase = configuredApiBase.trim().replace(/\/+$/, "");
-const API_BASE_URL = normalizedApiBase.endsWith("/api")
-  ? normalizedApiBase.slice(0, -4)
-  : normalizedApiBase;
+const API_BASE_URL = normalizedApiBase.replace(/\/api(?:\/v1)?$/, "");
 const API_ROOT = `${API_BASE_URL}/api`;
 const API_VERSION = "v1";
 const API_BASE = `${API_ROOT}/${API_VERSION}`;

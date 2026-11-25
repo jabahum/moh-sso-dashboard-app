@@ -179,7 +179,7 @@ both example application IPs. Include the HTTP-context and portal-location files
 inside the existing HTTPS site. Preserve Report Browser's `/` and `/report-browser/`
 ownership. Provision the environment's certificate and HTTPS redirect there.
 
-For gateway mode, preserve the request path (the portal at `/`, the API at `/ssobackend/`) when forwarding to the
+For gateway mode, preserve the request path (the portal at `/`, the API at `/api/`) when forwarding to the
 gateway and configure the server-local trusted-proxy file in both places. Public
 DNS points at the HTTPS proxy. Allow application ports 3000/9000 only from that
 proxy's actual private source IP; account for Docker's forwarded traffic. Keep
@@ -189,7 +189,7 @@ changes are silently applied during an application rollout.
 ### Keycloak callback and connectivity
 
 Set Keycloak's exact web-client callback to the environment's
-`https://PUBLIC_DOMAIN/ssobackend/api/v1/auth/callback`; match `LOGIN_URL`,
+`https://PUBLIC_DOMAIN/api/v1/auth/callback`; match `LOGIN_URL`,
 `FRONTEND_BASE_URL`, allowed return origins and cookie domain in the server env.
 Backend-to-Keycloak and database URLs must be reachable from the application host.
 Test TLS/DNS and direct private upstream connectivity before the first rollout.

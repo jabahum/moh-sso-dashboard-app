@@ -270,11 +270,11 @@ class Server:
                      self.config.get('verifier_image', 'node:22-alpine'), 'node', '--input-type=module', '-'], input=verifier)
         if self.config.get('verify_public_edge', True):
             origin = self.config['public_base_url'].rstrip('/')
-            for path in ('/', '/ssobackend/health/ready', '/ssobackend/swagger/openapi.json'):
+            for path in ('/', '/health/ready', '/swagger/openapi.json'):
                 with urllib.request.urlopen(origin + path, timeout=15) as response:
                     if response.status != 200 or response.url != origin + path:
                         raise ValueError('Public HTTPS routing/redirect check failed')
-            with urllib.request.urlopen(origin + '/ssobackend/version', timeout=15) as response:
+            with urllib.request.urlopen(origin + '/version', timeout=15) as response:
                 actual = backend_version(json.load(response))
                 if actual.get('version') != backend['version'] or actual.get('commit') != backend['commit']:
                     raise ValueError('Public API runtime metadata mismatch')

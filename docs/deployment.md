@@ -113,14 +113,15 @@ Public TLS terminates at Nginx.
 Frontend receives public runtime settings only; its entrypoint writes JSON-escaped
 `config.js` at the site root:
 
-- `API_BASE_URL` defaults to `/api` for the whole-host gateway. The frontend
+- `API_BASE_URL` is `/api` for every supported layout: the backend is served
+  unprefixed at `/api/`, `/swagger/`, `/health` and `/version`. The frontend
   resolves that to `/api/v1/...` and fetches version metadata from `/version`.
-- Explicit service bases such as `/ssobackend`, `/backend`, or
-  `http://localhost:9000` remain supported; a trailing `/api` is accepted without
-  duplicating the API path.
-- Shared-host routing still requires `API_BASE_URL=/ssobackend`, as in the
-  production environment example, because the shared host routes only
-  `/ssobackend/` to the backend.
+- Explicit service bases such as `/backend` or `http://localhost:9000` remain
+  supported. A trailing `/api` or `/api/v1` is accepted without duplicating the
+  API path, so `/api/v1` and `https://portals.health.go.ug/api/v1` also work.
+- The backend used to be published at `/ssobackend/`. Old `/ssobackend/...` URLs,
+  including registered Keycloak callbacks, receive a 308 redirect to the same
+  path without the prefix.
 
 ### Secrets
 
@@ -169,10 +170,10 @@ For SSH-tunnel access to gateway mode:
    FRONTEND_BASE_URL=http://localhost:8080/
    FRONTEND_REDIRECT_URI=http://localhost:8080/
    AUTH_RETURN_URL_ALLOWED_ORIGINS=http://localhost:8080
-   LOGIN_URL=http://localhost:8080/ssobackend/api/v1/auth/login
-   KEYCLOAK_REDIRECT_URI=http://localhost:8080/ssobackend/api/v1/auth/callback
-   APP_BASE_URL=http://localhost:8080/ssobackend
-   API_BASE_URL=/ssobackend
+   LOGIN_URL=http://localhost:8080/api/v1/auth/login
+   KEYCLOAK_REDIRECT_URI=http://localhost:8080/api/v1/auth/callback
+   APP_BASE_URL=http://localhost:8080
+   API_BASE_URL=/api
    COOKIE_DOMAIN=
    ```
 
@@ -275,7 +276,8 @@ The portal has its own host, `portals.health.go.ug`:
 /                  -> portal frontend
 /portal/*          -> 308 redirect to the same path without /portal (legacy links)
 /docs/*            -> Docusaurus site in the frontend image
-/ssobackend/*      -> Go backend, stripping that prefix internally
+/api/*            -> Go backend (also /swagger/*, /health, /version)
+/ssobackend/*      -> 308 redirect to the same path without /ssobackend (legacy)
 ```
 
 Report Browser stays on `dashboards.health.go.ug` (`/` and `/report-browser/*`).
@@ -284,7 +286,7 @@ instead of `portal.locations.conf`. It sends old portal traffic to the new host:
 
 ```text
 /portal/*          -> 308 https://portals.health.go.ug/* (prefix dropped)
-/ssobackend/*      -> 308 https://portals.health.go.ug/ssobackend/*
+/ssobackend/*      -> 308 https://portals.health.go.ug/* (prefix dropped)
 /docs/*            -> 308 https://portals.health.go.ug/docs/*
 ```
 
@@ -312,8 +314,7 @@ origin requires rebuilding the frontend image.
 
 #### Swagger, caching and proxy limits
 
-Swagger is `/ssobackend/swagger/`, with the spec at
-`/ssobackend/swagger/openapi.json`. Stable module URLs revalidate; runtime config,
+Swagger is `/swagger/`, with the spec at `/swagger/openapi.json`. Stable module URLs revalidate; runtime config,
 import maps and HTML use no-store. Content-hashed static assets use immutable
 caching, and missing code assets return 404. API traffic is not cached. Proxy
 rules handle 50 MiB request bodies, large SSO cookie responses and WebSockets.
@@ -325,7 +326,8 @@ Access logs omit query strings and credentials; rotate
 ```text
 Browser --HTTPS--> Nginx machine 10.0.0.10
                      /*            --> App machine 10.0.0.20:3000
-                     /ssobackend/* --> App machine 10.0.0.20:9000
+                     /api/*        --> App machine 10.0.0.20:9000
+                     (also /swagger/*, /health, /version)
 ```
 
 Both IPs are examples. On the application machine:
@@ -493,17 +495,17 @@ aligned, for example:
 ```env
 FRONTEND_BASE_URL=https://portals.health.go.ug/
 AUTH_RETURN_URL_ALLOWED_ORIGINS=https://portals.health.go.ug
-LOGIN_URL=https://portals.health.go.ug/ssobackend/api/v1/auth/login
-KEYCLOAK_REDIRECT_URI=https://portals.health.go.ug/ssobackend/api/v1/auth/callback
-API_BASE_URL=/ssobackend
+LOGIN_URL=https://portals.health.go.ug/api/v1/auth/login
+KEYCLOAK_REDIRECT_URI=https://portals.health.go.ug/api/v1/auth/callback
+API_BASE_URL=/api
 ```
 
 ### Moving to portals.health.go.ug
 
 The portal now has its own host and is served at its root: it moves from
 `https://dashboards.health.go.ug/portal/` to `https://portals.health.go.ug/`, and
-the backend from `dashboards.health.go.ug/ssobackend` to
-`portals.health.go.ug/ssobackend`. Report Browser stays on
+the backend from `dashboards.health.go.ug/ssobackend` to unprefixed routes on
+`portals.health.go.ug` (`/api/`, `/swagger/`, `/health`, `/version`). Report Browser stays on
 `dashboards.health.go.ug`. When upgrading:
 
 1. Point DNS for `portals.health.go.ug` at the portal's public edge and issue its
@@ -511,13 +513,15 @@ the backend from `dashboards.health.go.ug/ssobackend` to
 2. In the private production env file, move every portal origin to the new host:
    `FRONTEND_BASE_URL` and `FRONTEND_REDIRECT_URI` (`https://portals.health.go.ug/`),
    `AUTH_RETURN_URL_ALLOWED_ORIGINS`, `LOGIN_URL`, `KEYCLOAK_REDIRECT_URI`,
-   `APP_BASE_URL`, `ADMIN_DASHBOARD_URL` (`/admin/home`, no `/portal`), `DOCS_URL`
-   and `COOKIE_DOMAIN=portals.health.go.ug`. Keep `HEALTH_BI_BASE_URL` on
+   `APP_BASE_URL` (the bare origin), `ADMIN_DASHBOARD_URL` (`/admin/home`, no
+   `/portal`), `DOCS_URL` and `COOKIE_DOMAIN=portals.health.go.ug`. Set
+   `API_BASE_URL=/api`, and drop `/ssobackend` from `LOGIN_URL` and
+   `KEYCLOAK_REDIRECT_URI`. Keep `HEALTH_BI_BASE_URL` on
    `dashboards.health.go.ug/report-browser`. Set `public_base_url` in
    `/etc/moh-sso/deploy.json` to `https://portals.health.go.ug`.
 3. In Keycloak, update the `dashboard-web` client: root/home URL and post-logout
    redirect URI `https://portals.health.go.ug`, valid redirect URI
-   `https://portals.health.go.ug/ssobackend/api/v1/auth/callback`, web origin
+   `https://portals.health.go.ug/api/v1/auth/callback`, web origin
    `https://portals.health.go.ug`. Keep the old `dashboards.health.go.ug` entries
    until old sessions and bookmarks have aged out.
 4. On the portal host, install `portal.locations.conf`. On the old host, replace

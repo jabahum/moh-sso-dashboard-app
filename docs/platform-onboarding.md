@@ -743,9 +743,10 @@ admin roles, or disabled token validation as onboarding workarounds.
 
 ## 13. API and command reference
 
-Paths below are backend application paths under `/api/v1`. If the reverse proxy
-publishes the backend at `/ssobackend`, prepend that configured public prefix;
-do not append `/api/v1` twice. Portal RBAC APIs use existing admin authentication;
+Paths below are backend application paths under `/api/v1`, served at the same
+path on the portal host (for example `https://portals.health.go.ug/api/v1/...`).
+If a reverse proxy publishes the backend under a prefix, prepend it once; do not
+append `/api/v1` twice. Portal RBAC APIs use existing admin authentication;
 platform service APIs use Bearer access tokens.
 
 ### 13.1 Endpoints

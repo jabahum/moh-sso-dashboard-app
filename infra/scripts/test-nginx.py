@@ -196,6 +196,24 @@ def main():
                 status, headers, _ = request('/portalx')
                 assert status == 200 and 'Location' not in headers, ('/portalx', status)
 
+            def check_legacy_backend_redirects():
+                # The backend moved from /ssobackend/ to unprefixed routes.
+                for path, location in (
+                    ('/ssobackend', '/'), ('/ssobackend/', '/'), ('/ssobackend?keep=1', '/?keep=1'),
+                    ('/ssobackend/api/v1/probe?batch=2', '/api/v1/probe?batch=2'),
+                    ('/ssobackend/api/v1/auth/callback?code=x', '/api/v1/auth/callback?code=x'),
+                    ('/ssobackend/swagger/openapi.json', '/swagger/openapi.json'),
+                    ('/ssobackend//evil.example/x', '/evil.example/x'),
+                ):
+                    status, headers, _ = request(path)
+                    assert status == 308 and headers['Location'] == location, (path, status, headers)
+                status, headers, _ = request('/ssobackend/api/v1/probe', 'POST', b'payload')
+                assert status == 308 and headers['Location'] == '/api/v1/probe', (status, headers)
+                for path in ('/ssobackend/%5Cevil.example', '/ssobackend/%2F%2Fevil.example'):
+                    status, headers, _ = request(path)
+                    location = headers.get('Location') or ''
+                    assert not location.startswith(('//', '/\\')), (path, status, location)
+
             def check_docs():
                 status, headers, _ = request('/docs?keep=1')
                 assert status == 308 and headers['Location'] == '/docs/?keep=1'
@@ -217,6 +235,7 @@ def main():
             assert redirect == "308 http://127.0.0.1:3000/apps/documents?tab=2", redirect
             check_docs()
             check_legacy_portal_redirects()
+            check_legacy_backend_redirects()
             # Exercise the actual Compose probe against the IPv4-only gateway.
             model = subprocess.run(['docker', 'compose', '-f', str(ROOT / 'infra/compose/docker-compose-nginx.yml'),
                                     'config', '--format', 'json'], env=env, text=True,
@@ -245,7 +264,7 @@ def main():
                     assert headers['Cache-Control'] == 'no-store'
                     assert headers['X-Content-Type-Options'] == 'nosniff'
 
-            for prefix in ("", "/backend", "/ssobackend"):
+            for prefix in ("", "/backend"):
                 for path in ("/api/v1/probe?batch=2", "/health/ready", "/version", "/swagger/openapi.json"):
                     status, headers, body = request(prefix + path)
                     assert status == 200 and json.loads(body)['uri'] == path, (prefix, path, body)
@@ -261,9 +280,8 @@ def main():
                 assert data['method'] == 'POST' and data['length'] == '7'
                 status, headers, _ = request(prefix + '/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})
                 assert status == 101 and headers['Upgrade'] == 'websocket'
-            for prefix in ('/backend', '/ssobackend'):
-                assert request(prefix + '/root-redirect')[1]['Location'] == prefix + '/api/v1/target'
-            assert request('/ssobackend/api/v1/probe', 'POST', headers={'Content-Length': str(50 * 1024 * 1024 + 1)})[0] == 413
+            assert request('/backend/root-redirect')[1]['Location'] == '/backend/api/v1/target'
+            assert request('/api/v1/probe', 'POST', headers={'Content-Length': str(50 * 1024 * 1024 + 1)})[0] == 413
 
             spoof = {'X-Forwarded-Proto': 'https', 'X-Forwarded-For': '203.0.113.99',
                      'Forwarded': 'for=203.0.113.99;proto=https'}
@@ -293,7 +311,7 @@ geo $realip_remote_addr $trusted_proxy {{ default 0; {data['ip']}/32 1; }}
             new_backend = name + '-backend-replaced'
             new_ip = json.loads(docker('inspect', new_backend))[0]['NetworkSettings']['Networks'][name]['IPAddress']
             assert new_ip != old_ip, 'DNS-refresh fixture must use a different backend IP'
-            wait_for('/ssobackend/health/ready', lambda r: r[0] == 200)
+            wait_for('/health/ready', lambda r: r[0] == 200)
 
             # Emulate host processes sharing one loopback interface: Nginx on
             # 443, frontend on 3000 and backend on 9000. No Docker DNS upstreams.
@@ -327,6 +345,7 @@ server {
             wait_for('/', lambda r: r[0] == 200)
             check_docs()
             check_legacy_portal_redirects()
+            check_legacy_backend_redirects()
             assert b'Portal fixture' in request('/')[2]
             assert request('/report-browser/reports')[2] == b'report-browser-route'
             for path, code, cache in (
@@ -335,32 +354,33 @@ server {
                 ('/assets/index-abcdefgh.js', 200, 'public, max-age=31536000, immutable'),
                 ('/mf/users/single-spa.js', 200, 'no-cache'),
                 ('/assets/missing.js', 404, 'no-store'),
-                ('/ssobackend/swagger/openapi.json', 200, 'no-store'),
+                ('/swagger/openapi.json', 200, 'no-store'),
+                ('/health/ready', 200, 'no-store'),
+                ('/version', 200, 'no-store'),
             ):
                 status, headers, _ = request(path)
                 assert status == code and headers['Cache-Control'] == cache, (path, status, headers)
                 assert headers['X-Host-Security'] == 'retained'
                 assert headers.get_all('Strict-Transport-Security') == ['max-age=31536000']
-            for path, location in (('/portal', '/?keep=1'), ('/ssobackend', '/ssobackend/?keep=1')):
+            for path, location in (('/portal', '/?keep=1'), ('/ssobackend', '/?keep=1')):
                 status, headers, _ = request(path + '?keep=1')
                 assert status == 308 and headers['Location'] == location
                 assert headers['X-Host-Security'] == 'retained'
-            status, headers, body = request('/ssobackend/api/v1/probe?batch=2', 'POST', b'payload',
+            status, headers, body = request('/api/v1/probe?batch=2', 'POST', b'payload',
                                             {**spoof, 'X-Forwarded-Proto': 'http'})
             data = json.loads(body)
             assert data['uri'] == '/api/v1/probe?batch=2' and data['length'] == '7'
             assert data['method'] == 'POST' and data['proto'] == 'https'
             assert data['ip'] != '203.0.113.99' and data['forwarded'] == ''
             assert data['request_id'] == headers['X-Request-ID']
-            assert request('/ssobackend/swagger')[1]['Location'] == 'swagger/'
-            assert request('/ssobackend/root-redirect')[1]['Location'] == '/ssobackend/api/v1/target'
-            status, headers, _ = request('/ssobackend/api/v1/auth/callback')
+            assert request('/swagger')[1]['Location'] == 'swagger/'
+            status, headers, _ = request('/api/v1/auth/callback')
             assert status == 302 and headers['Location'] == 'https://identity.example/login'
             assert len(headers.get_all('Set-Cookie')) == 2
             assert headers['Strict-Transport-Security'] == 'max-age=31536000'
-            assert request('/ssobackend/api/v1/probe', 'POST', headers={'Content-Length': str(50 * 1024 * 1024 + 1)})[0] == 413
-            assert request('/ssobackend/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})[0] == 101
-            request('/ssobackend/api/v1/probe?code=HOST_LOG_SECRET')
+            assert request('/api/v1/probe', 'POST', headers={'Content-Length': str(50 * 1024 * 1024 + 1)})[0] == 413
+            assert request('/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})[0] == 101
+            request('/api/v1/probe?code=HOST_LOG_SECRET')
             assert 'HOST_LOG_SECRET' not in docker('exec', host, 'cat', '/var/log/nginx/moh-sso-access.log')
 
             # A separate proxy process/network address reaches the application
@@ -380,29 +400,30 @@ server {
             wait_for('/import-map.json', lambda r: r[0] == 200)
             check_docs()
             check_legacy_portal_redirects()
+            check_legacy_backend_redirects()
             assert b'Portal fixture' in request('/')[2]
             assert request('/report-browser/reports')[2] == b'report-browser-route'
             for path, expected_cache in (
                 ('/import-map.json', 'no-store'),
                 ('/assets/index-abcdefgh.js', 'public, max-age=31536000, immutable'),
                 ('/mf/users/single-spa.js', 'no-cache'),
-                ('/ssobackend/swagger/openapi.json', 'no-store'),
+                ('/swagger/openapi.json', 'no-store'),
             ):
                 status, headers, _ = request(path)
                 assert status == 200 and headers['Cache-Control'] == expected_cache
                 assert headers['X-Host-Security'] == 'retained'
-            status, headers, body = request('/ssobackend/api/v1/probe?batch=2', 'POST', b'payload',
+            status, headers, body = request('/api/v1/probe?batch=2', 'POST', b'payload',
                                             {**spoof, 'X-Forwarded-Proto': 'http'})
             data = json.loads(body)
             assert status == 200 and data['proto'] == 'https' and data['method'] == 'POST'
             assert data['uri'] == '/api/v1/probe?batch=2' and data['length'] == '7'
             assert data['ip'] != '203.0.113.99' and data['forwarded'] == ''
             assert data['request_id'] == headers['X-Request-ID']
-            assert request('/ssobackend/swagger')[1]['Location'] == 'swagger/'
-            status, headers, _ = request('/ssobackend/api/v1/auth/callback')
+            assert request('/swagger')[1]['Location'] == 'swagger/'
+            status, headers, _ = request('/api/v1/auth/callback')
             assert status == 302 and headers['Location'] == 'https://identity.example/login'
             assert len(headers.get_all('Set-Cookie')) == 2
-            assert request('/ssobackend/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})[0] == 101
+            assert request('/api/v1/ws', headers={'Upgrade': 'websocket', 'Connection': 'upgrade'})[0] == 101
             print('PASS: Compose bindings, gateway, same-host and remote-IP HTTPS Nginx; routing, SSO, uploads, WebSocket, caching, security headers, proxy trust, safe logs and DNS recovery')
     finally:
         for container in reversed(containers):

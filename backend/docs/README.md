@@ -10,7 +10,7 @@ The running backend serves self-hosted Swagger UI at **`/swagger/`**:
 The UI, specification and Swagger UI 5.33.1 assets are embedded in the Go binary.
 Docker images do not need a separate documentation directory or runtime CDN access.
 Relative asset/spec URLs and the relative OpenAPI server URL retain reverse-proxy
-prefixes such as `/backend` or `/ssobackend`.
+prefixes such as `/backend`.
 
 ## Authenticate and try requests
 
