@@ -64,6 +64,11 @@ export default {
               id: 'docs/integrations/connected-applications',
               label: 'Connected applications',
             },
+            {
+              type: 'doc',
+              id: 'docs/integrations/local-integration-testing',
+              label: 'Testing connected applications locally',
+            },
             'docs/integrations/identity-sync-contract',
             'docs/integrations/identity-sync-adapter',
             'docs/architecture/identity-sync',

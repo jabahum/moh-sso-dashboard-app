@@ -1,6 +1,7 @@
 # Local development only. Moves the dev stack's Keycloak issuer to
-# https://localhost:8443 and adds an HTTPS front for a local CLIMS, so CLIMS
-# portal sign-in and identity sync can be tested end to end. See README.md.
+# https://localhost:8443 and adds an HTTPS front for a local CLIMS and POES,
+# so their portal sign-in and identity sync can be tested end to end.
+# See README.md.
 #
 # Certificates and Caddyfiles come from LOCAL_HTTPS_DIR (default
 # ~/.moh-dev-https), prepared by setup.sh.
@@ -28,7 +29,7 @@ services:
       KEYCLOAK_INTERNAL_URL: https://keycloak:8443
       KEYCLOAK_BASE_URL: https://keycloak:8443
       SSL_CERT_FILE: /dev-tls/bundle.pem
-      IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS: clims.local.test
+      IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS: clims.local.test,poes.local.test
     volumes:
       - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/bundle.pem:/dev-tls/bundle.pem:ro
 
@@ -40,7 +41,9 @@ services:
       - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/clims-tls.Caddyfile:/etc/caddy/Caddyfile:ro
       - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.crt:/certs/leaf.crt:ro
       - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.key:/certs/leaf.key:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/poes.crt:/certs/poes.crt:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/poes.key:/certs/poes.key:ro
     networks:
       sso_network:
-        aliases: [ clims.local.test ]
+        aliases: [ clims.local.test, poes.local.test ]
     restart: unless-stopped

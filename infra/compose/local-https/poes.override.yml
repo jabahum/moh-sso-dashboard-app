@@ -1,0 +1,58 @@
+# Local development only. Applied to the poesGo repository's dev stack
+# (project "poesgo-dev") so POES signs in with, and accepts identity-sync
+# tokens from, the dashboard dev Keycloak at https://localhost:8443, and hands
+# portal sign-ins off to its Next.js admin. See README.md.
+#
+# OIDC_CLIENT_SECRET is the poesgo client's secret in the dev Keycloak
+# (setup.sh --secret saves it to LOCAL_HTTPS_DIR/poes-oidc-secret.txt).
+# POESGO_DEV_PORT (backend, 8082 here) and POESGO_DEV_FRONTEND_PORT (admin,
+# 3001 here, since the portal uses 3000) come from poesGo's infra/compose/.env
+# or the environment.
+#
+# OIDC mode refuses password sign-in, so the admin signs in only through the
+# portal (handoff) while this override is applied.
+services:
+  kc-loopback:
+    image: caddy:2.10-alpine
+    command: [ caddy, run, --config, /etc/caddy/Caddyfile, --adapter, caddyfile ]
+    extra_hosts: [ "host.docker.internal:host-gateway" ]
+    volumes:
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/clims-kc-loopback.Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.crt:/certs/leaf.crt:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/leaf.key:/certs/leaf.key:ro
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/ca.crt:/certs/ca.crt:ro
+    # The backend shares this container's network, so its port is published here.
+    ports:
+      - "127.0.0.1:${POESGO_DEV_PORT:-8081}:8080"
+    networks:
+      default:
+        # The frontend calls http://backend:8080, which is now this container.
+        aliases: [ backend ]
+    restart: unless-stopped
+
+  backend:
+    # Shares kc-loopback's network namespace, so localhost:8443 is the proxy.
+    network_mode: "service:kc-loopback"
+    networks: !reset null
+    ports: !reset []
+    depends_on:
+      kc-loopback:
+        condition: service_started
+    environment:
+      AUTH_PROVIDER: oidc
+      OIDC_ISSUER: https://localhost:8443/realms/moh-realm
+      OIDC_CLIENT_ID: poesgo
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET to the poesgo client secret}
+      # HTTP is accepted for a loopback public origin.
+      OIDC_PUBLIC_ORIGIN: http://localhost:${POESGO_DEV_PORT:-8081}
+      IDENTITY_SYNC_CLIENT_ID: poesgo-identity-sync
+      # Land portal sign-ins in the Next.js admin (poesGo #11).
+      OIDC_WEB_HANDOFF_URL: http://localhost:${POESGO_DEV_FRONTEND_PORT:-3000}/auth/sso
+      SSL_CERT_FILE: /dev-tls/bundle.pem
+    volumes:
+      - ${LOCAL_HTTPS_DIR:-${HOME}/.moh-dev-https}/bundle.pem:/dev-tls/bundle.pem:ro
+
+  frontend:
+    environment:
+      # "Sign in with the MOH Integrated Health Portal" on the admin login page.
+      POESGO_SSO_START_URL: http://localhost:${POESGO_DEV_PORT:-8081}/api/v1/auth/sso/start
