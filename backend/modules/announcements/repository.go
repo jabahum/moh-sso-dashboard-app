@@ -94,6 +94,11 @@ type AnnouncementRepository interface {
 	// ---------------------------------
 
 	PublishNow(ctx context.Context, id uuid.UUID, publishedBy uuid.UUID) (Announcement, error)
+
+	// ClaimDueScheduled atomically moves up to limit SCHEDULED announcements
+	// whose publish_at has passed (and that have not expired) to PUBLISHED and
+	// returns them. Concurrent callers never claim the same announcement.
+	ClaimDueScheduled(ctx context.Context, limit int32) ([]Announcement, error)
 	Draft(
 		ctx context.Context,
 		params DraftAnnouncementParams,

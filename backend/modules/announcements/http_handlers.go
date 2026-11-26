@@ -1,6 +1,7 @@
 package announcements
 
 import (
+	"errors"
 	"io"
 	"mime"
 	"net/http"
@@ -650,6 +651,10 @@ func (h *httpHandler) PublishAnnouncementNow(c *httpRequest) {
 		userID,
 		announcementEmailOptionsFromPublishRequest(req),
 	)
+	if errors.Is(err, ErrAnnouncementExpired) {
+		c.fail(http.StatusConflict, "ANNOUNCEMENT_EXPIRED", "announcement has expired; update expires_at before publishing")
+		return
+	}
 	if err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to publish announcement")
 		return
@@ -741,6 +746,14 @@ func (h *httpHandler) ScheduleAnnouncement(c *httpRequest) {
 		userID,
 		announcementEmailOptionsFromScheduleRequest(req, publishAt),
 	)
+	if errors.Is(err, ErrAnnouncementExpired) {
+		c.fail(http.StatusBadRequest, "ANNOUNCEMENT_EXPIRED", "publish_at must be before the announcement's expires_at")
+		return
+	}
+	if errors.Is(err, ErrScheduleAttachmentsUnsupported) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "schedule requests cannot carry attachments; upload them to the announcement")
+		return
+	}
 	if err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to schedule announcement")
 		return

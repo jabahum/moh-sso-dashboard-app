@@ -24,6 +24,9 @@ func (r *portableRepository) Create(ctx context.Context, params CreateAnnounceme
 	r.ctx, r.created = ctx, params
 	return r.item, r.err
 }
+func (r *portableRepository) GetByID(context.Context, uuid.UUID) (Announcement, error) {
+	return r.item, r.err
+}
 func (r *portableRepository) PublishNow(ctx context.Context, id, actor uuid.UUID) (Announcement, error) {
 	r.ctx, r.id, r.actor = ctx, id, actor
 	return r.item, r.err

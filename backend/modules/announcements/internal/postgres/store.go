@@ -50,6 +50,7 @@ func (s *SQLStore) ExecTx(ctx context.Context, fn func(q Querier) error) error {
 
 type Querier interface {
 	ArchiveAnnouncement(ctx context.Context, arg ArchiveAnnouncementParams) (Announcement, error)
+	ClaimDueScheduledAnnouncements(ctx context.Context, limit int32) ([]Announcement, error)
 	CountActivePublishedAnnouncements(ctx context.Context) (int64, error)
 	CountAnnouncementAttachments(ctx context.Context, announcementID uuid.UUID) (int64, error)
 	CountAnnouncementsAdmin(ctx context.Context) (int64, error)
