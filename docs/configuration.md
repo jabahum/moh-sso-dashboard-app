@@ -43,7 +43,7 @@ Groups follow the section headings in `infra/env/dev.env.example`.
 | Data warehouse / visualizer | `DWH_HOST`, `DWH_PORT`, `DWH_USERNAME`, `DWH_PASSWORD`, `DWH_DB`, `DQA_DB_USERNAME`, `DQA_DB_PASSWORD` | Blank values use the Compose defaults (the upload database); `DQA_DB_*` falls back to the DWH credentials. |
 | File storage | `STORAGE_PROVIDER` (`local`, `nfs`, `s3` or `minio`), `LOCAL_BASE_PATH`, `NFS_BASE_PATH`, `S3_*`, `MINIO_*` | [Storage provider](#storage-provider) |
 | Primary SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`, `SMTP_CONNECT_TIMEOUT`, `SMTP_SEND_TIMEOUT` | |
-| Email attachment limits | `EMAIL_MAX_ATTACHMENTS`, `EMAIL_MAX_ATTACHMENT_BYTES`, `EMAIL_ALLOWED_ATTACHMENT_TYPES` | [Attachment limits](#attachment-limits) |
+| Email attachment limits | `EMAIL_MAX_ATTACHMENTS`, `EMAIL_MAX_ATTACHMENT_BYTES`, `EMAIL_ALLOWED_ATTACHMENT_TYPES`, `EMAIL_ATTACHMENT_BASE_DIR` | [Attachment limits](#attachment-limits) |
 | Announcement attachment limits | `ANNOUNCEMENT_MAX_ATTACHMENTS`, `ANNOUNCEMENT_MAX_ATTACHMENT_BYTES`, `ANNOUNCEMENT_ALLOWED_ATTACHMENT_TYPES` | [Attachment limits](#attachment-limits) |
 | SMS delivery and providers | `SMS_ENABLED`, `SMS_PROVIDER`, `SMS_*`, `AFRICASTALKING_*`, `TWILIO_*` | [SMS delivery](sms-delivery.md) |
 | Notification delivery worker and retries | `NOTIFICATION_DELIVERY_WORKER_ENABLED`, `NOTIFICATION_DELIVERY_WORKER_INTERVAL`, `NOTIFICATION_DELIVERY_BATCH_SIZE`, `RETRY_MAX_ATTEMPTS`, `RETRY_BASE_DELAY` | [Notification delivery runbook](operations/notification-delivery-runbook.md) |
@@ -82,6 +82,12 @@ If email or announcement attachments are rejected, check the matching
 `*_MAX_ATTACHMENTS`, `*_MAX_ATTACHMENT_BYTES` and `*_ALLOWED_ATTACHMENT_TYPES` values.
 Email attachment payloads must provide exactly one of `path` or `data_base64`; see the
 [API reference](api-reference.md).
+
+Server-file (`path`) attachments are disabled unless `EMAIL_ATTACHMENT_BASE_DIR` is set.
+When it is set, a `path` must be relative to that directory or an absolute path inside
+it; anything resolving outside it (including through symlinks) is rejected, and the
+file's own extension must be an allowed type. Announcement publish and schedule
+requests never accept `path`: upload the attachment or send `data_base64`.
 
 ## Frontend runtime configuration
 

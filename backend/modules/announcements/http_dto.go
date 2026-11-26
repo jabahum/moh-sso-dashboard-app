@@ -156,10 +156,12 @@ type publishAnnouncementRequest struct {
 type announcementAttachmentRequest struct {
 	FileName    string `json:"file_name"`
 	ContentType string `json:"content_type,omitempty"`
-	Path        string `json:"path,omitempty"`
-	DataBase64  string `json:"data_base64,omitempty"`
-	ContentID   string `json:"content_id,omitempty"`
-	Inline      bool   `json:"inline,omitempty"`
+	// Path is accepted only so it can be rejected explicitly; server file
+	// paths are never read for announcement email attachments.
+	Path       string `json:"path,omitempty"`
+	DataBase64 string `json:"data_base64,omitempty"`
+	ContentID  string `json:"content_id,omitempty"`
+	Inline     bool   `json:"inline,omitempty"`
 }
 
 type setPinnedRequest struct {

@@ -272,3 +272,29 @@ func TestVisiblePaginationSkipsPrivatePages(t *testing.T) {
 		t.Fatalf("pagination leak/omission: %s", w.Body.String())
 	}
 }
+
+func TestPublishAndScheduleRejectServerPathAttachments(t *testing.T) {
+	m, err := NewModule(httpDependencies())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"/publish", "/schedule"} {
+		body := `{"publish_at":"2030-01-01T09:00:00Z","attachments":[{"file_name":"a.pdf","path":"/proc/self/environ"}]}`
+		req := httptest.NewRequest(http.MethodPost, "/admin/announcements/"+uuid.NewString()+suffix, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		// httpRepo panics on any repository use, so a 400 proves the request
+		// was refused before the service ran.
+		m.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "attachment path is not supported") {
+			t.Fatalf("%s: got %d: %s", suffix, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestRequestAttachmentsNeverCarryServerPath(t *testing.T) {
+	out := mapAnnouncementAttachments([]announcementAttachmentRequest{{FileName: "a.pdf", Path: "/etc/passwd", DataBase64: "AA=="}})
+	if out[0].Path != "" {
+		t.Fatalf("server path forwarded to the email pipeline: %q", out[0].Path)
+	}
+}
