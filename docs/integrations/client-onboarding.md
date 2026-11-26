@@ -18,6 +18,7 @@ Related pages:
 | Page | Use it for |
 | --- | --- |
 | [Connected applications](connected-applications.md) | CLIMS and POES values side by side, registration commands |
+| [Connecting Alerts Manager](alerts-integration.md) | A worked plan for a new application on production, including network and DNS prerequisites |
 | [Identity-sync contract (v1.1)](identity-sync-contract.md) | Exact request and response formats of the API the application implements |
 | [Adapter and conformance suite](identity-sync-adapter.md) | The Go adapter, and the conformance suite for any language |
 | [Application and system onboarding handbook](../platform-onboarding.md) | The portal registry, lifecycle and access roles in detail |
