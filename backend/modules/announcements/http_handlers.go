@@ -285,6 +285,31 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// Creation only needs write permission, so a non-draft status must not be
+	// inserted directly: that skipped the publish permission and the publish
+	// lifecycle (published_at/by, email and SMS). Insert a draft, then run the
+	// same publish/schedule path as the dedicated endpoints.
+	requestedStatus := announcementStatusValue(req.Status)
+	switch requestedStatus {
+	case AnnouncementStatusDRAFT:
+	case AnnouncementStatusPUBLISHED, AnnouncementStatusSCHEDULED:
+		if c.authorize == nil {
+			c.reject(ErrForbidden)
+			return
+		}
+		if err := c.authorize(PublishPermission); err != nil {
+			c.reject(err)
+			return
+		}
+		if requestedStatus == AnnouncementStatusSCHEDULED && !publishAt.Valid {
+			c.fail(http.StatusBadRequest, "BAD_REQUEST", "publish_at is required to create a scheduled announcement")
+			return
+		}
+	default:
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "status must be DRAFT, SCHEDULED or PUBLISHED when creating an announcement")
+		return
+	}
+
 	clientIDs, userIDs, groupIDs, healthContextIDs, ok := parseAnnouncementAudienceSelection(
 		req.AudienceType,
 		req.ClientIDs,
@@ -332,7 +357,7 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 		LinkLabel:     nullableString(req.LinkLabel),
 		Priority:      req.Priority,
 		IsPinned:      req.IsPinned,
-		Status:        req.Status,
+		Status:        string(AnnouncementStatusDRAFT),
 		PublishAt:     publishAt,
 		ExpiresAt:     expiresAt,
 		AudienceType:  req.AudienceType,
@@ -383,6 +408,24 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 	); err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save health context audience")
 		return
+	}
+
+	// The audience is stored, so notifications resolve the right recipients.
+	switch requestedStatus {
+	case AnnouncementStatusPUBLISHED:
+		published, err := h.announcementService.PublishAnnouncementNow(c.Request.Context(), item.ID, userID)
+		if err != nil {
+			c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "announcement was saved as a draft but could not be published")
+			return
+		}
+		item = published
+	case AnnouncementStatusSCHEDULED:
+		scheduled, err := h.announcementService.ScheduleAnnouncementByUser(c.Request.Context(), item.ID, publishAt.Time, userID)
+		if err != nil {
+			c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "announcement was saved as a draft but could not be scheduled")
+			return
+		}
+		item = scheduled
 	}
 
 	if h.auditService != nil {
