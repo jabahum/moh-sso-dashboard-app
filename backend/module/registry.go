@@ -4,6 +4,7 @@ package module
 
 import (
 	"context"
+	"io/fs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mohuganda/moh-sso-dashboard/backend/core"
@@ -31,6 +32,9 @@ type Definition struct {
 	// partial failure. Workers must observe ctx and cleanup must wait for them.
 	Initialize func(context.Context) (Stop, error)
 	Register   func(Routes)
+	// Migrations optionally holds the module's own schema migrations; see
+	// core.ValidateModuleMigrations. They run before any module initializes.
+	Migrations fs.FS
 }
 
 // Registry combines the portable runtime with host-owned route registration.
@@ -42,7 +46,7 @@ type Registry struct {
 func New(definitions ...Definition) (*Registry, error) {
 	lifecycle := make([]core.ModuleDefinition, len(definitions))
 	for i, definition := range definitions {
-		lifecycle[i] = core.ModuleDefinition{ModuleInfo: core.ModuleInfo(definition.Info), Requires: definition.Requires, Initialize: definition.Initialize}
+		lifecycle[i] = core.ModuleDefinition{ModuleInfo: core.ModuleInfo(definition.Info), Requires: definition.Requires, Initialize: definition.Initialize, Migrations: definition.Migrations}
 	}
 	runtime, err := core.NewRuntime(lifecycle...)
 	if err != nil {
@@ -60,6 +64,13 @@ func (r *Registry) Inventory() []Info {
 	return out
 }
 func (r *Registry) Initialize(ctx context.Context) (Stop, error) { return r.runtime.Initialize(ctx) }
+
+// UseMigrator supplies the host migrator that applies module migration
+// streams during Initialize.
+func (r *Registry) UseMigrator(m core.Migrator) { r.runtime.UseMigrator(m) }
+
+// MigrationStreams lists enabled modules' migration streams in order.
+func (r *Registry) MigrationStreams() []core.MigrationStream { return r.runtime.MigrationStreams() }
 
 func (r *Registry) RegisterRoutes(routes Routes) {
 	for _, definition := range r.definitions {

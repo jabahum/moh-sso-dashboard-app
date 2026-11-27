@@ -69,6 +69,27 @@ Keycloak roles, module inventory, API disablement and continued core audit
 recording, as well as manifests, backup/restore and restart recovery. It uses
 disposable projects and does not contact an existing production identity provider.
 
+## Module migration streams
+
+Modules that own tables apply their own migrations at startup, after the
+platform migrations and before any module starts. Each module's history is in
+`module_<id>_schema_migrations` (for example `module_report_scheduler_schema_migrations`):
+
+```sql
+SELECT version, dirty FROM module_report_scheduler_schema_migrations;
+```
+
+If a module migration fails, the stream is marked dirty and the backend refuses
+to start. Fix the cause, repair any partial change the failed file made, then
+record the last version that is fully applied and clear the flag:
+
+```sql
+UPDATE module_report_scheduler_schema_migrations SET version = <last good version>, dirty = false;
+```
+
+Restart; the failed version runs again. Disabling a module skips its
+migrations; they run when it is re-enabled.
+
 ## Module-specific behavior
 
 ### Announcements

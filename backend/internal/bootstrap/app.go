@@ -12,6 +12,7 @@ import (
 	"github.com/moh-sso-dashboard/internal/geography"
 	logger "github.com/moh-sso-dashboard/internal/log"
 	"github.com/moh-sso-dashboard/internal/middleware"
+	db "github.com/moh-sso-dashboard/internal/migrate"
 	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/moh-sso-dashboard/internal/version"
 	"github.com/mohuganda/moh-sso-dashboard/backend/core"
@@ -199,6 +200,9 @@ func Run() {
 	if err != nil {
 		panic("invalid module configuration: " + err.Error())
 	}
+	// Module-owned migration streams run inside Initialize, after the platform
+	// migrations above and before any module starts.
+	modules.UseMigrator(db.ModuleMigrator{DB: dbs.Primary})
 	stopModules, err := modules.Initialize(ctx)
 	if err != nil {
 		panic("module initialization failed: " + err.Error())

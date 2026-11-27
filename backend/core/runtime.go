@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"regexp"
 	"sync"
 	"time"
@@ -28,10 +29,15 @@ type ModuleDefinition struct {
 	ModuleInfo
 	Requires   []string
 	Initialize func(context.Context) (Stop, error)
+	// Migrations optionally holds the module's own schema migrations (see
+	// ValidateModuleMigrations). They are applied, in registration order and
+	// only for enabled modules, before any module is initialized.
+	Migrations fs.FS
 }
 
 type Runtime struct {
 	definitions []ModuleDefinition
+	migrator    Migrator
 	mu          sync.Mutex
 	initialized bool
 }
@@ -55,9 +61,36 @@ func NewRuntime(definitions ...ModuleDefinition) (*Runtime, error) {
 				return nil, fmt.Errorf("module %q requires preceding enabled module %q", definition.ID, required)
 			}
 		}
+		if definition.Migrations != nil {
+			if err := ValidateModuleMigrations(definition.ID, definition.Migrations); err != nil {
+				return nil, err
+			}
+		}
 		seen[definition.ID] = definition.Enabled
 	}
 	return &Runtime{definitions: append([]ModuleDefinition(nil), definitions...)}, nil
+}
+
+// UseMigrator supplies the host's migrator. It must be called before
+// Initialize when any enabled module ships migrations.
+func (r *Runtime) UseMigrator(m Migrator) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.migrator = m
+}
+
+// MigrationStreams lists the migration streams of enabled modules in
+// registration order.
+func (r *Runtime) MigrationStreams() []MigrationStream {
+	var streams []MigrationStream
+	for _, definition := range r.definitions {
+		if definition.Enabled && definition.Migrations != nil {
+			streams = append(streams, MigrationStream{
+				ModuleID: definition.ID, Table: ModuleMigrationsTable(definition.ID), Files: definition.Migrations,
+			})
+		}
+	}
+	return streams
 }
 
 func (r *Runtime) Inventory() []ModuleInfo {
@@ -77,6 +110,16 @@ func (r *Runtime) Initialize(ctx context.Context) (Stop, error) {
 		return nil, errors.New("module registry already initialized")
 	}
 	r.initialized = true
+	// Schema first: a module must never start against an older schema than its
+	// code expects. Nothing has been acquired yet, so there is nothing to undo.
+	for _, stream := range r.MigrationStreams() {
+		if r.migrator == nil {
+			return nil, fmt.Errorf("module %q: %w", stream.ModuleID, ErrMigratorRequired)
+		}
+		if err := r.migrator.Migrate(ctx, stream); err != nil {
+			return nil, fmt.Errorf("migrate module %q: %w", stream.ModuleID, err)
+		}
+	}
 	moduleCtx, cancel := context.WithCancel(ctx)
 	var cleanups []Stop
 	var once sync.Once

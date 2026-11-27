@@ -4,7 +4,21 @@ Release tags use the `backend/core/vX.Y.Z` prefix. Below 1.0 a minor version
 may contain breaking changes. Check IDs in `identitysync/conformance` are
 stable within a minor version.
 
-## v0.1.0 (unreleased)
+## v0.2.0 (unreleased)
+
+### Module migration streams
+
+- `ModuleDefinition.Migrations` (an `fs.FS` of golang-migrate files) gives a
+  module its own schema history. `Runtime.UseMigrator` supplies the host
+  `Migrator`; `Runtime.Initialize` applies enabled modules' streams in order
+  before initializing any module, and returns `ErrMigratorRequired` if an
+  enabled module ships migrations without one. `Runtime.MigrationStreams` lists
+  them.
+- `ValidateModuleMigrations` checks naming, unique versions, paired up/down
+  files and that written tables carry `ModuleTablePrefix`;
+  `ModuleMigrationsTable` names each stream's history table.
+
+## v0.1.0 (2026-11-23)
 
 First published version, MIT licensed (`LICENSE`). Standard library only;
 requires Go 1.25.

@@ -78,6 +78,29 @@ when the module owns that entire lifecycle, preventing duplicate job claims.
 
 Existing primary migrations and Observatory migrations retain their current
 owners and version streams. Route integration alone does not transfer tables.
+
+A module with its own tables embeds its migrations and supplies them on its
+registry definition:
+
+```go
+//go:embed migrations/*.sql
+var migrationFiles embed.FS
+
+func Migrations() fs.FS {
+    files, _ := fs.Sub(migrationFiles, "migrations")
+    return files
+}
+```
+
+```go
+// internal/api/modules.go
+module.Definition{Info: ..., Migrations: mymodule.Migrations(), ...}
+```
+
+Name its tables `<module_id>_...` (hyphens as underscores) and test the files
+with `core.ValidateModuleMigrations(id, mymodule.Migrations())` in the module's
+own tests so mistakes fail before the registry rejects them at startup. See
+[Schema and migration ownership](modular-distribution.md#schema-and-migration-ownership).
 Before extracting a writing domain, document each table's owner, migration stream,
 locking/order, dirty-state handling and supported upgrade/rollback behavior.
 Keep core migrations before module initialization. Never replay a copied migration
