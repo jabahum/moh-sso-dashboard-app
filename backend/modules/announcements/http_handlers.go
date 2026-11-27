@@ -84,6 +84,7 @@ func getAnnouncementAttachmentID(c *httpRequest) (uuid.UUID, bool) {
 func parseAnnouncementAudienceSelection(
 	reqAudienceType string,
 	clientIDValues []string,
+	roleNames []string,
 	userIDValues []string,
 	groupIDValues []string,
 	healthContextIDValues []string,
@@ -109,6 +110,18 @@ func parseAnnouncementAudienceSelection(
 
 	audienceType := strings.ToUpper(strings.TrimSpace(reqAudienceType))
 	switch audienceType {
+	case "", "ALL_USERS", "ADMINS_ONLY":
+	case "SPECIFIC_ROLES":
+		hasRole := false
+		for _, role := range roleNames {
+			if strings.TrimSpace(role) != "" {
+				hasRole = true
+				break
+			}
+		}
+		if !hasRole {
+			return nil, nil, nil, nil, false
+		}
 	case "SPECIFIC_CLIENTS":
 		if len(clientIDs) == 0 {
 			return nil, nil, nil, nil, false
@@ -125,6 +138,8 @@ func parseAnnouncementAudienceSelection(
 		if len(healthContextIDs) == 0 {
 			return nil, nil, nil, nil, false
 		}
+	default:
+		return nil, nil, nil, nil, false
 	}
 
 	return clientIDs, userIDs, groupIDs, healthContextIDs, true
@@ -288,6 +303,7 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 	clientIDs, userIDs, groupIDs, healthContextIDs, ok := parseAnnouncementAudienceSelection(
 		req.AudienceType,
 		req.ClientIDs,
+		req.RoleNames,
 		req.UserIDs,
 		req.GroupIDs,
 		req.HealthContextIDs,
@@ -507,9 +523,17 @@ func (h *httpHandler) UpdateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// PUT replaces the whole announcement. Defaulting a missing audience_type
+	// to ALL_USERS would silently widen a targeted announcement to everyone.
+	if strings.TrimSpace(req.AudienceType) == "" {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "audience_type is required")
+		return
+	}
+
 	clientIDs, userIDs, groupIDs, healthContextIDs, ok := parseAnnouncementAudienceSelection(
 		req.AudienceType,
 		req.ClientIDs,
+		req.RoleNames,
 		req.UserIDs,
 		req.GroupIDs,
 		req.HealthContextIDs,
