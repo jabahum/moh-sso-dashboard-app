@@ -62,7 +62,7 @@ func appliedVersion(t *testing.T, database *sql.DB, table string) (int64, bool) 
 	t.Helper()
 	var version int64
 	var dirty bool
-	if err := database.QueryRow("SELECT version, dirty FROM " + table).Scan(&version, &dirty); err != nil {
+	if err := database.QueryRow("SELECT version, dirty FROM "+table).Scan(&version, &dirty); err != nil {
 		t.Fatalf("read %s: %v", table, err)
 	}
 	return version, dirty
