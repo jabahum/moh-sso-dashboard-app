@@ -49,6 +49,9 @@ type updateAnnouncementRequest struct {
 	NotifyByEmail    bool     `json:"notify_by_email"`
 	NotifyBySMS      bool     `json:"notify_by_sms"`
 	SMSMessage       *string  `json:"sms_message"`
+	// Status is optional; when present and different from the stored status
+	// it is applied through the publish/schedule/draft/archive lifecycle.
+	Status *string `json:"status"`
 }
 
 type AnnouncementResponse struct {
@@ -156,10 +159,12 @@ type publishAnnouncementRequest struct {
 type announcementAttachmentRequest struct {
 	FileName    string `json:"file_name"`
 	ContentType string `json:"content_type,omitempty"`
-	Path        string `json:"path,omitempty"`
-	DataBase64  string `json:"data_base64,omitempty"`
-	ContentID   string `json:"content_id,omitempty"`
-	Inline      bool   `json:"inline,omitempty"`
+	// Path is accepted only so it can be rejected explicitly; server file
+	// paths are never read for announcement email attachments.
+	Path       string `json:"path,omitempty"`
+	DataBase64 string `json:"data_base64,omitempty"`
+	ContentID  string `json:"content_id,omitempty"`
+	Inline     bool   `json:"inline,omitempty"`
 }
 
 type setPinnedRequest struct {

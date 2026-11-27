@@ -14,6 +14,13 @@ import { AnnouncementAttachments } from "./announcement-attachments.component";
 import { useToast } from "@moh-sso/ui";
 import "./announcements.components.scss";
 
+function apiErrorMessage(error: unknown): string | null {
+  const data = (error as { data?: { message?: unknown; error?: { message?: unknown } } })?.data;
+  if (typeof data?.error?.message === "string") return data.error.message;
+  if (typeof data?.message === "string") return data.message;
+  return null;
+}
+
 type ManageAnnouncementsPanelProps = {
   mode: "create" | "edit";
   announcement?: Announcement | null;
@@ -61,12 +68,15 @@ export function ManageAnnouncementsPanel({
       }
 
       onSuccess?.();
-    } catch {
+    } catch (error) {
       toast.error({
         title: mode === "create" ? "Create failed" : "Update failed",
         subtitle:
-          mode === "create" ? "Failed to create announcement." : "Failed to update announcement.",
+          apiErrorMessage(error) ??
+          (mode === "create" ? "Failed to create announcement." : "Failed to update announcement."),
       });
+      // Let the form know the save failed so it keeps the entered values.
+      throw error;
     }
   };
 

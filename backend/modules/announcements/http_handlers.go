@@ -1,6 +1,7 @@
 package announcements
 
 import (
+	"errors"
 	"io"
 	"mime"
 	"net/http"
@@ -25,6 +26,19 @@ func newHTTPHandler(
 		announcementService: announcementService,
 		auditService:        auditService,
 	}
+}
+
+// rejectServerPathAttachments refuses request attachments that name a server
+// file. Clients must send file contents (data_base64) or upload attachments;
+// a path would let a caller email arbitrary server files to themselves.
+func rejectServerPathAttachments(c *httpRequest, attachments []announcementAttachmentRequest) bool {
+	for _, attachment := range attachments {
+		if strings.TrimSpace(attachment.Path) != "" {
+			c.fail(http.StatusBadRequest, "BAD_REQUEST", "attachment path is not supported; send data_base64 or upload the attachment")
+			return true
+		}
+	}
+	return false
 }
 
 func getPageLimit(c *httpRequest, defaultValue int32) int32 {
@@ -84,6 +98,7 @@ func getAnnouncementAttachmentID(c *httpRequest) (uuid.UUID, bool) {
 func parseAnnouncementAudienceSelection(
 	reqAudienceType string,
 	clientIDValues []string,
+	roleNames []string,
 	userIDValues []string,
 	groupIDValues []string,
 	healthContextIDValues []string,
@@ -109,6 +124,18 @@ func parseAnnouncementAudienceSelection(
 
 	audienceType := strings.ToUpper(strings.TrimSpace(reqAudienceType))
 	switch audienceType {
+	case "", "ALL_USERS", "ADMINS_ONLY":
+	case "SPECIFIC_ROLES":
+		hasRole := false
+		for _, role := range roleNames {
+			if strings.TrimSpace(role) != "" {
+				hasRole = true
+				break
+			}
+		}
+		if !hasRole {
+			return nil, nil, nil, nil, false
+		}
 	case "SPECIFIC_CLIENTS":
 		if len(clientIDs) == 0 {
 			return nil, nil, nil, nil, false
@@ -125,6 +152,8 @@ func parseAnnouncementAudienceSelection(
 		if len(healthContextIDs) == 0 {
 			return nil, nil, nil, nil, false
 		}
+	default:
+		return nil, nil, nil, nil, false
 	}
 
 	return clientIDs, userIDs, groupIDs, healthContextIDs, true
@@ -285,9 +314,35 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// Creation only needs write permission, so a non-draft status must not be
+	// inserted directly: that skipped the publish permission and the publish
+	// lifecycle (published_at/by, email and SMS). Insert a draft, then run the
+	// same publish/schedule path as the dedicated endpoints.
+	requestedStatus := announcementStatusValue(req.Status)
+	switch requestedStatus {
+	case AnnouncementStatusDRAFT:
+	case AnnouncementStatusPUBLISHED, AnnouncementStatusSCHEDULED:
+		if c.authorize == nil {
+			c.reject(ErrForbidden)
+			return
+		}
+		if err := c.authorize(PublishPermission); err != nil {
+			c.reject(err)
+			return
+		}
+		if requestedStatus == AnnouncementStatusSCHEDULED && !publishAt.Valid {
+			c.fail(http.StatusBadRequest, "BAD_REQUEST", "publish_at is required to create a scheduled announcement")
+			return
+		}
+	default:
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "status must be DRAFT, SCHEDULED or PUBLISHED when creating an announcement")
+		return
+	}
+
 	clientIDs, userIDs, groupIDs, healthContextIDs, ok := parseAnnouncementAudienceSelection(
 		req.AudienceType,
 		req.ClientIDs,
+		req.RoleNames,
 		req.UserIDs,
 		req.GroupIDs,
 		req.HealthContextIDs,
@@ -332,7 +387,7 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 		LinkLabel:     nullableString(req.LinkLabel),
 		Priority:      req.Priority,
 		IsPinned:      req.IsPinned,
-		Status:        req.Status,
+		Status:        string(AnnouncementStatusDRAFT),
 		PublishAt:     publishAt,
 		ExpiresAt:     expiresAt,
 		AudienceType:  req.AudienceType,
@@ -383,6 +438,24 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 	); err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save health context audience")
 		return
+	}
+
+	// The audience is stored, so notifications resolve the right recipients.
+	switch requestedStatus {
+	case AnnouncementStatusPUBLISHED:
+		published, err := h.announcementService.PublishAnnouncementNow(c.Request.Context(), item.ID, userID)
+		if err != nil {
+			c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "announcement was saved as a draft but could not be published")
+			return
+		}
+		item = published
+	case AnnouncementStatusSCHEDULED:
+		scheduled, err := h.announcementService.ScheduleAnnouncementByUser(c.Request.Context(), item.ID, publishAt.Time, userID)
+		if err != nil {
+			c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "announcement was saved as a draft but could not be scheduled")
+			return
+		}
+		item = scheduled
 	}
 
 	if h.auditService != nil {
@@ -507,9 +580,50 @@ func (h *httpHandler) UpdateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// A status change is a lifecycle action, which needs the publish
+	// permission; check it before writing anything.
+	targetStatus := AnnouncementStatus("")
+	if req.Status != nil && strings.TrimSpace(*req.Status) != "" {
+		current, err := h.announcementService.GetAnnouncementByID(c.Request.Context(), announcementID)
+		if err != nil {
+			c.fail(http.StatusNotFound, "NOT_FOUND", "announcement not found")
+			return
+		}
+		requested := announcementStatusValue(*req.Status)
+		switch requested {
+		case AnnouncementStatusDRAFT, AnnouncementStatusPUBLISHED, AnnouncementStatusSCHEDULED, AnnouncementStatusARCHIVED:
+		default:
+			c.fail(http.StatusBadRequest, "BAD_REQUEST", "status must be DRAFT, SCHEDULED, PUBLISHED or ARCHIVED")
+			return
+		}
+		if requested != current.Status {
+			if c.authorize == nil {
+				c.reject(ErrForbidden)
+				return
+			}
+			if err := c.authorize(PublishPermission); err != nil {
+				c.reject(err)
+				return
+			}
+			if requested == AnnouncementStatusSCHEDULED && !publishAt.Valid {
+				c.fail(http.StatusBadRequest, "BAD_REQUEST", "publish_at is required to schedule an announcement")
+				return
+			}
+			targetStatus = requested
+		}
+	}
+
+	// PUT replaces the whole announcement. Defaulting a missing audience_type
+	// to ALL_USERS would silently widen a targeted announcement to everyone.
+	if strings.TrimSpace(req.AudienceType) == "" {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "audience_type is required")
+		return
+	}
+
 	clientIDs, userIDs, groupIDs, healthContextIDs, ok := parseAnnouncementAudienceSelection(
 		req.AudienceType,
 		req.ClientIDs,
+		req.RoleNames,
 		req.UserIDs,
 		req.GroupIDs,
 		req.HealthContextIDs,
@@ -599,6 +713,24 @@ func (h *httpHandler) UpdateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// Apply a status change after the audience is stored, through the same
+	// paths as the dedicated lifecycle endpoints.
+	ctx := c.Request.Context()
+	switch targetStatus {
+	case AnnouncementStatusPUBLISHED:
+		item, err = h.announcementService.PublishAnnouncementNow(ctx, item.ID, userID)
+	case AnnouncementStatusSCHEDULED:
+		item, err = h.announcementService.ScheduleAnnouncementByUser(ctx, item.ID, publishAt.Time, userID)
+	case AnnouncementStatusDRAFT:
+		item, err = h.announcementService.MoveAnnouncementToDraftByUser(ctx, item.ID, userID)
+	case AnnouncementStatusARCHIVED:
+		item, err = h.announcementService.ArchiveAnnouncement(ctx, item.ID, userID)
+	}
+	if err != nil {
+		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "announcement was updated but its status could not be changed")
+		return
+	}
+
 	if h.auditService != nil {
 		_ = h.auditService.Log(
 			c.Request.Context(),
@@ -638,6 +770,9 @@ func (h *httpHandler) PublishAnnouncementNow(c *httpRequest) {
 			return
 		}
 	}
+	if rejectServerPathAttachments(c, req.Attachments) {
+		return
+	}
 
 	userID, ok := getCurrentUserID(c)
 	if !ok {
@@ -650,6 +785,14 @@ func (h *httpHandler) PublishAnnouncementNow(c *httpRequest) {
 		userID,
 		announcementEmailOptionsFromPublishRequest(req),
 	)
+	if errors.Is(err, ErrAnnouncementExpired) {
+		c.fail(http.StatusConflict, "ANNOUNCEMENT_EXPIRED", "announcement has expired; update expires_at before publishing")
+		return
+	}
+	if errors.Is(err, ErrInvalidEmailAttachments) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "one or more email attachments were rejected")
+		return
+	}
 	if err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to publish announcement")
 		return
@@ -722,6 +865,9 @@ func (h *httpHandler) ScheduleAnnouncement(c *httpRequest) {
 		c.fail(http.StatusBadRequest, "BAD_REQUEST", "request failed")
 		return
 	}
+	if rejectServerPathAttachments(c, req.Attachments) {
+		return
+	}
 
 	userID, ok := getCurrentUserID(c)
 	if !ok {
@@ -741,6 +887,18 @@ func (h *httpHandler) ScheduleAnnouncement(c *httpRequest) {
 		userID,
 		announcementEmailOptionsFromScheduleRequest(req, publishAt),
 	)
+	if errors.Is(err, ErrAnnouncementExpired) {
+		c.fail(http.StatusBadRequest, "ANNOUNCEMENT_EXPIRED", "publish_at must be before the announcement's expires_at")
+		return
+	}
+	if errors.Is(err, ErrScheduleAttachmentsUnsupported) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "schedule requests cannot carry attachments; upload them to the announcement")
+		return
+	}
+	if errors.Is(err, ErrInvalidEmailAttachments) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "one or more email attachments were rejected")
+		return
+	}
 	if err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to schedule announcement")
 		return

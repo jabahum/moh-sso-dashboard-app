@@ -177,6 +177,15 @@ func (a *persistenceAdapter) CountCreatedByUser(ctx context.Context, userID uuid
 	return a.queries.CountCreatedByUser(ctx, userID)
 }
 
+func (a *persistenceAdapter) ClaimDueScheduled(ctx context.Context, limit int32) ([]Announcement, error) {
+	value, err := a.queries.ClaimDueScheduled(ctx, limit)
+	result := make([]Announcement, len(value))
+	for i, item := range value {
+		result[i] = fromSQLAnnouncement(item)
+	}
+	return result, err
+}
+
 func (a *persistenceAdapter) PublishNow(ctx context.Context, id uuid.UUID, publishedBy uuid.UUID) (Announcement, error) {
 	value, err := a.queries.PublishNow(ctx, id, publishedBy)
 	return fromSQLAnnouncement(value), err

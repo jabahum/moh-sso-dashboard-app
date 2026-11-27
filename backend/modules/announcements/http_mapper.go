@@ -200,7 +200,6 @@ func mapAnnouncementAttachments(in []announcementAttachmentRequest) []Attachment
 		out = append(out, Attachment{
 			FileName:    strings.TrimSpace(attachment.FileName),
 			ContentType: strings.TrimSpace(attachment.ContentType),
-			Path:        strings.TrimSpace(attachment.Path),
 			DataBase64:  strings.TrimSpace(attachment.DataBase64),
 			ContentID:   strings.TrimSpace(attachment.ContentID),
 			Inline:      attachment.Inline,

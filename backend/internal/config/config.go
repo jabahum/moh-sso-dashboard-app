@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -219,6 +220,9 @@ type EmailConfig struct {
 	MaxAttachments         int    `mapstructure:"EMAIL_MAX_ATTACHMENTS"`
 	MaxAttachmentBytes     int64  `mapstructure:"EMAIL_MAX_ATTACHMENT_BYTES"`
 	AllowedAttachmentTypes string `mapstructure:"EMAIL_ALLOWED_ATTACHMENT_TYPES"`
+	// AttachmentBaseDir is the only directory server-file (path) attachments
+	// may be read from. Empty disables path attachments.
+	AttachmentBaseDir string `mapstructure:"EMAIL_ATTACHMENT_BASE_DIR"`
 }
 
 type AnnouncementConfig struct {
@@ -372,6 +376,7 @@ func setDefaults() {
 	viper.SetDefault("EMAIL_MAX_ATTACHMENTS", 5)
 	viper.SetDefault("EMAIL_MAX_ATTACHMENT_BYTES", 10485760)
 	viper.SetDefault("EMAIL_ALLOWED_ATTACHMENT_TYPES", "pdf,doc,docx,xls,xlsx,csv,png,jpg,jpeg")
+	viper.SetDefault("EMAIL_ATTACHMENT_BASE_DIR", "")
 	viper.SetDefault("ANNOUNCEMENT_MAX_ATTACHMENTS", 10)
 	viper.SetDefault("ANNOUNCEMENT_MAX_ATTACHMENT_BYTES", 10485760)
 	viper.SetDefault("ANNOUNCEMENT_ALLOWED_ATTACHMENT_TYPES", "pdf,doc,docx,xls,xlsx,csv,png,jpg,jpeg")
@@ -518,6 +523,7 @@ func envBindings() map[string]string {
 		"EMAIL_MAX_ATTACHMENTS":                 "EMAIL_MAX_ATTACHMENTS",
 		"EMAIL_MAX_ATTACHMENT_BYTES":            "EMAIL_MAX_ATTACHMENT_BYTES",
 		"EMAIL_ALLOWED_ATTACHMENT_TYPES":        "EMAIL_ALLOWED_ATTACHMENT_TYPES",
+		"EMAIL_ATTACHMENT_BASE_DIR":             "EMAIL_ATTACHMENT_BASE_DIR",
 		"ANNOUNCEMENT_MAX_ATTACHMENTS":          "ANNOUNCEMENT_MAX_ATTACHMENTS",
 		"ANNOUNCEMENT_MAX_ATTACHMENT_BYTES":     "ANNOUNCEMENT_MAX_ATTACHMENT_BYTES",
 		"ANNOUNCEMENT_ALLOWED_ATTACHMENT_TYPES": "ANNOUNCEMENT_ALLOWED_ATTACHMENT_TYPES",
@@ -665,6 +671,12 @@ func normalizeConfig(c *Config) {
 	c.SMTP.FromEmail = strings.TrimSpace(c.SMTP.FromEmail)
 	c.SMTP.FromName = strings.TrimSpace(c.SMTP.FromName)
 	c.Email.AllowedAttachmentTypes = strings.TrimSpace(c.Email.AllowedAttachmentTypes)
+	c.Email.AttachmentBaseDir = strings.TrimSpace(c.Email.AttachmentBaseDir)
+	if c.Email.AttachmentBaseDir != "" {
+		if abs, err := filepath.Abs(c.Email.AttachmentBaseDir); err == nil {
+			c.Email.AttachmentBaseDir = abs
+		}
+	}
 	if c.Email.MaxAttachments <= 0 {
 		c.Email.MaxAttachments = 5
 	}

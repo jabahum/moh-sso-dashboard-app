@@ -72,6 +72,7 @@ type Registrar interface{ Handle(string, http.Handler) }
 type Module struct {
 	mux      *http.ServeMux
 	patterns []string
+	service  *Service
 }
 
 func NewModule(deps Dependencies) (*Module, error) {
@@ -95,13 +96,15 @@ func NewModule(deps Dependencies) (*Module, error) {
 			return nil, err
 		}
 	}
-	h := newHTTPHandler(NewServiceWithSettings(repo, deps.Ports, deps.Settings), deps.Audit)
-	m := &Module{mux: http.NewServeMux()}
+	service := NewServiceWithSettings(repo, deps.Ports, deps.Settings)
+	h := newHTTPHandler(service, deps.Audit)
+	m := &Module{mux: http.NewServeMux(), service: service}
 	for _, endpoint := range endpoints(h) {
 		pattern := endpoint.method + " " + endpoint.path
 		m.patterns = append(m.patterns, pattern)
 		m.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-			c := &httpRequest{Request: r, Writer: w, admin: endpoint.admin, streamError: deps.StreamError}
+			c := &httpRequest{Request: r, Writer: w, admin: endpoint.admin, streamError: deps.StreamError,
+				authorize: func(permissions ...string) error { return deps.AuthorizeAny(r, permissions...) }}
 			if deps.RequestID != nil {
 				c.requestID = deps.RequestID(r)
 			}
@@ -173,6 +176,14 @@ func Register(registrar Registrar, deps Dependencies) (*Module, error) {
 	}
 	return m, nil
 }
+
+// RunScheduledPublisher publishes scheduled announcements once they are due and
+// sends their notifications, every interval until ctx is cancelled. Hosts run
+// it in a background goroutine; without it scheduled announcements never go live.
+func (m *Module) RunScheduledPublisher(ctx context.Context, interval time.Duration, onError func(error)) {
+	m.service.RunScheduledPublisher(ctx, interval, onError)
+}
+
 func (m *Module) Patterns() []string                               { return append([]string(nil), m.patterns...) }
 func (m *Module) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.mux.ServeHTTP(w, r) }
 
@@ -183,6 +194,9 @@ type httpRequest struct {
 	admin       bool
 	requestID   string
 	streamError func(*http.Request, error)
+	// authorize checks additional permissions inside a handler, for requests
+	// whose body asks for more than the route's own permission.
+	authorize func(permissions ...string) error
 }
 
 func (c *httpRequest) Query(key string) string { return c.Request.URL.Query().Get(key) }

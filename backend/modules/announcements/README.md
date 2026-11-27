@@ -3,11 +3,28 @@
 Module path: `github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements`.
 Requires Go 1.25.4, `github.com/google/uuid v1.6.0` and `github.com/lib/pq v1.10.9`.
 
-Version `v0.2.0` is the self-contained release under
-`backend/modules/announcements/v0.2.0`. It adds standalone PostgreSQL
-persistence, HTTP routes and provider composition. Hosts select this immutable
-Go dependency with reviewed checksums; integrations upgrade independently.
+Version `v0.3.0` is the current release under
+`backend/modules/announcements/v0.3.0`. Hosts select this immutable Go
+dependency with reviewed checksums; integrations upgrade independently.
 Local/unversioned consumers report `dev`.
+
+`v0.3.0` changes from `v0.2.0`:
+
+- **Breaking:** `Repository` gains `ClaimDueScheduled`, and
+  `Service.ListMyAnnouncements` (which ignored audience targeting) is removed.
+- Scheduled announcements publish when due through `RunScheduledPublisher`,
+  which hosts must run; scheduling no longer pre-queues email/SMS.
+- Publish now clears a future `publish_at` and refuses expired announcements.
+- Creating or updating to `PUBLISHED`/`SCHEDULED`/`ARCHIVED` needs the publish
+  permission and runs the normal lifecycle path; `PUT` applies `status` and
+  requires `audience_type`; `SPECIFIC_ROLES` needs a role.
+- Publish/schedule reject request attachment `path`s, validate attachments
+  before changing state, and mark email/SMS sent only after hand-off.
+- One failing audience check hides only that announcement from a feed, and
+  duplicate email attachments are no longer sent.
+
+`v0.2.0` added standalone PostgreSQL persistence, HTTP routes and provider
+composition.
 
 ## Public API
 
@@ -15,7 +32,7 @@ Local/unversioned consumers report `dev`.
 | --- | --- |
 | `NewServiceWithSettings`, `Service` | Announcement creation, updates, lifecycle actions, listing and audience/delivery orchestration |
 | `NewModule`, `Register`, `Module` | All 26 standard HTTP routes, DTOs, access/rate enforcement and OpenAPI metadata |
-| `Repository`, `NewRepository(*sql.DB)` | All 53 persistence operations, package-owned SQL and audience transactions; caller-owned pool |
+| `Repository`, `NewRepository(*sql.DB)` | All 54 persistence operations, package-owned SQL and audience transactions; caller-owned pool |
 | `UserDirectory`, `GroupDirectory`, `HealthAudience` | User/group lookup and actor-scoped or stored health audience expansion |
 | `AttachmentStorage` | Upload/download streams and deletion; resource ownership stays with the host |
 | `NotificationPublisher` | Forward package-owned notification envelopes and delivery requests |
@@ -53,11 +70,41 @@ dependencies. Direct service consumers remain responsible for authorization.
 Health audience resolution keeps actor-scoped selection distinct from stored
 expansion.
 
+`POST /admin/announcements` needs the write permission. Creating with status
+`PUBLISHED` or `SCHEDULED` also needs the publish permission: the announcement is
+inserted as a draft, its audience is stored, and then it runs the same publish or
+schedule path as the dedicated endpoints, so `published_at`/`published_by`, email
+and SMS behave identically. `SCHEDULED` requires `publish_at`; `ARCHIVED` is
+rejected.
+
 Notification forwarding remains best effort; a downstream publisher failure
 does not turn successful persistence/publication into a failure. Existing
 notification labels and queued delivery payloads are preserved. This package
 does not own a worker or provide atomic/exactly-once persistence and delivery.
 Scheduled delivery execution belongs to the host's notification infrastructure.
+
+### Scheduled publishing
+
+Scheduling an announcement only records `publish_at`; it does not queue audience
+email or SMS. Hosts must run the scheduled publisher, otherwise scheduled
+announcements never go live:
+
+```go
+go module.RunScheduledPublisher(ctx, time.Minute, func(err error) { log.Println(err) })
+```
+
+Each tick claims due `SCHEDULED` announcements atomically (`FOR UPDATE SKIP
+LOCKED`), marks them `PUBLISHED` and sends their notifications with the audience
+and uploaded attachments current at that moment. Several replicas can run it
+safely. Because nothing is queued ahead of time, drafting, deleting, archiving,
+rescheduling or re-targeting a scheduled announcement needs no cancellation.
+Due announcements that have already expired are left unpublished. Direct
+service consumers call `Service.RunScheduledPublisher` or `PublishDueScheduled`.
+
+Publishing now (or scheduling with a past time) sets `publish_at` to now when it
+was in the future, and refuses announcements whose `expires_at` has passed.
+Schedule requests no longer accept request `attachments`; upload them to the
+announcement instead.
 Hosts must retain their email normalization policy; nonempty email attachments
 that require normalization fail closed when the normalizer is absent.
 
@@ -107,7 +154,7 @@ values, attachment upload/download and repository error propagation.
 The PostgreSQL verifier creates a disposable database from a test-only snapshot
 of the existing schema. It builds a race-enabled public-API consumer outside
 the repository with workspaces/downloads disabled and a private dependency
-cache. It exercises all 53 operations, nullable values, audience isolation,
+cache. It exercises all 54 operations, nullable values, audience isolation,
 attachment scoping/deletion, append-only snapshots, cancellation and pool
 ownership. All five audience replacement transactions are tested for rollback
 after partial writes; clients/users use explicit test-only failure triggers.

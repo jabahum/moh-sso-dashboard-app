@@ -715,6 +715,8 @@ Attachment config:
 EMAIL_MAX_ATTACHMENTS=5
 EMAIL_MAX_ATTACHMENT_BYTES=10485760
 EMAIL_ALLOWED_ATTACHMENT_TYPES=pdf,doc,docx,xls,xlsx,csv,png,jpg,jpeg
+# Optional. Only directory `path` attachments may be read from; empty disables them.
+EMAIL_ATTACHMENT_BASE_DIR=
 ```
 
 ### Email payload

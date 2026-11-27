@@ -690,6 +690,9 @@ components:
         sms_message:
           nullable: true
           type: string
+        status:
+          nullable: true
+          type: string
         summary:
           nullable: true
           type: string
