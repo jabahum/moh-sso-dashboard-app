@@ -53,6 +53,13 @@ dependencies. Direct service consumers remain responsible for authorization.
 Health audience resolution keeps actor-scoped selection distinct from stored
 expansion.
 
+`POST /admin/announcements` needs the write permission. Creating with status
+`PUBLISHED` or `SCHEDULED` also needs the publish permission: the announcement is
+inserted as a draft, its audience is stored, and then it runs the same publish or
+schedule path as the dedicated endpoints, so `published_at`/`published_by`, email
+and SMS behave identically. `SCHEDULED` requires `publish_at`; `ARCHIVED` is
+rejected.
+
 Notification forwarding remains best effort; a downstream publisher failure
 does not turn successful persistence/publication into a failure. Existing
 notification labels and queued delivery payloads are preserved. This package

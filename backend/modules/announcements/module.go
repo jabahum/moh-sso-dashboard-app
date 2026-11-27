@@ -103,7 +103,8 @@ func NewModule(deps Dependencies) (*Module, error) {
 		pattern := endpoint.method + " " + endpoint.path
 		m.patterns = append(m.patterns, pattern)
 		m.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-			c := &httpRequest{Request: r, Writer: w, admin: endpoint.admin, streamError: deps.StreamError}
+			c := &httpRequest{Request: r, Writer: w, admin: endpoint.admin, streamError: deps.StreamError,
+				authorize: func(permissions ...string) error { return deps.AuthorizeAny(r, permissions...) }}
 			if deps.RequestID != nil {
 				c.requestID = deps.RequestID(r)
 			}
@@ -193,6 +194,9 @@ type httpRequest struct {
 	admin       bool
 	requestID   string
 	streamError func(*http.Request, error)
+	// authorize checks additional permissions inside a handler, for requests
+	// whose body asks for more than the route's own permission.
+	authorize func(permissions ...string) error
 }
 
 func (c *httpRequest) Query(key string) string { return c.Request.URL.Query().Get(key) }
