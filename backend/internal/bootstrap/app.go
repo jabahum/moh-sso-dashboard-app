@@ -231,6 +231,7 @@ func Run() {
 		Logger:                         appLogger,
 		DQADB:                          dbs.DQA,
 		DWHDB:                          dbs.DWH,
+		Announcements:                  handlers.Router.Announcements,
 	})
 
 	if err != nil {

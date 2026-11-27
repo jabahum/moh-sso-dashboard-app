@@ -18,6 +18,7 @@ import (
 	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/moh-sso-dashboard/internal/worker"
 	"github.com/mohuganda/moh-sso-dashboard/backend/core"
+	announcementsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 	reportschedulerfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/report-scheduler"
 )
 
@@ -37,7 +38,13 @@ type workerDependencies struct {
 	Logger                         *logger.Logger
 	DQADB                          *sql.DB
 	DWHDB                          *sql.DB
+	// Announcements is nil when the module is disabled.
+	Announcements *announcementsfeature.Module
 }
+
+// announcementSchedulerInterval is how often due scheduled announcements are
+// published; a scheduled announcement goes live at most this late.
+const announcementSchedulerInterval = time.Minute
 
 func enabledDeliveryWorkers(cfg *config.Config) []string {
 	if cfg.CoreOnly() {
@@ -78,6 +85,15 @@ func startBackgroundWorkers(ctx context.Context, deps workerDependencies) (core.
 	if deps.DQADB != nil && deps.DWHDB != nil {
 		dqa := dataqualityfeature.NewScheduleWorker(dataqualityfeature.NewDQAStore(deps.DQADB), deps.DWHDB, time.Minute, deps.Logger.Error)
 		tasks = append(tasks, core.WorkerTask{Name: "DQA scheduled run", Run: dqa.Start})
+	}
+	if deps.Announcements != nil {
+		announcements := deps.Announcements
+		tasks = append(tasks, core.WorkerTask{Name: "announcement-scheduler", Run: func(ctx context.Context) error {
+			announcements.RunScheduledPublisher(ctx, announcementSchedulerInterval, func(err error) {
+				deps.Logger.Error("scheduled announcement publishing failed", "error", err)
+			})
+			return ctx.Err()
+		}})
 	}
 	document, err := worker.NewDocumentWorker(deps.ProcessRepository, deps.ImportService, 3*time.Second, deps.FileStorage, deps.Logger)
 	if err != nil {
