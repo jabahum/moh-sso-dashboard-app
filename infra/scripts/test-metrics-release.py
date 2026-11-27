@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 from backend_module_pins import module_pins
+from module_release import artifact_differences, skip_if_pending
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = 'github.com/mohuganda/moh-sso-dashboard/backend/modules/metrics'
@@ -13,6 +14,8 @@ VERSION = module_pins()[MODULE]
 CONSUMER = 'example.com/metrics-release-consumer'
 
 def main():
+    if skip_if_pending(MODULE):
+        return
     go = os.environ.get('GO_CMD', 'go')
     local = ROOT / 'backend/modules/metrics'
     baseline = subprocess.run([go, 'list', '-mod=readonly', '-m', '-f', '{{.Path}} {{.Version}}', 'all'],
@@ -58,11 +61,9 @@ def main():
         assert output=='PASS: standalone Metrics HTTP consumer, verified capability wiring and package-owned contract',output
         assert all((consumer/name).read_bytes()==data for name,data in before.items())
         released = Path(downloaded['Dir'])
-        files = {p.relative_to(local) for p in local.rglob('*') if p.is_file()}
-        published = {p.relative_to(released) for p in released.rglob('*') if p.is_file()}
-        assert files==published, 'Release file inventory differs'
-        for relative in files:
-            assert (local/relative).read_bytes()==(released/relative).read_bytes(), 'Release drift: '+str(relative)
+        # Shared comparison: tolerates the root LICENSE Go adds to module zips.
+        differences = artifact_differences(local, released, ROOT / 'LICENSE')
+        assert not differences, 'Release drift: ' + '; '.join(differences)
         print(output,flush=True)
         print(f'PASS: Metrics {VERSION} fresh public download/checksums, exact dependency graph, no replacements, independent HTTP consumer and complete artifact parity',flush=True)
 if __name__=='__main__':

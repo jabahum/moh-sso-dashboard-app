@@ -185,25 +185,49 @@ configuration.
 
 ### Release a module version
 
-1. Verify the module's standalone tests and its dashboard integration using a
-   local workspace.
-2. Run the isolated package verifier (`infra/scripts/test-<module>-package.py`
-   and, where present, its HTTP or PostgreSQL consumer variants). These copy the
-   module outside the repository with an empty or private module cache,
-   workspaces and downloads disabled, check the exact dependency graph, run
-   build, vet and uncached race tests and build a separate consumer.
-3. Commit the module changes, create the directory-prefixed semantic version tag
-   (for example `backend/modules/metrics/v0.2.0`) and push that tag to the
-   upstream repository. Tags are immutable.
-4. Verify the public download from a separate consumer with `GOWORK=off`. The
-   release verifiers (`infra/scripts/test-<module>-release.py`, present for every
-   published module except Report Scheduler) download the
-   version into a fresh module cache, check reviewed checksums, reject
-   replacements, build and run an independent consumer and compare the complete
-   published artifact with the local module. They need network access.
-5. Update the pinned dependency with `go get`, record checksums in
-   `backend/go.sum`, regenerate API contracts and commit the distribution
-   integration.
+Module releases are declared in the pull request and tagged by automation
+after it merges, so a pull request that changes a module is green without a
+hand-pushed tag.
+
+1. Change the module and verify it: its standalone tests, the dashboard
+   integration through a local workspace, and the isolated package verifier
+   (`infra/scripts/test-<module>-package.py` and any HTTP or PostgreSQL consumer
+   variants). These copy the module outside the repository with an empty or
+   private module cache, workspaces and downloads disabled, check the exact
+   dependency graph, run build, vet and uncached race tests and build a
+   separate consumer.
+2. In the same pull request, declare the version the change becomes in
+   [`infra/modules/releases.json`](../infra/modules/README.md), with release
+   notes. Bump the minor version for breaking API changes below 1.0.
+3. CI runs `infra/scripts/module_release.py check`: every module must either
+   match its pinned release exactly or have a pending release that is newer
+   than the pin and not yet tagged. A changed module without a declaration fails
+   with instructions. The per-module release verifiers skip modules with a
+   pending release, because the pin is not expected to match yet.
+4. After the pull request merges, the **Module Release** workflow
+   (`.github/workflows/module-release.yml`) tags
+   `backend/modules/<id>/<version>` at the merged commit and pushes it. Tags
+   are immutable.
+5. The workflow then runs `module_release.py pin`, which downloads the new
+   version through the public proxy into a fresh cache, checks the published
+   artifact matches the source, runs `go get`, regenerates the OpenAPI
+   contract and removes the pending entry, and opens a "Pin <id> module
+   <version>" pull request. Review and merge it. With the default
+   `GITHUB_TOKEN` that pull request does not start CI on its own; set a
+   `MODULE_RELEASE_TOKEN` secret, or close and reopen the pull request, to run
+   it.
+6. After the pin merges, the release verifiers
+   (`infra/scripts/test-<module>-release.py`, present for every published
+   module except Report Scheduler) check the published version again from a
+   fresh cache on every pull request: reviewed checksums, no replacements, an
+   independent consumer, and the complete artifact compared with the source.
+
+Comparisons ignore a `LICENSE` identical to the repository root licence,
+because Go adds it to a nested module's published zip when the module has
+none. `module_release.py tag` and `pin` can be run by hand (set
+`MODULE_RELEASE_REMOTE` when your Git remote for this repository is not
+`origin`), and the workflow can be re-run with `workflow_dispatch`; tagging is
+idempotent when the existing tag matches the source.
 
 Publishing a tag does not change a running deployment. Build a new backend image
 to consume a release. The compiled inventory reports the selected dependency

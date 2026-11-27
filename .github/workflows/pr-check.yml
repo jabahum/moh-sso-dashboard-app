@@ -143,6 +143,11 @@ jobs:
       - name: Verify published backend module pins and checksums
         run: python3 infra/scripts/backend_module_pins.py
 
+      - name: Module release declarations
+        run: |
+          python3 infra/scripts/module_release.test.py
+          python3 infra/scripts/module_release.py check
+
       - name: Module coverage catalogue and guide
         run: |
           python3 infra/scripts/check-module-catalog.py

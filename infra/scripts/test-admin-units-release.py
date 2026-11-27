@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 
 from backend_module_pins import module_pins
+from module_release import artifact_differences, skip_if_pending
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = 'github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units'
@@ -15,6 +16,8 @@ CONSUMER = 'example.com/admin-units-release-consumer'
 
 
 def main():
+    if skip_if_pending(MODULE):
+        return
     go = os.environ.get('GO_CMD', 'go')
     with tempfile.TemporaryDirectory(prefix='moh-admin-units-release-') as tmp:
         root = Path(tmp)
@@ -62,10 +65,9 @@ def main():
         assert all((consumer / name).read_bytes() == value for name, value in before.items())
         released = Path(downloaded['Dir'])
         local = ROOT / 'backend/modules/admin-units'
-        for path in local.rglob('*'):
-            if path.is_file():
-                relative = path.relative_to(local)
-                assert path.read_bytes() == (released / relative).read_bytes(), 'Release artifact drift: ' + str(relative)
+        # Shared comparison: tolerates the root LICENSE Go adds to module zips.
+        differences = artifact_differences(local, released, ROOT / 'LICENSE')
+        assert not differences, 'Release drift: ' + '; '.join(differences)
         source = (local / 'testdata/http-consumer/main.go').read_text()
         source = source.replace('if err != nil {', 'if units.Version() != "' + VERSION + '" { panic("unexpected published version") }; if err != nil {', 1)
         (consumer / 'main.go').write_text(source)
