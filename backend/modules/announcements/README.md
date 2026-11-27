@@ -3,11 +3,28 @@
 Module path: `github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements`.
 Requires Go 1.25.4, `github.com/google/uuid v1.6.0` and `github.com/lib/pq v1.10.9`.
 
-Version `v0.2.0` is the self-contained release under
-`backend/modules/announcements/v0.2.0`. It adds standalone PostgreSQL
-persistence, HTTP routes and provider composition. Hosts select this immutable
-Go dependency with reviewed checksums; integrations upgrade independently.
+Version `v0.3.0` is the current release under
+`backend/modules/announcements/v0.3.0`. Hosts select this immutable Go
+dependency with reviewed checksums; integrations upgrade independently.
 Local/unversioned consumers report `dev`.
+
+`v0.3.0` changes from `v0.2.0`:
+
+- **Breaking:** `Repository` gains `ClaimDueScheduled`, and
+  `Service.ListMyAnnouncements` (which ignored audience targeting) is removed.
+- Scheduled announcements publish when due through `RunScheduledPublisher`,
+  which hosts must run; scheduling no longer pre-queues email/SMS.
+- Publish now clears a future `publish_at` and refuses expired announcements.
+- Creating or updating to `PUBLISHED`/`SCHEDULED`/`ARCHIVED` needs the publish
+  permission and runs the normal lifecycle path; `PUT` applies `status` and
+  requires `audience_type`; `SPECIFIC_ROLES` needs a role.
+- Publish/schedule reject request attachment `path`s, validate attachments
+  before changing state, and mark email/SMS sent only after hand-off.
+- One failing audience check hides only that announcement from a feed, and
+  duplicate email attachments are no longer sent.
+
+`v0.2.0` added standalone PostgreSQL persistence, HTTP routes and provider
+composition.
 
 ## Public API
 
