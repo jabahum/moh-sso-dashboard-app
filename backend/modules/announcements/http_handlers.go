@@ -27,6 +27,19 @@ func newHTTPHandler(
 	}
 }
 
+// rejectServerPathAttachments refuses request attachments that name a server
+// file. Clients must send file contents (data_base64) or upload attachments;
+// a path would let a caller email arbitrary server files to themselves.
+func rejectServerPathAttachments(c *httpRequest, attachments []announcementAttachmentRequest) bool {
+	for _, attachment := range attachments {
+		if strings.TrimSpace(attachment.Path) != "" {
+			c.fail(http.StatusBadRequest, "BAD_REQUEST", "attachment path is not supported; send data_base64 or upload the attachment")
+			return true
+		}
+	}
+	return false
+}
+
 func getPageLimit(c *httpRequest, defaultValue int32) int32 {
 	limit := defaultValue
 
@@ -638,6 +651,9 @@ func (h *httpHandler) PublishAnnouncementNow(c *httpRequest) {
 			return
 		}
 	}
+	if rejectServerPathAttachments(c, req.Attachments) {
+		return
+	}
 
 	userID, ok := getCurrentUserID(c)
 	if !ok {
@@ -720,6 +736,9 @@ func (h *httpHandler) ScheduleAnnouncement(c *httpRequest) {
 	var req scheduleAnnouncementRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.fail(http.StatusBadRequest, "BAD_REQUEST", "request failed")
+		return
+	}
+	if rejectServerPathAttachments(c, req.Attachments) {
 		return
 	}
 

@@ -2,7 +2,9 @@ package email
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +21,9 @@ func NormalizeAttachments(cfg *config.Config, attachments []model.Attachment) ([
 	maxCount := 5
 	maxBytes := int64(10 * 1024 * 1024)
 	allowed := allowedAttachmentTypes("pdf,doc,docx,xls,xlsx,csv,png,jpg,jpeg")
+	baseDir := ""
 	if cfg != nil {
+		baseDir = strings.TrimSpace(cfg.Email.AttachmentBaseDir)
 		if cfg.Email.MaxAttachments > 0 {
 			maxCount = cfg.Email.MaxAttachments
 		}
@@ -37,7 +41,7 @@ func NormalizeAttachments(cfg *config.Config, attachments []model.Attachment) ([
 
 	out := make([]model.Attachment, 0, len(attachments))
 	for i, attachment := range attachments {
-		normalized, err := normalizeAttachment(attachment, allowed, maxBytes)
+		normalized, err := normalizeAttachment(attachment, allowed, maxBytes, baseDir)
 		if err != nil {
 			return nil, fmt.Errorf("attachment %d: %w", i+1, err)
 		}
@@ -47,7 +51,11 @@ func NormalizeAttachments(cfg *config.Config, attachments []model.Attachment) ([
 	return out, nil
 }
 
-func normalizeAttachment(att model.Attachment, allowed map[string]bool, maxBytes int64) (model.Attachment, error) {
+// ErrPathAttachmentsDisabled is returned for server-file attachments when no
+// EMAIL_ATTACHMENT_BASE_DIR is configured.
+var ErrPathAttachmentsDisabled = errors.New("server file attachments are disabled; send the file as data_base64")
+
+func normalizeAttachment(att model.Attachment, allowed map[string]bool, maxBytes int64, baseDir string) (model.Attachment, error) {
 	att.FileName = strings.TrimSpace(att.FileName)
 	att.ContentType = strings.TrimSpace(att.ContentType)
 	att.Path = strings.TrimSpace(att.Path)
@@ -74,19 +82,18 @@ func normalizeAttachment(att model.Attachment, allowed map[string]bool, maxBytes
 	}
 
 	if hasPath {
-		if err := validateAttachmentPath(att.Path); err != nil {
+		if err := validateAllowedPathType(att.Path, allowed); err != nil {
 			return model.Attachment{}, err
 		}
-		info, err := os.Stat(att.Path)
+		data, err := readAttachmentFromBaseDir(baseDir, att.Path, maxBytes)
 		if err != nil {
-			return model.Attachment{}, fmt.Errorf("path %q: %w", att.Path, err)
+			return model.Attachment{}, err
 		}
-		if info.IsDir() {
-			return model.Attachment{}, fmt.Errorf("path %q is a directory", att.Path)
-		}
-		if info.Size() > maxBytes {
-			return model.Attachment{}, fmt.Errorf("file exceeds max attachment size")
-		}
+		// Carry the bytes instead of the path so nothing downstream (queue,
+		// retry, SMTP send) ever opens a client-supplied path again.
+		att.Path = ""
+		att.Data = data
+		att.DataBase64 = base64.StdEncoding.EncodeToString(data)
 		return att, nil
 	}
 
@@ -107,12 +114,52 @@ func normalizeAttachment(att model.Attachment, allowed map[string]bool, maxBytes
 	return att, nil
 }
 
-func validateAttachmentPath(path string) error {
-	clean := filepath.Clean(path)
-	for _, part := range strings.Split(clean, string(os.PathSeparator)) {
-		if part == ".." {
-			return fmt.Errorf("path traversal is not allowed")
+// readAttachmentFromBaseDir reads a server-side attachment, confined to baseDir.
+// Paths may be relative to baseDir or absolute paths inside it. os.OpenInRoot
+// rejects any path (including via symlinks) that resolves outside baseDir.
+func readAttachmentFromBaseDir(baseDir, path string, maxBytes int64) ([]byte, error) {
+	if baseDir == "" {
+		return nil, ErrPathAttachmentsDisabled
+	}
+	name := filepath.Clean(path)
+	if filepath.IsAbs(name) {
+		rel, err := filepath.Rel(baseDir, name)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return nil, fmt.Errorf("attachment path must be inside the configured attachment directory")
 		}
+		name = rel
+	}
+	file, err := os.OpenInRoot(baseDir, name)
+	if err != nil {
+		return nil, fmt.Errorf("attachment path must name a file inside the configured attachment directory")
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("stat attachment: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("attachment path is not a regular file")
+	}
+	if info.Size() > maxBytes {
+		return nil, fmt.Errorf("file exceeds max attachment size")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, maxBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("read attachment: %w", err)
+	}
+	if int64(len(data)) > maxBytes {
+		return nil, fmt.Errorf("file exceeds max attachment size")
+	}
+	return data, nil
+}
+
+// validateAllowedPathType checks the extension of the file actually read, so a
+// permitted file_name cannot disguise a different file type on disk.
+func validateAllowedPathType(path string, allowed map[string]bool) error {
+	ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(path)), ".")
+	if ext == "" || !allowed[ext] {
+		return fmt.Errorf("attachment path type %q is not allowed", ext)
 	}
 	return nil
 }
