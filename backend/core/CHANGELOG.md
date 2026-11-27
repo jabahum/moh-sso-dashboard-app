@@ -6,6 +6,14 @@ stable within a minor version.
 
 ## v0.2.0 (unreleased)
 
+### Platform core
+
+- `Platform`: the standard set of trusted host capabilities offered to every
+  compiled module (verified access, `AuthorizeAny`, `RequireAdmin`,
+  `RequireSystem`, per-user `Limit`, `RequestID`, `ReportError` and `Audit`),
+  with `Require` so a module fails at construction when the host omits a
+  capability it needs (`ErrMissingCapability`).
+
 ### Module migration streams
 
 - `ModuleDefinition.Migrations` (an `fs.FS` of golang-migrate files) gives a

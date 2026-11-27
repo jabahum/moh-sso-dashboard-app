@@ -10,7 +10,6 @@ import (
 	emailutil "github.com/moh-sso-dashboard/internal/email"
 	models "github.com/moh-sso-dashboard/internal/model"
 	"github.com/moh-sso-dashboard/internal/modulehttp"
-	"github.com/moh-sso-dashboard/internal/ratelimit"
 	a "github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements"
 )
 
@@ -55,11 +54,12 @@ func buildAnnouncementsModule(deps handlerDependencies) *a.Module {
 	settings.StorageProvider, settings.AppBaseURL = cfg.StorageProvider, cfg.AppBaseURL
 	settings.FrontendBaseURL, settings.FrontendRedirectURI = cfg.FrontendBaseURL, cfg.FrontendRedirectURI
 
+	platform := modulePlatform(deps)
 	module, err := a.NewModule(a.Dependencies{
 		Database: deps.Databases.Primary, Settings: settings,
-		Audit: moduleAudit{recorder: deps.Services.Audit}, RequireAdmin: modulehttp.RequireAdmin, AuthorizeAny: modulehttp.AuthorizeAny,
-		Limit:     modulehttp.PerUserLimit(ratelimit.New(deps.Redis)),
-		RequestID: modulehttp.RequestID, StreamError: modulehttp.StreamError,
+		Audit: moduleAudit{recorder: deps.Services.Audit}, RequireAdmin: platform.RequireAdmin, AuthorizeAny: platform.AuthorizeAny,
+		Limit:     platform.Limit,
+		RequestID: platform.RequestID, StreamError: platform.ReportError,
 		Actor: func(r *http.Request) (a.Actor, error) {
 			verified, valid := modulehttp.RequestAccess(r)
 			if !valid {

@@ -145,7 +145,9 @@ source the host builds.
 
 `backend/core` is required as `v0.0.0` and resolved through the local
 `replace github.com/mohuganda/moh-sso-dashboard/backend/core => ./core` directive
-in `backend/go.mod`; this checkout has no `backend/core/v*` release tag. Check `backend/go.mod` and
+in `backend/go.mod`, so the host builds against its own tree; published core
+versions (`backend/core/v0.1.0` onward) are for modules and external
+consumers. Check `backend/go.mod` and
 [Module coverage](module-coverage.md) for the authoritative current values.
 
 ## Packaging, publishing and pinning

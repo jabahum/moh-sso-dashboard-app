@@ -11,8 +11,8 @@ Core capabilities are composed by the host and are not optional module IDs.
 Run `python3 infra/scripts/test-platform-core.py` from the repository root
 to verify the whole core outside the host tree with an empty dependency cache
 and workspaces/downloads disabled. The check builds, vets and runs uncached
-race tests. The first tagged release is planned as `backend/core/v0.1.0`; see
-the release steps and `make -C infra core-release-check` in
+race tests. `backend/core/v0.1.0` is published; see `CHANGELOG.md` for later
+versions and the release steps and `make -C infra core-release-check` in
 [the identity-sync adapter guide](../../docs/integrations/identity-sync-adapter.md#releasing-backendcore).
 
 
@@ -34,6 +34,16 @@ and failure propagation. Host ID/explanation types remain type parameters;
 core imports no UUID, geographic provider or database packages. Effective
 assignment loading, alias resolution and selected-context middleware remain
 host responsibilities. Core-only startup is deferred.
+
+## Module platform capabilities
+
+`Platform` is the one value a host hands every compiled module: verified
+request access, permission/admin/system checks, per-user rate limits, request
+IDs, error reporting and audit recording. A module calls
+`platform.Require(...)` with the capabilities it uses while it is constructed,
+so a host that omits one fails at startup. The dashboard builds it once in
+`internal/modulehttp.NewPlatform`; new modules should accept a `core.Platform`
+instead of declaring their own callbacks.
 
 ## External Go consumers
 
