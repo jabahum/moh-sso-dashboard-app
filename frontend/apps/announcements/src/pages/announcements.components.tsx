@@ -18,7 +18,7 @@ import { Add, Attachment, Link as LinkIcon } from "@carbon/react/icons";
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  useListAnnouncementsAdminQuery,
+  useListAllAnnouncementsAdminQuery,
   usePublishAnnouncementMutation,
   useArchiveAnnouncementMutation,
   useDeleteAnnouncementMutation,
@@ -146,10 +146,7 @@ export function AnnouncementsPage() {
     isError,
     error,
     refetch,
-  } = useListAnnouncementsAdminQuery({
-    limit: 500,
-    offset: 0,
-  });
+  } = useListAllAnnouncementsAdminQuery();
 
   const [publishAnnouncement] = usePublishAnnouncementMutation();
   const [archiveAnnouncement] = useArchiveAnnouncementMutation();

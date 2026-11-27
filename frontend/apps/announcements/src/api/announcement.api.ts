@@ -17,6 +17,8 @@ import type {
 import { API } from "@moh-sso/config";
 import { baseApi } from "@moh-sso/api";
 
+const ADMIN_PAGE_SIZE = 200;
+
 type ApiEnvelope<T> = {
   success: boolean;
   data: T;
@@ -33,6 +35,34 @@ export const announcementApi = baseApi.injectEndpoints({
         },
       }),
       transformResponse: (response: ApiEnvelope<Announcement[]>) => response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((item) => ({
+                type: "Announcements" as const,
+                id: item.id,
+              })),
+              { type: "Announcements" as const, id: "LIST" },
+            ]
+          : [{ type: "Announcements" as const, id: "LIST" }],
+    }),
+
+    // Loads every announcement page by page, so the admin table's client-side
+    // filters and pagination cover all announcements rather than a fixed first page.
+    listAllAnnouncementsAdmin: builder.query<Announcement[], void>({
+      async queryFn(_arg, _api, _extraOptions, fetchWithBQ) {
+        const all: Announcement[] = [];
+        for (let offset = 0; ; offset += ADMIN_PAGE_SIZE) {
+          const result = await fetchWithBQ({
+            url: "/admin/announcements",
+            params: { limit: ADMIN_PAGE_SIZE, offset },
+          });
+          if (result.error) return { error: result.error };
+          const page = (result.data as ApiEnvelope<Announcement[]>).data ?? [];
+          all.push(...page);
+          if (page.length < ADMIN_PAGE_SIZE) return { data: all };
+        }
+      },
       providesTags: (result) =>
         result
           ? [
@@ -366,6 +396,7 @@ export function buildUserAnnouncementAttachmentDownloadUrl(
 
 export const {
   useListAnnouncementsAdminQuery,
+  useListAllAnnouncementsAdminQuery,
   useGetAnnouncementByIdQuery,
   useGetAnnouncementStatsQuery,
   usePreviewAnnouncementAudienceMutation,
