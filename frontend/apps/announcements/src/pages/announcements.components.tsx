@@ -26,7 +26,7 @@ import {
   useDraftAnnouncementMutation,
 } from "../api";
 
-import type { Announcement, AnnouncementLevel } from "../types";
+import type { Announcement, AnnouncementAudienceType, AnnouncementLevel } from "../types";
 
 import { ErrorState, PageShell, useHeaderPanel, useModal, useToast } from "@moh-sso/ui";
 
@@ -64,7 +64,7 @@ function getApiErrorMessage(error: unknown, fallback: string) {
  * ----------------------------- */
 type StatusFilter = "all" | "published" | "draft" | "scheduled" | "archived";
 type LevelFilter = "all" | Lowercase<AnnouncementLevel>;
-type AudienceFilter = "all" | "all_users" | "admins_only" | "specific_roles";
+type AudienceFilter = "all" | Lowercase<AnnouncementAudienceType>;
 type PinFilter = "all" | "pinned" | "unpinned";
 
 const STATUS_OPTIONS = [
@@ -88,7 +88,12 @@ const AUDIENCE_OPTIONS = [
   { id: "all_users", label: "All users" },
   { id: "admins_only", label: "Admins only" },
   { id: "specific_roles", label: "Specific roles" },
-] as const;
+  { id: "specific_clients", label: "Specific systems" },
+  { id: "specific_users", label: "Specific users" },
+  { id: "specific_groups", label: "Specific groups" },
+  { id: "specific_health_contexts", label: "Health contexts" },
+  { id: "health_context_and_descendants", label: "Health contexts and below" },
+] as const satisfies readonly { id: AudienceFilter; label: string }[];
 
 const PIN_OPTIONS = [
   { id: "all", label: "All" },
