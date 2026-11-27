@@ -261,10 +261,11 @@ The current full-distribution Compose entry point remains unchanged.
 
 1. Align frontend shell/extension contracts and verify an optional application
    against the core, then decide independent release/version boundaries.
-   `backend/core` is not yet released independently: `backend/go.mod` requires
-   it as `v0.0.0` through a local `replace ... => ./core` directive, and no
-   `backend/core/v*` tag exists in this checkout. `backend/core/README.md` reserves that tag prefix
-   for future releases.
+   `backend/core` is published independently (`backend/core/v0.1.0`; see
+   `backend/core/CHANGELOG.md`). The dashboard itself still requires it as
+   `v0.0.0` through a local `replace ... => ./core` directive so it always
+   builds against the same tree; modules and external applications depend on a
+   tagged version.
 
 Document, template and storage-location extraction remains deferred.
 
