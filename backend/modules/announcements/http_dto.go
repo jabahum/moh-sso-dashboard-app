@@ -49,6 +49,9 @@ type updateAnnouncementRequest struct {
 	NotifyByEmail    bool     `json:"notify_by_email"`
 	NotifyBySMS      bool     `json:"notify_by_sms"`
 	SMSMessage       *string  `json:"sms_message"`
+	// Status is optional; when present and different from the stored status
+	// it is applied through the publish/schedule/draft/archive lifecycle.
+	Status *string `json:"status"`
 }
 
 type AnnouncementResponse struct {

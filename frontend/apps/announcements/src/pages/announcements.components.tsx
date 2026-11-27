@@ -18,7 +18,7 @@ import { Add, Attachment, Link as LinkIcon } from "@carbon/react/icons";
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  useListAnnouncementsAdminQuery,
+  useListAllAnnouncementsAdminQuery,
   usePublishAnnouncementMutation,
   useArchiveAnnouncementMutation,
   useDeleteAnnouncementMutation,
@@ -26,7 +26,7 @@ import {
   useDraftAnnouncementMutation,
 } from "../api";
 
-import type { Announcement, AnnouncementLevel } from "../types";
+import type { Announcement, AnnouncementAudienceType, AnnouncementLevel } from "../types";
 
 import { ErrorState, PageShell, useHeaderPanel, useModal, useToast } from "@moh-sso/ui";
 
@@ -64,7 +64,7 @@ function getApiErrorMessage(error: unknown, fallback: string) {
  * ----------------------------- */
 type StatusFilter = "all" | "published" | "draft" | "scheduled" | "archived";
 type LevelFilter = "all" | Lowercase<AnnouncementLevel>;
-type AudienceFilter = "all" | "all_users" | "admins_only" | "specific_roles";
+type AudienceFilter = "all" | Lowercase<AnnouncementAudienceType>;
 type PinFilter = "all" | "pinned" | "unpinned";
 
 const STATUS_OPTIONS = [
@@ -88,7 +88,12 @@ const AUDIENCE_OPTIONS = [
   { id: "all_users", label: "All users" },
   { id: "admins_only", label: "Admins only" },
   { id: "specific_roles", label: "Specific roles" },
-] as const;
+  { id: "specific_clients", label: "Specific systems" },
+  { id: "specific_users", label: "Specific users" },
+  { id: "specific_groups", label: "Specific groups" },
+  { id: "specific_health_contexts", label: "Health contexts" },
+  { id: "health_context_and_descendants", label: "Health contexts and below" },
+] as const satisfies readonly { id: AudienceFilter; label: string }[];
 
 const PIN_OPTIONS = [
   { id: "all", label: "All" },
@@ -146,10 +151,7 @@ export function AnnouncementsPage() {
     isError,
     error,
     refetch,
-  } = useListAnnouncementsAdminQuery({
-    limit: 500,
-    offset: 0,
-  });
+  } = useListAllAnnouncementsAdminQuery();
 
   const [publishAnnouncement] = usePublishAnnouncementMutation();
   const [archiveAnnouncement] = useArchiveAnnouncementMutation();
@@ -723,62 +725,60 @@ export function AnnouncementsPage() {
                             if (cell.info.header === "actions") {
                               return (
                                 <TableCell key={cell.id}>
-                                  {row.isSelected && (
-                                    <AnnouncementActionsMenu
-                                      announcement={announcement}
-                                      onEdit={() => handleOpenEditPanel(announcement)}
-                                      onPublish={async () => {
-                                        try {
-                                          await handlePublish(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Publish failed",
-                                            subtitle: "Failed to publish announcement.",
-                                          });
-                                        }
-                                      }}
-                                      onMoveToDraft={async () => {
-                                        try {
-                                          await handleMoveToDraft(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Draft failed",
-                                            subtitle: "Failed to move announcement to draft.",
-                                          });
-                                        }
-                                      }}
-                                      onTogglePin={async () => {
-                                        try {
-                                          await handleTogglePin(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Pin update failed",
-                                            subtitle: "Failed to update pin state.",
-                                          });
-                                        }
-                                      }}
-                                      onArchive={async () => {
-                                        try {
-                                          await handleArchive(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Archive failed",
-                                            subtitle: "Failed to archive announcement.",
-                                          });
-                                        }
-                                      }}
-                                      onDelete={async () => {
-                                        try {
-                                          await handleDelete(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Delete failed",
-                                            subtitle: "Failed to delete announcement.",
-                                          });
-                                        }
-                                      }}
-                                    />
-                                  )}
+                                  <AnnouncementActionsMenu
+                                    announcement={announcement}
+                                    onEdit={() => handleOpenEditPanel(announcement)}
+                                    onPublish={async () => {
+                                      try {
+                                        await handlePublish(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Publish failed",
+                                          subtitle: "Failed to publish announcement.",
+                                        });
+                                      }
+                                    }}
+                                    onMoveToDraft={async () => {
+                                      try {
+                                        await handleMoveToDraft(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Draft failed",
+                                          subtitle: "Failed to move announcement to draft.",
+                                        });
+                                      }
+                                    }}
+                                    onTogglePin={async () => {
+                                      try {
+                                        await handleTogglePin(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Pin update failed",
+                                          subtitle: "Failed to update pin state.",
+                                        });
+                                      }
+                                    }}
+                                    onArchive={async () => {
+                                      try {
+                                        await handleArchive(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Archive failed",
+                                          subtitle: "Failed to archive announcement.",
+                                        });
+                                      }
+                                    }}
+                                    onDelete={async () => {
+                                      try {
+                                        await handleDelete(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Delete failed",
+                                          subtitle: "Failed to delete announcement.",
+                                        });
+                                      }
+                                    }}
+                                  />
                                 </TableCell>
                               );
                             }

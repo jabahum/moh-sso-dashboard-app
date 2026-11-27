@@ -98,6 +98,7 @@ func getAnnouncementAttachmentID(c *httpRequest) (uuid.UUID, bool) {
 func parseAnnouncementAudienceSelection(
 	reqAudienceType string,
 	clientIDValues []string,
+	roleNames []string,
 	userIDValues []string,
 	groupIDValues []string,
 	healthContextIDValues []string,
@@ -123,6 +124,18 @@ func parseAnnouncementAudienceSelection(
 
 	audienceType := strings.ToUpper(strings.TrimSpace(reqAudienceType))
 	switch audienceType {
+	case "", "ALL_USERS", "ADMINS_ONLY":
+	case "SPECIFIC_ROLES":
+		hasRole := false
+		for _, role := range roleNames {
+			if strings.TrimSpace(role) != "" {
+				hasRole = true
+				break
+			}
+		}
+		if !hasRole {
+			return nil, nil, nil, nil, false
+		}
 	case "SPECIFIC_CLIENTS":
 		if len(clientIDs) == 0 {
 			return nil, nil, nil, nil, false
@@ -139,6 +152,8 @@ func parseAnnouncementAudienceSelection(
 		if len(healthContextIDs) == 0 {
 			return nil, nil, nil, nil, false
 		}
+	default:
+		return nil, nil, nil, nil, false
 	}
 
 	return clientIDs, userIDs, groupIDs, healthContextIDs, true
@@ -327,6 +342,7 @@ func (h *httpHandler) CreateAnnouncement(c *httpRequest) {
 	clientIDs, userIDs, groupIDs, healthContextIDs, ok := parseAnnouncementAudienceSelection(
 		req.AudienceType,
 		req.ClientIDs,
+		req.RoleNames,
 		req.UserIDs,
 		req.GroupIDs,
 		req.HealthContextIDs,
@@ -564,9 +580,50 @@ func (h *httpHandler) UpdateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// A status change is a lifecycle action, which needs the publish
+	// permission; check it before writing anything.
+	targetStatus := AnnouncementStatus("")
+	if req.Status != nil && strings.TrimSpace(*req.Status) != "" {
+		current, err := h.announcementService.GetAnnouncementByID(c.Request.Context(), announcementID)
+		if err != nil {
+			c.fail(http.StatusNotFound, "NOT_FOUND", "announcement not found")
+			return
+		}
+		requested := announcementStatusValue(*req.Status)
+		switch requested {
+		case AnnouncementStatusDRAFT, AnnouncementStatusPUBLISHED, AnnouncementStatusSCHEDULED, AnnouncementStatusARCHIVED:
+		default:
+			c.fail(http.StatusBadRequest, "BAD_REQUEST", "status must be DRAFT, SCHEDULED, PUBLISHED or ARCHIVED")
+			return
+		}
+		if requested != current.Status {
+			if c.authorize == nil {
+				c.reject(ErrForbidden)
+				return
+			}
+			if err := c.authorize(PublishPermission); err != nil {
+				c.reject(err)
+				return
+			}
+			if requested == AnnouncementStatusSCHEDULED && !publishAt.Valid {
+				c.fail(http.StatusBadRequest, "BAD_REQUEST", "publish_at is required to schedule an announcement")
+				return
+			}
+			targetStatus = requested
+		}
+	}
+
+	// PUT replaces the whole announcement. Defaulting a missing audience_type
+	// to ALL_USERS would silently widen a targeted announcement to everyone.
+	if strings.TrimSpace(req.AudienceType) == "" {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "audience_type is required")
+		return
+	}
+
 	clientIDs, userIDs, groupIDs, healthContextIDs, ok := parseAnnouncementAudienceSelection(
 		req.AudienceType,
 		req.ClientIDs,
+		req.RoleNames,
 		req.UserIDs,
 		req.GroupIDs,
 		req.HealthContextIDs,
@@ -656,6 +713,24 @@ func (h *httpHandler) UpdateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// Apply a status change after the audience is stored, through the same
+	// paths as the dedicated lifecycle endpoints.
+	ctx := c.Request.Context()
+	switch targetStatus {
+	case AnnouncementStatusPUBLISHED:
+		item, err = h.announcementService.PublishAnnouncementNow(ctx, item.ID, userID)
+	case AnnouncementStatusSCHEDULED:
+		item, err = h.announcementService.ScheduleAnnouncementByUser(ctx, item.ID, publishAt.Time, userID)
+	case AnnouncementStatusDRAFT:
+		item, err = h.announcementService.MoveAnnouncementToDraftByUser(ctx, item.ID, userID)
+	case AnnouncementStatusARCHIVED:
+		item, err = h.announcementService.ArchiveAnnouncement(ctx, item.ID, userID)
+	}
+	if err != nil {
+		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "announcement was updated but its status could not be changed")
+		return
+	}
+
 	if h.auditService != nil {
 		_ = h.auditService.Log(
 			c.Request.Context(),
@@ -712,6 +787,10 @@ func (h *httpHandler) PublishAnnouncementNow(c *httpRequest) {
 	)
 	if errors.Is(err, ErrAnnouncementExpired) {
 		c.fail(http.StatusConflict, "ANNOUNCEMENT_EXPIRED", "announcement has expired; update expires_at before publishing")
+		return
+	}
+	if errors.Is(err, ErrInvalidEmailAttachments) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "one or more email attachments were rejected")
 		return
 	}
 	if err != nil {
@@ -814,6 +893,10 @@ func (h *httpHandler) ScheduleAnnouncement(c *httpRequest) {
 	}
 	if errors.Is(err, ErrScheduleAttachmentsUnsupported) {
 		c.fail(http.StatusBadRequest, "BAD_REQUEST", "schedule requests cannot carry attachments; upload them to the announcement")
+		return
+	}
+	if errors.Is(err, ErrInvalidEmailAttachments) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "one or more email attachments were rejected")
 		return
 	}
 	if err != nil {

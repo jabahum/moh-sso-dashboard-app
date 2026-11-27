@@ -107,6 +107,14 @@ func (h *httpHandler) visible(ctx context.Context, actor Actor, item Announcemen
 	return false, nil
 }
 
+// reportSkippedAnnouncement records an announcement left out of a feed because
+// its audience could not be checked, through the host's error reporter.
+func (h *httpHandler) reportSkippedAnnouncement(c *httpRequest, item Announcement, err error) {
+	if c.streamError != nil {
+		c.streamError(c.Request, fmt.Errorf("announcement %s hidden: audience check failed: %w", item.ID, err))
+	}
+}
+
 func (h *httpHandler) listVisible(c *httpRequest) {
 	role := strings.TrimSpace(c.Param("role_name"))
 	if role == "" {
@@ -144,8 +152,10 @@ func (h *httpHandler) listVisible(c *httpRequest) {
 		for _, item := range items {
 			allowed, err := h.visible(c.Request.Context(), c.actor, item)
 			if err != nil {
-				c.reject(err)
-				return
+				// Fail closed for this item only: one group or health-context
+				// lookup failing must not take down the whole feed.
+				h.reportSkippedAnnouncement(c, item, err)
+				continue
 			}
 			if !allowed {
 				continue
@@ -154,8 +164,8 @@ func (h *httpHandler) listVisible(c *httpRequest) {
 			if role != "" || client != "" {
 				selected, err := h.selected(c.Request.Context(), item, role, client)
 				if err != nil {
-					c.reject(err)
-					return
+					h.reportSkippedAnnouncement(c, item, err)
+					continue
 				}
 				if !selected {
 					continue

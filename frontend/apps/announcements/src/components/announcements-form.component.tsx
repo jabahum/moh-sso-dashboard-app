@@ -343,23 +343,16 @@ export function AnnouncementForm({
       return;
     }
 
+    // onSubmit owns the API call and its success/error toasts; it rejects when
+    // the save fails, in which case the entered values are kept.
     try {
       await onSubmit(buildPayload());
+    } catch {
+      return;
+    }
 
-      if (mode === "create") {
-        toast.success("Announcement Created", "Announcement created successfully.");
-        setForm(initialForm);
-      } else {
-        toast.success("Announcement Updated", "Announcement updated successfully.");
-      }
-    } catch (error: any) {
-      const message =
-        error?.data?.error ||
-        error?.data?.message ||
-        error?.message ||
-        `Failed to ${mode === "create" ? "create" : "update"} announcement.`;
-
-      toast.error(mode === "create" ? "Create Failed" : "Update Failed", message);
+    if (mode === "create") {
+      setForm(initialForm);
     }
   };
 

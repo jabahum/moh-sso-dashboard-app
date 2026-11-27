@@ -274,17 +274,24 @@ func (s *Service) withPersistedAnnouncementEmailAttachments(
 		return options, nil
 	}
 
-	seen := make(map[string]struct{}, len(options.Attachments)+len(attachments))
+	// A stored attachment is skipped when the request already attaches a file
+	// with the same name (as recipients see it), or when an identical stored
+	// file (same checksum and name) was already added.
+	requested := make(map[string]struct{}, len(options.Attachments))
 	for _, existing := range options.Attachments {
-		key := strings.ToLower(strings.TrimSpace(existing.FileName))
-		if key != "" {
-			seen[key] = struct{}{}
+		if key := attachmentNameKey(existing.FileName); key != "" {
+			requested[key] = struct{}{}
 		}
 	}
+	stored := make(map[string]struct{}, len(attachments))
 
 	for _, attachment := range attachments {
-		key := strings.ToLower(strings.TrimSpace(attachment.Checksum.String + ":" + attachment.FileName))
-		if _, ok := seen[key]; ok {
+		name := attachmentNameKey(attachment.OriginalFileName)
+		if _, ok := requested[name]; ok && name != "" {
+			continue
+		}
+		key := attachment.Checksum.String + ":" + name
+		if _, ok := stored[key]; ok {
 			continue
 		}
 
@@ -315,10 +322,14 @@ func (s *Service) withPersistedAnnouncementEmailAttachments(
 			FileSize:    attachment.FileSize,
 			URL:         s.announcementAttachmentDownloadURL(announcementID, attachment.ID),
 		})
-		seen[key] = struct{}{}
+		stored[key] = struct{}{}
 	}
 
 	return options, nil
+}
+
+func attachmentNameKey(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
 }
 
 func readAttachmentBytes(input UploadAnnouncementAttachmentInput, maxBytes int64) ([]byte, error) {
