@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 
 from backend_module_pins import module_pins
+from module_release import artifact_differences, skip_if_pending
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = 'github.com/mohuganda/moh-sso-dashboard/backend/modules/announcements'
@@ -14,6 +15,8 @@ VERSION = module_pins()[MODULE]
 
 
 def main():
+    if skip_if_pending(MODULE):
+        return
     go = os.environ.get('GO_CMD', 'go')
     with tempfile.TemporaryDirectory(prefix='moh-announcements-release-') as tmp:
         root = Path(tmp)
@@ -58,11 +61,9 @@ def main():
         # Compare the entire public artifact, not only source files.
         local = ROOT / 'backend/modules/announcements'
         released = Path(downloaded['Dir'])
-        files = {p.relative_to(local) for p in local.rglob('*') if p.is_file()}
-        published = {p.relative_to(released) for p in released.rglob('*') if p.is_file()}
-        assert files == published, 'Release file inventory differs'
-        for relative in files:
-            assert (local/relative).read_bytes() == (released/relative).read_bytes(), 'Release drift: ' + str(relative)
+        # Shared comparison: tolerates the root LICENSE Go adds to module zips.
+        differences = artifact_differences(local, released, ROOT / 'LICENSE')
+        assert not differences, 'Release drift: ' + '; '.join(differences)
         graph = {line.strip() for line in run('list', '-mod=readonly', '-m', '-f', '{{.Path}} {{.Version}}', 'all').splitlines()}
         assert graph == {'example.com/announcements-release-consumer',
                          MODULE + ' ' + VERSION, 'github.com/google/uuid v1.6.0',

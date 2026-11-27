@@ -1,0 +1,77 @@
+name: Module Release
+
+# Tags backend Go modules whose pending release (infra/modules/releases.json)
+# reached main, then opens a pull request that pins each tagged version.
+# Pull requests opened with the default GITHUB_TOKEN do not start other
+# workflows; configure a MODULE_RELEASE_TOKEN secret (a GitHub App or
+# fine-grained token with contents and pull-requests write) so the pin pull
+# request runs CI automatically.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - infra/modules/releases.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: module-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag and pin pending module releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.MODULE_RELEASE_TOKEN || github.token }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Configure release identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify pending releases
+        run: python3 infra/scripts/module_release.py check
+
+      - name: Tag pending modules
+        id: tag
+        run: |
+          python3 infra/scripts/module_release.py tag --push --output "$RUNNER_TEMP/tagged.json"
+          echo "count=$(jq length "$RUNNER_TEMP/tagged.json")" >> "$GITHUB_OUTPUT"
+
+      - name: Open pin pull requests
+        if: steps.tag.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.MODULE_RELEASE_TOKEN || github.token }}
+        run: |
+          jq -c '.[]' "$RUNNER_TEMP/tagged.json" | while read -r item; do
+            module="$(jq -r .module <<<"$item")"
+            version="$(jq -r .version <<<"$item")"
+            branch="release/pin-module-${module}-${version}"
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+              echo "Pin branch $branch already exists; skipping"
+              continue
+            fi
+            git checkout -q -B "$branch" "$GITHUB_SHA"
+            python3 infra/scripts/module_release.py pin --module "$module"
+            git add backend/go.mod backend/go.sum backend/docs infra/modules/releases.json
+            git commit -q -m "feat(${module}): integrate ${version}"
+            git push -q origin "$branch"
+            gh pr create --base main --head "$branch" \
+              --title "Pin ${module} module ${version}" \
+              --body "Pins \`backend/modules/${module}\` to the newly tagged \`${version}\`, regenerates the OpenAPI contract and removes the pending entry from \`infra/modules/releases.json\`. The Module Release workflow verified the published artifact matches the merged source. Merge with a merge commit or squash; the tag is already on \`main\`."
+          done

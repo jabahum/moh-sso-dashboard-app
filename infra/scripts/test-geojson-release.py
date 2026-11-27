@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 
 from backend_module_pins import module_pins
+from module_release import artifact_differences, skip_if_pending
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = 'github.com/mohuganda/moh-sso-dashboard/backend/modules/geojson'
@@ -15,6 +16,8 @@ VERSION = module_pins()[MODULE]
 CONSUMER = 'example.com/geojson-release-consumer'
 
 def main():
+    if skip_if_pending(MODULE):
+        return
     spec = importlib.util.spec_from_file_location('geojson_package', Path(__file__).with_name('test-geojson-package.py'))
     package = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(package)
@@ -56,9 +59,9 @@ def main():
         assert package.metadata(consumer) == before
         released = Path(downloaded['Dir'])
         local = ROOT / 'backend/modules/geojson'
-        files = [path for path in local.rglob('*') if path.is_file()]
-        for path in files:
-            assert path.read_bytes() == (released / path.relative_to(local)).read_bytes(), 'Release artifact drift: ' + str(path.relative_to(local))
+        # Shared comparison: tolerates the root LICENSE Go adds to module zips.
+        differences = artifact_differences(local, released, ROOT / 'LICENSE')
+        assert not differences, 'Release drift: ' + '; '.join(differences)
         print(result, flush=True)
         print('PASS: fresh public download, checksum verification, exact dependency graph, no replacement, embedded HTTP consumer and complete release artifact parity', flush=True)
 

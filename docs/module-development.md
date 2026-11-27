@@ -122,10 +122,12 @@ resolution support if an extracted handler is no longer in the host source tree.
 For local integration, use an ignored Go workspace from `backend`, for example
 `go work init . ./modules/metrics`. Verify production consumption separately with
 `GOWORK=off`; production must resolve a released dependency without a filesystem
-replacement. Release directory-prefixed tags such as
-`backend/modules/<module-id>/v<version>` only after reviewing and committing the
-standalone package. Verify a separate consumer can download and use that exact
-version, then update host `go.mod`/`go.sum` and mark the catalogue entry published.
+replacement. To release, declare the version in `infra/modules/releases.json`
+in the same pull request; after it merges the Module Release workflow tags
+`backend/modules/<module-id>/v<version>`, verifies the published artifact and
+opens the pin pull request (see
+[Release a module version](modular-distribution.md#release-a-module-version)).
+A brand-new module also needs its catalogue entry marked published.
 
 ## Verify published backend versions
 
