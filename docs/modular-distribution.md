@@ -165,15 +165,39 @@ workspace or replacement builds.
 
 ### Schema and migration ownership
 
-Published modules ship no migrations. They read and write tables in the shared
-primary schema, which the platform owns. Core migrations complete before module
-initialization, using the existing golang-migrate locking and dirty-state
-handling. Packages receive caller-owned pools; they neither open nor close
-infrastructure nor run migrations. Where a package depends on host-owned schema,
-it records that explicitly (for example, Report Scheduler's
+The six current modules ship no migrations. They read and write tables in the
+shared primary schema, which the platform owns, and where a package depends on
+host-owned schema it records that explicitly (for example, Report Scheduler's
 `schema-contract.json` records host ownership of scheduler migrations 40 through
-47). A future module that owns tables must define a migration stream before it
-can be extracted.
+47). Packages receive caller-owned pools; they neither open nor close
+infrastructure.
+
+A module that owns tables ships a **module migration stream**: embedded
+golang-migrate files (`NNNNNN_name.up.sql` / `.down.sql`) supplied as
+`Migrations fs.FS` on its registry definition. The rules:
+
+- **Ordering.** Platform migrations run first. The registry then applies each
+  enabled module's stream, in registration order, before initializing any
+  module, so module code never starts against an older schema. Disabled modules
+  are not migrated; their stream catches up when they are re-enabled.
+- **Separate history.** Each stream records its versions in its own table,
+  `module_<id>_schema_migrations` (hyphens become underscores), never in the
+  platform's `schema_migrations`. golang-migrate's advisory lock is scoped to
+  that table, so replicas starting together serialize per module.
+- **Ownership.** Every table a stream creates, alters, drops, truncates,
+  indexes or writes must carry the `<id>_` prefix and must not be
+  schema-qualified. `core.ValidateModuleMigrations` enforces this, along with
+  file naming, unique versions and paired up/down files, when the registry is
+  constructed. Reading or referencing platform tables (for example a foreign key
+  to `users`) is allowed. The check is a guard, not a SQL parser; review still
+  owns the contents.
+- **Failure.** A failed migration leaves the stream dirty and startup stops
+  before any module initializes. See
+  [Operator workflows](module-operations.md#module-migration-streams).
+
+Moving existing platform-owned tables into a module stream is a separate,
+reviewed transition: never replay copied platform migrations under a module
+stream against tables the platform already created.
 
 ### Local development
 
