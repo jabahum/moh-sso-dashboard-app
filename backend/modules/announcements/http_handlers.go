@@ -523,6 +523,39 @@ func (h *httpHandler) UpdateAnnouncement(c *httpRequest) {
 		return
 	}
 
+	// A status change is a lifecycle action, which needs the publish
+	// permission; check it before writing anything.
+	targetStatus := AnnouncementStatus("")
+	if req.Status != nil && strings.TrimSpace(*req.Status) != "" {
+		current, err := h.announcementService.GetAnnouncementByID(c.Request.Context(), announcementID)
+		if err != nil {
+			c.fail(http.StatusNotFound, "NOT_FOUND", "announcement not found")
+			return
+		}
+		requested := announcementStatusValue(*req.Status)
+		switch requested {
+		case AnnouncementStatusDRAFT, AnnouncementStatusPUBLISHED, AnnouncementStatusSCHEDULED, AnnouncementStatusARCHIVED:
+		default:
+			c.fail(http.StatusBadRequest, "BAD_REQUEST", "status must be DRAFT, SCHEDULED, PUBLISHED or ARCHIVED")
+			return
+		}
+		if requested != current.Status {
+			if c.authorize == nil {
+				c.reject(ErrForbidden)
+				return
+			}
+			if err := c.authorize(PublishPermission); err != nil {
+				c.reject(err)
+				return
+			}
+			if requested == AnnouncementStatusSCHEDULED && !publishAt.Valid {
+				c.fail(http.StatusBadRequest, "BAD_REQUEST", "publish_at is required to schedule an announcement")
+				return
+			}
+			targetStatus = requested
+		}
+	}
+
 	// PUT replaces the whole announcement. Defaulting a missing audience_type
 	// to ALL_USERS would silently widen a targeted announcement to everyone.
 	if strings.TrimSpace(req.AudienceType) == "" {
@@ -620,6 +653,24 @@ func (h *httpHandler) UpdateAnnouncement(c *httpRequest) {
 		includeContextDescendants,
 	); err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update health context audience")
+		return
+	}
+
+	// Apply a status change after the audience is stored, through the same
+	// paths as the dedicated lifecycle endpoints.
+	ctx := c.Request.Context()
+	switch targetStatus {
+	case AnnouncementStatusPUBLISHED:
+		item, err = h.announcementService.PublishAnnouncementNow(ctx, item.ID, userID)
+	case AnnouncementStatusSCHEDULED:
+		item, err = h.announcementService.ScheduleAnnouncementByUser(ctx, item.ID, publishAt.Time, userID)
+	case AnnouncementStatusDRAFT:
+		item, err = h.announcementService.MoveAnnouncementToDraftByUser(ctx, item.ID, userID)
+	case AnnouncementStatusARCHIVED:
+		item, err = h.announcementService.ArchiveAnnouncement(ctx, item.ID, userID)
+	}
+	if err != nil {
+		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "announcement was updated but its status could not be changed")
 		return
 	}
 
