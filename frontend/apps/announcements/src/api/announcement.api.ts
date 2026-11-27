@@ -160,6 +160,7 @@ export const announcementApi = baseApi.injectEndpoints({
         { type: "Announcements", id },
         { type: "Announcements", id: "LIST" },
         { type: "Announcements", id: "STATS" },
+        { type: "Announcements", id: "MY_LIST" },
       ],
     }),
 
@@ -199,6 +200,7 @@ export const announcementApi = baseApi.injectEndpoints({
         { type: "Announcements", id },
         { type: "Announcements", id: "LIST" },
         { type: "Announcements", id: "STATS" },
+        { type: "Announcements", id: "MY_LIST" },
       ],
     }),
 
@@ -216,6 +218,7 @@ export const announcementApi = baseApi.injectEndpoints({
         { type: "Announcements", id },
         { type: "Announcements", id: "LIST" },
         { type: "Announcements", id: "STATS" },
+        { type: "Announcements", id: "MY_LIST" },
       ],
     }),
 
