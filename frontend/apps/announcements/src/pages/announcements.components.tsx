@@ -723,62 +723,60 @@ export function AnnouncementsPage() {
                             if (cell.info.header === "actions") {
                               return (
                                 <TableCell key={cell.id}>
-                                  {row.isSelected && (
-                                    <AnnouncementActionsMenu
-                                      announcement={announcement}
-                                      onEdit={() => handleOpenEditPanel(announcement)}
-                                      onPublish={async () => {
-                                        try {
-                                          await handlePublish(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Publish failed",
-                                            subtitle: "Failed to publish announcement.",
-                                          });
-                                        }
-                                      }}
-                                      onMoveToDraft={async () => {
-                                        try {
-                                          await handleMoveToDraft(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Draft failed",
-                                            subtitle: "Failed to move announcement to draft.",
-                                          });
-                                        }
-                                      }}
-                                      onTogglePin={async () => {
-                                        try {
-                                          await handleTogglePin(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Pin update failed",
-                                            subtitle: "Failed to update pin state.",
-                                          });
-                                        }
-                                      }}
-                                      onArchive={async () => {
-                                        try {
-                                          await handleArchive(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Archive failed",
-                                            subtitle: "Failed to archive announcement.",
-                                          });
-                                        }
-                                      }}
-                                      onDelete={async () => {
-                                        try {
-                                          await handleDelete(announcement);
-                                        } catch {
-                                          toast.error({
-                                            title: "Delete failed",
-                                            subtitle: "Failed to delete announcement.",
-                                          });
-                                        }
-                                      }}
-                                    />
-                                  )}
+                                  <AnnouncementActionsMenu
+                                    announcement={announcement}
+                                    onEdit={() => handleOpenEditPanel(announcement)}
+                                    onPublish={async () => {
+                                      try {
+                                        await handlePublish(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Publish failed",
+                                          subtitle: "Failed to publish announcement.",
+                                        });
+                                      }
+                                    }}
+                                    onMoveToDraft={async () => {
+                                      try {
+                                        await handleMoveToDraft(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Draft failed",
+                                          subtitle: "Failed to move announcement to draft.",
+                                        });
+                                      }
+                                    }}
+                                    onTogglePin={async () => {
+                                      try {
+                                        await handleTogglePin(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Pin update failed",
+                                          subtitle: "Failed to update pin state.",
+                                        });
+                                      }
+                                    }}
+                                    onArchive={async () => {
+                                      try {
+                                        await handleArchive(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Archive failed",
+                                          subtitle: "Failed to archive announcement.",
+                                        });
+                                      }
+                                    }}
+                                    onDelete={async () => {
+                                      try {
+                                        await handleDelete(announcement);
+                                      } catch {
+                                        toast.error({
+                                          title: "Delete failed",
+                                          subtitle: "Failed to delete announcement.",
+                                        });
+                                      }
+                                    }}
+                                  />
                                 </TableCell>
                               );
                             }
