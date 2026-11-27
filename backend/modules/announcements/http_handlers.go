@@ -1,6 +1,7 @@
 package announcements
 
 import (
+	"errors"
 	"io"
 	"mime"
 	"net/http"
@@ -725,6 +726,10 @@ func (h *httpHandler) PublishAnnouncementNow(c *httpRequest) {
 		userID,
 		announcementEmailOptionsFromPublishRequest(req),
 	)
+	if errors.Is(err, ErrInvalidEmailAttachments) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "one or more email attachments were rejected")
+		return
+	}
 	if err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to publish announcement")
 		return
@@ -816,6 +821,10 @@ func (h *httpHandler) ScheduleAnnouncement(c *httpRequest) {
 		userID,
 		announcementEmailOptionsFromScheduleRequest(req, publishAt),
 	)
+	if errors.Is(err, ErrInvalidEmailAttachments) {
+		c.fail(http.StatusBadRequest, "BAD_REQUEST", "one or more email attachments were rejected")
+		return
+	}
 	if err != nil {
 		c.fail(http.StatusInternalServerError, "INTERNAL_ERROR", "failed to schedule announcement")
 		return

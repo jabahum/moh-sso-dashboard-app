@@ -893,6 +893,10 @@ func normalizeOffset(offset int32) int32 {
 // Lifecycle actions
 // ---------------------------------
 
+// ErrInvalidEmailAttachments wraps request email attachments that the host's
+// attachment policy rejected. Nothing is changed when it is returned.
+var ErrInvalidEmailAttachments = errors.New("invalid announcement email attachments")
+
 func (s *Service) PublishAnnouncementNow(
 	ctx context.Context,
 	id uuid.UUID,
@@ -909,6 +913,13 @@ func (s *Service) PublishAnnouncementNow(
 
 	if id == uuid.Nil {
 		return Announcement{}, errors.New("announcement id is required")
+	}
+
+	// Validate request attachments before changing state, so a bad attachment
+	// fails the request without leaving a half-notified published announcement.
+	emailOptions, err := s.normalizeAnnouncementEmailOptions(options...)
+	if err != nil {
+		return Announcement{}, fmt.Errorf("%w: %w", ErrInvalidEmailAttachments, err)
 	}
 
 	item, err := s.repo.PublishNow(ctx, id, publishedBy)
@@ -934,10 +945,12 @@ func (s *Service) PublishAnnouncementNow(
 		}),
 	}
 
-	if err := s.attachAnnouncementSMSDelivery(ctx, &notification, item, nil); err != nil {
+	smsQueued, err := s.attachAnnouncementSMSDelivery(ctx, &notification, item, nil)
+	if err != nil {
 		return item, err
 	}
 
+	emailQueued := false
 	if s.shouldSendAnnouncementEmail(item) {
 		recipients, err := s.resolveAnnouncementEmailRecipients(ctx, item)
 		if err != nil {
@@ -953,28 +966,16 @@ func (s *Service) PublishAnnouncementNow(
 			); err != nil {
 				return item, fmt.Errorf("save announcement email audience snapshot: %w", err)
 			}
-			emailOptions, err := s.normalizeAnnouncementEmailOptions(options...)
+			withStored, err := s.withPersistedAnnouncementEmailAttachments(ctx, item.ID, emailOptions)
 			if err != nil {
 				return item, err
 			}
-			emailOptions, err = s.withPersistedAnnouncementEmailAttachments(ctx, item.ID, emailOptions)
-			if err != nil {
-				return item, err
-			}
-			s.attachAnnouncementEmailDelivery(&notification, item, recipients, emailOptions)
-
-			markedItem, err := s.repo.MarkEmailNotificationSent(ctx, item.ID)
-			if err != nil {
-				return item, fmt.Errorf("mark announcement email notification sent: %w", err)
-			}
-
-			item = markedItem
+			s.attachAnnouncementEmailDelivery(&notification, item, recipients, withStored)
+			emailQueued = true
 		}
 	}
 
-	s.notify(ctx, notification)
-
-	return item, nil
+	return s.publishAnnouncementDeliveries(ctx, notification, item, emailQueued, smsQueued)
 }
 
 func (s *Service) MoveAnnouncementToDraft(
@@ -1038,6 +1039,11 @@ func (s *Service) ScheduleAnnouncement(
 		return Announcement{}, errors.New("announcement repository is nil")
 	}
 
+	emailOptions, err := s.normalizeAnnouncementEmailOptions(options...)
+	if err != nil {
+		return Announcement{}, fmt.Errorf("%w: %w", ErrInvalidEmailAttachments, err)
+	}
+
 	item, err := s.repo.Schedule(ctx, params)
 	if err != nil {
 		return Announcement{}, fmt.Errorf("schedule announcement: %w", err)
@@ -1062,10 +1068,12 @@ func (s *Service) ScheduleAnnouncement(
 		publishAt := item.PublishAt.Time
 		scheduledAt = &publishAt
 	}
-	if err := s.attachAnnouncementSMSDelivery(ctx, &notification, item, scheduledAt); err != nil {
+	smsQueued, err := s.attachAnnouncementSMSDelivery(ctx, &notification, item, scheduledAt)
+	if err != nil {
 		return item, err
 	}
 
+	emailQueued := false
 	if s.shouldSendAnnouncementEmail(item) {
 		recipients, err := s.resolveAnnouncementEmailRecipients(ctx, item)
 		if err != nil {
@@ -1081,32 +1089,20 @@ func (s *Service) ScheduleAnnouncement(
 			); err != nil {
 				return item, fmt.Errorf("save scheduled announcement email audience snapshot: %w", err)
 			}
-			emailOptions, err := s.normalizeAnnouncementEmailOptions(options...)
+			withStored, err := s.withPersistedAnnouncementEmailAttachments(ctx, item.ID, emailOptions)
 			if err != nil {
 				return item, err
 			}
-			emailOptions, err = s.withPersistedAnnouncementEmailAttachments(ctx, item.ID, emailOptions)
-			if err != nil {
-				return item, err
-			}
-			if emailOptions.ScheduledAt == nil && item.PublishAt.Valid {
+			if withStored.ScheduledAt == nil && item.PublishAt.Valid {
 				publishAt := item.PublishAt.Time
-				emailOptions.ScheduledAt = &publishAt
+				withStored.ScheduledAt = &publishAt
 			}
-			s.attachAnnouncementEmailDelivery(&notification, item, recipients, emailOptions)
-
-			markedItem, err := s.repo.MarkEmailNotificationSent(ctx, item.ID)
-			if err != nil {
-				return item, fmt.Errorf("mark announcement email notification scheduled: %w", err)
-			}
-
-			item = markedItem
+			s.attachAnnouncementEmailDelivery(&notification, item, recipients, withStored)
+			emailQueued = true
 		}
 	}
 
-	s.notify(ctx, notification)
-
-	return item, nil
+	return s.publishAnnouncementDeliveries(ctx, notification, item, emailQueued, smsQueued)
 }
 
 func (s *Service) ScheduleAnnouncementByUser(
@@ -2133,32 +2129,35 @@ func normalizeSMSMessage(value sql.NullString) sql.NullString {
 	return sql.NullString{String: message, Valid: true}
 }
 
+// attachAnnouncementSMSDelivery adds SMS deliveries to notification and
+// reports whether any were added. It does not mark the announcement: callers
+// mark it only after the notification has been handed to the publisher.
 func (s *Service) attachAnnouncementSMSDelivery(
 	ctx context.Context,
 	notification *Notification,
 	item Announcement,
 	scheduledAt *time.Time,
-) error {
+) (bool, error) {
 	if notification == nil {
-		return nil
+		return false, nil
 	}
 
 	if !s.shouldSendAnnouncementSMS(item) {
-		return nil
+		return false, nil
 	}
 
 	emailRecipients, err := s.resolveAnnouncementEmailRecipients(ctx, item)
 	if err != nil {
-		return fmt.Errorf("resolve announcement sms audience: %w", err)
+		return false, fmt.Errorf("resolve announcement sms audience: %w", err)
 	}
 
 	recipients, err := s.resolveAnnouncementSMSRecipients(ctx, emailRecipients)
 	if err != nil {
-		return fmt.Errorf("resolve announcement sms recipients: %w", err)
+		return false, fmt.Errorf("resolve announcement sms recipients: %w", err)
 	}
 
 	if len(recipients) == 0 {
-		return nil
+		return false, nil
 	}
 
 	if err := s.repo.SaveAudienceSnapshot(
@@ -2167,7 +2166,7 @@ func (s *Service) attachAnnouncementSMSDelivery(
 		string(NotificationChannelSMS),
 		announcementSMSRecipientUserIDs(recipients),
 	); err != nil {
-		return fmt.Errorf("save announcement sms audience snapshot: %w", err)
+		return false, fmt.Errorf("save announcement sms audience snapshot: %w", err)
 	}
 
 	if len(notification.Deliveries) == 0 {
@@ -2209,11 +2208,44 @@ func (s *Service) attachAnnouncementSMSDelivery(
 		})
 	}
 
-	if _, err := s.repo.MarkSMSNotificationQueued(ctx, item.ID); err != nil {
-		return fmt.Errorf("mark announcement sms notification queued: %w", err)
-	}
+	return true, nil
+}
 
-	return nil
+// publishAnnouncementDeliveries hands the notification to the publisher and,
+// only if that succeeded, marks the email/SMS deliveries it carried as queued.
+// A publisher failure stays best effort (the lifecycle change stands) but
+// leaves the markers unset, so publishing again re-sends instead of skipping.
+func (s *Service) publishAnnouncementDeliveries(
+	ctx context.Context,
+	notification Notification,
+	item Announcement,
+	emailQueued bool,
+	smsQueued bool,
+) (Announcement, error) {
+	if s == nil || s.notifications == nil {
+		return item, nil
+	}
+	if strings.TrimSpace(notification.TargetRole) == "" {
+		notification.TargetRole = "admin"
+	}
+	if err := s.notifications.Publish(ctx, notification); err != nil {
+		return item, nil
+	}
+	if smsQueued {
+		marked, err := s.repo.MarkSMSNotificationQueued(ctx, item.ID)
+		if err != nil {
+			return item, fmt.Errorf("mark announcement sms notification queued: %w", err)
+		}
+		item = marked
+	}
+	if emailQueued {
+		marked, err := s.repo.MarkEmailNotificationSent(ctx, item.ID)
+		if err != nil {
+			return item, fmt.Errorf("mark announcement email notification sent: %w", err)
+		}
+		item = marked
+	}
+	return item, nil
 }
 
 func (s *Service) resolveAnnouncementSMSRecipients(
