@@ -28,8 +28,6 @@ import (
 	visualiserfeature "github.com/moh-sso-dashboard/internal/features/visualiser"
 	"github.com/moh-sso-dashboard/internal/keycloak"
 	db "github.com/moh-sso-dashboard/internal/migrate"
-	"github.com/moh-sso-dashboard/internal/modulehttp"
-	"github.com/moh-sso-dashboard/internal/ratelimit"
 	"github.com/moh-sso-dashboard/internal/storage"
 	"github.com/mohuganda/moh-sso-dashboard/backend/core"
 	adminunitsfeature "github.com/mohuganda/moh-sso-dashboard/backend/modules/admin-units"
@@ -74,12 +72,13 @@ func buildHandlers(deps handlerDependencies) handlers {
 	)
 	clientHandler := clientfeature.NewHandler(deps.Services.Clients, deps.Services.Audit, deps.Cache)
 	userHandler := userfeature.NewHandler(deps.Services.Users, deps.Services.Audit, deps.Cache)
+	platform := modulePlatform(deps)
 	var metricsHandler *metricsfeature.Module
 	if deps.Config.ModuleEnabled("metrics") {
 		var err error
 		metricsHandler, err = metricsfeature.NewModule(metricsfeature.Dependencies{
-			Database: deps.Databases.Primary, RequireAdmin: modulehttp.RequireAdmin,
-			AuthorizeAny: modulehttp.AuthorizeAny, RequestID: modulehttp.RequestID,
+			Database: deps.Databases.Primary, RequireAdmin: platform.RequireAdmin,
+			AuthorizeAny: platform.AuthorizeAny, RequestID: platform.RequestID,
 		})
 		if err != nil {
 			panic(err)
@@ -96,9 +95,9 @@ func buildHandlers(deps handlerDependencies) handlers {
 		var err error
 		auditHandler, err = auditfeature.NewModule(auditfeature.Dependencies{
 			Database: deps.Databases.Primary, Cache: auditCache,
-			RequireAdmin: modulehttp.RequireAdmin, AuthorizeAny: modulehttp.AuthorizeAny,
-			LimitExport: modulehttp.PerUserLimit(ratelimit.New(deps.Redis)),
-			RequestID:   modulehttp.RequestID, StreamError: modulehttp.StreamError,
+			RequireAdmin: platform.RequireAdmin, AuthorizeAny: platform.AuthorizeAny,
+			LimitExport: platform.Limit,
+			RequestID:   platform.RequestID, StreamError: platform.ReportError,
 		})
 		if err != nil {
 			panic(err)
@@ -129,11 +128,11 @@ func buildHandlers(deps handlerDependencies) handlers {
 		var err error
 		adminunitsHandler, err = adminunitsfeature.NewModule(adminunitsfeature.Dependencies{
 			Database:      deps.Databases.DWH,
-			RequireSystem: modulehttp.RequireSystem, AuthorizeAny: modulehttp.AuthorizeAny,
+			RequireSystem: platform.RequireSystem, AuthorizeAny: platform.AuthorizeAny,
 			SelectContext:   deps.Services.HealthContexts.SelectContextHTTP,
 			ContextNodeCode: deps.Services.HealthContexts.NodeCode,
 			ContextAliases:  deps.Services.HealthContexts.AliasIDs,
-			RequestID:       modulehttp.RequestID,
+			RequestID:       platform.RequestID,
 		})
 		if err != nil {
 			panic(err)
@@ -147,7 +146,7 @@ func buildHandlers(deps handlerDependencies) handlers {
 	var geoJSONHandler *geojsonfeature.Module
 	if deps.Config.ModuleEnabled("geojson") {
 		var err error
-		geoJSONHandler, err = geojsonfeature.NewModule(geojsonfeature.Dependencies{AuthorizeAny: modulehttp.AuthorizeAny, RequestID: modulehttp.RequestID})
+		geoJSONHandler, err = geojsonfeature.NewModule(geojsonfeature.Dependencies{AuthorizeAny: platform.AuthorizeAny, RequestID: platform.RequestID})
 		if err != nil {
 			panic(err)
 		}

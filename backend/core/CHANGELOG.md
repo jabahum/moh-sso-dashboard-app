@@ -4,7 +4,17 @@ Release tags use the `backend/core/vX.Y.Z` prefix. Below 1.0 a minor version
 may contain breaking changes. Check IDs in `identitysync/conformance` are
 stable within a minor version.
 
-## v0.1.0 (unreleased)
+## v0.2.0 (unreleased)
+
+### Platform core
+
+- `Platform`: the standard set of trusted host capabilities offered to every
+  compiled module (verified access, `AuthorizeAny`, `RequireAdmin`,
+  `RequireSystem`, per-user `Limit`, `RequestID`, `ReportError` and `Audit`),
+  with `Require` so a module fails at construction when the host omits a
+  capability it needs (`ErrMissingCapability`).
+
+## v0.1.0 (2026-11-23)
 
 First published version, MIT licensed (`LICENSE`). Standard library only;
 requires Go 1.25.

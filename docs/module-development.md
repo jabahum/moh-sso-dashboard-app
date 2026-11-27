@@ -138,6 +138,35 @@ published package, and continue enforcing approved cross-feature dependencies
 for adapters. Keep module-owned algorithms and lifecycle policy in the package,
 not in a second host feature implementation.
 
+## Platform capabilities for modules
+
+New modules should take the host's request-level capabilities as one
+`core.Platform` value rather than declaring their own `AuthorizeAny`,
+`RequireAdmin`, `Limit`, `RequestID`, error-reporting and audit callbacks:
+
+```go
+type Dependencies struct {
+    Platform core.Platform
+    Database *sql.DB
+}
+
+func NewModule(deps Dependencies) (*Module, error) {
+    if err := deps.Platform.Require(core.CapabilityAuthorizeAny, core.CapabilityRequestID); err != nil {
+        return nil, err
+    }
+    ...
+}
+```
+
+The dashboard assembles the value once (`modulePlatform` in
+`internal/bootstrap`, backed by `internal/modulehttp.NewPlatform`), so wiring a
+new module is `Platform: platform` plus its own database pools and domain
+ports. The six existing modules still declare individual callbacks; the host
+fills them from the same `core.Platform` value, and each module can switch to
+taking `core.Platform` directly in its next release, once `backend/core`
+v0.2.0 (the first version with `Platform`) is tagged. Domain ports such as user, group, health-context and
+notification directories are not part of `Platform` yet.
+
 ## Self-contained module integration
 
 A `published` module with `integration: self-contained` owns its handlers,
