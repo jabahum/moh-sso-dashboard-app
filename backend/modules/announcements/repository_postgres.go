@@ -419,6 +419,18 @@ func (r *announcementsRepository) CountCreatedByUser(
 // Lifecycle actions
 // ---------------------------------
 
+func (r *announcementsRepository) ClaimDueScheduled(
+	ctx context.Context,
+	limit int32,
+) ([]db.Announcement, error) {
+	items, err := r.db.ClaimDueScheduledAnnouncements(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("claim due scheduled announcements: %w", err)
+	}
+
+	return items, nil
+}
+
 func (r *announcementsRepository) PublishNow(
 	ctx context.Context,
 	id uuid.UUID,

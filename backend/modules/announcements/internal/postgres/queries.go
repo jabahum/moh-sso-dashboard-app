@@ -1168,6 +1168,60 @@ func (q *Queries) MarkAnnouncementSMSNotificationQueued(ctx context.Context, id 
 	return i, err
 }
 
+func (q *Queries) ClaimDueScheduledAnnouncements(ctx context.Context, limit int32) ([]Announcement, error) {
+	rows, err := q.db.QueryContext(ctx, claimDueScheduledAnnouncements, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Announcement{}
+	for rows.Next() {
+		var i Announcement
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Message,
+			&i.Summary,
+			&i.Level,
+			&i.Tag,
+			&i.LinkUrl,
+			&i.Priority,
+			&i.IsPinned,
+			&i.Status,
+			&i.PublishAt,
+			&i.ExpiresAt,
+			&i.AudienceType,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.PublishedBy,
+			&i.ArchivedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublishedAt,
+			&i.ArchivedAt,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.Version,
+			&i.NotifyByEmail,
+			&i.EmailNotificationSentAt,
+			&i.LinkLabel,
+			&i.NotifyBySms,
+			&i.SmsMessage,
+			&i.SmsNotificationQueuedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func (q *Queries) PublishAnnouncementNow(ctx context.Context, arg PublishAnnouncementNowParams) (Announcement, error) {
 	row := q.db.QueryRowContext(ctx, publishAnnouncementNow, arg.ID, arg.PublishedBy)
 	var i Announcement
@@ -2036,11 +2090,33 @@ WHERE id = $1
 RETURNING id, title, message, summary, level, tag, link_url, priority, is_pinned, status, publish_at, expires_at, audience_type, created_by, updated_by, published_by, archived_by, created_at, updated_at, published_at, archived_at, deleted_at, deleted_by, version, notify_by_email, email_notification_sent_at, link_label, notify_by_sms, sms_message, sms_notification_queued_at
 `
 
+const claimDueScheduledAnnouncements = `-- name: ClaimDueScheduledAnnouncements :many
+UPDATE announcements
+SET
+    status = 'PUBLISHED',
+    published_at = now(),
+    published_by = COALESCE(updated_by, created_by)
+WHERE id IN (
+    SELECT id
+    FROM announcements
+    WHERE deleted_at IS NULL
+      AND status = 'SCHEDULED'
+      AND publish_at IS NOT NULL
+      AND publish_at <= now()
+      AND (expires_at IS NULL OR expires_at > now())
+    ORDER BY publish_at
+    LIMIT $1
+    FOR UPDATE SKIP LOCKED
+)
+  AND status = 'SCHEDULED'
+RETURNING id, title, message, summary, level, tag, link_url, priority, is_pinned, status, publish_at, expires_at, audience_type, created_by, updated_by, published_by, archived_by, created_at, updated_at, published_at, archived_at, deleted_at, deleted_by, version, notify_by_email, email_notification_sent_at, link_label, notify_by_sms, sms_message, sms_notification_queued_at
+`
+
 const publishAnnouncementNow = `-- name: PublishAnnouncementNow :one
 UPDATE announcements
 SET
     status = 'PUBLISHED',
-    publish_at = COALESCE(publish_at, now()),
+    publish_at = LEAST(COALESCE(publish_at, now()), now()),
     published_at = now(),
     published_by = $2,
     updated_by = $2

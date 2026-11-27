@@ -89,6 +89,24 @@ func main() {
 	check(item.Status == a.AnnouncementStatusDRAFT, "draft")
 	item = must(r.PublishNow(ctx, item.ID, actor))
 	check(item.Status == a.AnnouncementStatusPUBLISHED && item.PublishedAt.Valid && item.PublishedBy == by, "publish")
+	// The draft still carried the future schedule time; publishing now must
+	// not leave it hidden until then.
+	check(item.PublishAt.Valid && !item.PublishAt.Time.After(time.Now().Add(time.Minute)), "publish now kept a future publish_at")
+
+	// Due scheduled announcements are claimed exactly once; future and expired ones are not.
+	due := create("Due fixture", a.AnnouncementAudienceTypeALLUSERS, a.AnnouncementStatusDRAFT)
+	due = must(r.Schedule(ctx, a.ScheduleAnnouncementParams{ID: due.ID,
+		PublishAt: sql.NullTime{Time: time.Now().Add(-time.Minute), Valid: true}, UpdatedBy: by}))
+	future := create("Future fixture", a.AnnouncementAudienceTypeALLUSERS, a.AnnouncementStatusDRAFT)
+	must(r.Schedule(ctx, a.ScheduleAnnouncementParams{ID: future.ID,
+		PublishAt: sql.NullTime{Time: time.Now().Add(time.Hour), Valid: true}, UpdatedBy: by}))
+	claimed := must(r.ClaimDueScheduled(ctx, 10))
+	check(len(claimed) == 1 && claimed[0].ID == due.ID && claimed[0].Status == a.AnnouncementStatusPUBLISHED &&
+		claimed[0].PublishedAt.Valid && claimed[0].PublishedBy == by, "claim due scheduled")
+	check(len(must(r.ClaimDueScheduled(ctx, 10))) == 0, "due announcement claimed twice")
+	// Remove the scheduling fixtures so the list and count checks below are unaffected.
+	ok(r.SoftDelete(ctx, due.ID, actor))
+	ok(r.SoftDelete(ctx, future.ID, actor))
 	item = must(r.Archive(ctx, item.ID, actor))
 	check(item.Status == a.AnnouncementStatusARCHIVED && item.ArchivedAt.Valid && item.ArchivedBy == by, "archive")
 	item = must(r.UnarchiveToDraft(ctx, item.ID, actor))
@@ -243,5 +261,5 @@ func main() {
 	check(must(r.GetByID(ctx, public.ID)).Priority == 0, "failed write persisted")
 	ok(pool.PingContext(ctx))
 	check(pool.Stats().InUse == 0, "connections leaked")
-	fmt.Println("PASS: standalone Announcements PostgreSQL consumer; 53 operations, audience rollback, attachments, targeting, nulls, cancellation and caller-owned pool")
+	fmt.Println("PASS: standalone Announcements PostgreSQL consumer; 54 operations, audience rollback, attachments, targeting, nulls, cancellation and caller-owned pool")
 }

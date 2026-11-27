@@ -72,6 +72,7 @@ type Registrar interface{ Handle(string, http.Handler) }
 type Module struct {
 	mux      *http.ServeMux
 	patterns []string
+	service  *Service
 }
 
 func NewModule(deps Dependencies) (*Module, error) {
@@ -95,8 +96,9 @@ func NewModule(deps Dependencies) (*Module, error) {
 			return nil, err
 		}
 	}
-	h := newHTTPHandler(NewServiceWithSettings(repo, deps.Ports, deps.Settings), deps.Audit)
-	m := &Module{mux: http.NewServeMux()}
+	service := NewServiceWithSettings(repo, deps.Ports, deps.Settings)
+	h := newHTTPHandler(service, deps.Audit)
+	m := &Module{mux: http.NewServeMux(), service: service}
 	for _, endpoint := range endpoints(h) {
 		pattern := endpoint.method + " " + endpoint.path
 		m.patterns = append(m.patterns, pattern)
@@ -173,6 +175,14 @@ func Register(registrar Registrar, deps Dependencies) (*Module, error) {
 	}
 	return m, nil
 }
+
+// RunScheduledPublisher publishes scheduled announcements once they are due and
+// sends their notifications, every interval until ctx is cancelled. Hosts run
+// it in a background goroutine; without it scheduled announcements never go live.
+func (m *Module) RunScheduledPublisher(ctx context.Context, interval time.Duration, onError func(error)) {
+	m.service.RunScheduledPublisher(ctx, interval, onError)
+}
+
 func (m *Module) Patterns() []string                               { return append([]string(nil), m.patterns...) }
 func (m *Module) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.mux.ServeHTTP(w, r) }
 

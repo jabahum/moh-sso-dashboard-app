@@ -15,7 +15,7 @@ Local/unversioned consumers report `dev`.
 | --- | --- |
 | `NewServiceWithSettings`, `Service` | Announcement creation, updates, lifecycle actions, listing and audience/delivery orchestration |
 | `NewModule`, `Register`, `Module` | All 26 standard HTTP routes, DTOs, access/rate enforcement and OpenAPI metadata |
-| `Repository`, `NewRepository(*sql.DB)` | All 53 persistence operations, package-owned SQL and audience transactions; caller-owned pool |
+| `Repository`, `NewRepository(*sql.DB)` | All 54 persistence operations, package-owned SQL and audience transactions; caller-owned pool |
 | `UserDirectory`, `GroupDirectory`, `HealthAudience` | User/group lookup and actor-scoped or stored health audience expansion |
 | `AttachmentStorage` | Upload/download streams and deletion; resource ownership stays with the host |
 | `NotificationPublisher` | Forward package-owned notification envelopes and delivery requests |
@@ -58,6 +58,29 @@ does not turn successful persistence/publication into a failure. Existing
 notification labels and queued delivery payloads are preserved. This package
 does not own a worker or provide atomic/exactly-once persistence and delivery.
 Scheduled delivery execution belongs to the host's notification infrastructure.
+
+### Scheduled publishing
+
+Scheduling an announcement only records `publish_at`; it does not queue audience
+email or SMS. Hosts must run the scheduled publisher, otherwise scheduled
+announcements never go live:
+
+```go
+go module.RunScheduledPublisher(ctx, time.Minute, func(err error) { log.Println(err) })
+```
+
+Each tick claims due `SCHEDULED` announcements atomically (`FOR UPDATE SKIP
+LOCKED`), marks them `PUBLISHED` and sends their notifications with the audience
+and uploaded attachments current at that moment. Several replicas can run it
+safely. Because nothing is queued ahead of time, drafting, deleting, archiving,
+rescheduling or re-targeting a scheduled announcement needs no cancellation.
+Due announcements that have already expired are left unpublished. Direct
+service consumers call `Service.RunScheduledPublisher` or `PublishDueScheduled`.
+
+Publishing now (or scheduling with a past time) sets `publish_at` to now when it
+was in the future, and refuses announcements whose `expires_at` has passed.
+Schedule requests no longer accept request `attachments`; upload them to the
+announcement instead.
 Hosts must retain their email normalization policy; nonempty email attachments
 that require normalization fail closed when the normalizer is absent.
 
@@ -107,7 +130,7 @@ values, attachment upload/download and repository error propagation.
 The PostgreSQL verifier creates a disposable database from a test-only snapshot
 of the existing schema. It builds a race-enabled public-API consumer outside
 the repository with workspaces/downloads disabled and a private dependency
-cache. It exercises all 53 operations, nullable values, audience isolation,
+cache. It exercises all 54 operations, nullable values, audience isolation,
 attachment scoping/deletion, append-only snapshots, cancellation and pool
 ownership. All five audience replacement transactions are tested for rollback
 after partial writes; clients/users use explicit test-only failure triggers.
