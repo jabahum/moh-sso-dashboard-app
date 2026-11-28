@@ -127,7 +127,9 @@ func TestIdentityUsesACachedMachineToken(t *testing.T) {
 
 func TestClientCredentialsRefreshesNearExpiryAndOnRejection(t *testing.T) {
 	f := newFakePortal(t)
-	f.handler = func(w http.ResponseWriter, r *http.Request) { writeData(w, 200, map[string]any{"applicationId": "alerts"}) }
+	f.handler = func(w http.ResponseWriter, r *http.Request) {
+		writeData(w, 200, map[string]any{"applicationId": "alerts"})
+	}
 	now := time.Unix(1_800_000_000, 0)
 	tokens := &ClientCredentials{TokenURL: f.server.URL + "/token", ClientID: "alerts-platform", ClientSecret: "s3cret", Now: func() time.Time { return now }}
 	c := f.client(t, func(cfg *Config) { cfg.Tokens = tokens })
@@ -402,7 +404,9 @@ func TestNewValidatesThePortalURL(t *testing.T) {
 
 func TestErrorTextHasNoToken(t *testing.T) {
 	f := newFakePortal(t)
-	f.handler = func(w http.ResponseWriter, r *http.Request) { writeError(w, 403, "APPLICATION_ACCESS_DENIED", "application access denied") }
+	f.handler = func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, 403, "APPLICATION_ACCESS_DENIED", "application access denied")
+	}
 	_, err := f.client(t).Identity(context.Background())
 	if !errors.Is(err, ErrForbidden) || strings.Contains(err.Error(), "machine-") || !strings.Contains(err.Error(), "APPLICATION_ACCESS_DENIED") {
 		t.Fatalf("err = %v", err)

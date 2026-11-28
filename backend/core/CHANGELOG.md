@@ -6,6 +6,17 @@ stable within a minor version.
 
 ## v0.2.0 (unreleased)
 
+### Platform API conformance
+
+- `platform/conformance`: checks a portal's platform API against its contract
+  and authorization rules over real HTTP: authentication (no token, cookie
+  only, unverifiable, wrong audience, wrong issuer, unbound client), identity
+  and effective scopes, readiness, the access decision, notifications, and
+  revocation through caller-supplied controls. Response objects are checked
+  against `Shapes`, which a dashboard test keeps identical to the contract;
+  passing raw checks are repeated with `platform/client`. Missing inputs skip
+  a check with the reason.
+
 ### Platform API client
 
 - `platform/client`: a standard-library-only client for the portal's platform

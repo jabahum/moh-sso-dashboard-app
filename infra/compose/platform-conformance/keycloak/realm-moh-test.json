@@ -1,0 +1,236 @@
+{
+  "realm": "moh-test",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 300,
+  "clientScopes": [
+    {
+      "name": "basic",
+      "description": "Subject and username claims (as Keycloak's basic and profile scopes provide)",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "platform-audience",
+      "description": "Adds the platform API audience",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "platform audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "moh-platform-api",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "identity:read",
+      "description": "Read the caller's identity, readiness and user access",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "notifications:read",
+      "description": "Read notification status",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    },
+    {
+      "name": "notifications:write",
+      "description": "Queue notifications",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": []
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "basic"
+  ],
+  "clients": [
+    {
+      "clientId": "dashboard-admin",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "ci-fake-dashboard-admin-secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "platform-introspector",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "ci-fake-introspector-secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "conformance-bound",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "ci-fake-bound-secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": [
+        "basic",
+        "platform-audience"
+      ],
+      "optionalClientScopes": [
+        "identity:read",
+        "notifications:read",
+        "notifications:write"
+      ]
+    },
+    {
+      "clientId": "conformance-narrow",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "ci-fake-narrow-secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": [
+        "basic",
+        "platform-audience"
+      ],
+      "optionalClientScopes": [
+        "identity:read",
+        "notifications:read"
+      ]
+    },
+    {
+      "clientId": "conformance-unbound",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "ci-fake-unbound-secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": [
+        "basic",
+        "platform-audience"
+      ],
+      "optionalClientScopes": [
+        "identity:read",
+        "notifications:read",
+        "notifications:write"
+      ]
+    },
+    {
+      "clientId": "conformance-noaudience",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "ci-fake-noaudience-secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [
+        "identity:read",
+        "notifications:read",
+        "notifications:write"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "c0000000-0000-4000-8000-000000000001",
+      "username": "service-account-conformance-bound",
+      "enabled": true,
+      "serviceAccountClientId": "conformance-bound"
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000002",
+      "username": "service-account-conformance-narrow",
+      "enabled": true,
+      "serviceAccountClientId": "conformance-narrow"
+    }
+  ]
+}

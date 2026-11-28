@@ -1,0 +1,137 @@
+# CI-only stack for the platform API conformance suite (backend/core/platform/conformance).
+# Keycloak, Postgres, Redis and the portal backend (core profile), seeded with a test
+# application and two bound machine clients. Every secret here is a FAKE fixture value
+# ("ci-fake-...") valid only inside this stack. Databases live on tmpfs.
+#
+#   infra/scripts/test-platform-conformance.sh   # up, run the suite, down -v
+#
+# Only loopback ports are published: Keycloak 18080, the portal 19000, Postgres 15432.
+# Keycloak's hostname is fixed to http://127.0.0.1:18080, so tokens fetched from the host
+# carry the issuer the backend expects even though it introspects at http://keycloak:8080.
+name: platform-conformance
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 5m, max-file: "2" }
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.5
+    logging: *logging
+    command: [start-dev, --import-realm]
+    environment:
+      KC_HOSTNAME: http://127.0.0.1:18080
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ci-kc-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ci-fake-kc-admin-password
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    tmpfs: ["/opt/keycloak/data/h2:mode=1777"]
+    ports: ["127.0.0.1:18080:8080"]
+    healthcheck:
+      test: [CMD, bash, -ec, "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      start_period: 30s
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  postgres:
+    image: postgres:15-alpine
+    logging: *logging
+    environment:
+      POSTGRES_DB: sso_conformance
+      POSTGRES_USER: sso_ci
+      POSTGRES_PASSWORD: ci-fake-db-password
+    tmpfs: ["/var/lib/postgresql/data"]
+    ports: ["127.0.0.1:15432:5432"]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    logging: *logging
+    command: [redis-server, --save, "", --appendonly, "no"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    image: platform-conformance-backend:local
+    build:
+      context: ../../..
+      dockerfile: infra/docker/backend/Dockerfile
+    logging: *logging
+    init: true
+    environment:
+      PLATFORM_PROFILE: core
+      ENVIRONMENT: test
+      GIN_MODE: release
+      SERVER_PORT: "9000"
+      ENABLE_TLS: "false"
+      DEV_AUTH_BYPASS: "false"
+      ALLOW_INSECURE_HTTP: "true"
+      DB_DRIVER: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: sso_ci
+      DB_PASSWORD: ci-fake-db-password
+      DB_NAME: sso_conformance
+      DB_ENABLE_SSL: "false"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_EXTERNAL_URL: http://127.0.0.1:18080
+      KEYCLOAK_REALM: moh-test
+      KEYCLOAK_ADMIN_CLIENT_ID: dashboard-admin
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ci-fake-dashboard-admin-secret
+      KEYCLOAK_WEB_CLIENT_ID: dashboard-web
+      KEYCLOAK_WEB_CLIENT_SECRET: ci-fake-dashboard-web-secret
+      KEYCLOAK_REDIRECT_URI: http://127.0.0.1:19000/api/v1/auth/callback
+      FRONTEND_BASE_URL: http://127.0.0.1:19000/
+      FRONTEND_REDIRECT_URI: http://127.0.0.1:19000/
+      APP_BASE_URL: http://127.0.0.1:19000
+      LOGIN_URL: http://127.0.0.1:19000/api/v1/auth/login
+      AUTH_RETURN_URL_ALLOWED_ORIGINS: http://127.0.0.1:19000
+      COOKIE_DOMAIN: ""
+      TOKEN_SYMMETRIC_KEY: ci-fake-token-key-0123456789abcdef
+      PLATFORM_AUTH_CLIENT_ID: platform-introspector
+      PLATFORM_AUTH_CLIENT_SECRET: ci-fake-introspector-secret
+      PLATFORM_AUTH_AUDIENCE: moh-platform-api
+      RBAC_STARTUP_SYNC_ENABLED: "false"
+      RBAC_STARTUP_SEED_ENABLED: "false"
+      RBAC_STARTUP_SYNC_PUSH_TO_KEYCLOAK: "false"
+    ports: ["127.0.0.1:19000:9000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:9000/health/ready"]
+      start_period: 30s
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  # Registers the test application and binds its two machine clients, after the
+  # backend has applied its migrations. One-shot: docker compose run --rm seed.
+  seed:
+    image: postgres:15-alpine
+    logging: *logging
+    environment:
+      PGHOST: postgres
+      PGUSER: sso_ci
+      PGPASSWORD: ci-fake-db-password
+      PGDATABASE: sso_conformance
+    command: [psql, -v, ON_ERROR_STOP=1, -f, /seed/seed.sql]
+    volumes:
+      - ./seed.sql:/seed/seed.sql:ro
+    depends_on:
+      backend: { condition: service_healthy }

@@ -1,0 +1,50 @@
+name: Platform API conformance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/internal/features/platform/**"
+      - "backend/core/platform/**"
+      - "backend/internal/platformconformance/**"
+      - "backend/internal/bootstrap/**"
+      - "backend/internal/db/migrations/**"
+      - "infra/docker/backend/**"
+      - "infra/compose/platform-conformance/**"
+      - "infra/scripts/test-platform-conformance.sh"
+      - ".github/workflows/platform-conformance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/internal/features/platform/**"
+      - "backend/core/platform/**"
+      - "backend/internal/platformconformance/**"
+      - "backend/internal/bootstrap/**"
+      - "backend/internal/db/migrations/**"
+      - "infra/docker/backend/**"
+      - "infra/compose/platform-conformance/**"
+      - "infra/scripts/test-platform-conformance.sh"
+      - ".github/workflows/platform-conformance.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-conformance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    name: Platform API conformance (Keycloak + portal)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.4"
+          cache-dependency-path: backend/go.sum
+      - name: Start the stack and run the conformance suite
+        run: infra/scripts/test-platform-conformance.sh
