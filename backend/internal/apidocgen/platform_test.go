@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mohuganda/moh-sso-dashboard/backend/core/platform/conformance"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -115,5 +116,47 @@ func TestApplyOverridesRequiredParametersAndErrorResponses(t *testing.T) {
 	responses := op["responses"].(object)
 	if _, ok := responses["409"]; !ok || responses["202"].(object)["description"] != "Accepted" {
 		t.Fatalf("responses = %v", responses)
+	}
+}
+
+// The conformance suite's response shapes match the published contract: the
+// same fields with the same JSON types, so neither can drift from the other.
+func TestConformanceShapesMatchThePlatformContract(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(backendRoot(t), PlatformContractFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var contract object
+	if err := yaml.Unmarshal(dropHeader(data), &contract); err != nil {
+		t.Fatal(err)
+	}
+	schemas := contract["components"].(object)["schemas"].(object)
+	for name, fields := range conformance.Shapes {
+		schema, ok := schemas[name].(object)
+		if !ok {
+			t.Errorf("conformance shape %s is not a contract schema", name)
+			continue
+		}
+		properties, _ := schema["properties"].(object)
+		for property, definition := range properties {
+			field, ok := fields[property]
+			if !ok {
+				t.Errorf("%s.%s is in the contract but not in conformance.Shapes", name, property)
+				continue
+			}
+			def, _ := definition.(object)
+			want, _ := def["type"].(string)
+			if want == "" && (def["$ref"] != nil || def["allOf"] != nil) {
+				want = "object"
+			}
+			if field.Type != want {
+				t.Errorf("%s.%s: conformance type %s, contract type %s", name, property, field.Type, want)
+			}
+		}
+		for property := range fields {
+			if _, ok := properties[property]; !ok {
+				t.Errorf("%s.%s is in conformance.Shapes but not in the contract", name, property)
+			}
+		}
 	}
 }
