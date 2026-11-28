@@ -10,6 +10,7 @@ import type {
   IdentitySyncRun,
   IdentitySyncRunDetail,
   IdentitySyncRow,
+  PlatformScope,
   ServiceIdentity,
 } from "../types";
 
@@ -41,6 +42,10 @@ export const identitySyncApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { clientId }) => [
         { type: "IdentitySync", id: `integration:${clientId}` },
       ],
+    }),
+    listPlatformScopes: builder.query<PlatformScope[], void>({
+      query: () => "/admin/platform/scopes",
+      transformResponse: (res: ApiEnvelope<PlatformScope[]>) => res.data,
     }),
     listServiceIdentities: builder.query<ServiceIdentity[], string>({
       query: (clientId) => identitiesBase(clientId),
@@ -185,6 +190,7 @@ export const {
   useDescribeIdentitySyncMutation,
   useCheckIdentitySyncNetworkMutation,
   useListServiceIdentitiesQuery,
+  useListPlatformScopesQuery,
   useResolveServiceAccountMutation,
   useSaveServiceIdentityMutation,
   useListIdentitySyncRunsQuery,

@@ -145,6 +145,15 @@ export type IdentitySyncRevocation = {
   sessionsStillOpen: boolean;
 };
 
+/** A platform capability scope from the portal's scope catalogue. */
+export type PlatformScope = {
+  name: string;
+  description: string;
+  /** "machine" (bound service clients) and/or "user" (a signed-in user's token). */
+  tokens: ("machine" | "user")[];
+  endpoints: string[];
+};
+
 /** A registered service identity (ihp_application_identities) of an application. */
 export type ServiceIdentity = {
   applicationId: string;
