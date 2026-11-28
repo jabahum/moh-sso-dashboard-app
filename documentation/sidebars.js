@@ -66,6 +66,11 @@ export default {
             },
             {
               type: 'doc',
+              id: 'docs/integrations/platform-api',
+              label: 'Platform API for application backends',
+            },
+            {
+              type: 'doc',
               id: 'docs/integrations/connected-applications',
               label: 'Connected applications',
             },

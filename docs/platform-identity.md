@@ -4,6 +4,9 @@ This page defines how external applications, hosted modules and machine identiti
 authenticate to the portal's platform APIs, for application developers and the
 operators who configure Keycloak and the platform server. For the step-by-step
 procedure, see the [onboarding handbook](platform-onboarding.md).
+For a practical guide to calling these endpoints from another repository's backend
+(tokens, examples, errors and retries), see
+[Platform API for application backends](integrations/platform-api.md).
 
 ## Responsibilities
 
