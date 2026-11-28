@@ -87,6 +87,7 @@ export default {
             'docs/integrations/identity-sync-contract',
             'docs/integrations/identity-sync-adapter',
             'docs/architecture/identity-sync',
+            'docs/architecture/application-events',
             'docs/operations/identity-sync-pilot',
           ],
         },
