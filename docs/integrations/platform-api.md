@@ -4,8 +4,10 @@ This page is for teams whose backend lives in another repository (CLIMS, POES,
 Alerts Manager and others) and needs to call the portal. It covers everything in one
 place: getting a token, being allowed to call, each endpoint, errors, and the rules
 that keep integrations simple. The authorization model behind it is defined in the
-[application identity and authorization contract](../platform-identity.md); the
-OpenAPI description is `backend/docs/openapi.yaml`.
+[application identity and authorization contract](../platform-identity.md). The
+machine-readable contract to build and test clients against is
+[`backend/core/platform/contract/platform.openapi.yaml`](../../backend/core/platform/contract/platform.openapi.yaml),
+generated from the portal's routes and checked in CI.
 
 The portal also calls *your* backend through small contracts it defines, such as
 [identity sync](identity-sync-contract.md). That direction is covered by the
@@ -321,6 +323,10 @@ tokens cached and avoid tight polling loops.
   deprecation period announced to every application owner before `v1` is removed.
 - New capabilities get new scopes; an existing scope never silently gains broader
   meaning.
+- The contract's `info.version` follows semantic versioning (`1.x.y` for `/api/v1`).
+  CI fails a portal change that would break clients of the current contract. The full
+  policy is in the
+  [contract README](../../backend/core/platform/contract/README.md).
 
 ## 9. Checklist for a new backend
 

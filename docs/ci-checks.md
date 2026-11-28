@@ -27,6 +27,7 @@ Other workflows that run on pull requests:
 | Workflow | Trigger | Runs |
 | --- | --- | --- |
 | Documentation (`documentation.yml`) | Changes under `docs/`, `frontend/docs/`, `documentation/` or the workflow itself; also pushes to `main` and manual dispatch | `npm ci` and `npm run build` in `documentation/` on Node 22, then uploads the `documentation-site` artifact. |
+| Update OpenAPI contract (`update-openapi.yml`) | Every pull request to `main` | `make contracts-generate`, then `make contracts-check` and the generator tests. Fails if the platform API contract (`backend/core/platform/contract/platform.openapi.yaml`) breaks clients of the base branch's copy (`openapi platform-compat`; see the [contract README](../backend/core/platform/contract/README.md)). For same-repository pull requests it commits a regenerated `backend/docs/openapi.yaml` and platform contract and re-runs the quality checks. |
 | Helm Lint (`helm-lint.yml`) | Changes under `infra/helm/`; also pushes to `main` | Helm v3.15.0 `helm lint infra/helm/moh-sso` and `helm template` with `values-dev.yaml` and `values-prod.yaml`. |
 
 Existing branch protection requiring **Fast Quality Gate** continues to work: its
