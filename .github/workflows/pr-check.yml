@@ -233,6 +233,9 @@ jobs:
       - name: Human-user Keycloak default reconciliation
         run: python3 infra/scripts/test-reconcile-user-defaults.py
 
+      - name: Platform scope Keycloak reconciliation
+        run: python3 infra/scripts/test-reconcile-platform-scopes.py
+
       - name: Identity realm and client provisioning contracts
         run: |
           python3 infra/scripts/test-bootstrap-keycloak-realms.py
