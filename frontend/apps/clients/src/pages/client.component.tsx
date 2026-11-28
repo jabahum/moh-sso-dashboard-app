@@ -1,7 +1,6 @@
 import {
   Button,
   DataTable,
-  InlineLoading,
   Table,
   TableBody,
   TableCell,
@@ -20,6 +19,7 @@ import {
   DataTablePagination,
   DataTableShell,
   ErrorState,
+  PageLoading,
   RowActionsCell,
   TableStatusTag,
   useHeaderPanel,
@@ -156,8 +156,7 @@ export default function ClientsPage() {
       size: "md",
     });
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
-  if (isLoading) return <InlineLoading description="Loading clients…" />;
+  if (isLoading) return <PageLoading description="Loading clients…" />;
 
   return (
     <DataTableShell

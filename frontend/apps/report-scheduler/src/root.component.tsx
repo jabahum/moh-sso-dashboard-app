@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { PageShell, useHeaderPanel, useToast } from "@moh-sso/ui";
+import { PageLoading, PageShell, useHeaderPanel, useToast } from "@moh-sso/ui";
 import {
   Button,
   InlineLoading,
@@ -246,7 +246,7 @@ function ReportSchedulerWorkspace(props: MicrofrontendRuntimeProps) {
     },
   ]);
 
-  if (moduleQuery.isLoading) return <InlineLoading description="Loading Report Scheduler…" />;
+  if (moduleQuery.isLoading) return <PageLoading description="Loading Report Scheduler…" />;
 
   return (
     <div className="moh-microfrontend-root report-scheduler">

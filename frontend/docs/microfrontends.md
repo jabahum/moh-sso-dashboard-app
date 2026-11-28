@@ -192,6 +192,13 @@ second outer gutter. `PageShell` spaces its content sections and keeps header
 actions responsive. Dedicated detail-page and access-denied headings remain
 local to those screens.
 
+Until its first data load finishes, an app that loads data on start returns
+`<PageLoading>` from `@moh-sso/ui` instead of its page, so the page and header
+appear once, complete. Gate on the query's `isLoading`. If a later query (a new
+filter, for example) starts its own first load, wrap the flag in
+`useFirstLoad(isLoading)` so the page stays mounted. Apps that load nothing on
+start render their page immediately.
+
 `tests/browser/root-pages.spec.mjs` visits every application root at desktop and
 mobile widths and checks for a single visible header aligned with the portal's
 content gutter. It uses disposable local API responses and a report iframe stub.

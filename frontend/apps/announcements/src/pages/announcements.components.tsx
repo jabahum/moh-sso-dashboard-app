@@ -8,7 +8,6 @@ import {
   TableCell,
   TableSelectRow,
   TableSelectAll,
-  InlineLoading,
   Tile,
   Tag,
   Pagination,
@@ -28,7 +27,7 @@ import {
 
 import type { Announcement, AnnouncementAudienceType, AnnouncementLevel } from "../types";
 
-import { ErrorState, PageShell, useHeaderPanel, useModal, useToast } from "@moh-sso/ui";
+import { ErrorState, PageLoading, PageShell, useHeaderPanel, useModal, useToast } from "@moh-sso/ui";
 
 import { formatDateTime, getStatusTagType, getTagType, isAnnouncementActive } from "@moh-sso/utils";
 
@@ -394,8 +393,7 @@ export function AnnouncementsPage() {
     });
   };
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
-  if (isLoading) return <InlineLoading description="Loading announcements…" />;
+  if (isLoading) return <PageLoading description="Loading announcements…" />;
 
   return (
     <div className="announcements-page">
