@@ -102,6 +102,9 @@ Create one confidential Keycloak client per backend and purpose, named
   disabled.
 - No portal or administrator roles.
 - The capability client scopes it needs, and the platform audience mapper.
+- Keycloak's default `basic` and `profile` client scopes. The portal identifies a
+  machine client by the `sub` and `preferred_username` claims in introspection; a
+  client without them is refused with `403` even when it is bound.
 
 Its service-account user is `service-account-<clientId>`. Note that user's Keycloak
 ID; it is the `subject` in the next step.
@@ -385,6 +388,7 @@ A new capability is a routine, reviewed change in one pull request:
 - [ ] `GET /platform/identity` returns your application, client and expected scopes
 - [ ] For access decisions: your interactive client's tokens carry the platform audience, `identity:read`, `sub` and roles
 - [ ] For notifications: idempotency keys are unique per notification and content is not sensitive
+- [ ] `moh-sso platform conformance` passes against the target portal with your client
 - [ ] Secrets stored in your secret mechanism and rotation agreed
 
 ## 10. Go client
@@ -426,6 +430,49 @@ readiness body. A token obtained elsewhere can be passed as
 
 Backends in other languages can generate a client from the platform contract and
 follow sections 4 to 7.
+
+## 11. Checking your integration: the conformance suite
+
+The conformance suite (`backend/core/platform/conformance`, standard library only)
+checks a portal's platform API the way your backend will use it, and reports each check
+as pass, fail or skip:
+
+| Area | Checks |
+| --- | --- |
+| Authentication | No token, a cookie without a token, an unverifiable token, a token without the platform audience or from another issuer (`401` with a `Bearer` challenge), a client with no binding (`403`) |
+| Identity and scopes | Your client's application, client ID and effective scopes; a token without a scope sees it removed and is refused where it is needed |
+| Readiness and access | Readiness shape; machine tokens refused by the access decision; a user's token answered |
+| Notifications | Validation, queueing and replay with the same key, key conflict, status, unknown ID (only with a test recipient, and only where the portal serves notifications) |
+| Revocation | Disabling the binding or suspending the application refuses the next request (portal CI only) |
+
+Every check that passes over raw HTTP is repeated with the Go client. A check whose
+input you didn't provide is skipped with the reason, never passed.
+
+**Run it against your environment** with your own machine client, for example after
+binding it (section 3.3) and before going live:
+
+```sh
+export PLATFORM_CLIENT_SECRET=...      # your client's secret; never a flag
+cd backend
+go run ./cmd/cli platform conformance \
+  --portal https://portals.health.go.ug \
+  --token-url https://auth.health.go.ug/realms/MoH/protocol/openid-connect/token \
+  --client-id alerts-platform --application alerts \
+  --scopes identity:read,notifications:read,notifications:write
+```
+
+It sends no notification unless you pass `--notification-recipient` with a test mailbox.
+Optional tokens for the negative checks are read from `PLATFORM_NARROW_TOKEN`,
+`PLATFORM_UNBOUND_TOKEN`, `PLATFORM_WRONG_AUDIENCE_TOKEN`, `PLATFORM_WRONG_ISSUER_TOKEN`
+and `PLATFORM_USER_TOKEN`. Add `--json` for a machine-readable report. The command exits
+non-zero when a check fails. Teams in other languages can run the same command against
+the portal to confirm their Keycloak client and binding before testing their own code.
+
+**In the portal's CI**, the *Platform API conformance* workflow runs the full suite,
+including the revocation checks, against Keycloak and the portal backend started by
+`infra/scripts/test-platform-conformance.sh` (stack in
+`infra/compose/platform-conformance`). Run the script locally with Docker and Go to
+reproduce a failure; `KEEP_STACK=1` leaves the stack running.
 
 ## Related
 
