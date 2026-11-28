@@ -1,9 +1,10 @@
 import { Component, type ReactNode } from "react";
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { InlineLoading, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
 
 import { PageShell } from "@moh-sso/ui";
-import { PermissionGuard, PERMISSIONS } from "@moh-sso/auth";
+import { PermissionGuard, PERMISSIONS, useAuthorization } from "@moh-sso/auth";
 
+import { useGetTemplatesQuery, useListDocumentsQuery } from "../../api";
 import { TemplatesTab } from "../../components/TemplatesTab";
 import { DocumentsTab } from "../../components/DocumentsTab";
 import "./documents.scss";
@@ -41,6 +42,16 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, PageErrorBoun
 }
 
 function DocumentPageContent() {
+  const { can } = useAuthorization();
+  // The first tab the user can see decides when the page is ready.
+  const showsTemplates = can(PERMISSIONS.documentTemplatesRead);
+  const templatesQuery = useGetTemplatesQuery(undefined, { skip: !showsTemplates });
+  const documentsQuery = useListDocumentsQuery(undefined, { skip: showsTemplates });
+  const isLoading = showsTemplates ? templatesQuery.isLoading : documentsQuery.isLoading;
+
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (isLoading) return <InlineLoading description="Loading documents…" />;
+
   return (
     <PageErrorBoundary>
       <div className="documents-page">

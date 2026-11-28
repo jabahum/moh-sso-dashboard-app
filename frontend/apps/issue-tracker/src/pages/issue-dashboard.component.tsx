@@ -490,6 +490,9 @@ const IssueDashboard = () => {
     .filter(Boolean)
     .join(" • ");
 
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (isLoadingIssues) return <InlineLoading description="Loading issue summary…" />;
+
   return (
     <PermissionGuard permission={PERMISSIONS.issueTrackerRead}>
       <PageShell

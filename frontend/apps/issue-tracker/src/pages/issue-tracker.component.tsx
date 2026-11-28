@@ -702,6 +702,9 @@ const IssueTracker = () => {
     );
   }
 
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (isLoading) return <InlineLoading description="Loading issues…" />;
+
   const activeLocationLabel =
     selectedOrgUnit || selectedDistrict || selectedRegion || "";
 
