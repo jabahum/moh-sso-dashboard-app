@@ -6,13 +6,15 @@ locally before you push. It is for developers and reviewers.
 ## Workflow jobs
 
 `PR Quality Checks` (`.github/workflows/pr-check.yml`) runs on pull requests to
-`main` and on manual dispatch, and is reused by the image build (`build.yml`)
-before publishing. Jobs are independent: a frontend install failure does not
+`main`, in the merge queue and on manual dispatch, and is reused by release tag
+image builds (`build.yml`) before publishing. Pushes to `main` publish images
+without re-running it: the merge queue already ran every job on that exact
+commit. Jobs are independent: a frontend install failure does not
 suppress backend, migration, workflow or deployment recovery results.
 
 On pull requests, **Detect changed areas** compares the test merge commit with
-its base and skips jobs the change cannot affect. Pushes, manual dispatches and
-the image build always run every job.
+its base and skips jobs the change cannot affect. The merge queue, manual
+dispatches and release tag builds always run every job.
 
 | Change touches only | Skipped |
 | --- | --- |
@@ -46,7 +48,9 @@ Other workflows that run on pull requests:
 | Platform API conformance (`platform-conformance.yml`) | Pull requests and pushes to `main` touching the platform API, `backend/core/platform`, backend bootstrap or migrations, the backend image, or the stack | `infra/scripts/test-platform-conformance.sh`: starts Keycloak, Postgres, Redis and the portal backend from `infra/compose/platform-conformance`, runs the platform conformance suite with the Go client (including revocation checks) and removes the stack. See [Platform API, section 11](integrations/platform-api.md#11-checking-your-integration-the-conformance-suite). |
 | Helm Lint (`helm-lint.yml`) | Changes under `infra/helm/`; also pushes to `main` | Helm v3.15.0 `helm lint infra/helm/moh-sso` and `helm template` with `values-dev.yaml` and `values-prod.yaml`. |
 
-Require **Fast Quality Gate** on `main` (repository ruleset or branch protection).
+Require **Fast Quality Gate** on `main` in a repository ruleset with the merge
+queue enabled and direct pushes blocked; `build.yml` relies on that to skip
+validation for `main` pushes.
 It covers every job, so jobs can be split or renamed without editing the
 ruleset.
 Repository rules are configured separately; editing YAML does not change them.

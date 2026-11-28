@@ -22,7 +22,7 @@ flowchart LR
 
 | Action | Owner / workflow | What happens |
 | --- | --- | --- |
-| Validate source | PR Quality Checks, reused by image build | Backend/frontend checks, API freshness, infrastructure/CD tests. |
+| Validate source | PR Quality Checks on the pull request and in the merge queue; reused by release tag builds | Backend/frontend checks, API freshness, infrastructure/CD tests. |
 | Publish images | `build.yml` | Build image pair from one main commit, verify runtime metadata, retain registry digests. Tag pushes still publish component images separately. |
 | Package release | Final job in `build.yml` | Upload `deployment-bundle`: image manifest, deployment archive and SHA-256 checksum. No runtime secrets, certificates or private env files. |
 | Prepare deployment | `deploy-to-server.yaml` prepare job | Validate the producing workflow/repository/main commit, archive contents and manifest; publish a reviewable plan. No server credentials used. |
