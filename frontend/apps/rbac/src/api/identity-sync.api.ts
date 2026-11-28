@@ -5,6 +5,7 @@ import type {
   IdentitySyncIntegration,
   IdentitySyncIntegrationPayload,
   IdentitySyncJob,
+  IdentitySyncNetworkReport,
   IdentitySyncRevocation,
   IdentitySyncRun,
   IdentitySyncRunDetail,
@@ -74,6 +75,17 @@ export const identitySyncApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { clientId }) => [
         { type: "IdentitySync", id: `identities:${clientId}` },
       ],
+    }),
+    checkIdentitySyncNetwork: builder.mutation<
+      IdentitySyncNetworkReport,
+      { clientId: string; origin?: string }
+    >({
+      query: ({ clientId, origin }) => ({
+        url: `${base(clientId)}/network-check`,
+        method: "GET",
+        params: origin ? { origin } : undefined,
+      }),
+      transformResponse: (res: ApiEnvelope<IdentitySyncNetworkReport>) => res.data,
     }),
     describeIdentitySync: builder.mutation<IdentitySyncDescriptor, string>({
       query: (clientId) => ({ url: `${base(clientId)}/describe`, method: "GET" }),
@@ -171,6 +183,7 @@ export const {
   useGetIdentitySyncIntegrationQuery,
   useSaveIdentitySyncIntegrationMutation,
   useDescribeIdentitySyncMutation,
+  useCheckIdentitySyncNetworkMutation,
   useListServiceIdentitiesQuery,
   useResolveServiceAccountMutation,
   useSaveServiceIdentityMutation,

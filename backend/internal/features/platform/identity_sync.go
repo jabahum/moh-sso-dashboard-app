@@ -171,8 +171,18 @@ func failIdentitySync(c *gin.Context, err error) {
 		response.Fail(c, http.StatusConflict, "IDENTITY_SYNC_IN_USE", "identity sync integration is still referenced")
 	case errors.Is(err, identityreconcile.ErrContractDowngrade):
 		response.Fail(c, http.StatusConflict, "IDENTITY_SYNC_CONTRACT_DOWNGRADE", "the application was registered at contract 1.1 or newer but now answers like 1.0; retry later, or set allowContractDowngrade to accept it")
+	case errors.Is(err, identityreconcile.ErrOriginUnresolvable):
+		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_ORIGIN_UNRESOLVED", "the application's host name does not resolve from the portal server; add it to the DNS the portal server uses, then try again")
+	case errors.Is(err, identityreconcile.ErrPrivateOrigin):
+		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_PRIVATE_ORIGIN", "the application's host resolves to a private address; list it in "+identityreconcile.AllowedPrivateHostsEnv+" if it is meant to be reached on a private network, then try again")
 	case errors.Is(err, identityreconcile.ErrDescriptorUnavailable):
-		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_UNREACHABLE", "the application's identity-sync endpoint could not be described; check the origin, credential reference and sync client")
+		message := "the application's identity-sync endpoint could not be described; check the origin, credential reference and sync client"
+		if problem := identityreconcile.ReachabilityProblem(err); problem != "" {
+			message = "the application's identity-sync endpoint could not be reached: " + problem
+		}
+		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_UNREACHABLE", message)
+	case identityreconcile.ReachabilityProblem(err) != "":
+		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_UNREACHABLE", "the application's identity-sync endpoint could not be reached: "+identityreconcile.ReachabilityProblem(err))
 	default:
 		fail(c, err)
 		return

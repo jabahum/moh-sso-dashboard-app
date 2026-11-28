@@ -144,6 +144,13 @@ curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 \
 Both lookups must print an address. Once Alerts implements identity sync, the `curl`
 should print `401` (reachable, no token), not `000` (no connection).
 
+The portal can run all of these checks itself: Admin → RBAC → Alerts → Identity sync →
+**Check network**, or from the portal server
+`docker exec "$B" /usr/local/bin/sso-entrypoint /app/moh-sso identity-sync check-network --origin https://alerts.health.go.ug`.
+It reports DNS, the private-address policy, the connection, TLS and the endpoint's
+answer separately, with what to fix (see
+[network prerequisites](client-onboarding.md#61-network-prerequisites)).
+
 Keep the identity-sync routes reachable from the portal server and, if the proxy allows
 it, not from the internet.
 

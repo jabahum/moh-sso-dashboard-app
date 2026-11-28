@@ -53,7 +53,7 @@ func newIdentitySyncCommand() *cobra.Command {
 		Args: cobra.NoArgs,
 	}
 	cmd.AddCommand(newIdentitySyncRegisterCommand(), newIdentitySyncDescribeCommand(),
-		newIdentitySyncPreviewCommand(), newIdentitySyncApplyCommand())
+		newIdentitySyncPreviewCommand(), newIdentitySyncApplyCommand(), newIdentitySyncCheckNetworkCommand())
 	identitySyncSubcommandsMu.Lock()
 	constructors := append([]func() *cobra.Command(nil), identitySyncSubcommands...)
 	identitySyncSubcommandsMu.Unlock()

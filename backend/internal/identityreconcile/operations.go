@@ -356,6 +356,7 @@ func JobErrorCode(err error) (string, string) {
 		{ErrDescriptorUnavailable, "application_unreachable"},
 		{ErrContractViolation, "contract_violation"},
 		{ErrPrivateOrigin, "private_origin"},
+		{ErrOriginUnresolvable, "origin_unresolved"},
 		{ErrRunNotFound, "run_not_found"},
 		{ErrRunBusy, "run_busy"},
 		{ErrRunCancelled, "run_cancelled"},

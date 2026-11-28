@@ -13,6 +13,7 @@ func registerIdentitySyncRoutes(admin *gin.RouterGroup, h *Handler, limiter *rat
 	admin.PUT("/applications/:clientId/identity-sync", sensitive, h.SaveIdentitySync)
 	admin.DELETE("/applications/:clientId/identity-sync", sensitive, h.DeleteIdentitySync)
 	admin.GET("/applications/:clientId/identity-sync/describe", h.DescribeIdentitySync)
+	admin.GET("/applications/:clientId/identity-sync/network-check", sensitive, h.CheckIdentitySyncNetwork)
 	admin.GET("/applications/:clientId/identity-sync/jobs", h.ListIdentitySyncJobs)
 	admin.GET("/applications/:clientId/identity-sync/runs", h.ListIdentitySyncRuns)
 	admin.POST("/applications/:clientId/identity-sync/runs", sensitive, h.StartIdentitySyncRun)

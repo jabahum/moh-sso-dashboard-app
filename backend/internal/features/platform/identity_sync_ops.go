@@ -2,10 +2,12 @@ package platform
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/moh-sso-dashboard/internal/http/response"
@@ -284,6 +286,49 @@ func (h *Handler) DescribeIdentitySync(c *gin.Context) {
 		return
 	}
 	response.OK(c, http.StatusOK, descriptor)
+}
+
+// identitySyncNetworkChecker runs network checks; *identityreconcile.RegistryService implements it.
+type identitySyncNetworkChecker interface {
+	CheckNetwork(ctx context.Context, origin string) identityreconcile.NetworkReport
+	CheckIntegrationsNetwork(ctx context.Context, application string) ([]identityreconcile.NetworkReport, error)
+}
+
+const identitySyncNetworkCheckTimeout = time.Minute
+
+// CheckIdentitySyncNetwork checks, from the portal server, each step needed to
+// reach the application's identity-sync endpoint: DNS, the private-address
+// policy, TCP, TLS and an unauthenticated HTTP request. With ?origin= it checks
+// that origin (for example before saving it); otherwise the registered one.
+// It sends no token and returns only stage results.
+func (h *Handler) CheckIdentitySyncNetwork(c *gin.Context) {
+	checker, ok := h.IdentitySync.(identitySyncNetworkChecker)
+	if h.IdentitySync == nil || !ok {
+		fail(c, ErrUnavailable)
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), identitySyncNetworkCheckTimeout)
+	defer cancel()
+	if origin := c.Query("origin"); origin != "" {
+		if !identityreconcile.ValidOrigin(origin) {
+			fail(c, ErrInvalid)
+			return
+		}
+		report := checker.CheckNetwork(ctx, origin)
+		report.ApplicationID = c.Param("clientId")
+		response.OK(c, http.StatusOK, report)
+		return
+	}
+	reports, err := checker.CheckIntegrationsNetwork(ctx, c.Param("clientId"))
+	if err != nil {
+		failIdentitySync(c, err)
+		return
+	}
+	if len(reports) != 1 {
+		fail(c, sql.ErrNoRows)
+		return
+	}
+	response.OK(c, http.StatusOK, reports[0])
 }
 
 // failIdentitySyncOp maps run, job and revocation errors to stable responses.
