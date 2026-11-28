@@ -141,6 +141,7 @@ moh-sso identity-sync describe   --app <id>                     # registry entry
 moh-sso identity-sync preview    --app <id> [--after c] [--limit n]
 moh-sso identity-sync apply      --app <id> --account <id> --approved-subject <sub> [--after c]
 moh-sso identity-sync conformance --app <id>                    # Track D
+moh-sso identity-sync check-network [--app <id> | --origin <https>] # DNS, address policy, TCP, TLS, HTTP; no token
 ```
 
 `clims-identity-sync` and `poes-identity-sync` remain as deprecated aliases for

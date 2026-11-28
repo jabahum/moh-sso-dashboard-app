@@ -267,6 +267,43 @@ straight into their destination, never on screen.
 
 ## 6. Connect identity sync
 
+### 6.1 Network prerequisites
+
+The dashboard backend calls the application from inside its container, using the
+portal server's DNS. Internal DNS servers often hold only some `health.go.ug` names,
+so a host that resolves from your laptop may not resolve there. Check this before
+registering, and ask for any missing record early: it usually needs another team.
+
+1. **DNS:** the application's host resolves from the portal server and inside the
+   backend container.
+2. **Path:** the portal server can open TCP 443 to the application (firewalls,
+   routing), and trusts its TLS certificate.
+3. **Private addresses:** if the host resolves to a private address (`10.x`,
+   `172.16–31.x`, `192.168.x` and similar), list it in
+   `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` (comma-separated) and redeploy. Otherwise the
+   dashboard refuses to send it a token.
+4. **The application reaches Keycloak** for discovery, keys and the code exchange.
+
+Check all of it in one step, from where the dashboard runs:
+
+- **In the portal:** Admin → RBAC → the application → Identity sync → **Check
+  network**. It checks the origin being edited, so you can test it before saving.
+- **From the server:**
+
+  ```sh
+  B=$(docker ps -qf label=com.docker.compose.project=moh-sso-dashboard -f label=com.docker.compose.service=backend)
+  docker exec "$B" /usr/local/bin/sso-entrypoint /app/moh-sso identity-sync check-network --origin https://<app-host>
+  docker exec "$B" /usr/local/bin/sso-entrypoint /app/moh-sso identity-sync check-network            # every registered application
+  ```
+
+Each check reports the stages `origin`, `dns`, `address_policy`, `connect`, `tls` and
+`http` as `ok`, `warn`, `fail` or `skipped`, with what to fix. Before the application
+implements identity sync, `http` warns with 404; afterwards the expected answer is
+`HTTP 401 without a token`. The check sends no token, and never connects to a private
+address that isn't allowed.
+
+### 6.2 Register
+
 1. **Bind the sync client** to the application as a service identity, once, as
    a portal admin with `rbac:write` and `rbac:roles:write`:
 
@@ -337,6 +374,7 @@ Application:
 - [ ] Starts with the production settings, and refuses to start with any missing or with HTTP URLs
 - [ ] Conformance suite passes in a test environment (probe on there, off in production)
 - [ ] Sync routes reachable from the dashboard's network, not from the internet
+- [ ] **Check network** passes for the production origin (every stage `ok`, `http` answers 401)
 
 Keycloak and portal:
 
@@ -396,8 +434,10 @@ environment and compare `iss`, `aud`, `azp` and `<app>_roles` with section 2.
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `register` refuses the origin as private | Add its host to `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` |
-| `register` reports a binding error | The sync client isn't bound as an enabled service identity of `<app>` (section 6, step 1) |
+| Saving answers `IDENTITY_SYNC_ORIGIN_UNRESOLVED` ("does not resolve from the portal server") | The portal server's DNS has no record for the host. Add it to the DNS the portal server uses (section 6.1), then check with **Check network** |
+| Saving answers `IDENTITY_SYNC_PRIVATE_ORIGIN`, or `register` refuses the origin as private | Add its host to `IDENTITY_SYNC_ALLOWED_PRIVATE_HOSTS` and redeploy |
+| `IDENTITY_SYNC_UNREACHABLE` says the connection was refused, timed out, or the certificate isn't trusted | Run **Check network**: the failing stage says whether it is the firewall or routing (`connect`), the certificate (`tls`) or the application (`http`) |
+| `register` reports a binding error | The sync client isn't bound as an enabled service identity of `<app>` (section 6.2, step 1) |
 | The dashboard can't get a token | The token endpoint isn't HTTPS, or the sync client's secret is wrong or unreadable through the admin client |
 | 404 for every sync path | `IDENTITY_SYNC_CLIENT_ID` isn't set, so the routes are off |
 | 401 from the application | Token expired, from another issuer, or `aud` lacks `<app>` (audience mapper) |
