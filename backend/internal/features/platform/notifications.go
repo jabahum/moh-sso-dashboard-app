@@ -82,11 +82,12 @@ func (h *Handler) SubmitNotification(c *gin.Context) {
 		return
 	}
 	c.Header("Location", "/api/v1/platform/notifications/"+result.ID)
-	status := http.StatusAccepted
 	if result.Replayed {
-		status = http.StatusOK
+		// Same key and body as an earlier request: the original notification.
+		response.OK(c, http.StatusOK, result)
+		return
 	}
-	response.OK(c, status, result)
+	response.OK(c, http.StatusAccepted, result)
 }
 func (h *Handler) GetNotification(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))

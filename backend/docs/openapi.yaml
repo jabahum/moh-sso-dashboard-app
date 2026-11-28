@@ -35033,6 +35033,7 @@ paths:
       x-go-handler: github.com/moh-sso-dashboard/internal/features/notifications.(*Handler).UpdateNotificationPreferences
   /api/v1/platform/applications/{clientId}/access:
     get:
+      description: Send the user's own access token. Returns the user's roles and permissions for the application now, enforcing portal-side suspension and role changes immediately. The token must carry the platform audience and identity:read and be issued to the application's interactive client; machine tokens, unknown and unassigned users are refused with 403.
       operationId: get_api_v1_platform_applications_clientId_access
       parameters:
         - in: path
@@ -35080,18 +35081,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Too Many Requests
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
         default:
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Error response; error.code identifies the failure.
-      summary: Get User Access
+      summary: Current access decision for a user
       tags:
         - platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetUserAccess
   /api/v1/platform/identity:
     get:
+      description: Returns the application, service client, subject and effective scopes (token scopes that the registry binding also grants) for the caller. Requires identity:read. Use it to check an integration end to end.
       operationId: get_api_v1_platform_identity
       responses:
         "200":
@@ -35133,23 +35141,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Too Many Requests
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
         default:
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Error response; error.code identifies the failure.
-      summary: Get Identity
+      summary: Identify the calling machine client
       tags:
         - platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetIdentity
   /api/v1/platform/notifications:
     post:
+      description: 'Queues one email notification for one recipient. Requires notifications:write and an Idempotency-Key header (1-128 characters, letters, digits and . _ : -). 202 when queued; 200 with replayed true when the same key and body were already accepted; 409 when the key was used with a different body; 429 above 60 notifications per application per minute (see Retry-After).'
       operationId: post_api_v1_platform_notifications
       parameters:
         - in: header
           name: Idempotency-Key
-          required: false
+          required: true
           schema:
             type: string
       requestBody:
@@ -35160,7 +35175,53 @@ paths:
         required: true
       responses:
         "200":
-          description: Successful response. Payload is dynamically produced by this handler.
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.NotificationStatus'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/platform.NotificationStatus'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: Accepted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
         "401":
           content:
             application/json:
@@ -35173,24 +35234,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Forbidden
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
         "429":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Too Many Requests
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
         default:
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Error response; error.code identifies the failure.
-      summary: Submit Notification
+      summary: Queue an email notification
       tags:
         - platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).SubmitNotification
   /api/v1/platform/notifications/{id}:
     get:
+      description: Returns the delivery status of a notification the calling application sent. Requires notifications:read. Another application's notification answers 404.
       operationId: get_api_v1_platform_notifications_id
       parameters:
         - in: path
@@ -35220,6 +35294,12 @@ paths:
                   - data
                 type: object
           description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
         "401":
           content:
             application/json:
@@ -35232,24 +35312,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
         "429":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Too Many Requests
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Service Unavailable
         default:
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Error response; error.code identifies the failure.
-      summary: Get Notification
+      summary: Notification delivery status
       tags:
         - platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetNotification
   /api/v1/platform/readiness:
     get:
+      description: 200 with ready true when the portal core and every enabled background worker are healthy; 503 with the same body and ready false otherwise. Requires identity:read.
       operationId: get_api_v1_platform_readiness
       responses:
         "200":
@@ -35318,7 +35411,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
           description: Error response; error.code identifies the failure.
-      summary: Get Readiness
+      summary: Portal readiness
       tags:
         - platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).GetReadiness

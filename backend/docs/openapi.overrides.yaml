@@ -1,5 +1,35 @@
 # Curated descriptions and manual form semantics. Types, responses and route coverage come from Go source.
 paths:
+  /api/v1/platform/identity:
+    get:
+      summary: Identify the calling machine client
+      description: >-
+        Returns the application, service client, subject and effective scopes (token scopes that the registry binding also grants) for the caller. Requires identity:read. Use it to check an integration end to end.
+      x-error-responses: ["503"]
+  /api/v1/platform/readiness:
+    get:
+      summary: Portal readiness
+      description: >-
+        200 with ready true when the portal core and every enabled background worker are healthy; 503 with the same body and ready false otherwise. Requires identity:read.
+  /api/v1/platform/notifications:
+    post:
+      summary: Queue an email notification
+      description: >-
+        Queues one email notification for one recipient. Requires notifications:write and an Idempotency-Key header (1-128 characters, letters, digits and . _ : -). 202 when queued; 200 with replayed true when the same key and body were already accepted; 409 when the key was used with a different body; 429 above 60 notifications per application per minute (see Retry-After).
+      x-required-parameters: ["header Idempotency-Key"]
+      x-error-responses: ["400", "409", "503"]
+  /api/v1/platform/notifications/{id}:
+    get:
+      summary: Notification delivery status
+      description: >-
+        Returns the delivery status of a notification the calling application sent. Requires notifications:read. Another application's notification answers 404.
+      x-error-responses: ["400", "404", "503"]
+  /api/v1/platform/applications/{clientId}/access:
+    get:
+      summary: Current access decision for a user
+      description: >-
+        Send the user's own access token. Returns the user's roles and permissions for the application now, enforcing portal-side suspension and role changes immediately. The token must carry the platform audience and identity:read and be issued to the application's interactive client; machine tokens, unknown and unassigned users are refused with 403.
+      x-error-responses: ["503"]
   /api/v1/documents:
     post:
       summary: Upload a document
