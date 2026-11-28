@@ -61,9 +61,35 @@ In Keycloak, the operator also creates:
 
 - an **audience mapper** that adds the platform audience (`moh-platform-api`) to the
   tokens your clients receive;
-- a **client scope for each capability** (`identity:read`, `notifications:read`,
-  `notifications:write`) with **Include in token scope** enabled, assigned to the
-  clients that may request it.
+- a **client scope for each capability** in the
+  [scope catalogue](#scope-catalogue), with **Include in token scope** enabled,
+  assigned to the clients that may request it. The reconcile script creates and fixes
+  them from the catalogue (dry run first, then `--apply`):
+
+  ```sh
+  # KEYCLOAK_BASE_URL, KEYCLOAK_REALM, KEYCLOAK_ADMIN_CLIENT_ID and KEYCLOAK_ADMIN_CLIENT_SECRET set
+  python3 infra/scripts/reconcile-platform-scopes.py
+  python3 infra/scripts/reconcile-platform-scopes.py --apply
+  # and attach the scopes a machine client needs, as optional scopes:
+  python3 infra/scripts/reconcile-platform-scopes.py --client alerts-platform \
+    --scopes identity:read,notifications:write,notifications:read --apply
+  ```
+
+### Scope catalogue
+
+Every capability scope is listed in
+[`backend/internal/features/platform/scopes.json`](../../backend/internal/features/platform/scopes.json),
+with what it allows, which tokens carry it and the endpoints that require it. The
+portal serves it at `GET /api/v1/admin/platform/scopes` (`rbac:read`). Today:
+
+| Scope | Allows | Carried by |
+| --- | --- | --- |
+| `identity:read` | Read the calling client's own identity and effective scopes, and the portal's readiness. In a signed-in user's token, it lets the application ask for that user's current access | Machine and user tokens |
+| `notifications:write` | Queue email notifications to individual recipients on behalf of the application, within its quota | Machine tokens |
+| `notifications:read` | Read the delivery status of notifications the application sent | Machine tokens |
+
+Binding a client with a scope that isn't in the catalogue fails with
+`400 UNKNOWN_SCOPE`, naming the scope and listing the known ones.
 
 ### 3.2 Your machine client
 
@@ -321,6 +347,24 @@ tokens cached and avoid tight polling loops.
   deprecation period announced to every application owner before `v1` is removed.
 - New capabilities get new scopes; an existing scope never silently gains broader
   meaning.
+
+### Adding a scope
+
+A new capability is a routine, reviewed change in one pull request:
+
+1. **Catalogue:** add the scope to `backend/internal/features/platform/scopes.json` with
+   a `resource:action` name, a description of exactly what it allows, the token types
+   that carry it and its endpoints. The backend refuses to start with an invalid
+   catalogue.
+2. **Endpoint:** protect each new route with `requireScope(...)`. The tests fail until
+   every platform route is listed under a scope, every listed endpoint exists, and
+   each machine endpoint refuses callers without its scope.
+3. **Contract:** regenerate OpenAPI (`make contracts-generate`); the platform contract
+   gains the endpoint as an additive change.
+4. **Docs:** add the scope to the table above and document the endpoint in section 5.
+5. **Keycloak, after deploying:** run `reconcile-platform-scopes.py --apply` in each
+   environment, then grant the scope to the machine clients that need it (attach it
+   with `--client` and add it to their portal binding).
 
 ## 9. Checklist for a new backend
 
