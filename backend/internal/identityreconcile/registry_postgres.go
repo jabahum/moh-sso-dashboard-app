@@ -45,6 +45,24 @@ func (r *PostgresRegistry) GetIntegration(ctx context.Context, application strin
 	return integration, err
 }
 
+// ListIntegrations returns every registered integration, ordered by application.
+func (r *PostgresRegistry) ListIntegrations(ctx context.Context) ([]Integration, error) {
+	rows, err := r.DB.QueryContext(ctx, `SELECT `+integrationColumns+` FROM ihp_identity_sync_integrations ORDER BY application_client_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var integrations []Integration
+	for rows.Next() {
+		integration, err := scanIntegration(rows)
+		if err != nil {
+			return nil, err
+		}
+		integrations = append(integrations, integration)
+	}
+	return integrations, rows.Err()
+}
+
 func (r *PostgresRegistry) SaveIntegration(ctx context.Context, integration Integration, actor, reason string) (Integration, error) {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {

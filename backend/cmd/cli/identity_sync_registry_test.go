@@ -127,7 +127,7 @@ func TestIdentitySyncParentCommandHasSubcommandsAndAcceptsRegistrations(t *testi
 	for _, sub := range cmd.Commands() {
 		names[sub.Name()] = true
 	}
-	for _, want := range []string{"register", "describe", "preview", "apply", "run"} {
+	for _, want := range []string{"register", "describe", "preview", "apply", "check-network", "run"} {
 		if !names[want] {
 			t.Errorf("missing subcommand %q (have %v)", want, names)
 		}
