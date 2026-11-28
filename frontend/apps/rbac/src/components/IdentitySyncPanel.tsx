@@ -16,6 +16,7 @@ import {
   Toggle,
 } from "@carbon/react";
 import { Play, Renew, Save } from "@carbon/react/icons";
+import { useModal } from "@moh-sso/ui";
 
 import {
   useApplyIdentitySyncRunMutation,
@@ -696,6 +697,7 @@ const proposalFilterItems: ("all" | IdentitySyncProposal)[] = [
 ];
 
 function RunDetail({ clientId, runId, canWrite, jobRunning, onJobStarted }: RunDetailProps) {
+  const { openModal, closeModal } = useModal();
   const [polling, setPolling] = useState(0);
   const { data, isLoading, error } = useGetIdentitySyncRunQuery(
     { clientId, runId },
@@ -755,11 +757,7 @@ function RunDetail({ clientId, runId, canWrite, jobRunning, onJobStarted }: RunD
     }
   };
 
-  const handleApply = async (resume: boolean) => {
-    const prompt = resume
-      ? "Retry the approved rows that did not finish? Linked rows only have their access grant retried."
-      : "Apply the approved rows? Each account is re-checked, linked in the application, and granted access.";
-    if (!window.confirm(prompt)) return;
+  const startApply = async (resume: boolean) => {
     setMessage(null);
     try {
       await apply({ clientId, runId, resume }).unwrap();
@@ -772,6 +770,27 @@ function RunDetail({ clientId, runId, canWrite, jobRunning, onJobStarted }: RunD
       });
     }
   };
+
+  const handleApply = (resume: boolean) =>
+    openModal({
+      title: resume ? "Resume unfinished rows" : "Apply approved rows",
+      onClose: closeModal,
+      content: (
+        <p>
+          {resume
+            ? "Retry the approved rows that did not finish? Linked rows only have their access grant retried."
+            : "Apply the approved rows? Each account is re-checked, linked in the application, and granted access."}
+        </p>
+      ),
+      primaryAction: {
+        label: resume ? "Resume" : "Apply",
+        onClick: () => {
+          closeModal();
+          void startApply(resume);
+        },
+      },
+      secondaryAction: { label: "Cancel", onClick: closeModal },
+    });
 
   if (isLoading) return <InlineLoading description="Loading run..." />;
   if (error || !data) {
@@ -978,6 +997,7 @@ function StepTags({ revocation }: { revocation: IdentitySyncRevocation }) {
 }
 
 function RevocationsCard({ clientId, canWrite }: Props) {
+  const { openModal, closeModal } = useModal();
   const [includeRestored, setIncludeRestored] = useState(false);
   const [polling, setPolling] = useState(0);
   const { data, isLoading, error } = useListIdentitySyncRevocationsQuery(
@@ -1011,13 +1031,7 @@ function RevocationsCard({ clientId, canWrite }: Props) {
     }
   };
 
-  const handleRestore = async (subject: string) => {
-    if (
-      !window.confirm(
-        "Clear this revocation? Access is not granted again; later syncs may propose it.",
-      )
-    )
-      return;
+  const restoreRevocation = async (subject: string) => {
     setMessage(null);
     try {
       await restore({ clientId, subject, reason: restoreReason.trim() }).unwrap();
@@ -1029,6 +1043,24 @@ function RevocationsCard({ clientId, canWrite }: Props) {
       });
     }
   };
+
+  const handleRestore = (subject: string) =>
+    openModal({
+      title: "Clear revocation",
+      onClose: closeModal,
+      content: (
+        <p>Clear this revocation? Access is not granted again; later syncs may propose it.</p>
+      ),
+      primaryAction: {
+        label: "Clear revocation",
+        kind: "danger",
+        onClick: () => {
+          closeModal();
+          void restoreRevocation(subject);
+        },
+      },
+      secondaryAction: { label: "Cancel", onClick: closeModal },
+    });
 
   return (
     <section className="rbac-card" aria-label="Identity sync revocations">
