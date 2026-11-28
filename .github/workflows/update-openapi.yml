@@ -37,10 +37,29 @@ jobs:
       - name: Generate API contract from routes, DTOs and backend version
         run: make contracts-generate
 
+      - name: Check out the base branch's platform API contract
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+          sparse-checkout: backend/core/platform/contract
+          sparse-checkout-cone-mode: false
+
+      - name: Refuse breaking platform API changes
+        run: |
+          base_contract="$GITHUB_WORKSPACE/base/backend/core/platform/contract/platform.openapi.yaml"
+          if [ ! -f "$base_contract" ]; then
+            echo "The base branch has no platform API contract yet; nothing to compare."
+            exit 0
+          fi
+          cd backend
+          go run ./cmd/cli openapi platform-compat --base "$base_contract"
+
       - name: Detect generated contract changes
         id: contract
         run: |
-          if git diff --quiet -- backend/docs/openapi.yaml; then
+          if git diff --quiet -- backend/docs/openapi.yaml backend/core/platform/contract/platform.openapi.yaml; then
             echo 'changed=false' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=true' >> "$GITHUB_OUTPUT"
@@ -51,7 +70,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-openapi-${{ github.run_id }}
-          path: backend/docs/openapi.yaml
+          # Both files share backend/ as their root, so the artifact keeps
+          # docs/openapi.yaml and core/platform/contract/platform.openapi.yaml.
+          path: |
+            backend/docs/openapi.yaml
+            backend/core/platform/contract/platform.openapi.yaml
           if-no-files-found: error
           retention-days: 7
 
@@ -67,7 +90,7 @@ jobs:
           (github.event_name != 'pull_request' ||
            github.event.pull_request.head.repo.full_name != github.repository)
         run: |
-          echo '::error::OpenAPI was regenerated. Download the generated-openapi artifact and commit it as backend/docs/openapi.yaml, or run make contracts-generate locally.'
+          echo '::error::OpenAPI was regenerated. Run make contracts-generate locally and commit backend/docs/openapi.yaml and backend/core/platform/contract/platform.openapi.yaml, or download them from the generated-openapi artifact.'
           exit 1
 
   openapi-update:
@@ -100,7 +123,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
           SOURCE_SHA: ${{ needs.generate.outputs.source_sha }}
-          GENERATED_FILE: ${{ runner.temp }}/generated-openapi/openapi.yaml
+          GENERATED_DIR: ${{ runner.temp }}/generated-openapi
         run: |
           set -euo pipefail
           CURRENT_SHA=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq '.head.sha')
@@ -108,8 +131,10 @@ jobs:
             echo '::error::PR changed during generation. Rerun checks on its latest commit.'
             exit 1
           }
-          cp "$GENERATED_FILE" backend/docs/openapi.yaml
-          git add -- backend/docs/openapi.yaml
+          cp "$GENERATED_DIR/docs/openapi.yaml" backend/docs/openapi.yaml
+          mkdir -p backend/core/platform/contract
+          cp "$GENERATED_DIR/core/platform/contract/platform.openapi.yaml" backend/core/platform/contract/platform.openapi.yaml
+          git add -- backend/docs/openapi.yaml backend/core/platform/contract/platform.openapi.yaml
           git diff --cached --quiet && exit 0
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
