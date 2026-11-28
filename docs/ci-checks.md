@@ -10,17 +10,32 @@ locally before you push. It is for developers and reviewers.
 before publishing. Jobs are independent: a frontend install failure does not
 suppress backend, migration, workflow or deployment recovery results.
 
+On pull requests, **Detect changed areas** compares the test merge commit with
+its base and skips jobs the change cannot affect. Pushes, manual dispatches and
+the image build always run every job.
+
+| Change touches only | Skipped |
+| --- | --- |
+| Prose: `docs/**/*.md` (except the generated `docs/module-coverage.md`), `documentation/`, `frontend/docs/`, root `*.md` | Every job except Workflow and Shell Lint. The Documentation workflow builds the site. |
+| `backend/` | Production Frontend Runtime, Frontend Packed Modules, Frontend Browser Smoke Tests |
+| `frontend/` | Backend Module Packages, Database Migration Paths |
+
+Any other path, including `infra/`, `scripts/` and `.github/`, runs everything.
+
 | Job | Coverage |
 | --- | --- |
-| Distribution installation gate | Reuses `distribution-check.yml`: builds the backend image and a frontend image from published npm pins (`Dockerfile.npm-modules`), verifies image metadata, runs `test-distribution-runtime.py`, `test-distribution-auth.py` (full and `--profile core`), `test-cd.py`, and `test-cd-runtime.py` in default and `--mode distribution`. |
-| Production Nginx contracts | `make compose-config COMPOSE_ENV=gateway` against `infra/env/prod.env.example`, `make infra-check`, `make infra-nginx-check` and `make infra-runtime-check`. |
-| Frontend Quality Gate | Lockfile check before `npm ci`; dependency-guard, npm-release, module-source, runtime-config-path, API-base-URL and client-onboarding tests; OpenAPI bot update tests; version/package audits; local SSO startup contracts; release tooling tests; lint and typecheck; report scheduler parameter/permission tests; `config:validate`, `architecture:check`, `mf:doctor`, `rbac:doctor`, `audit:packages`; deployment verifier and deployment-selection tests. |
-| Backend Quality Gate | With a PostgreSQL 16 service: sqlc compile/generate freshness, Go module downloads, published backend module pins, module release declarations (`module_release.py` tests and `check`), module catalogue checks, `go vet`, platform-core boundary test, `make modules-check`, standalone/published package tests for Metrics, Audit, GeoJSON, Administrative Units, Announcements and the Report Scheduler schema, `make contracts-check`, `go test ./...`, race-enabled application manifest/registry tests against PostgreSQL, surveillance import tests, platform onboarding examples, Keycloak user-default and realm/client provisioning tests, and backend version consistency. |
-| Fast Quality Gate | Combined frontend/backend result; retains the existing required-check name while the jobs run independently. |
-| Production Frontend Runtime | `config:prod` plus `build:docker`, then `audit:import-map`, `runtime:verify` and `bundle:budget`; builds workspace packages/apps for `audit:publishability`, `audit:packed` and `test:module-consumption`; stages a workspace frontend and runs the Chromium browser tests. |
-| Workflow and Shell Lint | Pinned actionlint with ShellCheck integration (`make workflow-check`); ShellCheck also checks every `infra/**/*.sh` script and `infra/server/hooks/*.sh.example`. The retired Kubernetes workflow is archived at `docs/archive/kubernetes-ci.yaml.example`, outside the active workflow directory. |
+| Distribution installation gate | Reuses `distribution-check.yml` as two parallel jobs. **Build pinned images and verify installation** builds the backend image and a frontend image from published npm pins (`Dockerfile.npm-modules`), verifies image metadata and runs `test-distribution-runtime.py`. **Keycloak authentication against the backend image** runs `test-distribution-auth.py` (full and `--profile core`). |
+| Production Nginx contracts | `make compose-config COMPOSE_ENV=gateway` against `infra/env/prod.env.example`, `make infra-check` (including `test-cd.py`), `make infra-nginx-check` and `make infra-runtime-check`. |
+| Frontend Quality Gate | Lockfile check before `npm ci`; dependency-guard, npm-release, module-source, runtime-config-path, API-base-URL and client-onboarding tests; OpenAPI bot update tests; version/package audits; local SSO startup contracts; release tooling tests; lint and typecheck; report scheduler parameter/permission tests; `config:validate`, `architecture:check`, `mf:doctor`, `rbac:doctor`; deployment verifier and deployment-selection tests. |
+| Backend Quality Gate | With a PostgreSQL 16 service: sqlc compile/generate freshness (pinned, checksum-verified sqlc release binary), Go module downloads, module catalogue checks, `go vet`, platform-core boundary test, `make contracts-check`, `go test ./...`, race-enabled application manifest/registry tests against PostgreSQL, surveillance import tests, platform onboarding examples, Keycloak user-default, platform-scope and realm/client provisioning tests, and backend version consistency. |
+| Backend Module Packages | With a PostgreSQL 16 service: independent module downloads, published backend module pins, module release declarations (`module_release.py` tests and `check`), `make modules-check`, and standalone/published package tests for Metrics, Audit, GeoJSON, Administrative Units, Announcements and the Report Scheduler schema. |
+| Production Frontend Runtime | `config:prod` plus `build:docker`, then `audit:import-map`, `runtime:verify` and `bundle:budget`. |
+| Frontend Packed Modules | Builds workspace packages, then apps three at a time, for `audit:publishability`, `audit:packed` and `test:module-consumption`. |
+| Frontend Browser Smoke Tests | Builds and stages a workspace frontend and runs the Chromium browser tests; Playwright browsers are cached by version. |
+| Workflow and Shell Lint | Pinned actionlint with ShellCheck integration (`make workflow-check`); ShellCheck also checks every `infra/**/*.sh` script and `infra/server/hooks/*.sh.example`. The retired Kubernetes workflow is archived at `docs/archive/kubernetes-ci.yaml.example`, outside the active workflow directory. Always runs. |
 | Database Migration Paths | `make migrations-check`: fresh primary/remote schemas, upgrade from each stream's penultimate migration, clean version tracking, repeat-apply no-op and preservation of existing data. |
-| Container Deployment Recovery | `make cd-runtime-check`: actual deployment transaction against local fixture images/containers; rejected version, automatic/manual rollback, image identity, private env restoration and persistent data. |
+| Container Deployment Recovery | `make cd-runtime-check` and `test-cd-runtime.py --mode distribution`: actual deployment transaction against local fixture images/containers; rejected version, automatic/manual rollback, image identity, private env restoration and persistent data. |
+| Fast Quality Gate | Passes only when every job above succeeded or was skipped by change detection. This is the one check to require on `main`. |
 
 Other workflows that run on pull requests:
 
@@ -31,10 +46,10 @@ Other workflows that run on pull requests:
 | Platform API conformance (`platform-conformance.yml`) | Pull requests and pushes to `main` touching the platform API, `backend/core/platform`, backend bootstrap or migrations, the backend image, or the stack | `infra/scripts/test-platform-conformance.sh`: starts Keycloak, Postgres, Redis and the portal backend from `infra/compose/platform-conformance`, runs the platform conformance suite with the Go client (including revocation checks) and removes the stack. See [Platform API, section 11](integrations/platform-api.md#11-checking-your-integration-the-conformance-suite). |
 | Helm Lint (`helm-lint.yml`) | Changes under `infra/helm/`; also pushes to `main` | Helm v3.15.0 `helm lint infra/helm/moh-sso` and `helm template` with `values-dev.yaml` and `values-prod.yaml`. |
 
-Existing branch protection requiring **Fast Quality Gate** continues to work: its
-combined result fails unless both independent jobs succeed. Add the other job
-names as required checks after their first successful run if desired. Repository
-rules are configured separately; editing YAML does not change branch protection.
+Require **Fast Quality Gate** on `main` (repository ruleset or branch protection).
+It covers every job, so jobs can be split or renamed without editing the
+ruleset.
+Repository rules are configured separately; editing YAML does not change them.
 
 ## Fast dependency guards
 

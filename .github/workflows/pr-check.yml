@@ -11,12 +11,64 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides which jobs a pull request needs. Pushes, dispatches and reusable
+  # calls (the image build) always run every job.
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.areas.outputs.code }}
+      frontend_runtime: ${{ steps.areas.outputs.frontend_runtime }}
+      backend_modules: ${{ steps.areas.outputs.backend_modules }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          # The pull_request checkout is the test merge commit; its first
+          # parent is the current base, so HEAD^1..HEAD is exactly the change.
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Classify changed files
+        id: areas
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != pull_request ]; then
+            { echo code=true; echo frontend_runtime=true; echo backend_modules=true; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt"
+          echo "Changed files:"; cat "$RUNNER_TEMP/changed.txt"
+          # Prose that no check reads. The documentation site is built by the
+          # Documentation workflow. docs/module-coverage.md is generated and checked.
+          docs='^(docs/.+\.md|documentation/.+|frontend/docs/.+|[^/]+\.md)$'
+          code_files=$({ grep -Ev "$docs" "$RUNNER_TEMP/changed.txt" || true
+                         grep -Fx docs/module-coverage.md "$RUNNER_TEMP/changed.txt" || true; })
+          has() { [ -n "$1" ] && echo true || echo false; }
+          code=$(has "$code_files")
+          # Frontend builds and browser tests read nothing outside frontend/ except
+          # shared tooling, so a backend-only change skips them.
+          outside_backend=$(printf '%s\n' "$code_files" | grep -v -e '^backend/' -e '^$' || true)
+          # Go module package tests and migrations read nothing under frontend/.
+          outside_frontend=$(printf '%s\n' "$code_files" | grep -v -e '^frontend/' -e '^$' || true)
+          {
+            echo "code=$code"
+            echo "frontend_runtime=$(has "$outside_backend")"
+            echo "backend_modules=$(has "$outside_frontend")"
+          } | tee -a "$GITHUB_OUTPUT"
+
   distribution:
     name: Distribution installation gate
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/distribution-check.yml
 
   nginx:
     name: Production Nginx contracts
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -32,15 +84,14 @@ jobs:
 
   frontend-quality:
     name: Frontend Quality Gate
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
 
-      # ========================
-      # FRONTEND
-      # ========================
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -95,13 +146,14 @@ jobs:
           npm run architecture:check
           npm run mf:doctor
           npm run rbac:doctor
-          npm run audit:packages
 
       - name: Deployment verifier tests
         run: node --test infra/scripts/verify-frontend-deployment.test.mjs infra/scripts/select-deployment.test.cjs
 
   backend-quality:
     name: Backend Quality Gate
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -123,10 +175,23 @@ jobs:
           go-version: "1.25.4"
           cache-dependency-path: backend/go.sum
 
+      - name: Install pinned sqlc release binary
+        env:
+          SQLC_VERSION: 1.30.0
+          SQLC_SHA256: 468aecee071bfe55e97fcbcac52ea0208eeca444f67736f3b8f0f3d6a106132e
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/sqlc.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/sqlc-dev/sqlc/releases/download/v${SQLC_VERSION}/sqlc_${SQLC_VERSION}_linux_amd64.tar.gz"
+          echo "$SQLC_SHA256  $archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bin" sqlc
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
       - name: SQLC compilation and generated query freshness
         working-directory: backend
         run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+          sqlc version
           sqlc compile
           sqlc generate
           git diff --exit-code -- internal/db/sqlc
@@ -136,17 +201,6 @@ jobs:
         run: |
           go mod download
           go list -mod=readonly -m all > /dev/null
-          for manifest in modules/*/go.mod; do
-            (cd "$(dirname "$manifest")" && GOWORK=off go mod download && GOWORK=off go list -mod=readonly -m all > /dev/null)
-          done
-
-      - name: Verify published backend module pins and checksums
-        run: python3 infra/scripts/backend_module_pins.py
-
-      - name: Module release declarations
-        run: |
-          python3 infra/scripts/module_release.test.py
-          python3 infra/scripts/module_release.py check
 
       - name: Module coverage catalogue and guide
         run: |
@@ -159,54 +213,6 @@ jobs:
 
       - name: Platform core dependency boundary and lifecycle
         run: python3 infra/scripts/test-platform-core.py
-
-      - name: Independent Go modules
-        working-directory: backend
-        run: make modules-check
-
-      - name: Standalone Metrics package, HTTP consumer and PostgreSQL reads
-        run: python3 infra/scripts/test-metrics-package.py --postgres
-
-      - name: Published self-contained Metrics release
-        run: python3 infra/scripts/test-metrics-release.py
-
-      - name: Standalone Audit read package
-        run: python3 infra/scripts/test-audit-package.py
-
-      - name: Published self-contained Audit release
-        run: python3 infra/scripts/test-audit-release.py
-
-      - name: Self-contained Audit HTTP and PostgreSQL package
-        run: python3 infra/scripts/test-audit-http-package.py --postgres
-
-      - name: Standalone GeoJSON package
-        run: python3 infra/scripts/test-geojson-package.py
-
-      - name: Published self-contained GeoJSON release
-        run: python3 infra/scripts/test-geojson-release.py
-
-      - name: Standalone Administrative Units package and external consumer
-        run: python3 infra/scripts/test-admin-units-package.py
-      - name: Published self-contained Administrative Units release
-        run: python3 infra/scripts/test-admin-units-release.py
-
-      - name: Verify Administrative Units PostgreSQL package
-        run: python3 infra/scripts/test-admin-units-postgres.py
-
-      - name: Standalone Announcements package and external consumer
-        run: python3 infra/scripts/test-announcements-package.py
-
-      - name: Published self-contained Announcements release
-        run: python3 infra/scripts/test-announcements-release.py
-
-      - name: Verify standalone Announcements PostgreSQL persistence
-        run: python3 infra/scripts/test-announcements-postgres-package.py
-
-      - name: Verify standalone Announcements HTTP and provider composition
-        run: python3 infra/scripts/test-announcements-http-package.py
-
-      - name: Standalone Report Scheduler schema and claims
-        run: python3 infra/scripts/test-report-scheduler-package.py
 
       - name: API contract freshness
         run: make contracts-check
@@ -247,25 +253,103 @@ jobs:
         working-directory: backend
         run: ./scripts/check-version-consistency.sh
 
-  quality:
-    name: Fast Quality Gate
-    needs: [frontend-quality, backend-quality]
-    if: always()
+  backend-modules:
+    name: Backend Module Packages
+    needs: changes
+    if: needs.changes.outputs.backend_modules == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Preserve the existing combined required-check result
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
         env:
-          FRONTEND_RESULT: ${{ needs.frontend-quality.result }}
-          BACKEND_RESULT: ${{ needs.backend-quality.result }}
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.4"
+          cache-dependency-path: backend/go.sum
+
+      - name: Warm reviewed Go dependency caches
+        working-directory: backend
         run: |
-          test "$FRONTEND_RESULT" = success
-          test "$BACKEND_RESULT" = success
+          go mod download
+          go list -mod=readonly -m all > /dev/null
+          for manifest in modules/*/go.mod; do
+            (cd "$(dirname "$manifest")" && GOWORK=off go mod download && GOWORK=off go list -mod=readonly -m all > /dev/null)
+          done
+
+      - name: Verify published backend module pins and checksums
+        run: python3 infra/scripts/backend_module_pins.py
+
+      - name: Module release declarations
+        run: |
+          python3 infra/scripts/module_release.test.py
+          python3 infra/scripts/module_release.py check
+
+      - name: Independent Go modules
+        working-directory: backend
+        run: make modules-check
+
+      - name: Standalone Metrics package, HTTP consumer and PostgreSQL reads
+        run: python3 infra/scripts/test-metrics-package.py --postgres
+
+      - name: Published self-contained Metrics release
+        run: python3 infra/scripts/test-metrics-release.py
+
+      - name: Standalone Audit read package
+        run: python3 infra/scripts/test-audit-package.py
+
+      - name: Published self-contained Audit release
+        run: python3 infra/scripts/test-audit-release.py
+
+      - name: Self-contained Audit HTTP and PostgreSQL package
+        run: python3 infra/scripts/test-audit-http-package.py --postgres
+
+      - name: Standalone GeoJSON package
+        run: python3 infra/scripts/test-geojson-package.py
+
+      - name: Published self-contained GeoJSON release
+        run: python3 infra/scripts/test-geojson-release.py
+
+      - name: Standalone Administrative Units package and external consumer
+        run: python3 infra/scripts/test-admin-units-package.py
+
+      - name: Published self-contained Administrative Units release
+        run: python3 infra/scripts/test-admin-units-release.py
+
+      - name: Verify Administrative Units PostgreSQL package
+        run: python3 infra/scripts/test-admin-units-postgres.py
+
+      - name: Standalone Announcements package and external consumer
+        run: python3 infra/scripts/test-announcements-package.py
+
+      - name: Published self-contained Announcements release
+        run: python3 infra/scripts/test-announcements-release.py
+
+      - name: Verify standalone Announcements PostgreSQL persistence
+        run: python3 infra/scripts/test-announcements-postgres-package.py
+
+      - name: Verify standalone Announcements HTTP and provider composition
+        run: python3 infra/scripts/test-announcements-http-package.py
+
+      - name: Standalone Report Scheduler schema and claims
+        run: python3 infra/scripts/test-report-scheduler-package.py
 
   frontend-runtime:
     name: Production Frontend Runtime
+    needs: changes
+    if: needs.changes.outputs.frontend_runtime == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend
@@ -292,23 +376,92 @@ jobs:
           npm run audit:import-map
           npm run runtime:verify
           npm run bundle:budget
-      # The production build may consume npm pins without building local modules.
-      # Packed-consumer checks must still verify artifacts from this checkout.
-      - name: Build workspace modules for packed-package checks
+
+  # The production build may consume npm pins without building local modules.
+  # Packed-consumer checks must still verify artifacts from this checkout.
+  frontend-packed:
+    name: Frontend Packed Modules
+    needs: changes
+    if: needs.changes.outputs.frontend_runtime == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      FRONTEND_ASSET_BASE_URL: /
+      FRONTEND_BASE_PATH: /
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Build workspace packages, then apps in parallel
         env:
           FRONTEND_MODULE_SOURCE: workspace
-        run: npm run build:packages && npm run build:apps
+        run: |
+          npm run config:prod
+          npm run build:packages
+          # Same workspaces as `npm run build:apps`, three at a time.
+          node -e 'for (const m of require("./package.json").scripts["build:apps"].matchAll(/-w (\S+)/g)) console.log(m[1])' \
+            | xargs -P 3 -I{} npm run build -w {}
       - name: Verify packed npm modules in an isolated consumer
         run: npm run audit:publishability && npm run audit:packed
       - name: Exercise npm module selection in development and production
         timeout-minutes: 5
         run: npm run test:module-consumption
+
+  frontend-browser:
+    name: Frontend Browser Smoke Tests
+    needs: changes
+    if: needs.changes.outputs.frontend_runtime == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      FRONTEND_ASSET_BASE_URL: /
+      FRONTEND_BASE_PATH: /
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
       - name: Stage workspace frontend for browser regression tests
         env:
           FRONTEND_MODULE_SOURCE: workspace
-        run: npm run generate:import-map && npm run build:shell && npm run stage:mf
+        run: |
+          npm run config:prod
+          npm run build:packages
+          node -e 'for (const m of require("./package.json").scripts["build:apps"].matchAll(/-w (\S+)/g)) console.log(m[1])' \
+            | xargs -P 3 -I{} npm run build -w {}
+          npm run generate:import-map
+          npm run build:shell
+          npm run stage:mf
+      - name: Resolve Playwright version
+        id: playwright
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
       - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - name: Browser smoke tests
         run: npm run test:browser
       - name: Browser failure diagnostics
@@ -340,6 +493,8 @@ jobs:
 
   migrations:
     name: Database Migration Paths
+    needs: changes
+    if: needs.changes.outputs.backend_modules == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -353,9 +508,52 @@ jobs:
 
   deployment-recovery:
     name: Container Deployment Recovery
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Exercise rollout and recovery with isolated image/container fixtures
         run: make cd-runtime-check
+      - name: Exercise distribution-mode rollout and recovery
+        run: python3 infra/scripts/test-cd-runtime.py --mode distribution
+
+  # The single check to require on main. A job skipped because the pull
+  # request does not touch its area counts as a pass; a failed, cancelled or
+  # unexpectedly skipped job fails the gate.
+  quality:
+    name: Fast Quality Gate
+    needs:
+      - changes
+      - distribution
+      - nginx
+      - frontend-quality
+      - backend-quality
+      - backend-modules
+      - frontend-runtime
+      - frontend-packed
+      - frontend-browser
+      - workflow-lint
+      - migrations
+      - deployment-recovery
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every job to pass or be skipped by change detection
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ['NEEDS'])
+          if needs['changes']['result'] != 'success':
+              sys.exit(f"changes: {needs['changes']['result']}")
+          failed = {job: data['result'] for job, data in needs.items()
+                    if data['result'] not in ('success', 'skipped')}
+          for job, data in sorted(needs.items()):
+              print(f"{job}: {data['result']}")
+          if failed:
+              sys.exit(f'failed jobs: {", ".join(sorted(failed))}')
+          PY
