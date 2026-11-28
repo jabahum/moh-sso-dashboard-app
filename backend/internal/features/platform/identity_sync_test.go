@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http/httptest"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -214,5 +217,32 @@ func TestIdentitySyncAdminPassesExplicitContractDowngrade(t *testing.T) {
 	}
 	if len(registry.saved) != 2 || registry.saved[0].AllowContractDowngrade || !registry.saved[1].AllowContractDowngrade {
 		t.Fatalf("downgrade option not passed through exactly when requested: %+v", registry.saved)
+	}
+}
+
+func TestIdentitySyncAdminExplainsNetworkFailures(t *testing.T) {
+	dnsErr := &net.DNSError{Err: "no such host", Name: "alerts.example.test", IsNotFound: true}
+	refused := &net.OpError{Op: "dial", Net: "tcp", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}
+	for _, tc := range []struct {
+		name, code, phrase string
+		err                error
+	}{
+		{"unresolvable origin on save", "IDENTITY_SYNC_ORIGIN_UNRESOLVED", "does not resolve from the portal server",
+			fmt.Errorf("%w: alerts.example.test: %w", identityreconcile.ErrOriginUnresolvable, dnsErr)},
+		{"private origin", "IDENTITY_SYNC_PRIVATE_ORIGIN", identityreconcile.AllowedPrivateHostsEnv,
+			fmt.Errorf("%w: alerts.example.test (10.0.0.5)", identityreconcile.ErrPrivateOrigin)},
+		{"refused while describing", "IDENTITY_SYNC_UNREACHABLE", "connection was refused",
+			fmt.Errorf("%w: enable alerts: giving up after 5 attempts: %w", identityreconcile.ErrDescriptorUnavailable, refused)},
+		{"unknown describe failure keeps the generic text", "IDENTITY_SYNC_UNREACHABLE", "check the origin, credential reference and sync client",
+			fmt.Errorf("%w: HTTP 403", identityreconcile.ErrDescriptorUnavailable)},
+	} {
+		router := identitySyncRouter(&fakeIdentitySync{saveErr: tc.err}, authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite)
+		code, body := identitySyncRequest(router, "PUT", validIdentitySyncBody(nil))
+		if code != 422 || !strings.Contains(body, `"code":"`+tc.code+`"`) || !strings.Contains(body, tc.phrase) {
+			t.Errorf("%s: %d %s", tc.name, code, body)
+		}
+		if strings.Contains(body, "platform request failed") {
+			t.Errorf("%s: generic platform error returned", tc.name)
+		}
 	}
 }

@@ -289,7 +289,7 @@ func (s *RegistryService) Save(ctx context.Context, integration Integration, act
 		fresh.ContractVersion = ""
 		descriptor, err := s.Probe(ctx, fresh)
 		if err != nil {
-			return Integration{}, fmt.Errorf("%w: enable %s: %v", ErrDescriptorUnavailable, integration.ApplicationClientID, err)
+			return Integration{}, fmt.Errorf("%w: enable %s: %w", ErrDescriptorUnavailable, integration.ApplicationClientID, err)
 		}
 		if versionAtLeast11(stored) && !versionAtLeast11(descriptor.Version) && !integration.AllowContractDowngrade {
 			return Integration{}, fmt.Errorf("%w: %s was registered at %s", ErrContractDowngrade, integration.ApplicationClientID, stored)

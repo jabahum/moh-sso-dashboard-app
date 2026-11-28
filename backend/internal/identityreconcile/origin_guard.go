@@ -129,10 +129,10 @@ func (p originPolicy) checkHost(ctx context.Context, host string) error {
 	} else {
 		resolved, err := p.resolver(ctx, host)
 		if err != nil {
-			return fmt.Errorf("resolve identity sync origin host %s: %w", host, err)
+			return fmt.Errorf("%w: %s: %w", ErrOriginUnresolvable, host, err)
 		}
 		if len(resolved) == 0 {
-			return fmt.Errorf("resolve identity sync origin host %s: no addresses", host)
+			return fmt.Errorf("%w: %s: no addresses", ErrOriginUnresolvable, host)
 		}
 		addrs = resolved
 	}
