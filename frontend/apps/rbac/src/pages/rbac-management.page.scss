@@ -1278,6 +1278,28 @@
   overflow-x: auto;
 }
 
+.rbac-identity-sync__network {
+  margin-top: 1rem;
+
+  ul {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+}
+
+.rbac-identity-sync__network-stage {
+  min-width: 11rem;
+  font-weight: 600;
+}
+
 .rbac-identity-sync__descriptor,
 .rbac-identity-sync__muted {
   color: var(--cds-text-secondary);

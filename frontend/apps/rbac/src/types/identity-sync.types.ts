@@ -36,6 +36,31 @@ export type IdentitySyncDescriptor = {
   capabilities: string[];
 };
 
+export type IdentitySyncNetworkStageName =
+  | "origin"
+  | "dns"
+  | "address_policy"
+  | "connect"
+  | "tls"
+  | "http";
+
+export type IdentitySyncNetworkStage = {
+  name: IdentitySyncNetworkStageName;
+  status: "ok" | "warn" | "fail" | "skipped";
+  detail?: string;
+};
+
+/** Result of checking, from the portal server, the path to an application's identity-sync endpoint. */
+export type IdentitySyncNetworkReport = {
+  applicationId?: string;
+  origin: string;
+  host?: string;
+  addresses?: string[];
+  ok: boolean;
+  stages: IdentitySyncNetworkStage[];
+  checkedAt: string;
+};
+
 export type IdentitySyncProposal =
   | "reuse"
   | "create"

@@ -19,6 +19,7 @@ import { Play, Renew, Save } from "@carbon/react/icons";
 
 import {
   useApplyIdentitySyncRunMutation,
+  useCheckIdentitySyncNetworkMutation,
   useDecideIdentitySyncRowsMutation,
   useDescribeIdentitySyncMutation,
   useListServiceIdentitiesQuery,
@@ -38,6 +39,8 @@ import type {
   IdentitySyncDescriptor,
   IdentitySyncIntegration,
   IdentitySyncJob,
+  IdentitySyncNetworkReport,
+  IdentitySyncNetworkStage,
   IdentitySyncProposal,
   IdentitySyncRevocation,
   IdentitySyncRow,
@@ -170,6 +173,8 @@ function IntegrationCard({ clientId, canWrite }: Props) {
   const [descriptor, setDescriptor] = useState<IdentitySyncDescriptor | null>(null);
   const [save, { isLoading: saving }] = useSaveIdentitySyncIntegrationMutation();
   const [describe, { isLoading: describing }] = useDescribeIdentitySyncMutation();
+  const [checkNetwork, { isLoading: checkingNetwork }] = useCheckIdentitySyncNetworkMutation();
+  const [networkReport, setNetworkReport] = useState<IdentitySyncNetworkReport | null>(null);
   const { data: identities } = useListServiceIdentitiesQuery(clientId);
   const [resolveServiceAccount, { isLoading: resolving }] = useResolveServiceAccountMutation();
   const [saveServiceIdentity, { isLoading: binding }] = useSaveServiceIdentityMutation();
@@ -177,6 +182,7 @@ function IntegrationCard({ clientId, canWrite }: Props) {
   useEffect(() => {
     setDraft(toIntegrationDraft(clientId, integration));
     setDescriptor(null);
+    setNetworkReport(null);
     setDowngradeRefused(false);
     setMessage(null);
   }, [clientId, integration]);
@@ -218,6 +224,27 @@ function IntegrationCard({ clientId, canWrite }: Props) {
       setMessage({
         kind: "error",
         text: getIdentitySyncErrorMessage(err, "Unable to reach the application."),
+      });
+    }
+  };
+
+  // Checks the origin being edited when it differs from the saved one, so an
+  // operator can test a new origin before saving it.
+  const handleCheckNetwork = async () => {
+    setMessage(null);
+    const origin = draft.origin.trim();
+    try {
+      setNetworkReport(
+        await checkNetwork({
+          clientId,
+          origin: origin !== "" && origin !== integration?.origin ? origin : undefined,
+        }).unwrap(),
+      );
+    } catch (err) {
+      setNetworkReport(null);
+      setMessage({
+        kind: "error",
+        text: getIdentitySyncErrorMessage(err, "Unable to check the network path."),
       });
     }
   };
@@ -279,8 +306,8 @@ function IntegrationCard({ clientId, canWrite }: Props) {
       </div>
       <p>
         Registers how the portal reaches this application&apos;s identity-sync endpoint. The
-        credential is a reference (<code>keycloak:&lt;sync client&gt;</code>, <code>env:NAME</code> or{" "}
-        <code>file:/path</code>); the secret itself is never entered here.
+        credential is a reference (<code>keycloak:&lt;sync client&gt;</code>, <code>env:NAME</code>{" "}
+        or <code>file:/path</code>); the secret itself is never entered here.
       </p>
       {isLoading && <InlineLoading description="Loading integration..." />}
       {loadError && (
@@ -424,7 +451,18 @@ function IntegrationCard({ clientId, canWrite }: Props) {
                 {describing ? "Checking..." : "Check connection"}
               </Button>
             )}
+            {canWrite && (integration || draft.origin.trim() !== "") && (
+              <Button
+                size="sm"
+                kind="ghost"
+                disabled={checkingNetwork || isFetching}
+                onClick={handleCheckNetwork}
+              >
+                {checkingNetwork ? "Checking network..." : "Check network"}
+              </Button>
+            )}
           </div>
+          {networkReport && <NetworkReport report={networkReport} />}
           {descriptor && (
             <p className="rbac-identity-sync__descriptor">
               Live descriptor: contract {descriptor.version}, application{" "}
@@ -435,6 +473,59 @@ function IntegrationCard({ clientId, canWrite }: Props) {
         </div>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------- network
+
+const networkStageLabels: Record<IdentitySyncNetworkStage["name"], string> = {
+  origin: "Origin",
+  dns: "DNS lookup",
+  address_policy: "Address policy",
+  connect: "Connection",
+  tls: "TLS",
+  http: "Identity-sync endpoint",
+};
+
+const networkTagTypes: Record<
+  IdentitySyncNetworkStage["status"],
+  "green" | "warm-gray" | "red" | "cool-gray"
+> = {
+  ok: "green",
+  warn: "warm-gray",
+  fail: "red",
+  skipped: "cool-gray",
+};
+
+const networkStatusLabels: Record<IdentitySyncNetworkStage["status"], string> = {
+  ok: "OK",
+  warn: "Check",
+  fail: "Failed",
+  skipped: "Skipped",
+};
+
+function NetworkReport({ report }: { report: IdentitySyncNetworkReport }) {
+  return (
+    <div className="rbac-identity-sync__network" aria-live="polite">
+      <p>
+        {report.ok ? "The portal server can reach " : "The portal server cannot reach "}
+        <strong>{report.origin}</strong>
+        {report.addresses?.length ? ` (${report.addresses.join(", ")})` : ""}.
+      </p>
+      <ul>
+        {report.stages.map((stage) => (
+          <li key={stage.name}>
+            <Tag size="sm" type={networkTagTypes[stage.status]}>
+              {networkStatusLabels[stage.status]}
+            </Tag>
+            <span className="rbac-identity-sync__network-stage">
+              {networkStageLabels[stage.name]}
+            </span>
+            {stage.detail && <span className="rbac-identity-sync__muted">{stage.detail}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
