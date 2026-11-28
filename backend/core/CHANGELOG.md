@@ -6,6 +6,20 @@ stable within a minor version.
 
 ## v0.2.0 (unreleased)
 
+### Platform API client
+
+- `platform/client`: a standard-library-only client for the portal's platform
+  API (`Identity`, `Readiness`, `Notify`, `Notification`, `Access`).
+  `ClientCredentials` obtains Keycloak client-credentials tokens and caches
+  them until 30 seconds before expiry, sharing one request between concurrent
+  callers; a rejected token is replaced once. Every attempt has a timeout;
+  only GETs and idempotency-keyed notifications are retried, on network
+  errors, 5xx and 429 with a short `Retry-After`, with exponential backoff and
+  jitter. Redirects, plain HTTP outside loopback and responses over 1 MiB are
+  refused. Failures are `*Error` values matching `ErrInvalid`,
+  `ErrUnauthorized`, `ErrForbidden`, `ErrNotFound`, `ErrConflict`,
+  `ErrRateLimited`, `ErrUnavailable`, `ErrUnexpected` or `ErrToken`.
+
 ### Platform core
 
 - `Platform`: the standard set of trusted host capabilities offered to every

@@ -57,6 +57,13 @@ and persist OIDC identity links keyed by issuer and subject. The host owns
 authorization, storage, and roles. Repeating an existing link is safe, and
 conflicting links must fail atomically.
 
+The platform API client lives in `platform/client`. An application backend
+calls the portal's `/api/v1/platform/*` endpoints (caller identity, readiness,
+notifications and per-user access decisions) by configuring the portal URL and
+its machine client's credentials; the client handles tokens, timeouts, safe
+retries and typed errors. See
+[the platform API guide](../../docs/integrations/platform-api.md#10-go-client).
+
 Identity sync (contract 1.1) lives in `identitysync`:
 
 - `identitysync/adapter` is a `net/http` handler that implements the whole

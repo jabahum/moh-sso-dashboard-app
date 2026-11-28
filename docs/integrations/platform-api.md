@@ -108,6 +108,9 @@ The administrator can list bindings with
 
 ## 4. Getting a token
 
+Go backends can skip to [section 10](#10-go-client): the Go client handles tokens,
+timeouts, retries and errors.
+
 Request a token from Keycloak with the client-credentials grant, from your backend
 only:
 
@@ -339,6 +342,46 @@ tokens cached and avoid tight polling loops.
 - [ ] For access decisions: your interactive client's tokens carry the platform audience, `identity:read`, `sub` and roles
 - [ ] For notifications: idempotency keys are unique per notification and content is not sensitive
 - [ ] Secrets stored in your secret mechanism and rotation agreed
+
+## 10. Go client
+
+Go backends don't need to implement sections 4 to 7 themselves. The standard-library-only
+package `github.com/mohuganda/moh-sso-dashboard/backend/core/platform/client` does it:
+
+```go
+import platform "github.com/mohuganda/moh-sso-dashboard/backend/core/platform/client"
+
+portal, err := platform.New(platform.Config{
+	PortalURL: "https://portals.health.go.ug",
+	Tokens: &platform.ClientCredentials{
+		TokenURL:     "https://auth.health.go.ug/realms/MoH/protocol/openid-connect/token",
+		ClientID:     "alerts-platform",
+		ClientSecret: os.Getenv("ALERTS_PLATFORM_SECRET"),
+		Scopes:       []string{"identity:read", "notifications:write", "notifications:read"},
+	},
+})
+
+id, err := portal.Identity(ctx)                                   // check the setup at startup
+status, err := portal.Notify(ctx, "alert-2026-0042:dho", platform.Notification{…})
+access, err := portal.Access(ctx, userAccessToken, "alerts")      // fail closed on error
+```
+
+What it does for you:
+
+| Concern | Behaviour |
+| --- | --- |
+| Tokens | Client-credentials tokens cached until 30 seconds before expiry; concurrent callers share one request; a token the portal rejects is replaced once. `Access` sends the user's token and never the machine token |
+| Timeouts | Every attempt is bounded (`Config.Timeout`, default 10 s) |
+| Retries | Only GETs and `Notify` (same idempotency key) are retried, on network errors, 5xx and 429 with `Retry-After` of 10 s or less; exponential backoff with jitter; `Config.MaxAttempts` (default 3) |
+| Safety | HTTPS only (HTTP to loopback for tests); redirects are not followed; responses over 1 MiB are refused; notifications are validated before sending |
+| Errors | `*Error` with `Status`, `Code`, `Message`, `RequestID` and `RetryAfter`, matching `ErrInvalid`, `ErrUnauthorized`, `ErrForbidden`, `ErrNotFound`, `ErrConflict`, `ErrRateLimited`, `ErrUnavailable`, `ErrUnexpected` or `ErrToken` with `errors.Is` |
+
+`Readiness` returns `Ready: false` without an error when the portal answers 503 with a
+readiness body. A token obtained elsewhere can be passed as
+`platform.StaticToken(token)`, or any type implementing `TokenSource`.
+
+Backends in other languages can generate a client from the platform contract and
+follow sections 4 to 7.
 
 ## Related
 
