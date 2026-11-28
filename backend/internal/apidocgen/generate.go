@@ -469,6 +469,34 @@ func dedupeSchemas(values []any) []any {
 // Supplemental form semantics are explicit: code binding reveals field types,
 // but conditional business requirements cannot always be inferred statically.
 func applyOverrides(op, previous object) {
+	// x-required-parameters marks generated parameters ("<in> <name>") as
+	// required when the handler enforces them in code the generator can't see.
+	if names, ok := previous["x-required-parameters"].([]any); ok {
+		required := map[string]bool{}
+		for _, name := range names {
+			if s, ok := name.(string); ok {
+				required[s] = true
+			}
+		}
+		if params, ok := op["parameters"].([]any); ok {
+			for _, item := range params {
+				if param, ok := item.(object); ok && required[fmt.Sprint(param["in"])+" "+fmt.Sprint(param["name"])] {
+					param["required"] = true
+				}
+			}
+		}
+	}
+	// x-error-responses adds error statuses a handler returns through a shared
+	// error helper, which the generator does not follow.
+	if codes, ok := previous["x-error-responses"].([]any); ok {
+		responses, _ := op["responses"].(object)
+		for _, code := range codes {
+			key := fmt.Sprint(code)
+			if _, exists := responses[key]; !exists && responses != nil {
+				responses[key] = errorResponse(key)
+			}
+		}
+	}
 	body, _ := op["requestBody"].(object)
 	content, _ := body["content"].(object)
 	media, _ := content["multipart/form-data"].(object)
