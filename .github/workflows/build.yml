@@ -21,13 +21,18 @@ env:
   IMAGE_REPO: ${{ github.event.repository.name }}
 
 jobs:
+  # Commits reach main only through the merge queue, which runs PR Quality
+  # Checks on the exact merge commit, so main pushes publish without running
+  # the suite again. Release tags are validated here.
   validate:
     name: Validate before publishing images
+    if: startsWith(github.ref, 'refs/tags/')
     uses: ./.github/workflows/pr-check.yml
 
   docker-build-push:
     name: Build & Push (${{ matrix.service }})
     needs: validate
+    if: ${{ !cancelled() && (needs.validate.result == 'success' || (needs.validate.result == 'skipped' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-latest
 
     strategy:
