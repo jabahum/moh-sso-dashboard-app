@@ -146,7 +146,8 @@ for (const width of [1440, 390]) {
   }
 }
 
-// API delays and errors used to remove the page header on these admin routes.
+// Like Report Scheduler, these apps show only a loading indicator until their
+// first data load finishes, then the full page, including after an API error.
 for (const width of [1440, 390]) {
   for (const [path, title] of rootPages.filter(([path]) =>
     [
@@ -157,7 +158,7 @@ for (const width of [1440, 390]) {
       "/admin/rbac",
     ].includes(path),
   )) {
-    test(`${title} keeps its shell while loading and after an API error at ${width}px`, async ({
+    test(`${title} shows only a loading indicator until its first load, then its page after an API error at ${width}px`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 900 });
@@ -185,20 +186,16 @@ for (const width of [1440, 390]) {
       const shell = main.locator(".moh-page-shell");
       const header = shell.locator(":scope > .moh-page-shell__header");
       const heading = header.getByRole("heading", { name: title, exact: true });
+      await expect(main.locator(".cds--inline-loading").first()).toBeVisible();
+      await expect(shell).toHaveCount(0);
+      release();
       await expect(heading).toBeVisible();
       await expect(shell).toHaveCount(1);
-      const before = await heading.boundingBox();
-      release();
       if (path !== "/admin/rbac") {
         await expect(main.getByRole("heading", { name: /Failed to load/ })).toBeVisible();
       } else {
         await expect(main.getByText("Loading RBAC mappings...", { exact: true })).toHaveCount(0);
       }
-      await expect(heading).toBeVisible();
-      await expect(shell).toHaveCount(1);
-      const after = await heading.boundingBox();
-      expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
       fail = false;
       await page.reload();
       await expect(heading).toBeVisible();

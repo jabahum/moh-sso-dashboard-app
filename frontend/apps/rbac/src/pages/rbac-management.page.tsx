@@ -143,14 +143,9 @@ function RbacWorkspace() {
       showApplicationSection("settings");
     });
 
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
   if (systemsLoading || permissionsLoading) {
-    return (
-      <div className="rbac-page">
-        <PageShell title={pageTitle} subtitle={pageSubtitle}>
-          <InlineLoading description="Loading RBAC mappings..." />
-        </PageShell>
-      </div>
-    );
+    return <InlineLoading description="Loading RBAC mappings..." />;
   }
 
   const needsApplication = (content: ReactNode) => {

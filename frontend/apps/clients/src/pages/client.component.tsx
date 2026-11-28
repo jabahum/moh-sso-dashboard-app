@@ -1,14 +1,15 @@
 import {
   Button,
   DataTable,
+  InlineLoading,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
-  TableSelectRow,
+  TableHead,
+  TableHeader,
+  TableRow,
   TableSelectAll,
+  TableSelectRow,
 } from "@carbon/react";
 import { useAuthorization } from "@moh-sso/auth";
 import { useEffect, useMemo, useState } from "react";
@@ -154,6 +155,9 @@ export default function ClientsPage() {
       content: <ClientFormPanel mode="create" onSuccess={closePanel} />,
       size: "md",
     });
+
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (isLoading) return <InlineLoading description="Loading clients…" />;
 
   return (
     <DataTableShell

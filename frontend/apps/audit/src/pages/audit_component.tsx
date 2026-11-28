@@ -1,6 +1,7 @@
 import {
-  DataTable,
   Button,
+  DataTable,
+  InlineLoading,
   Table,
   TableBody,
   TableCell,
@@ -340,6 +341,9 @@ export default function AuditLogs() {
       subtitle: `Filtered audit logs are being exported as ${format.toUpperCase()}.`,
     });
   }
+
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (isLoading) return <InlineLoading description="Loading audit logs…" />;
 
   return (
     <DataTableShell

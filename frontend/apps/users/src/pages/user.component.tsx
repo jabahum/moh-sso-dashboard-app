@@ -1,14 +1,15 @@
 import {
   Button,
   DataTable,
+  InlineLoading,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
-  TableSelectRow,
+  TableHead,
+  TableHeader,
+  TableRow,
   TableSelectAll,
+  TableSelectRow,
 } from "@carbon/react";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
@@ -156,6 +157,9 @@ export default function UsersPage() {
 
   const hasActiveFilters =
     search.trim() !== "" || statusFilter !== "all" || roleFilter !== "all" || neverLoggedIn;
+
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (isLoading) return <InlineLoading description="Loading users…" />;
 
   return (
     <DataTableShell

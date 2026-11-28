@@ -583,6 +583,11 @@ function SurveillanceDashboardContent() {
     );
   }
 
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (weeksLoading || diseasesLoading || regionsReferenceLoading) {
+    return <InlineLoading description="Loading surveillance data..." />;
+  }
+
   return (
     <div className="surveillance-dashboard-page">
       <PageShell

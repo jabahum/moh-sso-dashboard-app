@@ -394,6 +394,9 @@ export function AnnouncementsPage() {
     });
   };
 
+  // Like Report Scheduler: only a loading indicator until the first data is ready.
+  if (isLoading) return <InlineLoading description="Loading announcements…" />;
+
   return (
     <div className="announcements-page">
       <PageShell
@@ -405,7 +408,7 @@ export function AnnouncementsPage() {
           </Button>
         }
       >
-      {isLoading ? <InlineLoading description="Loading announcements…" /> : isError ? (
+      {isError ? (
         <ErrorState title="Failed to load announcements" description={getApiErrorMessage(error, "Failed to load announcements")}
           primaryAction={{ label: "Retry", onClick: refetch }} />
       ) : <>
