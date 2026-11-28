@@ -25,6 +25,7 @@ func RegisterRoutes(api, protected *gin.RouterGroup, h *Handler, limiter *rateli
 	}
 	admin := protected.Group("/admin/platform")
 	admin.GET("/applications/:clientId/operations", middleware.RequirePermission(authz.PermissionRBACRead), h.GetOperations)
+	admin.GET("/scopes", middleware.RequirePermission(authz.PermissionRBACRead), h.ListScopes)
 	admin.Use(middleware.RequireAllPermissions(authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite))
 	admin.GET("/applications/:clientId/identities", h.ListIdentities)
 	admin.GET("/applications/:clientId/identities/:oauthClientId/service-account", h.GetServiceAccount)

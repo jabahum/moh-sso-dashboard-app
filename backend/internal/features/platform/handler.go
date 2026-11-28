@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/moh-sso-dashboard/internal/observability"
 	"net/http"
 	"strings"
@@ -113,7 +114,7 @@ func (h *Handler) SaveIdentity(c *gin.Context) {
 		return
 	}
 	input.Subject, input.Reason = strings.TrimSpace(input.Subject), strings.TrimSpace(input.Reason)
-	if id, err := uuid.Parse(input.Subject); err != nil || id == uuid.Nil || input.Reason == "" || len(input.Reason) > 2000 || len(input.Scopes) > 3 {
+	if id, err := uuid.Parse(input.Subject); err != nil || id == uuid.Nil || input.Reason == "" || len(input.Reason) > 2000 || len(input.Scopes) > len(scopeCatalogue.Scopes) {
 		fail(c, ErrInvalid)
 		return
 	}
@@ -122,8 +123,13 @@ func (h *Handler) SaveIdentity(c *gin.Context) {
 	}
 	seen := map[string]bool{}
 	for _, scope := range input.Scopes {
-		if seen[scope] || !contains([]string{IdentityRead, NotificationsRead, NotificationsWrite}, scope) {
+		if seen[scope] {
 			fail(c, ErrInvalid)
+			return
+		}
+		if !MachineScope(scope) {
+			response.Fail(c, http.StatusBadRequest, "UNKNOWN_SCOPE", fmt.Sprintf("%q is not a platform scope a machine client can be granted; known scopes: %s", scope, strings.Join(machineScopeNames(), ", ")))
+			c.Abort()
 			return
 		}
 		seen[scope] = true
@@ -135,6 +141,13 @@ func (h *Handler) SaveIdentity(c *gin.Context) {
 	}
 	response.OK(c, http.StatusOK, result)
 }
+
+// ListScopes returns the platform scope catalogue: each scope's name, what it
+// allows, which tokens carry it and the endpoints that require it.
+func (h *Handler) ListScopes(c *gin.Context) {
+	response.OK(c, http.StatusOK, Scopes())
+}
+
 func contains(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
