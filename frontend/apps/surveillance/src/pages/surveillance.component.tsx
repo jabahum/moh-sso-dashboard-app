@@ -2,7 +2,7 @@ import {
   useSurveillanceRecovery,
   SurveillanceUnavailableNotice,
 } from "./surveillance-availability";
-import { PageShell } from "@moh-sso/ui";
+import { PageLoading, PageShell } from "@moh-sso/ui";
 import { InlineLoading } from "@carbon/react";
 import { PERMISSIONS, PermissionGuard } from "@moh-sso/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -583,9 +583,8 @@ function SurveillanceDashboardContent() {
     );
   }
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
   if (weeksLoading || diseasesLoading || regionsReferenceLoading) {
-    return <InlineLoading description="Loading surveillance data..." />;
+    return <PageLoading description="Loading surveillance data..." />;
   }
 
   return (

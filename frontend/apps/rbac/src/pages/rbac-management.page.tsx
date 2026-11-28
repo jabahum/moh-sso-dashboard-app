@@ -18,7 +18,7 @@ import {
   useListRbacSystemsQuery,
 } from "../api";
 import { PERMISSIONS, useAuthorization } from "@moh-sso/auth";
-import { PageShell } from "@moh-sso/ui";
+import { PageLoading, PageShell } from "@moh-sso/ui";
 
 import { EffectiveAccessPanel } from "../components/EffectiveAccessPanel";
 import { GovernanceToolsPanel } from "../components/GovernanceToolsPanel";
@@ -143,9 +143,8 @@ function RbacWorkspace() {
       showApplicationSection("settings");
     });
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
   if (systemsLoading || permissionsLoading) {
-    return <InlineLoading description="Loading RBAC mappings..." />;
+    return <PageLoading description="Loading RBAC mappings..." />;
   }
 
   const needsApplication = (content: ReactNode) => {

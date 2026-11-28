@@ -1,7 +1,6 @@
 import {
   Button,
   DataTable,
-  InlineLoading,
   Table,
   TableBody,
   TableCell,
@@ -19,6 +18,7 @@ import {
   DataTablePagination,
   DataTableShell,
   ErrorState,
+  PageLoading,
   RowActionsCell,
   TableStatusTag,
   useHeaderPanel,
@@ -158,8 +158,7 @@ export default function UsersPage() {
   const hasActiveFilters =
     search.trim() !== "" || statusFilter !== "all" || roleFilter !== "all" || neverLoggedIn;
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
-  if (isLoading) return <InlineLoading description="Loading users…" />;
+  if (isLoading) return <PageLoading description="Loading users…" />;
 
   return (
     <DataTableShell

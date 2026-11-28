@@ -1,7 +1,6 @@
 import {
   Button,
   DataTable,
-  InlineLoading,
   Table,
   TableBody,
   TableCell,
@@ -20,6 +19,7 @@ import { AuditMetricsPanel } from "../components/AuditMetricsPanel";
 import {
   DataTableShell,
   ErrorState,
+  PageLoading,
   RowActionsCell,
   TableStatusTag,
   useHeaderPanel,
@@ -342,8 +342,7 @@ export default function AuditLogs() {
     });
   }
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
-  if (isLoading) return <InlineLoading description="Loading audit logs…" />;
+  if (isLoading) return <PageLoading description="Loading audit logs…" />;
 
   return (
     <DataTableShell

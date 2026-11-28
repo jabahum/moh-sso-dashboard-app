@@ -26,7 +26,15 @@ import {
 
 import type { EmailStatus, EmailOutboxItem } from "../types";
 
-import { ErrorState, PageShell, useHeaderPanel, useModal, useToast } from "@moh-sso/ui";
+import {
+  ErrorState,
+  PageLoading,
+  PageShell,
+  useFirstLoad,
+  useHeaderPanel,
+  useModal,
+  useToast,
+} from "@moh-sso/ui";
 
 import EmailPanelComponent from "../components/email-outbox-panel/email-outbox-panel.component";
 import { EmailDetailsContent } from "../components/email-outbox-detail/email-outbox-details-modal.component";
@@ -162,12 +170,8 @@ export default function EmailOutbox() {
   }, [apiStatus, allEmailsQuery.data, statusEmailsQuery.data]);
 
   const isLoading = allEmailsQuery.isLoading || statusEmailsQuery.isLoading;
-  // Gate only the very first load: a status filter starts a new query whose own
-  // first load must not unmount the page.
-  const [firstLoadDone, setFirstLoadDone] = useState(false);
-  useEffect(() => {
-    if (!isLoading) setFirstLoadDone(true);
-  }, [isLoading]);
+  // A status filter starts a new query; its first load must not unmount the page.
+  const isFirstLoad = useFirstLoad(isLoading);
   const isFetching = allEmailsQuery.isFetching || statusEmailsQuery.isFetching;
   const isError = allEmailsQuery.isError || statusEmailsQuery.isError;
   const error = allEmailsQuery.error || statusEmailsQuery.error;
@@ -352,8 +356,7 @@ export default function EmailOutbox() {
     });
   };
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
-  if (!firstLoadDone && isLoading) return <InlineLoading description="Loading emails…" />;
+  if (isFirstLoad) return <PageLoading description="Loading emails…" />;
 
   return (
     <>

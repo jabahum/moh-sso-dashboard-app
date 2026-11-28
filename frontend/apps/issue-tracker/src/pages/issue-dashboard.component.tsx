@@ -17,7 +17,7 @@ import { Alignments, ScaleTypes, ToolbarControlTypes } from "@carbon/charts";
 import "@carbon/charts/styles.css";
 import { useNavigate } from "react-router-dom";
 import { PermissionGuard, PERMISSIONS } from "@moh-sso/auth";
-import { PageShell } from "@moh-sso/ui";
+import { PageLoading, PageShell } from "@moh-sso/ui";
 
 import {
   useGetIssueDataSetsQuery,
@@ -490,8 +490,7 @@ const IssueDashboard = () => {
     .filter(Boolean)
     .join(" • ");
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
-  if (isLoadingIssues) return <InlineLoading description="Loading issue summary…" />;
+  if (isLoadingIssues) return <PageLoading description="Loading issue summary…" />;
 
   return (
     <PermissionGuard permission={PERMISSIONS.issueTrackerRead}>

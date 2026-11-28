@@ -20,6 +20,7 @@ accepts optional `appName` and `onProfile` props; the portal title remains the d
 - Use Carbon tokens and MOH CSS variables.
 - Avoid inline styles.
 - Use `PageShell`, `SectionCard`, `EmptyState`, and `ErrorState` for consistency.
+- Return `PageLoading` until an app's first data load finishes; use `useFirstLoad` when later queries must not hide the page again.
 
 ## Theme Usage
 

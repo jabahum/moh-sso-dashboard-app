@@ -32,7 +32,7 @@ import * as XLSX from "xlsx";
 import { useSelector } from "react-redux";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { PERMISSIONS, PermissionGuard, selectUser } from "@moh-sso/auth";
-import { PageShell, TableEmptyState } from "@moh-sso/ui";
+import { PageLoading, PageShell, TableEmptyState } from "@moh-sso/ui";
 
 import {
   useGetIssueByCodeQuery,
@@ -702,8 +702,7 @@ const IssueTracker = () => {
     );
   }
 
-  // Like Report Scheduler: only a loading indicator until the first data is ready.
-  if (isLoading) return <InlineLoading description="Loading issues…" />;
+  if (isLoading) return <PageLoading description="Loading issues…" />;
 
   const activeLocationLabel =
     selectedOrgUnit || selectedDistrict || selectedRegion || "";
