@@ -1,5 +1,24 @@
 # @moh-sso/api
 
+## 1.12.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+  - @moh-sso/auth@1.12.0
+  - @moh-sso/config@1.12.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.10.0`.
+
+- No direct source changes; this release updates version or dependency metadata.
+
 ## 1.11.0
 
 ### Minor Changes
@@ -13,6 +32,7 @@
   - @moh-sso/config@1.11.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.9.0`.

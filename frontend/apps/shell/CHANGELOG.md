@@ -1,5 +1,46 @@
 # @moh-sso/shell
 
+## 1.11.0
+
+### Minor Changes
+
+- Automatic minor release of all frontend apps and shared packages.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [230c5fe]
+- Updated dependencies [e752ec8]
+  - @moh-sso/announcements@1.11.0
+  - @moh-sso/audit@1.11.0
+  - @moh-sso/clients@1.11.0
+  - @moh-sso/data-validation@1.11.0
+  - @moh-sso/data-visualizer@1.11.0
+  - @moh-sso/documents@1.11.0
+  - @moh-sso/e-services@1.11.0
+  - @moh-sso/email@1.11.0
+  - @moh-sso/issue-tracker@1.11.0
+  - @moh-sso/rbac@1.11.0
+  - @moh-sso/report-browser@1.11.0
+  - @moh-sso/report-scheduler@0.12.0
+  - @moh-sso/surveillance@1.11.0
+  - @moh-sso/users@1.11.0
+  - @moh-sso/utilities@1.11.0
+  - @moh-sso/api@1.12.0
+  - @moh-sso/auth@1.12.0
+  - @moh-sso/config@1.12.0
+  - @moh-sso/microfrontend@1.12.0
+  - @moh-sso/state@1.12.0
+  - @moh-sso/types@1.12.0
+  - @moh-sso/ui@1.12.0
+
+<!-- scoped-source-changes -->
+### Source changes
+
+Changes since `frontend/v1.10.0`.
+
+- Improve news page layout and remove case reporting (`d3b86a27`)
+
 ## 1.10.0
 
 ### Minor Changes
@@ -33,6 +74,7 @@
   - @moh-sso/ui@1.11.0
 
 <!-- scoped-source-changes -->
+
 ### Source changes
 
 Changes since `frontend/v1.9.0`.
