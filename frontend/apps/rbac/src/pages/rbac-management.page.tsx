@@ -23,6 +23,7 @@ import { PageShell } from "@moh-sso/ui";
 import { EffectiveAccessPanel } from "../components/EffectiveAccessPanel";
 import { GovernanceToolsPanel } from "../components/GovernanceToolsPanel";
 import { IdentitySyncPanel } from "../components/IdentitySyncPanel";
+import { ServiceIdentitiesPanel } from "../components/ServiceIdentitiesPanel";
 import { SyncDriftPanel } from "../components/SyncDriftPanel";
 import { AccessRolesPanel } from "../components/workspace/AccessRolesPanel";
 import { ApplicationSettingsPanel } from "../components/workspace/ApplicationSettingsPanel";
@@ -44,6 +45,7 @@ const applicationSections = [
   { id: "access-roles", label: "Access roles" },
   { id: "system-roles", label: "System roles" },
   { id: "identity-sync", label: "Identity sync" },
+  { id: "machine-clients", label: "Machine clients" },
 ] as const;
 type ApplicationSection = (typeof applicationSections)[number]["id"];
 
@@ -226,6 +228,12 @@ function RbacWorkspace() {
       ),
     "identity-sync": () => (
       <IdentitySyncPanel
+        clientId={registering ? "" : activeClientId}
+        canWrite={canWriteSystems && canWriteRoles}
+      />
+    ),
+    "machine-clients": () => (
+      <ServiceIdentitiesPanel
         clientId={registering ? "" : activeClientId}
         canWrite={canWriteSystems && canWriteRoles}
       />

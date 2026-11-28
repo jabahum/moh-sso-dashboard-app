@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "scopes": [
+    {
+      "name": "identity:read",
+      "description": "Read the calling client's own identity and effective scopes, and the portal's readiness. In a signed-in user's token, it lets the application ask for that user's current access.",
+      "tokens": ["machine", "user"],
+      "endpoints": [
+        "GET /api/v1/platform/identity",
+        "GET /api/v1/platform/readiness",
+        "GET /api/v1/platform/applications/{clientId}/access"
+      ]
+    },
+    {
+      "name": "notifications:write",
+      "description": "Queue email notifications to individual recipients on behalf of the application, within its quota.",
+      "tokens": ["machine"],
+      "endpoints": ["POST /api/v1/platform/notifications"]
+    },
+    {
+      "name": "notifications:read",
+      "description": "Read the delivery status of notifications the application sent.",
+      "tokens": ["machine"],
+      "endpoints": ["GET /api/v1/platform/notifications/{id}"]
+    }
+  ]
+}
