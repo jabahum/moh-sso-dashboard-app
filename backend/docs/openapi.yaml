@@ -3195,6 +3195,37 @@ components:
             type: integer
           type: object
       type: object
+    identityreconcile.NetworkReport:
+      properties:
+        addresses:
+          items:
+            type: string
+          type: array
+        applicationId:
+          type: string
+        checkedAt:
+          format: date-time
+          type: string
+        host:
+          type: string
+        ok:
+          type: boolean
+        origin:
+          type: string
+        stages:
+          items:
+            $ref: '#/components/schemas/identityreconcile.NetworkStage'
+          type: array
+      type: object
+    identityreconcile.NetworkStage:
+      properties:
+        detail:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+      type: object
     identityreconcile.Revocation:
       properties:
         applicationId:
@@ -17196,6 +17227,94 @@ paths:
       tags:
         - admin-platform
       x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).ListIdentitySyncJobs
+  /api/v1/admin/platform/applications/{clientId}/identity-sync/network-check:
+    get:
+      operationId: get_api_v1_admin_platform_applications_clientId_identity-sync_network-check
+      parameters:
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: origin
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/identityreconcile.NetworkReport'
+                  meta:
+                    properties:
+                      requestId:
+                        type: string
+                    type: object
+                  success:
+                    enum:
+                      - true
+                    type: boolean
+                required:
+                  - success
+                  - data
+                type: object
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Too Many Requests
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: Error response; error.code identifies the failure.
+      summary: Check Identity Sync Network
+      tags:
+        - admin-platform
+      x-go-handler: github.com/moh-sso-dashboard/internal/features/platform.(*Handler).CheckIdentitySyncNetwork
   /api/v1/admin/platform/applications/{clientId}/identity-sync/revocations:
     get:
       operationId: get_api_v1_admin_platform_applications_clientId_identity-sync_revocations

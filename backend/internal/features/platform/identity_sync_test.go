@@ -246,3 +246,77 @@ func TestIdentitySyncAdminExplainsNetworkFailures(t *testing.T) {
 		}
 	}
 }
+
+type fakeNetworkIdentitySync struct {
+	fakeIdentitySync
+	origins []string
+	listErr error
+}
+
+func (f *fakeNetworkIdentitySync) CheckNetwork(_ context.Context, origin string) identityreconcile.NetworkReport {
+	f.origins = append(f.origins, origin)
+	return identityreconcile.NetworkReport{Origin: origin, OK: true, Stages: []identityreconcile.NetworkStage{{Name: identityreconcile.StageDNS, Status: identityreconcile.NetworkOK}}}
+}
+
+func (f *fakeNetworkIdentitySync) CheckIntegrationsNetwork(_ context.Context, app string) ([]identityreconcile.NetworkReport, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return []identityreconcile.NetworkReport{{ApplicationID: app, Origin: "https://alerts.example.test", Stages: []identityreconcile.NetworkStage{{Name: identityreconcile.StageDNS, Status: identityreconcile.NetworkFail, Detail: "alerts.example.test does not resolve from the portal server"}}}}, nil
+}
+
+func networkCheckRequest(router *gin.Engine, query string) (int, string) {
+	req := httptest.NewRequest("GET", identitySyncPath+"/network-check"+query, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	return w.Code, w.Body.String()
+}
+
+func TestIdentitySyncNetworkCheck(t *testing.T) {
+	admin := []authz.Permission{authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite}
+	t.Run("requires both RBAC write permissions", func(t *testing.T) {
+		registry := &fakeNetworkIdentitySync{}
+		if code, _ := networkCheckRequest(identitySyncRouter(registry, authz.PermissionRBACWrite), ""); code != 403 || len(registry.origins) != 0 {
+			t.Fatalf("status %d, checks %v", code, registry.origins)
+		}
+	})
+	t.Run("registered origin", func(t *testing.T) {
+		code, body := networkCheckRequest(identitySyncRouter(&fakeNetworkIdentitySync{}, admin...), "")
+		if code != 200 || !strings.Contains(body, `"applicationId":"alerts"`) || !strings.Contains(body, "does not resolve from the portal server") || !strings.Contains(body, `"ok":false`) {
+			t.Fatalf("%d %s", code, body)
+		}
+	})
+	t.Run("unsaved origin", func(t *testing.T) {
+		registry := &fakeNetworkIdentitySync{}
+		code, body := networkCheckRequest(identitySyncRouter(registry, admin...), "?origin=https%3A%2F%2Fnew.example.test")
+		if code != 200 || len(registry.origins) != 1 || registry.origins[0] != "https://new.example.test" || !strings.Contains(body, `"applicationId":"alerts"`) {
+			t.Fatalf("%d %s %v", code, body, registry.origins)
+		}
+	})
+	t.Run("invalid origin", func(t *testing.T) {
+		registry := &fakeNetworkIdentitySync{}
+		if code, _ := networkCheckRequest(identitySyncRouter(registry, admin...), "?origin=http%3A%2F%2Fnew.example.test"); code != 400 || len(registry.origins) != 0 {
+			t.Fatalf("status %d", code)
+		}
+	})
+	t.Run("not registered", func(t *testing.T) {
+		registry := &fakeNetworkIdentitySync{listErr: identityreconcile.ErrIntegrationNotFound}
+		if code, _ := networkCheckRequest(identitySyncRouter(registry, admin...), ""); code != 404 {
+			t.Fatalf("status %d", code)
+		}
+	})
+	t.Run("registry without network checks", func(t *testing.T) {
+		if code, _ := networkCheckRequest(identitySyncRouter(&fakeIdentitySync{}, admin...), ""); code != 503 {
+			t.Fatalf("status %d", code)
+		}
+	})
+}
+
+func TestIdentitySyncUnwrappedNetworkErrorsAreExplained(t *testing.T) {
+	dnsErr := fmt.Errorf("get descriptor: %w", &net.DNSError{Err: "no such host", Name: "alerts.example.test", IsNotFound: true})
+	router := identitySyncRouter(&fakeIdentitySync{saveErr: dnsErr}, authz.PermissionRBACWrite, authz.PermissionRBACRolesWrite)
+	code, body := identitySyncRequest(router, "PUT", validIdentitySyncBody(nil))
+	if code != 422 || !strings.Contains(body, "IDENTITY_SYNC_UNREACHABLE") || !strings.Contains(body, "does not resolve") {
+		t.Fatalf("%d %s", code, body)
+	}
+}

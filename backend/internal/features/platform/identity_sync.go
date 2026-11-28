@@ -181,6 +181,8 @@ func failIdentitySync(c *gin.Context, err error) {
 			message = "the application's identity-sync endpoint could not be reached: " + problem
 		}
 		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_UNREACHABLE", message)
+	case identityreconcile.ReachabilityProblem(err) != "":
+		response.Fail(c, http.StatusUnprocessableEntity, "IDENTITY_SYNC_UNREACHABLE", "the application's identity-sync endpoint could not be reached: "+identityreconcile.ReachabilityProblem(err))
 	default:
 		fail(c, err)
 		return
