@@ -22,6 +22,7 @@ const workflow = require("yaml").parse(
   ),
 );
 const script = workflow.jobs["openapi-update"].steps.at(-1).run;
+const platformContract = "backend/core/platform/contract/platform.openapi.yaml";
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "openapi-update-"));
@@ -41,7 +42,9 @@ function fixture(t) {
   git("config", "user.name", "Test");
   git("config", "user.email", "test@example.invalid");
   mkdirSync(join(repo, "backend/docs"), { recursive: true });
+  mkdirSync(join(repo, "backend/core/platform/contract"), { recursive: true });
   writeFileSync(join(repo, "backend/docs/openapi.yaml"), "original contract\n");
+  writeFileSync(join(repo, platformContract), "original platform contract\n");
   writeFileSync(join(repo, "other.txt"), "original\n");
   git("add", ".");
   git("commit", "-m", "fixture");
@@ -49,9 +52,19 @@ function fixture(t) {
   git("remote", "add", "origin", remote);
   git("push", "origin", "HEAD");
   const source = git("rev-parse", "HEAD");
-  const generated = join(root, "openapi.yaml"),
+  // The artifact keeps both files relative to backend/.
+  const generated = join(root, "generated"),
     log = join(root, "dispatch.log");
-  writeFileSync(generated, "updated contract\n");
+  const writeGenerated = (openapi, platform) => {
+    mkdirSync(join(generated, "docs"), { recursive: true });
+    mkdirSync(join(generated, "core/platform/contract"), { recursive: true });
+    writeFileSync(join(generated, "docs/openapi.yaml"), openapi);
+    writeFileSync(
+      join(generated, "core/platform/contract/platform.openapi.yaml"),
+      platform,
+    );
+  };
+  writeGenerated("updated contract\n", "updated platform contract\n");
   writeFileSync(
     join(bin, "gh"),
     `#!/bin/sh
@@ -71,7 +84,7 @@ esac
     PR_NUMBER: "1",
     BRANCH: "contract-fixture",
     SOURCE_SHA: source,
-    GENERATED_FILE: generated,
+    GENERATED_DIR: generated,
     TEST_CURRENT_SHA: source,
     TEST_DISPATCH_LOG: log,
   };
@@ -80,7 +93,7 @@ esac
     source,
     remote,
     repo,
-    generated,
+    writeGenerated,
     log,
     run: (extra = {}) =>
       spawnSync("bash", ["-c", script], {
@@ -98,7 +111,7 @@ test("bot commits only the generated contract, pushes it and dispatches quality 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     f.git("show", "--format=", "--name-only", "HEAD"),
-    "backend/docs/openapi.yaml",
+    `${platformContract}\nbackend/docs/openapi.yaml`,
   );
   assert.equal(
     f.git("ls-remote", "origin", "refs/heads/contract-fixture").split(/\s/)[0],
@@ -140,9 +153,20 @@ test("non-fast-forward pushes preserve concurrent changes and do not dispatch ch
   assert.throws(() => readFileSync(f.log));
 });
 
+test("bot commits a platform contract change on its own", (t) => {
+  const f = fixture(t);
+  f.writeGenerated("original contract\n", "updated platform contract\n");
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    f.git("show", "--format=", "--name-only", "HEAD"),
+    platformContract,
+  );
+});
+
 test("unchanged generated contract is a no-op", (t) => {
   const f = fixture(t);
-  writeFileSync(f.generated, "original contract\n");
+  f.writeGenerated("original contract\n", "original platform contract\n");
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
   assert.equal(f.git("rev-parse", "HEAD"), f.source);
